@@ -119,7 +119,146 @@
     </el-alert>
 
     <!-- ============================================================ -->
-    <!-- 状态B: 测评报告区 -->
+    <!-- 状态A2: 答题阶段 (interactive 第二步, S9) -->
+    <!-- ============================================================ -->
+    <template v-if="store.phase === 'answering' && !store.loading">
+      <el-card class="quiz-card">
+        <template #header>
+          <div class="quiz-header">
+            <span>📝 学情答题（共 {{ store.pendingQuestions.length }} 题）</span>
+            <el-button size="small" @click="store.backToInput()">← 返回</el-button>
+          </div>
+        </template>
+
+        <div
+          v-for="(q, idx) in store.pendingQuestions"
+          :key="idx"
+          class="quiz-item"
+        >
+          <div class="quiz-question">
+            <el-tag size="small" type="info" class="q-idx">{{ idx + 1 }}</el-tag>
+            <el-tag size="small" class="q-type">{{ typeLabel(q.type) }}</el-tag>
+            <span class="q-text">{{ q.question }}</span>
+          </div>
+
+          <!-- 选择题 -->
+          <el-radio-group
+            v-if="q.type === 'choice'"
+            v-model="store.userAnswers[idx]"
+            class="quiz-options"
+          >
+            <el-radio
+              v-for="opt in q.options"
+              :key="opt"
+              :value="optLabel(opt)"
+              class="quiz-option"
+            >
+              {{ opt }}
+            </el-radio>
+          </el-radio-group>
+
+          <!-- 填空题 -->
+          <el-input
+            v-else-if="q.type === 'fill'"
+            v-model="store.userAnswers[idx]"
+            placeholder="请输入答案"
+            class="quiz-fill"
+          />
+
+          <!-- 其他题型兜底: 文本输入 -->
+          <el-input
+            v-else
+            v-model="store.userAnswers[idx]"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入答案"
+          />
+        </div>
+
+        <div class="quiz-submit">
+          <el-button
+            type="primary"
+            size="large"
+            @click="handleSubmitAnswers"
+          >
+            提交答题 →
+          </el-button>
+          <el-button size="large" @click="autoFillDemo">一键填演示答案</el-button>
+        </div>
+      </el-card>
+    </template>
+
+    <!-- ============================================================ -->
+    <!-- 状态A3: 反馈阶段 (interactive 第三步, S9) — 画像 + 动态反馈策略 -->
+    <!-- ============================================================ -->
+    <template v-if="store.phase === 'feedback'">
+      <el-card class="feedback-card">
+        <template #header>
+          <div class="feedback-header">
+            <span>🎯 测评结果 + 动态反馈</span>
+            <div>
+              <el-button
+                v-if="store.feedbackStrategy && !store.feedbackContent"
+                size="small"
+                type="primary"
+                :loading="store.loading"
+                @click="store.fetchFeedback()"
+              >
+                获取针对性反馈 →
+              </el-button>
+              <el-button size="small" @click="store.reset()">重新测评</el-button>
+            </div>
+          </div>
+        </template>
+
+        <el-descriptions :column="3" border size="small" style="margin-bottom: 16px;">
+          <el-descriptions-item label="正确率">
+            {{ store.assessment?.correct_count }} / {{ store.assessment?.total_count }}
+            ({{ (store.accuracy * 100).toFixed(0) }}%)
+          </el-descriptions-item>
+          <el-descriptions-item label="理论水平">{{ levelLabel(store.profile?.theory_level) }}</el-descriptions-item>
+          <el-descriptions-item label="反馈策略">
+            <el-tag :type="strategyTagType(store.feedbackStrategy)" size="small">
+              {{ strategyLabel(store.feedbackStrategy) }}
+            </el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div style="margin-bottom: 16px;">
+          <ProfileRadar :profile="store.profile" />
+        </div>
+
+        <!-- 动态反馈再生内容 -->
+        <template v-if="store.feedbackContent">
+          <el-divider content-position="left">针对性学习内容（{{ strategyLabel(store.feedbackStrategy) }}）</el-divider>
+          <div class="feedback-resources">
+            <el-card
+              v-for="(r, i) in (store.feedbackContent.resources || [])"
+              :key="i"
+              shadow="never"
+              class="resource-item"
+            >
+              <template #header>
+                <el-tag size="small">{{ contentTypeLabel(r.content_type) }}</el-tag>
+                <span style="margin-left: 8px;">{{ r.title || r.target_node_id }}</span>
+              </template>
+              <MarkdownViewer :content="r.content" />
+            </el-card>
+          </div>
+        </template>
+        <el-alert
+          v-else-if="store.feedbackStrategy"
+          type="info"
+          :closable="false"
+          style="margin-top: 12px;"
+        >
+          点击「获取针对性反馈」生成 {{ strategyLabel(store.feedbackStrategy) }} 内容
+        </el-alert>
+      </el-card>
+    </template>
+
+    <!-- ============================================================ -->
+    <!-- 状态B: 测评报告区 (demo 模式完整结果) -->
     <!-- ============================================================ -->
     <template v-if="store.hasResults">
       <!-- 头部信息 -->
@@ -286,6 +425,7 @@ import { useAssessmentStore } from '@/stores/assessment'
 import ProfileRadar from '@/components/ProfileRadar.vue'
 import AssessmentReport from '@/components/AssessmentReport.vue'
 import ReviewReport from '@/components/ReviewReport.vue'
+import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
 const store = useAssessmentStore()
 
@@ -357,6 +497,66 @@ async function handleQuickDemo() {
 
 function retry() {
   store.reset()
+}
+
+// ---------------------------------------------------------------
+// interactive 答题阶段辅助 (S9)
+// ---------------------------------------------------------------
+
+/** 提交答题 → submit 判分 + 画像 + 反馈策略 */
+async function handleSubmitAnswers() {
+  // 校验是否全部作答 (空字符串视为未答)
+  const unanswered = store.userAnswers.filter((a) => !a || String(a).trim() === '').length
+  if (unanswered > 0) {
+    // 允许提交未答 (按错处理), 仅提示
+    if (unanswered === store.pendingQuestions.length) {
+      return
+    }
+  }
+  await store.submitAssessmentAnswers()
+}
+
+/** 一键填演示答案 (方便快速体验 interactive 闭环) */
+function autoFillDemo() {
+  store.pendingQuestions.forEach((q, idx) => {
+    if (q.type === 'choice' && q.options?.length) {
+      // 填第一个选项的字母 (大概率不全对, 用于演示判分+反馈)
+      store.userAnswers[idx] = optLabel(q.options[0])
+    } else {
+      store.userAnswers[idx] = '示例答案'
+    }
+  })
+}
+
+/** 从选项文本提取字母标签 (如 "A. xxx" → "A") */
+function optLabel(opt) {
+  if (!opt) return ''
+  const m = String(opt).match(/^([A-Z])[.、．]/)
+  return m ? m[1] : String(opt)
+}
+
+function typeLabel(t) {
+  return { choice: '选择题', fill: '填空题', code: '代码题', judge: '判断题' }[t] || t || '题'
+}
+
+const STRATEGY_LABELS = {
+  advance: '进阶挑战（正确率高，提升难度）',
+  remediate: '降维解释（正确率中等，换角度讲解）',
+  scaffold: '补前置基础（正确率低，巩固基础）',
+}
+function strategyLabel(s) {
+  return STRATEGY_LABELS[s] || s || '-'
+}
+function strategyTagType(s) {
+  return { advance: 'success', remediate: 'warning', scaffold: 'danger' }[s] || 'info'
+}
+
+const CONTENT_TYPE_LABELS = {
+  lecture: '讲义', practice: '实操指南', quiz: '测试题',
+  explanation: '讲解', exercise: '练习',
+}
+function contentTypeLabel(t) {
+  return CONTENT_TYPE_LABELS[t] || t || '资源'
 }
 
 // ---------------------------------------------------------------
@@ -523,4 +723,43 @@ function logType(entry) {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* ---- 答题阶段 (S9) ---- */
+.quiz-card { margin-bottom: 16px; }
+.quiz-header { display: flex; justify-content: space-between; align-items: center; }
+.quiz-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #ebeef5;
+}
+.quiz-item:last-of-type { border-bottom: none; }
+.quiz-question {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.q-idx { flex-shrink: 0; }
+.q-type { flex-shrink: 0; }
+.q-text { flex: 1; }
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 28px;
+}
+.quiz-option { margin-right: 0 !important; }
+.quiz-fill { max-width: 360px; }
+.quiz-submit {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* ---- 反馈阶段 (S9) ---- */
+.feedback-card { margin-bottom: 16px; }
+.feedback-header { display: flex; justify-content: space-between; align-items: center; }
+.feedback-resources { display: flex; flex-direction: column; gap: 12px; }
+.resource-item { background: #fafafa; }
 </style>

@@ -1,18 +1,25 @@
 /**
  * assessment store 单元测试
  *
- * 覆盖: startAssessment 成功/失败/reset、AbortController 管理
+ * S9 更新: startAssessment 改为 interactive 出题阶段 (不再直接返回完整 profile)。
+ *   - interactive: assess → questions → phase='answering' → submit → phase='feedback'
+ *   - demo: startDemoStream → 完整结果 (_applyResult 填充 profile/kg/gen/learningReport)
+ *
+ * 覆盖: interactive 出题/空题降级、demo 完整结果映射、reset、AbortController、计算属性
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
-// Mock API — 在 store import 之前
+// Mock API — 在 store import之前
 vi.mock('@/api/diagnostics', () => ({
   submitAssessment: vi.fn(),
+  startAssessmentStream: vi.fn(),
+  submitAnswers: vi.fn(),
+  requestFeedback: vi.fn(),
 }))
 
 import { useAssessmentStore } from '@/stores/assessment'
-import { submitAssessment } from '@/api/diagnostics'
+import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback } from '@/api/diagnostics'
 
 describe('useAssessmentStore', () => {
   beforeEach(() => {
@@ -30,6 +37,7 @@ describe('useAssessmentStore', () => {
       expect(store.assessment).toBeNull()
       expect(store.reviewResults).toBeNull()
       expect(store.orchestrationLog).toEqual([])
+      expect(store.phase).toBe('idle')
     })
 
     it('hasResults 为 false', () => {
@@ -38,34 +46,37 @@ describe('useAssessmentStore', () => {
     })
   })
 
-  describe('startAssessment 成功', () => {
-    const mockResponse = {
-      session_id: 'sess-001',
-      profile: { profile_id: 'P1', theory_level: 3 },
-      assessment: { questions: [], answers: [], per_node: {}, correct_count: 5, total_count: 5 },
-      review_results: { passed: true, overall_score: 0.9, threshold: 0.85, dimensions: {} },
-      orchestration_log: ['[log] done'],
-    }
-
-    it('应正确填充所有 state', async () => {
-      submitAssessment.mockResolvedValueOnce(mockResponse)
-
-      const store = useAssessmentStore()
-      await store.startAssessment({
-        targetDirection: 'Python 基础',
-        mode: 'demo',
+  // ============================================================
+  // interactive 出题阶段 (S9)
+  // ============================================================
+  describe('startAssessment (interactive 出题)', () => {
+    it('应进入答题阶段, 缓存题目 + 初始化空答案', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 'sess-001',
+        assessment: {
+          questions: [
+            { type: 'choice', question: 'Q1', options: ['A. x', 'B. y'] },
+            { type: 'fill', question: 'Q2' },
+          ],
+          answers: [],
+          per_node: {},
+          correct_count: 0,
+          total_count: 2,
+        },
       })
 
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 'Python 基础' })
+
       expect(store.sessionId).toBe('sess-001')
-      expect(store.profile).toEqual(mockResponse.profile)
-      expect(store.assessment).toEqual(mockResponse.assessment)
-      expect(store.reviewResults).toEqual(mockResponse.review_results)
-      expect(store.orchestrationLog).toEqual(['[log] done'])
+      expect(store.phase).toBe('answering')
+      expect(store.pendingQuestions).toHaveLength(2)
+      expect(store.userAnswers).toEqual(['', ''])
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
-      expect(store.hasResults).toBe(true)
-      expect(store.reviewPassed).toBe(true)
-      expect(store.accuracy).toBe(1.0)
+      // interactive 出题阶段不应有 profile (避免 hasResults 误判)
+      expect(store.profile).toBeNull()
+      expect(store.hasResults).toBe(false)
     })
 
     it('loading 应在请求期间为 true，完成后为 false', async () => {
@@ -78,15 +89,27 @@ describe('useAssessmentStore', () => {
 
       expect(store.loading).toBe(true)
 
-      resolveOut(mockResponse)
+      resolveOut({ session_id: 's', assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] } })
       await startPromise
 
       expect(store.loading).toBe(false)
     })
-  })
 
-  describe('startAssessment 失败', () => {
-    it('应设置 error 并保持 loading=false', async () => {
+    it('空题目 → 出题失败错误', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 'sess-empty',
+        assessment: { questions: [], answers: [], per_node: {}, correct_count: 0, total_count: 0 },
+      })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 'test' })
+
+      expect(store.error).toMatch(/未获得测评题目/)
+      expect(store.phase).toBe('idle')
+      expect(store.pendingQuestions).toEqual([])
+    })
+
+    it('请求失败应设置 error', async () => {
       submitAssessment.mockRejectedValueOnce(new Error('网络错误'))
 
       const store = useAssessmentStore()
@@ -94,7 +117,7 @@ describe('useAssessmentStore', () => {
 
       expect(store.error).toBe('网络错误')
       expect(store.loading).toBe(false)
-      expect(store.sessionId).toBeNull()
+      expect(store.phase).toBe('idle')
     })
 
     it('CanceledError 应静默处理', async () => {
@@ -110,20 +133,119 @@ describe('useAssessmentStore', () => {
     })
   })
 
-  describe('reset', () => {
-    it('应清空所有状态', async () => {
+  // ============================================================
+  // interactive 第二步: submitAssessmentAnswers (S9)
+  // ============================================================
+  describe('submitAssessmentAnswers (判分+反馈策略)', () => {
+    it('应填充 profile + assessment + feedbackStrategy, 进入反馈阶段', async () => {
+      // 先出题进入 answering
       submitAssessment.mockResolvedValueOnce({
-        session_id: 'sess-001',
+        session_id: 'sess-q',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }], total_count: 1 },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 'sess-q',
         profile: { profile_id: 'P1', theory_level: 3 },
-        assessment: { questions: [], answers: [], per_node: {}, correct_count: 0, total_count: 0 },
-        review_results: { passed: false, overall_score: 0, dimensions: {} },
-        orchestration_log: [],
-        knowledge_graph: { learning_path: [{ node_id: 'PY-001' }] },
-        generated_content: { resources: [{ kind: 'lecture' }] },
+        assessment: { correct_count: 1, total_count: 1, per_node: {} },
+        review_results: { passed: true, dimensions: {} },
+        feedback: { strategy: 'advance' },
       })
 
       const store = useAssessmentStore()
       await store.startAssessment({ targetDirection: 'test' })
+      await store.submitAssessmentAnswers()
+
+      expect(store.phase).toBe('feedback')
+      expect(store.profile).toEqual({ profile_id: 'P1', theory_level: 3 })
+      expect(store.feedbackStrategy).toBe('advance')
+      expect(store.accuracy).toBe(1.0)
+    })
+  })
+
+  // ============================================================
+  // interactive 第三步: fetchFeedback (动态反馈再生, S9)
+  // ============================================================
+  describe('fetchFeedback (动态反馈再生)', () => {
+    it('应填充 feedbackContent', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 's', profile: { profile_id: 'P' }, assessment: { correct_count: 0, total_count: 1 },
+        review_results: {}, feedback: { strategy: 'scaffold' },
+      })
+      requestFeedback.mockResolvedValueOnce({
+        session_id: 's', strategy: 'scaffold', resources: [{ content_type: 'lecture', content: '# x' }], node_count: 1,
+      })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      await store.submitAssessmentAnswers()
+      await store.fetchFeedback()
+
+      expect(store.feedbackContent?.resources).toHaveLength(1)
+      expect(store.feedbackContent?.strategy).toBe('scaffold')
+    })
+  })
+
+  // ============================================================
+  // demo 完整结果 (startDemoStream → _applyResult, S8 含 learningReport)
+  // ============================================================
+  describe('startDemoStream (demo 完整结果)', () => {
+    const mockResult = {
+      session_id: 'sess-demo',
+      profile: { profile_id: 'P1', theory_level: 3 },
+      assessment: { questions: [], correct_count: 5, total_count: 5 },
+      review_results: { passed: true, overall_score: 0.9, dimensions: {} },
+      orchestration_log: ['[log] done'],
+      knowledge_graph: { learning_path: [{ node_id: 'PY-001' }, { node_id: 'PY-002' }] },
+      generated_content: { resources: [{ content_type: 'lecture', target_node_id: 'PY-001' }], node_count: 1 },
+      learning_report: {
+        quality_metrics: { hallucination: { rate: 0.02 }, adaptation: { rate: 0.9 }, coverage: { rate: 0.95 }, all_passed: true },
+      },
+    }
+
+    it('应映射所有字段 (含 learningReport, S8)', async () => {
+      startAssessmentStream.mockImplementationOnce((_req, cbs) => {
+        cbs.onDone(mockResult)
+      })
+
+      const store = useAssessmentStore()
+      await store.startDemoStream({ targetDirection: 'test' })
+
+      expect(store.sessionId).toBe('sess-demo')
+      expect(store.profile).toEqual(mockResult.profile)
+      expect(store.knowledgeGraph?.learning_path).toHaveLength(2)
+      expect(store.generatedContent?.resources).toHaveLength(1)
+      expect(store.learningReport?.quality_metrics.hallucination.rate).toBe(0.02)
+      expect(store.hasResults).toBe(true)
+      expect(store.reviewPassed).toBe(true)
+    })
+
+    it('SSE 错误应设置 error', async () => {
+      startAssessmentStream.mockImplementationOnce((_req, cbs) => {
+        cbs.onError('后端连接失败')
+      })
+
+      const store = useAssessmentStore()
+      await store.startDemoStream({ targetDirection: 'test' })
+
+      expect(store.error).toBe('后端连接失败')
+      expect(store.loading).toBe(false)
+    })
+  })
+
+  describe('reset', () => {
+    it('应清空所有状态 (含 interactive 阶段 + learningReport)', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 'test' })
+      store.learningReport = { some: 'report' }
       store.reset()
 
       expect(store.sessionId).toBeNull()
@@ -133,113 +255,11 @@ describe('useAssessmentStore', () => {
       expect(store.assessment).toBeNull()
       expect(store.reviewResults).toBeNull()
       expect(store.orchestrationLog).toEqual([])
-      // BUG-030: reset 应一并清空 W3/W4 字段
       expect(store.knowledgeGraph).toBeNull()
       expect(store.generatedContent).toBeNull()
-    })
-  })
-
-  // BUG-028: 后端 LLM 未配置时返回 200 + profile={}，
-  // 旧实现下 hasResults=false / error=null 致用户静默回退表单。
-  describe('BUG-028 — 空画像降级处理', () => {
-    it('profile={} + retry_hint 应把 retry_hint 写入 error', async () => {
-      submitAssessment.mockResolvedValueOnce({
-        session_id: 'sess-degraded',
-        profile: {},
-        assessment: { questions: [], answers: [], per_node: {}, correct_count: 0, total_count: 0 },
-        review_results: {
-          passed: false,
-          overall_score: 0,
-          retry_hint: '后端 LLM 未配置，无法产出画像',
-          dimensions: {},
-        },
-        orchestration_log: [],
-      })
-
-      const store = useAssessmentStore()
-      await store.startAssessment({ targetDirection: 'test' })
-
-      expect(store.error).toBe('后端 LLM 未配置，无法产出画像')
-      expect(store.profile).toBeNull()       // 显式清空避免 hasResults 误判
-      expect(store.hasResults).toBe(false)
-      expect(store.loading).toBe(false)
-    })
-
-    it('profile={} 且无 retry_hint 应回退到默认提示', async () => {
-      submitAssessment.mockResolvedValueOnce({
-        session_id: 'sess-degraded',
-        profile: {},
-        assessment: null,
-        review_results: { passed: false, overall_score: 0, dimensions: {} },
-        orchestration_log: [],
-      })
-
-      const store = useAssessmentStore()
-      await store.startAssessment({ targetDirection: 'test' })
-
-      expect(store.error).toMatch(/未产出有效画像/)
-      expect(store.profile).toBeNull()
-    })
-
-    it('profile=null 也应触发空画像分支（防御）', async () => {
-      submitAssessment.mockResolvedValueOnce({
-        session_id: 'sess-x',
-        profile: null,
-        assessment: null,
-        review_results: { retry_hint: 'null profile', dimensions: {} },
-        orchestration_log: [],
-      })
-
-      const store = useAssessmentStore()
-      await store.startAssessment({ targetDirection: 'test' })
-
-      expect(store.error).toBe('null profile')
-      expect(store.hasResults).toBe(false)
-    })
-  })
-
-  // BUG-030: store 应映射 knowledge_graph / generated_content，供 W3 图谱页与 W4 资源页消费
-  describe('BUG-030 — knowledge_graph / generated_content 字段映射', () => {
-    it('成功响应应填充 knowledgeGraph + generatedContent', async () => {
-      submitAssessment.mockResolvedValueOnce({
-        session_id: 'sess-001',
-        profile: { profile_id: 'P1', theory_level: 3 },
-        assessment: { questions: [], answers: [], per_node: {}, correct_count: 1, total_count: 1 },
-        review_results: { passed: true, overall_score: 0.9, dimensions: {} },
-        orchestration_log: [],
-        knowledge_graph: {
-          learning_path: [{ node_id: 'PY-001' }, { node_id: 'PY-002' }],
-          path_node_ids: ['PY-001', 'PY-002'],
-          total_nodes: 2,
-        },
-        generated_content: {
-          resources: [{ content_type: 'lecture', target_node_id: 'PY-001' }],
-          node_count: 1,
-        },
-      })
-
-      const store = useAssessmentStore()
-      await store.startAssessment({ targetDirection: 'test' })
-
-      expect(store.knowledgeGraph?.learning_path).toHaveLength(2)
-      expect(store.generatedContent?.resources).toHaveLength(1)
-    })
-
-    it('响应缺这两个字段时应为 null（不抛错）', async () => {
-      submitAssessment.mockResolvedValueOnce({
-        session_id: 'sess-002',
-        profile: { profile_id: 'P1', theory_level: 3 },
-        assessment: { questions: [], answers: [], per_node: {}, correct_count: 1, total_count: 1 },
-        review_results: { passed: true, overall_score: 0.9, dimensions: {} },
-        orchestration_log: [],
-        // knowledge_graph / generated_content 未提供
-      })
-
-      const store = useAssessmentStore()
-      await store.startAssessment({ targetDirection: 'test' })
-
-      expect(store.knowledgeGraph).toBeNull()
-      expect(store.generatedContent).toBeNull()
+      expect(store.learningReport).toBeNull()
+      expect(store.phase).toBe('idle')
+      expect(store.pendingQuestions).toEqual([])
     })
   })
 

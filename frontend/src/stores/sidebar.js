@@ -12,6 +12,7 @@ export const ACTIVITY_ITEMS = [
   { id: 'code', icon: 'Document', title: '代码' },
   { id: 'graph', icon: 'Share', title: '知识图谱' },
   { id: 'assessment', icon: 'Edit', title: '答题测评' },
+  { id: 'learning', icon: 'Reading', title: '学习资源' },
   { id: 'agents', icon: 'Connection', title: 'Agent 协同' },
   { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
 ]

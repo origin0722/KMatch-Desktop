@@ -120,20 +120,40 @@
       <el-card class="quality-card" shadow="never" v-if="qualityMetrics">
         <template #header>
           <span>📊 赛题 M5 质量检测指标</span>
+          <el-tag
+            :type="qualityMetrics.all_passed ? 'success' : 'danger'"
+            size="small"
+            style="margin-left: 12px;"
+          >
+            {{ qualityMetrics.all_passed ? '✓ 三项全达标' : '✗ 存在未达标项' }}
+          </el-tag>
+          <el-tag
+            :type="qualityMetrics.source === 'backend' ? 'success' : 'warning'"
+            size="small"
+            style="margin-left: 8px;"
+          >
+            {{ qualityMetrics.source === 'backend' ? '后端真实计算' : '客户端估算' }}
+          </el-tag>
         </template>
         <div class="quality-row">
           <div class="quality-item">
-            <div class="q-value ok">{{ (qualityMetrics.hallucination_rate * 100).toFixed(1) }}%</div>
+            <div class="q-value" :class="qualityMetrics.hallucination_rate < 0.05 ? 'ok' : 'fail'">
+              {{ (qualityMetrics.hallucination_rate * 100).toFixed(1) }}%
+            </div>
             <div class="q-label">幻觉率</div>
             <div class="q-target">目标 &lt;5%</div>
           </div>
           <div class="quality-item">
-            <div class="q-value ok">{{ (qualityMetrics.adaptation_rate * 100).toFixed(1) }}%</div>
+            <div class="q-value" :class="qualityMetrics.adaptation_rate >= 0.85 ? 'ok' : 'fail'">
+              {{ (qualityMetrics.adaptation_rate * 100).toFixed(1) }}%
+            </div>
             <div class="q-label">适配率</div>
             <div class="q-target">目标 ≥85%</div>
           </div>
           <div class="quality-item">
-            <div class="q-value ok">{{ (qualityMetrics.coverage_rate * 100).toFixed(1) }}%</div>
+            <div class="q-value" :class="qualityMetrics.coverage_rate >= 0.9 ? 'ok' : 'fail'">
+              {{ (qualityMetrics.coverage_rate * 100).toFixed(1) }}%
+            </div>
             <div class="q-label">覆盖率</div>
             <div class="q-target">目标 ≥90%</div>
           </div>
@@ -357,44 +377,55 @@ const pathData = computed(() => {
 })
 
 // ============================================================
-// 质量指标 (从 store.generatedContent/reviewResults 派生)
+// 质量指标 (S8: 优先用后端真实 learning_report.quality_metrics, fallback 客户端派生)
+// 赛题 M5: 幻觉率<5% / 适配率≥85% / 覆盖率≥90%
 // ============================================================
 const qualityMetrics = computed(() => {
+  // 1. 优先用后端真实指标 (compute_quality_metrics 产出, 含真实幻觉率/适配率/覆盖率)
+  const real = store.learningReport?.quality_metrics
+  if (real && (real.hallucination || real.adaptation || real.coverage)) {
+    const h = real.hallucination?.rate ?? 0
+    const a = real.adaptation?.rate ?? 0
+    const c = real.coverage?.rate ?? 0
+    return {
+      hallucination_rate: h,
+      adaptation_rate: a,
+      coverage_rate: c,
+      all_passed: real.all_passed ?? (h < 0.05 && a >= 0.85 && c >= 0.9),
+      source: 'backend',
+      detail: real,
+    }
+  }
+
+  // 2. fallback: 从 store 派生 (后端未返回 learning_report 时, 仅作占位)
   const review = store.reviewResults
   const gen = store.generatedContent
   const profile = store.profile
-
   if (!review || !gen || !profile) return null
 
-  // 从 review 和 gen 派生近似指标
   const coveredNodeIds = new Set()
   for (const r of (gen.resources || [])) {
     if (r?.target_node_id) coveredNodeIds.add(r.target_node_id)
   }
-
   const allNodeIds = new Set()
   for (const section of ['known_topics', 'weak_topics']) {
     for (const t of (profile[section] || [])) {
       if (t?.node_id) allNodeIds.add(t.node_id)
     }
   }
-
   const totalNodes = allNodeIds.size || 1
   const coverageRate = +(coveredNodeIds.size / totalNodes).toFixed(3)
-
-  // 适配率: 难度匹配中 matched 占比
   const dm = diffMatch.value
   const adaptationRate = dm.summary.total_resources
     ? +(dm.summary.matched / dm.summary.total_resources).toFixed(3)
     : 0
-
-  // 幻觉率: review 未通过 → 假设 0 (hard-rule 校验已拦截)
-  const hallucinationRate = review.passed ? 0 : 0.02
-
+  const hallucinationRate = 1 - (review.dimensions?.factual_accuracy?.score ?? 1)
   return {
     hallucination_rate: hallucinationRate,
     adaptation_rate: adaptationRate,
     coverage_rate: coverageRate,
+    all_passed: hallucinationRate < 0.05 && adaptationRate >= 0.85 && coverageRate >= 0.9,
+    source: 'derived',
   }
 })
 
@@ -628,6 +659,7 @@ onMounted(() => {
 .quality-item { text-align: center; }
 .q-value { font-size: 24px; font-weight: 700; }
 .q-value.ok { color: #67c23a; }
+.q-value.fail { color: #f56c6c; }
 .q-label { font-size: 13px; color: #303133; margin-top: 4px; }
 .q-target { font-size: 11px; color: #909399; }
 </style>

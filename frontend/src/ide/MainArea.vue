@@ -19,6 +19,7 @@
       <div class="view-card">
         <KnowledgeGraph v-if="sidebar.activeView === 'graph'" />
         <Assessment v-else-if="sidebar.activeView === 'assessment'" />
+        <Learning v-else-if="sidebar.activeView === 'learning'" />
         <AgentView v-else-if="sidebar.activeView === 'agents'" />
         <Dashboard v-else-if="sidebar.activeView === 'dashboard'" />
       </div>
@@ -34,6 +35,7 @@ import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
 import KnowledgeGraph from '@/views/KnowledgeGraph.vue'
 import Assessment from '@/views/Assessment.vue'
+import Learning from '@/views/Learning.vue'
 import AgentView from '@/views/AgentView.vue'
 import Dashboard from '@/views/Dashboard.vue'
 

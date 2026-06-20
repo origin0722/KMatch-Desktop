@@ -12,7 +12,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { submitAssessment, startAssessmentStream } from '@/api/diagnostics'
+import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback } from '@/api/diagnostics'
 
 export const useAssessmentStore = defineStore('assessment', () => {
   // ============================================================
@@ -69,6 +69,27 @@ export const useAssessmentStore = defineStore('assessment', () => {
    */
   const generatedContent = ref(null)
 
+  /**
+   * 可视化报告数据契约 (三类可视化预计算 + M5 真实质量指标)
+   * demo 模式由 assess/assess_stream 内联返回; interactive 模式由 /learning/report 补跑
+   * 结构: { knowledge_blind_map, difficulty_match_curve, learning_path_plan, quality_metrics }
+   */
+  const learningReport = ref(null)
+
+  // ============================================================
+  // interactive 三阶段状态 (S9 修复: 接通答题闭环)
+  // ============================================================
+  /** 阶段: 'idle' | 'answering' | 'feedback' (demo 模式直接走 hasResults) */
+  const phase = ref('idle')
+  /** interactive 出题阶段缓存的题目 (answer/explanation 已剥离) */
+  const pendingQuestions = ref([])
+  /** 用户作答数组 (按 question_index 对齐) */
+  const userAnswers = ref([])
+  /** 动态反馈策略 (submit 返回): 'advance'|'remediate'|'scaffold' */
+  const feedbackStrategy = ref(null)
+  /** 动态反馈再生资源 (feedback 接口返回) */
+  const feedbackContent = ref(null)
+
   /** 请求取消控制器 */
   const abortController = ref(null)
 
@@ -104,7 +125,20 @@ export const useAssessmentStore = defineStore('assessment', () => {
   )
 
   // ============================================================
-  // 内部：应用测评结果到 store
+  // 内部：重置结果相关状态 (demo/interactive/reset 共用)
+  // ============================================================
+  function _resetResult() {
+    profile.value = null
+    assessment.value = null
+    reviewResults.value = null
+    orchestrationLog.value = []
+    knowledgeGraph.value = null
+    generatedContent.value = null
+    learningReport.value = null
+  }
+
+  // ============================================================
+  // 内部：应用 demo/完整结果到 store (含 learning_report, S8)
   // ============================================================
   function _applyResult(data) {
     sessionId.value = data.session_id
@@ -114,8 +148,10 @@ export const useAssessmentStore = defineStore('assessment', () => {
     orchestrationLog.value = data.orchestration_log || []
     knowledgeGraph.value = data.knowledge_graph || null
     generatedContent.value = data.generated_content || null
+    learningReport.value = data.learning_report || null
 
-    // BUG-028: 空画像 → 错误提示
+    // BUG-028: demo 模式空画像 → 错误提示
+    // (interactive 模式空画像是正常的出题阶段, 由 startAssessment 单独处理, 不会走到这)
     if (!data.profile || Object.keys(data.profile).length === 0) {
       error.value = data.review_results?.retry_hint
         || '学情检测未产出有效画像（后端 LLM 可能未配置），请检查后端配置后重试'
@@ -128,7 +164,11 @@ export const useAssessmentStore = defineStore('assessment', () => {
   // ============================================================
 
   /**
-   * interactive 模式 — 阻塞式测评（出题快，10 秒内返回，无需 SSE）
+   * interactive 模式 — 出题阶段 (S9 修复: 不再把空 profile 当错误, 而是进入答题)
+   *
+   * 流程: assess(interactive) → 拿到 questions → phase='answering'
+   *       → 用户答题 → submitAnswers() → submitAssessmentAnswers()
+   *       → phase='feedback' → requestFeedback()
    *
    * @param {Object} opts
    * @param {string} opts.targetDirection
@@ -144,14 +184,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
     // 重置
     loading.value = true
     error.value = null
-    sessionId.value = null
-    profile.value = null
-    assessment.value = null
-    reviewResults.value = null
-    orchestrationLog.value = []
-    knowledgeGraph.value = null
-    generatedContent.value = null
+    _resetResult()
     currentStep.value = null
+    phase.value = 'idle'
+    pendingQuestions.value = []
+    userAnswers.value = []
+    feedbackStrategy.value = null
+    feedbackContent.value = null
 
     try {
       const data = await submitAssessment({
@@ -160,13 +199,76 @@ export const useAssessmentStore = defineStore('assessment', () => {
         scene,
       }, abortController.value.signal)
 
-      _applyResult(data)
+      // interactive 出题阶段: 拿到 questions 进入答题, 不调 _applyResult (它会因空 profile 误报)
+      sessionId.value = data.session_id
+      const questions = data.assessment?.questions || []
+      if (questions.length === 0) {
+        error.value = '出题失败：未获得测评题目（后端 LLM/题库可能未配置）'
+        phase.value = 'idle'
+        return
+      }
+      pendingQuestions.value = questions
+      userAnswers.value = new Array(questions.length).fill('')
+      assessment.value = data.assessment
+      phase.value = 'answering'
     } catch (e) {
       if (e.name === 'CanceledError') return
       error.value = e.response?.data?.detail || e.message || '测评请求失败'
+      phase.value = 'idle'
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * interactive 第二步 — 提交答题 (S9)
+   * 调 POST /submit → 判分 + 画像 + feedback.strategy, 进入反馈阶段
+   */
+  async function submitAssessmentAnswers() {
+    if (!sessionId.value || phase.value !== 'answering') return
+    loading.value = true
+    error.value = null
+    try {
+      const data = await submitAnswers(sessionId.value, userAnswers.value)
+      // submit 返回: { session_id, profile, assessment, review_results, feedback:{strategy,...} }
+      profile.value = data.profile
+      assessment.value = data.assessment
+      reviewResults.value = data.review_results
+      feedbackStrategy.value = data.feedback?.strategy || null
+      phase.value = 'feedback'
+    } catch (e) {
+      error.value = e.response?.data?.detail || e.message || '提交答题失败'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * interactive 第三步 — 动态反馈再生 (S9)
+   * 按 feedbackStrategy 调 POST /feedback → 针对性再生资源
+   *   advance: 进阶题 / remediate: 降维讲义 / scaffold: 补前置基础
+   */
+  async function fetchFeedback() {
+    if (!sessionId.value || !feedbackStrategy.value) return
+    loading.value = true
+    error.value = null
+    try {
+      const data = await requestFeedback(sessionId.value, feedbackStrategy.value, profile.value)
+      feedbackContent.value = data
+    } catch (e) {
+      error.value = e.response?.data?.detail || e.message || '动态反馈再生失败'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** interactive 阶段回退到输入 (重新测评) */
+  function backToInput() {
+    phase.value = 'idle'
+    pendingQuestions.value = []
+    userAnswers.value = []
+    feedbackStrategy.value = null
+    feedbackContent.value = null
   }
 
   /**
@@ -184,13 +286,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
     loading.value = true
     error.value = null
     sessionId.value = null
-    profile.value = null
-    assessment.value = null
-    reviewResults.value = null
-    orchestrationLog.value = []
-    knowledgeGraph.value = null
-    generatedContent.value = null
+    _resetResult()
     currentStep.value = null
+    phase.value = 'idle'
+    pendingQuestions.value = []
+    userAnswers.value = []
+    feedbackStrategy.value = null
+    feedbackContent.value = null
 
     await startAssessmentStream(
       { targetDirection, scene, maxRetries: 3 },
@@ -222,13 +324,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
     sessionId.value = null
     loading.value = false
     error.value = null
-    profile.value = null
-    assessment.value = null
-    reviewResults.value = null
-    orchestrationLog.value = []
-    knowledgeGraph.value = null
-    generatedContent.value = null
+    _resetResult()
     currentStep.value = null
+    phase.value = 'idle'
+    pendingQuestions.value = []
+    userAnswers.value = []
+    feedbackStrategy.value = null
+    feedbackContent.value = null
   }
 
   return {
@@ -243,6 +345,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
     orchestrationLog,
     knowledgeGraph,
     generatedContent,
+    learningReport,
+    // interactive 三阶段状态 (S9)
+    phase,
+    pendingQuestions,
+    userAnswers,
+    feedbackStrategy,
+    feedbackContent,
     // computed
     hasResults,
     reviewPassed,
@@ -252,6 +361,9 @@ export const useAssessmentStore = defineStore('assessment', () => {
     // actions
     startAssessment,
     startDemoStream,
+    submitAssessmentAnswers,
+    fetchFeedback,
+    backToInput,
     reset,
   }
 })
