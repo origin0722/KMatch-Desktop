@@ -1,19 +1,29 @@
 <template>
   <div class="activity-bar">
     <div
-      v-for="item in PANELS"
+      v-for="item in ACTIVITY_ITEMS"
       :key="item.id"
       class="activity-item"
-      :class="{ active: sidebar.activePanel === item.id }"
+      :class="{ active: isActive(item) }"
       :title="item.title"
-      @click="sidebar.setPanel(item.id)"
+      @click="onItemClick(item)"
     >
       <el-icon :size="22"><component :is="item.icon" /></el-icon>
     </div>
 
     <div class="activity-spacer" />
 
-    <!-- 底部: 主题切换 -->
+    <!-- AI 面板开关 -->
+    <div
+      class="activity-item"
+      :class="{ active: sidebar.aiPanelVisible }"
+      title="AI 助手"
+      @click="sidebar.toggleAiPanel()"
+    >
+      <el-icon :size="22"><ChatDotRound /></el-icon>
+    </div>
+
+    <!-- 主题切换 -->
     <div
       class="activity-item"
       :title="themeMode === 'dark' ? '切换到亮色' : '切换到暗色'"
@@ -29,13 +39,22 @@
 
 <script setup>
 import { computed } from 'vue'
-import { PANELS, useSidebarStore } from '@/stores/sidebar'
+import { ACTIVITY_ITEMS, useSidebarStore } from '@/stores/sidebar'
 import { useThemeStore } from '@/stores/theme'
 
 const sidebar = useSidebarStore()
 const theme = useThemeStore()
 const themeMode = computed(() => theme.mode)
 const toggleTheme = () => theme.toggle()
+
+function isActive(item) {
+  if (item.kind === 'sidebar') return sidebar.sidebarVisible
+  return sidebar.activeView === item.id
+}
+
+function onItemClick(item) {
+  sidebar.handleActivityClick(item)
+}
 </script>
 
 <style scoped>

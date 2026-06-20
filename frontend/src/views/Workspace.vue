@@ -5,26 +5,23 @@
       <div class="title-left">
         <span class="title-brand">KMatch·知链</span>
         <span class="title-sep">—</span>
-        <span class="title-scene">工作区 · 二次开发</span>
+        <span class="title-scene">工作区</span>
       </div>
       <div class="title-center" v-if="ws.hasProject">
         <el-icon :size="13"><FolderOpened /></el-icon>
         <span>{{ ws.rootName }}</span>
       </div>
       <div class="title-right">
-        <span class="title-hint">IDE 工作区 · 二次开发 + 个性化学习</span>
+        <span class="title-hint">IDE · 二次开发 + 个性化学习</span>
       </div>
     </div>
 
-    <!-- IDE 主体 -->
+    <!-- IDE 主体: 活动栏 | 侧栏 | 主区 | AI面板 -->
     <div class="ide-body">
       <ActivityBar />
-      <SidePanel />
-      <div class="editor-area">
-        <EditorTabs />
-        <MonacoEditor />
-      </div>
-      <!-- 阶段2: 右侧 AI 助手面板 <AssistantPanel /> -->
+      <SidePanel v-show="sidebar.sidebarVisible" />
+      <MainArea />
+      <AssistantPanel v-if="sidebar.aiPanelVisible" />
     </div>
 
     <StatusBar />
@@ -34,13 +31,15 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useSidebarStore } from '@/stores/sidebar'
 import ActivityBar from '@/ide/ActivityBar.vue'
 import SidePanel from '@/ide/SidePanel.vue'
-import EditorTabs from '@/ide/EditorTabs.vue'
-import MonacoEditor from '@/ide/MonacoEditor.vue'
+import MainArea from '@/ide/MainArea.vue'
+import AssistantPanel from '@/ide/AssistantPanel.vue'
 import StatusBar from '@/ide/StatusBar.vue'
 
 const ws = useWorkspaceStore()
+const sidebar = useSidebarStore()
 onMounted(() => ws.loadRecent())
 </script>
 
@@ -80,12 +79,5 @@ onMounted(() => ws.loadRecent())
   flex: 1;
   display: flex;
   min-height: 0;
-}
-.editor-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: var(--kbg);
 }
 </style>
