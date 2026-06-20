@@ -7,12 +7,12 @@ directories:
 # 不再用 extraResources (会落到 resources/, loadFile 找不到)。
 files:
   - out/**/*
-# backend PyInstaller 产物 + data: 打入 extraResources (S3, 待 PyInstaller 落地)
+# backend PyInstaller 产物 + data: 打入 extraResources (S3)
 extraResources:
   - from: data
     to: data
-  # - from: backend-dist
-  #   to: backend
+  - from: backend-dist
+    to: backend
 asarUnpack:
   - "**/*.{node,dll}"
 win:
