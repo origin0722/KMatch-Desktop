@@ -18,7 +18,7 @@
       description="尚未生成学习路径图谱"
       :image-size="120"
     >
-      <el-button type="primary" @click="$router.push('/assessment')">
+      <el-button type="primary" @click="goAssessment">
         前往学情测评
       </el-button>
     </el-empty>
@@ -222,9 +222,14 @@ import { useGraphData } from '@/composables/useGraphData'
 import { masteryColor } from '@/utils/format'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
 import { ElMessage } from 'element-plus'
+import { useSidebarStore } from '@/stores/sidebar'
 
 const store = useAssessmentStore()
 const data = useGraphData()
+const sidebar = useSidebarStore()
+
+// 前往学情测评 (IDE 内切主区视图, 非路由跳转)
+const goAssessment = () => sidebar.setView('assessment')
 
 // ---------------------------------------------------------------
 // 搜索 & 筛选状态

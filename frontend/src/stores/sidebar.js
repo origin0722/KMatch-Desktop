@@ -44,18 +44,13 @@ export const useSidebarStore = defineStore('sidebar', () => {
     aiPanelVisible.value = !aiPanelVisible.value
   }
 
-  /** 活动栏点击: sidebar 类切换侧栏, view 类切主区视图 */
+  /** 活动栏点击: sidebar 类切换侧栏开关 (不改主区视图), view 类切主区视图 */
   function handleActivityClick(item) {
     if (item.kind === 'sidebar') {
-      // 同一图标再点 = 折叠/展开
-      if (activeView.value === null && sidebarVisible.value) {
-        sidebarVisible.value = false
-      } else {
-        sidebarVisible.value = true
-      }
+      // 资源管理器: 开关侧栏, 不影响主区视图指示
+      toggleSidebar()
     } else {
       setView(item.id)
-      // 切主区视图时侧栏默认收起给主区让空间? 保留展开, 用户可手动收
     }
   }
 

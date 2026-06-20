@@ -48,6 +48,7 @@ const themeMode = computed(() => theme.mode)
 const toggleTheme = () => theme.toggle()
 
 function isActive(item) {
+  // 活动栏指示单一: sidebar 类按侧栏开关, view 类按主区视图 (两维度互不竞争)
   if (item.kind === 'sidebar') return sidebar.sidebarVisible
   return sidebar.activeView === item.id
 }
