@@ -1,17 +1,48 @@
 /**
  * KMatch 前端 API 层 — Axios 实例 + 统一拦截器
  *
- * Vite proxy 已将 /api/* → http://localhost:8000，所以 baseURL 留空。
- * 所有业务 API 模块从此文件导入 http 实例。
+ * 双环境适配:
+ *  - Electron (window.api 存在): 自定义 adapter 经 IPC 代理 → main → localhost:8000,
+ *    绕过 CORS, 渲染层不直连后端。
+ *  - 浏览器 dev (无 window.api): fallback 走 Vite proxy (/api → 8000)。
  */
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+
+const hasIpc = typeof window !== 'undefined' && !!window.api?.http
 
 const http = axios.create({
   baseURL: '',
   timeout: 60_000, // LLM 调用可能 15~30 秒
   headers: { 'Content-Type': 'application/json' },
 })
+
+// ============================================================
+// 自定义 adapter — Electron 经 IPC 代理后端
+// ============================================================
+if (hasIpc) {
+  http.defaults.adapter = async (config) => {
+    const method = (config.method || 'get').toLowerCase()
+    const url = config.url || ''
+    const body = config.data
+    const params = config.params
+    const res = await window.api.http.request(method, url, body, params)
+    const data = res.body
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`)
+      err.response = { status: res.status, data }
+      throw err
+    }
+    return {
+      data,
+      status: res.status,
+      statusText: 'OK',
+      headers: {},
+      config,
+      request: {},
+    }
+  }
+}
 
 // ============================================================
 // 请求拦截器 — 开发期打印日志

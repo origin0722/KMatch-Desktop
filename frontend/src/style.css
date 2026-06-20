@@ -1,7 +1,14 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #app { height: 100%; width: 100%; }
+/* 全局基础 — 主题色由 styles/theme.css 的 CSS 变量驱动 */
+html, body, #app { height: 100%; width: 100%; overflow: hidden; }
 body {
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #f0f2f5;
-  color: #303133;
+  font-family: var(--kfont-ui);
+  background: var(--kbg);
+  color: var(--ktext);
+  margin: 0;
 }
+
+/* Element Plus 滚动条与暗色协调 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--kborder-strong); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ktext-muted); }
+::-webkit-scrollbar-track { background: transparent; }

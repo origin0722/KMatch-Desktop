@@ -36,4 +36,6 @@ logs/
 
 # --- Build / misc ---
 build/
+out/
+release/
 *.spec

@@ -1,0 +1,63 @@
+/**
+ * 主题变量系统 — TRAE 风格亮/暗
+ * IDE 外壳组件统一使用这些变量, 与 Element Plus 暗色模式(html.dark)联动。
+ * Monaco 主题由 stores/theme + MonacoEditor 组件按 mode 切 vs / vs-dark。
+ */
+
+:root {
+  /* —— 亮色 (默认) —— */
+  --kbg: #ffffff;
+  --kbg-elevated: #f8f8f8;
+  --kbg-sidebar: #f3f3f3;
+  --kbg-activity: #2c2c2c; /* 活动栏恒深, 类 TRAE/VS Code */
+  --kbg-statusbar: #007acc;
+  --kbg-hover: #e8e8e8;
+  --kbg-active: #d6e6ff;
+
+  --kborder: #e0e0e0;
+  --kborder-strong: #cccccc;
+
+  --ktext: #3c3c3c;
+  --ktext-secondary: #6c6c6c;
+  --ktext-muted: #9a9a9a;
+  --ktext-on-dark: #cccccc;
+  --ktext-on-statusbar: #ffffff;
+
+  --kaccent: #2f7dfc;
+  --kaccent-soft: #d6e6ff;
+  --kdanger: #e53935;
+  --kwarning: #f0a020;
+  --ksuccess: #2e9e5b;
+
+  --kshadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --kfont-mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --kfont-ui: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+html.dark {
+  /* —— 暗色 (TRAE 风格) —— */
+  --kbg: #1e1e1e;
+  --kbg-elevated: #252526;
+  --kbg-sidebar: #252526;
+  --kbg-activity: #1a1a1a;
+  --kbg-statusbar: #181818;
+  --kbg-hover: #2a2d2e;
+  --kbg-active: #37373d;
+
+  --kborder: #333333;
+  --kborder-strong: #3c3c3c;
+
+  --ktext: #d4d4d4;
+  --ktext-secondary: #9d9d9d;
+  --ktext-muted: #6e6e6e;
+  --ktext-on-dark: #cccccc;
+  --ktext-on-statusbar: #d4d4d4;
+
+  --kaccent: #4a9eff;
+  --kaccent-soft: #1f3a5f;
+  --kdanger: #f0626a;
+  --kwarning: #ffb74d;
+  --ksuccess: #66bb6a;
+
+  --kshadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}

@@ -1,0 +1,32 @@
+appId: com.kmatch.desktop
+productName: KMatch·知链
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - "!out/renderer/**/*"
+# 渲染层资源(打包后 file:// 加载)
+extraResources:
+  - from: out/renderer
+    to: renderer
+  # 阶段5: backend PyInstaller 产物 + data 一并打入
+  # - from: backend-dist
+  #   to: backend
+  # - from: data
+  #   to: data
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+mac:
+  target:
+    - dmg
+  category: public.app-category.education
+linux:
+  target:
+    - AppImage
+  category: Education
