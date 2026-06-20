@@ -164,7 +164,8 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   - electron-builder.yml: backend-dist→resources/backend + data→resources/data 映射
   - 第一版 NSIS 安装包: `release/KMatch·知链-0.1.0-x64.exe` (239M, 833M unpacked)
   · 打包命令见下方"打包(出安装包)"小节 (国内网络必须配镜像)
-  · 已知优化: langchain_community 拖入 torch → unpacked 833M 偏臃肿, 可在 spec excludes 排除 torch 减肥 (非阻塞)
+  · 瘦身: spec 只收集 langchain_core/langchain_openai/langgraph (app 不用 langchain_community),
+    excludes 排 torch/pandas/matplotlib/sympy/sqlalchemy/PIL/lxml → backend-dist 548M→141M
   · 沙箱强化 (DockerSandboxExecutor) 仍待做; 打包后 code_test 沙箱 (sys.executable -m pytest) 不可用属已知限制
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留); 切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 

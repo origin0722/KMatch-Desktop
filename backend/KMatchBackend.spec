@@ -26,10 +26,11 @@ datas = []
 binaries = []
 hiddenimports = ['scripts.validate_data', 'app.main', 'app.agents.orchestrator']
 
-# 重依赖 (动态导入多 / 含原生二进制 / 含数据) — collect_all 拿全 子模块+二进制+数据
-# 某些可选包未装时 collect_all 会抛异常, 跳过即可 (打印提示)
+# app 实际仅用 langchain_core + langchain_openai + langgraph (grep 确认无 langchain_community
+# / 裸 langchain 导入)。故只收集这三者, 不收 langchain_community (它会拖入 torch/pandas/
+# matplotlib/sympy/sqlalchemy/PIL/lxml 等数百 MB 臃肿依赖, app 根本不用)。
 for pkg in [
-    'langgraph', 'langchain', 'langchain_openai', 'langchain_community',
+    'langgraph', 'langchain_openai', 'langchain_core',
     'neo4j', 'pydantic', 'pydantic_core',
     'jedi', 'uvicorn', 'jsonschema', 'yaml',
     'openai', 'httpx', 'multipart', 'dotenv',
@@ -64,7 +65,13 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=['pytest', 'pytest_cov', 'pytest_asyncio'],  # 测试依赖不打包
+    excludes=[
+        'pytest', 'pytest_cov', 'pytest_asyncio',  # 测试依赖不打包
+        # langchain_community 拖入的臃肿可选依赖, app 不用 — 兜底排除防意外打入
+        'torch', 'torchvision', 'torchaudio',
+        'pandas', 'matplotlib', 'sympy', 'sqlalchemy',
+        'PIL', 'lxml', 'fsspec', 'pygments', 'chardet',
+    ],
     noarchive=False,
 )
 
