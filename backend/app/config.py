@@ -49,7 +49,10 @@ class Settings:
     ]
 
     # --- Paths ---
-    DATA_DIR: Path = Path(__file__).parent.parent.parent / "data"
+    # 打包后由 run_server.py 设 KMATCH_DATA_DIR 指向 resources/data (extraResources);
+    # 开发期 fallback 到 repo_root/data (config.py 在 backend/app/)。
+    _data_dir_env = os.getenv("KMATCH_DATA_DIR")
+    DATA_DIR: Path = Path(_data_dir_env) if _data_dir_env else Path(__file__).parent.parent.parent / "data"
     KB_DIR: Path = DATA_DIR / "knowledge_base"  # 供 scripts/ 引用知识库路径
 
 

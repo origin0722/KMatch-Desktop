@@ -38,4 +38,8 @@ logs/
 build/
 out/
 release/
+# PyInstaller 产物 (KMatchBackend.exe + _internal), 不提交
+backend-dist/
 *.spec
+# spec 是手维护的打包源码, 需提交 (覆盖上面的 *.spec)
+!backend/KMatchBackend.spec
