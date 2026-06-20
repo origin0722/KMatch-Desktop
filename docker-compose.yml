@@ -1,0 +1,84 @@
+# ============================================================
+# KMatch·知链 — Docker Compose 完整编排
+# ============================================================
+
+services:
+  # --- Neo4j 图数据库 ---
+  neo4j:
+    image: neo4j:5-community
+    pull_policy: missing
+    container_name: kmatch-neo4j
+    ports:
+      - "7474:7474"   # HTTP
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/kmatch2026
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./data/knowledge_base:/import/knowledge_base:ro
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "kmatch2026", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kmatch-net
+
+  # --- FastAPI 后端 ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kmatch-backend
+    ports:
+      - "8000:8000"
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: kmatch2026
+      LLM_API_KEY: ${LLM_API_KEY:-sk-placeholder}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-v4-pro}
+      # --- Embedding（独立配置，未设置时 engine 降级为纯图模式）---
+      # ⚠️ 默认对接通义千问 DashScope：DeepSeek 不提供 embedding API
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v2}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+      VECTOR_INDEX_NAME: ${VECTOR_INDEX_NAME:-knowledge_embeddings}
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./data:/data:ro
+    networks:
+      - kmatch-net
+
+  # --- Vue3 前端（开发模式）---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: kmatch-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - kmatch-net
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+
+networks:
+  kmatch-net:
+    driver: bridge

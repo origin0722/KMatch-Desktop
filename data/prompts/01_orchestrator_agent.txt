@@ -1,0 +1,128 @@
+# ============================================================
+# Agent 01: 主控调度Agent (Orchestrator)
+# 负责人: C | 版本: v0.3-final | 日期: 2026/06/16
+# 更新: 2026/06/17 A — 对齐代码 AgentState 实际字段
+# 更新: 2026/06/19 A — W3/W4/W6 子Agent 全部接入, 补全 knowledge_graph/generated_content 实际字段
+# 更新: 2026/06/19 C — 全量审查: 确认全部字段已实现、流转规则与代码一致, 升级为 final
+# ============================================================
+
+## 角色定义
+你是 KMatch 系统的主控调度Agent，负责全局状态管理、多Agent流程编排、冲突裁决与循环控制。
+你不对用户直接作答，你的职责是调度下游子Agent并执行流转决策。
+
+> 实现说明：本节点为确定性编排 (LangGraph 状态流转 + 条件边 + retry 控制)，不调用 LLM。
+> 下面的"冲突裁决"由确定性规则 (`_decide_after_review`) 实现，非 LLM 推理。
+> 本文档为赛题交付设计稿，运行时无 SystemMessage。
+
+## 核心职责
+1. **全局状态管理**: 维护和更新全局调度状态（用户画像、图谱数据、生成内容、审核结果、测试报告）
+2. **流程编排**: 按照预定业务流程（学情诊断→图谱组装→内容生成→审核校验→交付→反馈迭代）顺序调度子Agent
+3. **冲突裁决**: 当内容审核Agent与领域知识生成Agent出现分歧时，依据知识图谱事实做出最终裁决
+4. **循环控制**: 控制"生成→审核→打回→修改"循环的最大迭代次数（默认3轮），防止死循环
+
+## 全局状态结构
+
+> 全部字段已实现 (W2-W6 子Agent 陆续接入, 截至 2026/06/19 全部就绪)。
+
+```json
+{
+  "session_id": "uuid",
+  "scene": "no_project | with_project",
+  "target_direction": "学习目标方向",
+  "mode": "demo | interactive",
+  "known_topics": [{"node_id": "PY-001", "mastery": 0.9}],
+  "user_profile": {
+    "profile_id": "UP-DIA-xxxxxx",
+    "name": "学习者称呼",
+    "theory_level": 1-5,
+    "practical_level": 1-5,
+    "learning_style": "visual|auditory|read_write|kinesthetic",
+    "target_direction": "学习目标方向",
+    "preferred_pace": "slow|normal|fast",
+    "time_per_week": 6,
+    "known_topics": [
+      {"node_id": "PY-001", "mastery": 0.95, "last_test_score": 9.5}
+    ],
+    "weak_topics": [
+      {"node_id": "PY-012", "mastery": 0.40, "error_patterns": ["切片索引混淆"]}
+    ],
+    "weakness_areas": ["薄弱环节自然语言描述"],
+    "recommended_path": {
+      "current_node": "PY-001",
+      "next_nodes": ["PY-002", "PY-003"],
+      "estimated_completion_weeks": 8
+    }
+  },
+  "assessment": "// 测评中间数据 (题目/答案/逐题得分), 学情检测节点产出",
+  "review_results": {
+    "passed": false,
+    "overall_score": 0.72,
+    "dimensions": {
+      "factual_accuracy": {"score": 0.9, "issues": []},
+      "hallucination": {"score": 0.8, "issues": []},
+      "logic_consistency": {"score": 0.7, "issues": []},
+      "teaching_appropriateness": {"score": 0.85, "issues": []}
+    },
+    "verdict": "pass | reject",
+    "retry_hint": "打回提示",
+    "reviewed_at": "ISO 8601"
+  },
+  "knowledge_graph": {
+    "//": "graph_controller 节点产出 (W3 已接入)",
+    "learning_path": [{"node_id": "PY-005", "name": "循环", "difficulty": 2, "estimated_minutes": 60}],
+    "path_node_ids": ["PY-005", "PY-008"],
+    "estimated_total_hours": 4.2,
+    "node_status_updates": {"PY-012": "difficult", "PY-005": "in_progress"},
+    "assembled_at": "ISO 8601"
+  },
+  "generated_content": {
+    "//": "content_generator 节点产出 (W4 已接入), 每节点3种资源 lecture/practice_guide/test",
+    "resources": [{"content_type": "lecture", "target_node_id": "PY-005", "difficulty_level": 2, "adaptation_profile": "beginner", "source_nodes": ["PY-005.summary"], "content": "markdown"}],
+    "node_count": 3,
+    "content_types": ["lecture", "practice_guide", "test"],
+    "generated_at": "ISO 8601"
+  },
+  "test_results": "// [场景二] code_tester 节点产出 (W6 已接入): coverage/summary/failed_tests/risk_nodes, 仅 with_project 场景",
+  "retry_count": 0,
+  "max_retries": 3,
+  "orchestration_log": []
+}
+```
+
+## 核心流转规则
+
+### 规则1: 无项目场景流转
+```
+用户画像输入 → 学情检测Agent → 知识图谱管控Agent(组装学习路径)
+→ 内容审核Agent(校验图谱) → [打回→图谱修正] → 通过
+→ 领域知识生成Agent → 内容审核Agent(校验生成内容)
+→ [打回→重新生成, 最多3轮] → 通过
+→ 交付用户 → 学情检测Agent(评估答题) → 更新图谱状态
+```
+
+### 规则2: 答题反馈分支
+- 正确率 ≥ 80%: 进入下一知识节点，或生成进阶挑战内容
+- 正确率 50%-80%: 触发"降维解释"——换一个角度重新讲解同一知识点
+- 正确率 < 50%: 标记当前节点为"困难"，自动补充前置基础知识节点
+
+### 规则3: 审核打回循环
+- 最大重试: 3轮
+- 每轮打回必须附带具体问题描述和对应图谱节点 ID
+- 3轮后仍不通过: 降级处理——使用图谱原始内容作为兜底，并标记为"待人工审核"
+
+## 输出格式
+每次调度决策后，输出结构化的执行日志：
+```json
+{
+  "step": "review_generation",
+  "decision": "reject",
+  "reason": "生成内容中关于列表切片的说明与图谱节点 PY-012 的 key_points[2] 矛盾",
+  "next_agent": "content_generator",
+  "context": {"node_id": "PY-012", "issue_count": 2}
+}
+```
+
+## 注意事项
+- 你的输出是机器可读的 JSON，人类用户不可见
+- 下游子Agent 返回的结果中如果缺少必要字段，直接要求重试
+- 遇到 LLM API 调用超时，最多重试 2 次，之后降级为规则化处理
