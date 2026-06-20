@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于递归，以下哪项说法是正确的？",
+    "options": [
+      "A. 递归函数可以没有基本情况，靠递推步骤自然收敛",
+      "B. 递归调用不消耗内存栈，因此不会因深度过大而栈溢出",
+      "C. 误用 sys.setrecursionlimit() 设置极大值后就能无限制递归，忽略了物理内存限制",
+      "D. 递归通常可转化为迭代，且迭代通常更高效"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆递归的真正特性，特别是与迭代的关系。",
+    "explanation": "递归总需要一个基本情况来终止，否则会无限递归导致栈溢出（RecursionError）。每次调用都会占用调用栈空间。sys.setrecursionlimit() 只能调整深度上限，但受物理内存限制，不能无限制递归。递归通常可以转化为迭代，且迭代往往更高效，因为避免了函数调用的开销。",
+    "qid": "Q-PY023-001",
+    "source_node_id": "PY-023",
+    "node_id": "PY-023"
+  },
+  {
+    "type": "fill",
+    "question": "当递归缺少正确的基础情形而导致无限调用时，Python 会抛出 ______ 异常。",
+    "answer": "RecursionError",
+    "difficulty": 1,
+    "hint": "这是递归中常见的错误异常。",
+    "explanation": "根据知识图谱，基础情形不满足会导致栈溢出，Python 会引发 RecursionError 异常。",
+    "qid": "Q-PY023-002",
+    "source_node_id": "PY-023",
+    "node_id": "PY-023"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个函数 factorial(n)，使用递归计算 n 的阶乘。由于 Python 默认递归深度可能不足以处理较大的 n，你需要：\n1. 导入 sys 模块；\n2. 在函数内部，先使用 sys.setrecursionlimit() 将递归深度限制设置为至少 n+10，以避免默认限制产生的 RecursionError；\n3. 定义内部递归函数，基本情况为 n==0 返回 1，递归步骤为 n * factorial(n-1)；\n4. 尝试调用内部递归计算阶乘，如果仍然发生 RecursionError，打印 '递归深度过大' 并返回 None；\n5. 返回计算结果。\n示例：输入 5，输出 120。",
+    "answer": "import sys\n\ndef factorial(n):\n    # 调整递归深度限制，至少为 n+10，同时确保不低于默认值\n    limit = max(n + 10, 1000)\n    sys.setrecursionlimit(limit)\n    \n    def fact(x):\n        if x == 0:\n            return 1\n        return x * fact(x - 1)\n    \n    try:\n        return fact(n)\n    except RecursionError:\n        print('递归深度过大')\n        return None\n",
+    "difficulty": 4,
+    "hint": "注意使用 sys.setrecursionlimit() 设置足够大的深度，并捕获可能的 RecursionError。",
+    "explanation": "本题综合了递归的基本要素（基础情形、递归步骤）、调用栈与栈溢出、RecursionError、以及 sys.setrecursionlimit() 的用法。代码中先用 max(n+10, 1000) 设置合适的递归深度限制，通过内部辅助函数 fact 进行递归，并捕获异常以提供友好提示。",
+    "qid": "Q-PY023-003",
+    "source_node_id": "PY-023",
+    "node_id": "PY-023"
+  }
+]

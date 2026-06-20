@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于贪心算法，以下哪一项描述是正确的？",
+    "options": [
+      "A. 贪心算法总是能找到全局最优解，即使问题不具备贪心选择性质",
+      "B. 贪心算法在决策过程中可以像动态规划一样回溯和修正之前的选择",
+      "C. 分数背包问题不能应用贪心算法求解",
+      "D. 贪心算法每步选择局部最优解，适用于具有贪心选择性质和最优子结构的问题"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回顾贪心算法的适用前提以及与动态规划的关键区别。",
+    "explanation": "A 错误，贪心算法仅在问题具有贪心选择性质时才可能求得全局最优解，否则不保证。B 错误，贪心算法不做回溯，每步选择后不可修正。C 错误，分数背包问题正是贪心算法的经典应用，每次选取单位价值最高的物品。D 正确，贪心算法每一步都采取局部最优决策，其成功的前提是问题具备贪心选择性质和最优子结构。",
+    "qid": "Q-PY032-001",
+    "source_node_id": "PY-032",
+    "node_id": "PY-032"
+  },
+  {
+    "type": "fill",
+    "question": "贪心算法与动态规划的主要区别在于：贪心算法在每一步做出选择后不再回溯，而动态规划会_____。",
+    "answer": "考虑所有可能",
+    "difficulty": 2,
+    "hint": "思考动态规划如何保证全局最优。",
+    "explanation": "根据知识点，贪心算法不回溯，而动态规划会考虑所有可能的选择来保证找到最优解。",
+    "qid": "Q-PY032-002",
+    "source_node_id": "PY-032",
+    "node_id": "PY-032"
+  },
+  {
+    "type": "code",
+    "question": "请实现分数背包问题的贪心算法。\n函数签名：def fractional_knapsack(capacity, items)\n- capacity: 背包容量（非负数字）\n- items: 物品列表，每个物品为 (weight, value) 元组\n- 返回可放入背包的最大总价值（浮点数），允许分割物品。\n示例：capacity=50, items=[(10,60),(20,100),(30,120)]，输出应为 240.0。\n请编写完整可运行代码（包含 import 语句，如有需要）。",
+    "answer": "def fractional_knapsack(capacity, items):\n    # 按单位价值（价值/重量）降序排序\n    items = sorted(items, key=lambda x: x[1] / x[0], reverse=True)\n    total_value = 0.0\n    for weight, value in items:\n        if capacity <= 0:\n            break\n        if weight <= capacity:\n            capacity -= weight\n            total_value += value\n        else:\n            fraction = capacity / weight\n            total_value += value * fraction\n            capacity = 0\n    return total_value\n\n# 示例测试\nif __name__ == \"__main__\":\n    print(fractional_knapsack(50, [(10,60), (20,100), (30,120)]))  # 输出 240.0",
+    "difficulty": 4,
+    "hint": "对所有物品按价值/重量比值降序排序，然后依次尽可能多地装入。",
+    "explanation": "分数背包问题具备贪心选择性质：每次选取单位价值最高的物品，能放多少放多少，若剩余容量不足则只取部分。排序复杂度 O(n log n)，贪心选择过程 O(n)，整体高效且能得到全局最优解。",
+    "qid": "Q-PY032-003",
+    "source_node_id": "PY-032",
+    "node_id": "PY-032"
+  }
+]

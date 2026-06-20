@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于 Python 配置文件解析的说法，正确的是：",
+    "options": [
+      "A. configparser 可以解析没有 [section] 头的配置文件",
+      "B. load_dotenv() 会默认覆盖已有的同名环境变量",
+      "C. yaml.safe_load() 可以安全加载包含任意 Python 对象的 YAML 文件",
+      "D. os.getenv('KEY') 在环境变量不存在时不会抛出异常，而是返回 None"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回顾各库的前提要求和默认行为。",
+    "explanation": "A 错：configparser 要求必须有至少一个 [section] 头，否则会抛出 MissingSectionHeaderError。B 错：load_dotenv() 默认不会覆盖已存在的环境变量，需要设置 override=True 才会覆盖。C 错：yaml.safe_load() 只加载标准 YAML 类型，不能安全加载任意 Python 对象（如 !!python/object），这正是 safe_load 的安全保证。D 正确：os.getenv() 在键不存在时返回 None，不会抛出 KeyError，可以传入第二个参数指定默认值。",
+    "qid": "Q-PY061-001",
+    "source_node_id": "PY-061",
+    "node_id": "PY-061"
+  },
+  {
+    "type": "choice",
+    "question": "以下关于 Python 配置文件解析的说法，正确的是：",
+    "options": [
+      "A. configparser 可以解析没有 [section] 头的配置文件",
+      "B. load_dotenv() 默认情况下会覆盖已有的同名环境变量",
+      "C. 使用 pydantic-settings 可以实现类型安全的配置管理",
+      "D. os.getenv('KEY') 在环境变量不存在时会抛出 KeyError 异常"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "留意库的默认行为和推荐实践。",
+    "explanation": "A 错：configparser 必须包含 [section] 头。B 错：load_dotenv() 默认不覆盖已有环境变量。C 正确：pydantic-settings 基于 pydantic 提供类型验证，是类型安全配置管理的推荐方案。D 错：os.getenv() 不存在键时返回 None，不会抛出 KeyError。",
+    "qid": "Q-PY061-002",
+    "source_node_id": "PY-061",
+    "node_id": "PY-061"
+  },
+  {
+    "type": "fill",
+    "question": "使用 python-dotenv 从 .env 文件加载环境变量时，调用 ______ 函数可以自动读取并设置环境变量。",
+    "answer": "load_dotenv",
+    "difficulty": 2,
+    "hint": "该函数名直接表达了“加载 .env”的含义。",
+    "explanation": "python-dotenv 库提供了 load_dotenv() 函数，调用后会自动查找 .env 文件并将其中的键值对加载到 os.environ 中，从而方便管理配置。",
+    "qid": "Q-PY061-003",
+    "source_node_id": "PY-061",
+    "node_id": "PY-061"
+  }
+]

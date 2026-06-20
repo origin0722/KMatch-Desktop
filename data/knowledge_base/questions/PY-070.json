@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于 Scrapy 的说法中，正确的是？",
+    "options": [
+      "A. Scrapy 中无法自动将抓取结果导出为 JSON 或 CSV，必须自己写文件输出代码。",
+      "B. 在 parse() 方法中必须用 return 返回 Item 才能传递给 Pipeline。",
+      "C. Middleware 只能修改发出的请求，无法处理响应中的 cookie 或重试逻辑。",
+      "D. 可以通过 FEEDS 配置将 Item 自动导出为 JSON 或 CSV，并使用 scrapy crawl 命令运行爬虫。"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回想 Scrapy 的 FEEDS 配置与 parse() 中的 yield 用法。",
+    "explanation": "A 错误：Scrapy 通过 FEEDS 设置即可自动导出 JSON/CSV。B 错误：parse() 中应使用 yield 生成 Item，return 会终止生成器。C 错误：Middleware 既能处理请求（如设置 UA、代理），也能处理响应（如 cookie、重试）。D 综合了 FEEDS 自动导出和 scrapy crawl 命令两个正确知识点。",
+    "qid": "Q-PY070-001",
+    "source_node_id": "PY-070",
+    "node_id": "PY-070"
+  },
+  {
+    "type": "fill",
+    "question": "使用 Scrapy 命令行工具创建新项目的命令是 _____。",
+    "answer": "scrapy startproject",
+    "difficulty": 2,
+    "hint": "回忆 Scrapy 教程中项目初始化的第一步。",
+    "explanation": "根据 key_point \"scrapy startproject 创建项目\"，该命令用于生成 Scrapy 项目的基本目录结构。",
+    "qid": "Q-PY070-002",
+    "source_node_id": "PY-070",
+    "node_id": "PY-070"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个完整的 Scrapy 爬虫脚本，爬取 http://quotes.toscrape.com 网站上的名言（text）和作者（author），使用自定义 Item 和 Pipeline 去除文本首尾空白，并通过 FEEDS 配置将结果保存为 quotes.json 文件。要求使用 CrawlerProcess 从脚本直接运行，无需创建完整的项目目录。",
+    "answer": "import scrapy\nfrom scrapy.crawler import CrawlerProcess\nfrom scrapy.item import Item, Field\n\n\nclass QuoteItem(Item):\n    text = Field()\n    author = Field()\n\n\nclass StripPipeline:\n    def process_item(self, item, spider):\n        item['text'] = item['text'].strip()\n        item['author'] = item['author'].strip()\n        return item\n\n\nclass QuotesSpider(scrapy.Spider):\n    name = 'quotes'\n    start_urls = ['http://quotes.toscrape.com']\n\n    def parse(self, response):\n        for quote in response.css('div.quote'):\n            yield QuoteItem(\n                text=quote.css('span.text::text').get(),\n                author=quote.css('small.author::text').get()\n            )\n\n\nif __name__ == '__main__':\n    process = CrawlerProcess(settings={\n        'ITEM_PIPELINES': {__name__ + '.StripPipeline': 300},\n        'FEEDS': {\n            'quotes.json': {'format': 'json'},\n        }\n    })\n    process.crawl(QuotesSpider)\n    process.start()",
+    "difficulty": 5,
+    "hint": "使用 scrapy.Item 定义字段，response.css 提取数据，Pipeline 实现 strip，CrawlerProcess 设置 FEEDS 和 ITEM_PIPELINES。",
+    "explanation": "该脚本综合了多个 key_point：自定义 Item、使用 CSS 选择器在 parse() 中 yield Item、通过 Pipeline 清洗数据、利用 FEEDS 自动导出为 JSON，以及通过 CrawlerProcess 替代 scrapy crawl 命令运行爬虫。",
+    "qid": "Q-PY070-003",
+    "source_node_id": "PY-070",
+    "node_id": "PY-070"
+  }
+]

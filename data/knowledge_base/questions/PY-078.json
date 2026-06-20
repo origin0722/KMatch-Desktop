@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于 argparse 和 Click 的说法中，哪一项是正确的？",
+    "options": [
+      "A. argparse 中定义位置参数需要使用 -- 前缀（如 --file）",
+      "B. 子命令是通过 add_subcommand() 方法添加的",
+      "C. argparse 会自动生成帮助文档，支持 -h 或 --help 查看",
+      "D. Click 库需要显式调用 parse_args() 来解析命令行参数"
+    ],
+    "answer": "C",
+    "difficulty": 3,
+    "explanation": "argparse 会自动生成帮助信息，运行 -h 即可查看；位置参数无需前缀，直接写名称；子命令通过 add_subparsers() 添加；Click 库使用装饰器自动处理解析，无需显式调用 parse_args()。其他三项均为常见误解。",
+    "qid": "Q-PY078-001",
+    "source_node_id": "PY-078",
+    "node_id": "PY-078",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在使用 argparse 构建命令行工具时，若要为解析器添加子命令支持，应该调用解析器对象的 ______ 方法。",
+    "answer": "add_subparsers()",
+    "difficulty": 2,
+    "explanation": "argparse 提供 add_subparsers() 方法返回一个子命令动作对象，然后可通过 add_parser() 添加具体子命令；常见错误是误写为 add_subcommand()。",
+    "hint": "方法名中包含 subparsers",
+    "qid": "Q-PY078-002",
+    "source_node_id": "PY-078",
+    "node_id": "PY-078"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个完整的 Python 脚本，使用 argparse 实现命令行计算器，支持子命令 add 和 subtract。每个子命令接受两个位置参数 x 和 y（float 类型），计算并输出结果。示例：python calc.py add 1 2 输出 3.0；python calc.py subtract 5 3 输出 2.0。脚本需包含必要的 import 和 if __name__ == '__main__': 块。",
+    "answer": "import argparse\n\ndef main():\n    parser = argparse.ArgumentParser(description='Simple calculator')\n    subparsers = parser.add_subparsers(dest='command', required=True, help='sub-command help')\n\n    # add subcommand\n    add_parser = subparsers.add_parser('add', help='add two numbers')\n    add_parser.add_argument('x', type=float, help='first number')\n    add_parser.add_argument('y', type=float, help='second number')\n\n    # subtract subcommand\n    sub_parser = subparsers.add_parser('subtract', help='subtract two numbers')\n    sub_parser.add_argument('x', type=float, help='first number')\n    sub_parser.add_argument('y', type=float, help='second number')\n\n    args = parser.parse_args()\n\n    if args.command == 'add':\n        result = args.x + args.y\n    elif args.command == 'subtract':\n        result = args.x - args.y\n\n    print(result)\n\nif __name__ == '__main__':\n    main()",
+    "difficulty": 4,
+    "explanation": "使用 argparse.ArgumentParser 创建解析器，通过 add_subparsers() 获得子命令容器，再用 add_parser() 分别添加 'add' 和 'subtract' 子命令，并为每个子命令定义两个位置参数 x、y（float 类型）。解析后根据 dest='command' 的值执行相应运算并打印结果。",
+    "hint": "使用 subparsers.add_parser() 添加子命令，再为子命令添加位置参数。",
+    "qid": "Q-PY078-003",
+    "source_node_id": "PY-078",
+    "node_id": "PY-078"
+  }
+]

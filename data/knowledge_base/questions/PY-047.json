@@ -1,0 +1,43 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于 Python 中设计模式的说法，正确的是？",
+    "options": [
+      "A. Python 中实现单例模式必须重写 __new__ 方法",
+      "B. 工厂模式在 Python 里只能通过专门的工厂类来实现",
+      "C. 使用观察者模式时必须让观察者继承同一个抽象观察者类",
+      "D. 策略模式可以直接使用函数作为策略，无需为每个策略定义类"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "Python 的鸭子类型允许用可调用对象替代显式的策略类。",
+    "explanation": "A 错，单例还可通过类属性或装饰器实现；B 错，工厂可以用简单函数或类方法实现；C 错，观察者只需注册回调对象，无需强制继承抽象类；D 对，策略模式在 Python 中可直接使用函数参数，体现了鸭子类型对模式的简化。",
+    "qid": "Q-PY047-001",
+    "source_node_id": "PY-047",
+    "node_id": "PY-047"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中实现单例模式时，可以通过重写特殊方法 ______ 来控制只创建一个实例。",
+    "options": [],
+    "answer": "__new__",
+    "difficulty": 2,
+    "hint": "该方法在 __init__ 之前被调用，负责创建并返回实例。",
+    "explanation": "单例模式的关键在于拦截实例的创建过程，重写 __new__ 可以检查是否已存在实例，若是则返回已有实例，否则创建新实例。",
+    "qid": "Q-PY047-002",
+    "source_node_id": "PY-047",
+    "node_id": "PY-047"
+  },
+  {
+    "type": "code",
+    "question": "请实现一个简易的支付系统，综合运用 Python 设计模式：\n1. 策略模式：支持 'credit' 和 'paypal' 两种支付方式，允许通过函数参数传递支付策略（支付函数）；\n2. 工厂模式：编写工厂函数 get_payment_strategy(method)，根据传入的方法名返回对应的支付策略函数；\n3. 观察者模式：维护一个观察者列表，支付成功后依次通知所有观察者。\n要求代码可运行，并在最后演示一次使用 'credit' 支付，同时打印出“支付成功”以及每个观察者的通知。",
+    "options": [],
+    "answer": "# 支付策略函数\ndef credit_pay(amount):\n    print(f\"使用信用卡支付 {amount} 元\")\n    return True\n\ndef paypal_pay(amount):\n    print(f\"使用 PayPal 支付 {amount} 元\")\n    return True\n\n# 工厂函数\ndef get_payment_strategy(method):\n    strategies = {\n        'credit': credit_pay,\n        'paypal': paypal_pay\n    }\n    return strategies.get(method)\n\n# 观察者模式\nclass PaymentProcess:\n    def __init__(self):\n        self._observers = []\n\n    def register(self, observer):\n        self._observers.append(observer)\n\n    def unregister(self, observer):\n        self._observers.remove(observer)\n\n    def notify(self, amount, method):\n        for obs in self._observers:\n            obs(amount, method)\n\n    def pay(self, amount, method):\n        strategy = get_payment_strategy(method)\n        if strategy:\n            success = strategy(amount)\n            if success:\n                print(\"支付成功\")\n                self.notify(amount, method)\n        else:\n            print(\"不支持的支付方式\")\n\n# 观察者函数\ndef log_observer(amount, method):\n    print(f\"[LOG] 支付 {amount} 元，方式 {method}\")\n\ndef email_observer(amount, method):\n    print(f\"[EMAIL] 已发送支付确认邮件，金额 {amount} 元，方式 {method}\")\n\n# 演示\nif __name__ == \"__main__\":\n    processor = PaymentProcess()\n    processor.register(log_observer)\n    processor.register(email_observer)\n    processor.pay(100, 'credit')\n",
+    "difficulty": 4,
+    "hint": "支付策略直接使用函数即可，工厂返回对应函数，观察者用回调函数注册并循环调用。",
+    "explanation": "策略模式用普通函数避免定义策略类；get_payment_strategy 作为工厂函数根据参数返回策略；PaymentProcess 类通过观察者列表实现通知机制，完全贴合 Python 鸭子类型简化设计模式的思想。",
+    "qid": "Q-PY047-003",
+    "source_node_id": "PY-047",
+    "node_id": "PY-047"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于日志监控与告警的说法中，哪一项是正确的？",
+    "options": [
+      "A. 结构化日志（JSON格式）会自动同步到ELK/Loki，不需要额外配置采集管道",
+      "B. 配置日志多Handler输出到文件就实现了集中收集，无需部署Logstash或采集器主动推送",
+      "C. /health 返回200状态码，即代表服务无延迟问题且错误率正常",
+      "D. 告警不仅要配置邮件通知，还应利用AlertManager的告警分组、抑制和路由功能，避免通知风暴"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "考虑告警风暴问题，AlertManager 提供了哪些机制？",
+    "explanation": "选项A错误：JSON格式本身只是日志结构，还需通过Filebeat、Logstash等采集器将日志主动推送到ELK/Loki等集中存储。选项B错误：多Handler输出到本地文件仍然分散在各节点，不是真正的集中收集，需要部署采集器或直接发送到远程服务。选项C错误：/health仅反映服务进程存活，无法判断延迟或错误率业务指标，需通过Prometheus等监控系统采集指标告警。选项D正确：AlertManager的告警分组、抑制和路由能有效避免重复、级联告警导致的通知风暴。",
+    "qid": "Q-PY091-001",
+    "source_node_id": "PY-091",
+    "node_id": "PY-091"
+  },
+  {
+    "type": "fill",
+    "question": "使用Python的logging模块输出JSON格式的结构化日志，通常需要自定义一个______，重写format方法，将LogRecord转换为JSON字符串。",
+    "answer": "Formatter",
+    "difficulty": 3,
+    "hint": "此为logging模块中负责格式化日志记录的基础类。",
+    "explanation": "logging.Formatter类负责将LogRecord对象转换为最终的日志字符串。为实现JSON输出，需继承该类并重写format()方法，使用json.dumps将提取的字段序列化。常见做法如定义JsonFormatter。",
+    "qid": "Q-PY091-002",
+    "source_node_id": "PY-091",
+    "node_id": "PY-091"
+  },
+  {
+    "type": "code",
+    "question": "编写一个完整的Python HTTP服务脚本，监听8000端口，实现以下功能：\n1. 使用logging模块输出JSON格式的结构化日志，每条记录包含timestamp、method、path、status_code、duration_ms字段；\n2. 提供 /health 端点，返回 {\"status\":\"healthy\"} 和200状态码；\n3. 提供 /request 端点，模拟业务：正常时返回 {\"result\":\"ok\"}，但有10%概率返回500状态码并返回 {\"error\":\"internal\"}；\n4. 维护最近100次请求的状态码，在每次处理请求后检查5xx错误率，若超过20%则调用 logging.error 记录 'ALERT: High error rate'（JSON格式）。\n要求：所有代码自包含，仅使用标准库，无需安装第三方包。",
+    "answer": "import json\nimport logging\nimport time\nimport random\nfrom http.server import HTTPServer, BaseHTTPRequestHandler\nfrom collections import deque\n\nclass JsonFormatter(logging.Formatter):\n    def format(self, record):\n        log_obj = {\n            'timestamp': self.formatTime(record),\n            'level': record.levelname,\n            'message': record.getMessage(),\n            'module': record.module\n        }\n        if hasattr(record, 'method'):\n            log_obj['method'] = record.method\n            log_obj['path'] = record.path\n            log_obj['status_code'] = record.status_code\n            log_obj['duration_ms'] = record.duration_ms\n        return json.dumps(log_obj)\n\nlogger = logging.getLogger('monitor')\nlogger.setLevel(logging.INFO)\nhandler = logging.StreamHandler()\nhandler.setFormatter(JsonFormatter())\nlogger.addHandler(handler)\n\nstatus_history = deque(maxlen=100)\n\nclass RequestHandler(BaseHTTPRequestHandler):\n    def log_request_extra(self, method, path, status_code, duration_ms):\n        log_record = logger.makeRecord(\n            logger.name, logging.INFO, None, None,\n            f\"{method} {path} {status_code} {duration_ms}ms\",\n            None, None\n        )\n        log_record.method = method\n        log_record.path = path\n        log_record.status_code = status_code\n        log_record.duration_ms = duration_ms\n        logger.handle(log_record)\n\n    def check_alert(self):\n        if len(status_history) >= 20:\n            error_count = sum(1 for code in status_history if 500 <= code < 600)\n            error_rate = error_count / len(status_history)\n            if error_rate > 0.2:\n                logger.error('ALERT: High error rate')\n\n    def do_GET(self):\n        start_time = time.time()\n        if self.path == '/health':\n            self.send_response(200)\n            self.send_header('Content-Type', 'application/json')\n            self.end_headers()\n            self.wfile.write(json.dumps({'status': 'healthy'}).encode())\n            status = 200\n        elif self.path == '/request':\n            if random.random() < 0.1:\n                self.send_response(500)\n                self.send_header('Content-Type', 'application/json')\n                self.end_headers()\n                self.wfile.write(json.dumps({'error': 'internal'}).encode())\n                status = 500\n            else:\n                self.send_response(200)\n                self.send_header('Content-Type', 'application/json')\n                self.end_headers()\n                self.wfile.write(json.dumps({'result': 'ok'}).encode())\n                status = 200\n        else:\n            self.send_response(404)\n            self.end_headers()\n            status = 404\n        duration = int((time.time() - start_time) * 1000)\n        status_history.append(status)\n        self.log_request_extra(self.command, self.path, status, duration)\n        self.check_alert()\n\n    def log_message(self, format, *args):\n        # 抑制默认日志输出\n        pass\n\nif __name__ == '__main__':\n    server = HTTPServer(('0.0.0.0', 8000), RequestHandler)\n    print('Server listening on port 8000...')\n    server.serve_forever()",
+    "difficulty": 5,
+    "hint": "可以使用 http.server 模块、logging.Formatter 自定义JSON输出、collections.deque 维护滑动窗口状态码历史。",
+    "explanation": "该代码实现了多个知识点综合：自定义JsonFormatter输出结构化JSON日志；提供/health健康检查端点；模拟业务请求及随机错误；使用滑动窗口计算错误率并触发告警。所有内容仅依赖标准库，可直接运行测试。",
+    "qid": "Q-PY091-003",
+    "source_node_id": "PY-091",
+    "node_id": "PY-091"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python re 模块，以下哪个说法是正确的？",
+    "options": [
+      "A. re.match() 会搜索整个字符串进行匹配，与 search() 功能相同。",
+      "B. re.findall() 返回的是匹配对象列表，需要用 group() 提取匹配内容。",
+      "C. 元字符 . 默认匹配包括换行符在内的所有字符。",
+      "D. re.sub() 返回替换后的新字符串，原字符串的内容保持不变。"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "想想哪些函数会修改原数据？",
+    "explanation": "re.sub() 返回替换后的新字符串，不会修改原字符串。A 错误：re.match() 只从字符串开头匹配，而 search() 搜索整个字符串；B 错误：re.findall() 直接返回字符串列表，无需 group()；C 错误：. 默认不匹配换行符。",
+    "qid": "Q-PY052-001",
+    "source_node_id": "PY-052",
+    "node_id": "PY-052"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 的 re 模块中，使用 _____ 方法可以对正则表达式进行预编译，从而在多次匹配时提高性能。",
+    "answer": "compile",
+    "difficulty": 2,
+    "hint": "预编译的方法是 re 模块下的一个函数，名字与将源代码转为字节码的内置函数相同。",
+    "explanation": "re.compile(pattern) 返回编译后的正则表达式对象，可对其调用 .search()、.match() 等方法，避免每次匹配时重复编译模式，提升性能。",
+    "qid": "Q-PY052-002",
+    "source_node_id": "PY-052",
+    "node_id": "PY-052"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个函数 convert_date(text)，将文本中所有形如 'YYYY-MM-DD' 的日期（严格四位数字-两位数字-两位数字）替换为 'DD/MM/YYYY' 格式，并返回替换后的文本。要求使用 re.compile() 预编译正则表达式，并使用捕获组和 re.sub() 完成替换。",
+    "answer": "import re\n\ndef convert_date(text):\n    pattern = re.compile(r'(\\d{4})-(\\d{2})-(\\d{2})')\n    return pattern.sub(lambda m: f\"{m.group(3)}/{m.group(2)}/{m.group(1)}\", text)",
+    "difficulty": 4,
+    "hint": "使用 lambda 在 sub 中重组日期部分，注意 m.group(1) 是年。",
+    "explanation": "预编译模式 r'(\\d{4})-(\\d{2})-(\\d{2})' 定义了三个捕获组，分别捕获年、月、日。re.sub() 结合 lambda 函数，通过匹配对象 m 的 .group() 方法提取各捕获组内容，并重新排列为 DD/MM/YYYY 格式，最后返回替换后的新字符串。",
+    "qid": "Q-PY052-003",
+    "source_node_id": "PY-052",
+    "node_id": "PY-052"
+  }
+]

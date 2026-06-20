@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 datetime 模块，以下说法正确的是？",
+    "options": [
+      "A. datetime.now() 返回当前本地时间",
+      "B. datetime.now() 返回的是 UTC 时间而非本地时间",
+      "C. strftime 方法用于将字符串解析为 datetime 对象",
+      "D. timedelta 只能以天为单位计算时间差"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "datetime.now() 默认不带时区参数时返回本地当前时间。",
+    "explanation": "A 正确：datetime.now() 在不指定时区时返回本地当前日期时间。B 错误：该描述是常见误解，实际返回本地时间，要获取 UTC 时间需使用 datetime.now(timezone.utc)。C 错误：strftime 用于格式化输出，解析字符串应使用 strptime。D 错误：timedelta 还支持 weeks、hours、minutes、seconds 等多种单位。",
+    "qid": "Q-PY053-001",
+    "source_node_id": "PY-053",
+    "node_id": "PY-053"
+  },
+  {
+    "type": "choice",
+    "question": "关于 datetime 模块的方法，以下哪一项是正确的？",
+    "options": [
+      "A. datetime.now() 返回的是 UTC 时间而非本地时间",
+      "B. strftime 方法用于将字符串解析为 datetime 对象",
+      "C. timedelta 只能以天为单位计算时间差",
+      "D. strptime 方法用于将字符串解析为 datetime 对象"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "格式化与解析方法不要混淆：strftime 是 format（格式化输出），strptime 是 parse（解析字符串）。",
+    "explanation": "D 正确：strptime(s, fmt) 的作用就是将符合格式的字符串解析为 datetime 对象。A 错误：datetime.now() 默认返回本地时间，不是 UTC。B 错误：strftime 是格式化方法，用于将 datetime 对象转换为字符串，解析的任务由 strptime 完成。C 错误：timedelta 支持 days 之外的单位如 hours、minutes、seconds、weeks 等。",
+    "qid": "Q-PY053-002",
+    "source_node_id": "PY-053",
+    "node_id": "PY-053"
+  },
+  {
+    "type": "fill",
+    "question": "使用 datetime 模块时，要计算两个 datetime 对象之间的时间差，应使用 ______ 类来表示差值。",
+    "answer": "timedelta",
+    "difficulty": 2,
+    "hint": "该类的构造函数可以接受 days、seconds、hours 等参数。",
+    "explanation": "datetime 模块中的 timedelta 类用于表示两个日期或时间之间的时间差，支持 days、seconds、microseconds、milliseconds、minutes、hours、weeks 等参数，可进行加法减法运算。",
+    "qid": "Q-PY053-003",
+    "source_node_id": "PY-053",
+    "node_id": "PY-053"
+  }
+]

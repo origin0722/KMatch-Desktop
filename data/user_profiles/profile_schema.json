@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KMatch 用户画像 Schema v3",
+  "description": "与前置数据准备指南.md v3 对齐的用户画像标准格式。学情检测 Agent 的输出格式。",
+  "type": "object",
+  "required": [
+    "profile_id", "name", "theory_level", "practical_level",
+    "learning_style", "target_direction", "preferred_pace",
+    "time_per_week", "known_topics", "weak_topics", "weakness_areas"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "pattern": "^UP-[A-Z]{3}-[0-9a-f]{3,8}$",
+      "description": "画像唯一编号。格式: UP-{来源缩写}-{hex序号 3~8位}，如 UP-BEG-001 / UP-DIA-a1b2c3"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 40,
+      "description": "用户称呼（脱敏处理）"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "画像创建时间（ISO 8601）"
+    },
+    "type": {
+      "type": "string",
+      "description": "画像类型标签，如：零基础学习者 / 入门学习者 / 进阶学习者"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "画像文字描述，概括用户特征和学习需求"
+    },
+    "demographics": {
+      "type": "object",
+      "description": "人口统计信息",
+      "properties": {
+        "age_range": { "type": "string", "enum": ["<18", "18-25", "26-35", "36+"] },
+        "education": { "type": "string" },
+        "major": { "type": "string" },
+        "programming_experience_months": { "type": "integer", "minimum": 0 },
+        "python_experience_months": { "type": "integer", "minimum": 0 },
+        "previously_learned_languages": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "theory_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "理论知识水平：1=零基础，2=入门，3=进阶，4=高级，5=专家"
+    },
+    "practical_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "实操能力水平：1=零基础，2=入门，3=进阶，4=高级，5=专家"
+    },
+    "learning_style": {
+      "type": "string",
+      "enum": ["visual", "auditory", "read_write", "kinesthetic"],
+      "description": "VARK 学习风格模型：visual=视觉型，auditory=听觉型，read_write=阅读型，kinesthetic=动手型"
+    },
+    "target_direction": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 200,
+      "description": "学习目标方向（自然语言描述），如：Python 基础语法入门"
+    },
+    "preferred_pace": {
+      "type": "string",
+      "enum": ["slow", "normal", "fast"],
+      "description": "学习节奏偏好：slow=慢速详细，normal=正常，fast=快速挑战"
+    },
+    "time_per_week": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60,
+      "description": "每周可投入学习时间（小时）"
+    },
+    "known_topics": {
+      "type": "array",
+      "description": "已掌握的知识节点列表，含掌握度分数",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "mastery"],
+        "properties": {
+          "node_id": { "type": "string", "pattern": "^[A-Z]{2}-\\d{3}$" },
+          "mastery": { "type": "number", "minimum": 0, "maximum": 1 },
+          "last_test_score": { "type": "number", "minimum": 0, "maximum": 10 }
+        }
+      }
+    },
+    "weak_topics": {
+      "type": "array",
+      "description": "薄弱知识节点列表，含典型错误模式",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "mastery"],
+        "properties": {
+          "node_id": { "type": "string", "pattern": "^[A-Z]{2}-\\d{3}$" },
+          "mastery": { "type": "number", "minimum": 0, "maximum": 1 },
+          "error_patterns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "典型错误模式，用于内容生成 Agent 针对性讲解"
+          }
+        }
+      }
+    },
+    "weakness_areas": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "薄弱环节的自然语言描述，补充 weak_topics 的语义信息"
+    },
+    "raw_assessment_data": {
+      "type": "object",
+      "description": "原始测评数据，用于回溯和审计",
+      "properties": {
+        "theory_test": {
+          "type": "object",
+          "properties": {
+            "total_questions": { "type": "integer" },
+            "correct": { "type": "integer" },
+            "answers": { "type": "array" }
+          }
+        },
+        "practical_test": {
+          "type": "object",
+          "properties": {
+            "total_exercises": { "type": "integer" },
+            "completed": { "type": "integer" },
+            "average_score": { "type": "number" }
+          }
+        },
+        "learning_style_quiz": {
+          "type": "object",
+          "properties": {
+            "visual": { "type": "integer" },
+            "auditory": { "type": "integer" },
+            "read_write": { "type": "integer" },
+            "kinesthetic": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "learning_history": {
+      "type": "array",
+      "description": "学习历史记录",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "node_id": { "type": "string" },
+          "action": { "type": "string", "enum": ["started", "completed", "reviewed", "skipped"] },
+          "resources_generated": { "type": "array", "items": { "type": "string" } },
+          "test_score": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "recommended_path": {
+      "type": "object",
+      "description": "预计算的学习路径推荐",
+      "properties": {
+        "current_node": { "type": "string", "pattern": "^[A-Z]{2}-\\d{3}$" },
+        "next_nodes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]{2}-\\d{3}$" }
+        },
+        "estimated_completion_weeks": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "additionalProperties": true
+}

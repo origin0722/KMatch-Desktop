@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python Web 应用部署，以下哪一项说法是正确的？",
+    "options": [
+      "A. Gunicorn 可以直接作为 Web 服务器暴露在公网上，无需 Nginx 等反向代理",
+      "B. Docker 镜像构建无需多阶段构建，单阶段构建不影响镜像体积和生产部署",
+      "C. 在生产环境中直接使用 .env 文件存储敏感配置与使用 Kubernetes Secrets 安全性相同",
+      "D. 使用 Docker 多阶段构建可以有效减小最终镜像体积"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回顾 key_points 中关于 Docker 镜像构建的描述。",
+    "explanation": "多阶段构建是 Docker 推荐的减小镜像体积的方法，选项 A、B、C 均为常见部署误区：Gunicorn 是 WSGI 服务器，生产环境通常需要配合 Nginx 反向代理；单阶段构建会保留编译依赖等冗余文件，导致镜像体积膨胀；.env 文件在集群环境中难以安全管理，Kubernetes Secrets 提供了更安全的机制。",
+    "qid": "Q-PY087-001",
+    "source_node_id": "PY-087",
+    "node_id": "PY-087"
+  },
+  {
+    "type": "fill",
+    "question": "在 Nginx 配置中，要将客户端请求转发到后端 Gunicorn 服务器，通常使用 _____ 指令，例如：_____ http://backend;",
+    "answer": "proxy_pass",
+    "difficulty": 2,
+    "hint": "这个指令的作用是设置被代理服务器的地址。",
+    "explanation": "Nginx 通过 proxy_pass 指令实现反向代理，将请求传递给后端应用服务器（如 Gunicorn 监听的地址）。",
+    "qid": "Q-PY087-002",
+    "source_node_id": "PY-087",
+    "node_id": "PY-087"
+  },
+  {
+    "type": "code",
+    "question": "编写一个使用 Flask 的 Python 应用，要求：\n1. 提供 /health 端点，返回 JSON {\"status\": \"ok\"}；\n2. 从环境变量 DATABASE_URL 读取数据库连接地址，如果不存在则使用默认值 'sqlite:///default.db'；\n3. 应用以 debug=False 模式运行在 0.0.0.0:8000 上。",
+    "answer": "import os\nfrom flask import Flask, jsonify\n\napp = Flask(__name__)\n\n@app.route('/health')\ndef health():\n    return jsonify({'status': 'ok'})\n\nif __name__ == '__main__':\n    db_url = os.environ.get('DATABASE_URL', 'sqlite:///default.db')\n    app.run(host='0.0.0.0', port=8000, debug=False)\n",
+    "difficulty": 4,
+    "hint": "需要导入 Flask 和 jsonify，使用 os.environ.get 设置默认值。",
+    "explanation": "该代码实现了健康检查端点、环境变量读取以及符合部署要求的运行参数，综合运用了环境变量管理和 /health 端点设计等关键实践。",
+    "qid": "Q-PY087-003",
+    "source_node_id": "PY-087",
+    "node_id": "PY-087"
+  }
+]

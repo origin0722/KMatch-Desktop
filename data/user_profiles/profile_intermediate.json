@@ -1,0 +1,61 @@
+{
+  "$schema": "profile_schema.json",
+  "profile_id": "UP-INT-001",
+  "name": "想学爬虫的小李",
+  "created_at": "2026-07-01T09:30:00Z",
+  "type": "入门学习者",
+  "description": "有基本编程概念的大二学生，学过 C 语言，能写简单 Python 脚本但缺乏系统知识。需要补全核心语法和数据结构，目标是做网络爬虫项目。",
+  "demographics": {
+    "age_range": "18-25",
+    "education": "本科在读（大二）",
+    "major": "电子信息工程",
+    "programming_experience_months": 6,
+    "python_experience_months": 2,
+    "previously_learned_languages": ["C"]
+  },
+  "theory_level": 2,
+  "practical_level": 2,
+  "learning_style": "visual",
+  "target_direction": "Python 网络爬虫开发",
+  "preferred_pace": "normal",
+  "time_per_week": 8,
+  "known_topics": [
+    {"node_id": "PY-001", "mastery": 0.85, "last_test_score": 8.5},
+    {"node_id": "PY-002", "mastery": 0.80, "last_test_score": 8.0},
+    {"node_id": "PY-003", "mastery": 0.70, "last_test_score": 7.0}
+  ],
+  "weak_topics": [
+    {"node_id": "PY-012", "mastery": 0.40, "error_patterns": ["列表与元组混淆", "切片负数索引错误"]},
+    {"node_id": "PY-020", "mastery": 0.30, "error_patterns": ["字典遍历方式选择不当"]},
+    {"node_id": "PY-035", "mastery": 0.25, "error_patterns": ["文件未正确关闭"]}
+  ],
+  "weakness_areas": [
+    "懂基础语法但没做过完整项目，代码组织能力弱",
+    "对网络协议、HTTP 请求等了解有限",
+    "数据清洗和可视化的实践经验不足"
+  ],
+  "raw_assessment_data": {
+    "theory_test": {
+      "total_questions": 10,
+      "correct": 6,
+      "answers": []
+    },
+    "practical_test": {
+      "total_exercises": 5,
+      "completed": 3,
+      "average_score": 6.5
+    },
+    "learning_style_quiz": {
+      "visual": 3,
+      "auditory": 1,
+      "read_write": 2,
+      "kinesthetic": 1
+    }
+  },
+  "learning_history": [],
+  "recommended_path": {
+    "current_node": "PY-012",
+    "next_nodes": ["PY-015", "PY-020", "PY-025"],
+    "estimated_completion_weeks": 5
+  }
+}

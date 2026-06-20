@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于requests库的用法，下列哪项描述是正确的？",
+    "options": [
+      "A. 使用requests.post()发送JSON数据时，应将序列化后的JSON字符串传入data参数",
+      "B. 当未显式设置timeout参数时，requests会使用一个默认超时时间（如10秒）",
+      "C. requests.Session对象的主要作用是维持cookies，无法复用TCP连接来提升性能",
+      "D. 调用Response对象的json()方法可以直接将响应体解析为Python字典或列表"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆r.json()与r.text的区别，以及post发送JSON的正确参数。",
+    "explanation": "A错误：发送JSON数据应使用json参数自动序列化，而非data（此为常见误解）。B错误：未设置timeout时，请求默认永久等待，没有默认超时。C错误：Session不仅可以保持cookies，还会复用底层的TCP连接，提升多次请求的性能。D正确：r.json()是Response对象的内置方法，可直接解析JSON。",
+    "qid": "Q-PY058-001",
+    "source_node_id": "PY-058",
+    "node_id": "PY-058"
+  },
+  {
+    "type": "fill",
+    "question": "在requests库中，若要将HTTP响应的JSON内容直接解析为Python字典，应调用Response对象的______方法。",
+    "answer": "json()",
+    "difficulty": 1,
+    "hint": "该方法名称与JSON格式同名，返回Python对象。",
+    "explanation": "requests的Response对象提供了json()方法，内部会自动解析JSON字符串并返回对应的Python数据结构。",
+    "qid": "Q-PY058-002",
+    "source_node_id": "PY-058",
+    "node_id": "PY-058"
+  },
+  {
+    "type": "code",
+    "question": "编写一个Python函数 process_api()，使用requests.Session保持会话。函数内部需依次完成：\n1. 向 https://httpbin.org/get 发送 GET 请求，携带查询参数 {'search': 'requests'}，设置超时5秒；\n2. 解析返回的JSON，从中提取键 'headers' 对应的字典，再取出该字典中键 'Host' 的值；\n3. 向 https://httpbin.org/post 发送 POST 请求，提交JSON数据 {'host': host_value}，设置超时5秒；\n4. 返回该 POST 响应的JSON解析结果。\n请写出完整可运行的代码（包含import）。",
+    "answer": "import requests\n\ndef process_api():\n    s = requests.Session()\n    # 发送GET请求\n    resp_get = s.get('https://httpbin.org/get', params={'search': 'requests'}, timeout=5)\n    get_data = resp_get.json()\n    host_value = get_data['headers']['Host']\n    # 发送POST请求\n    resp_post = s.post('https://httpbin.org/post', json={'host': host_value}, timeout=5)\n    return resp_post.json()\n\nif __name__ == '__main__':\n    result = process_api()\n    print(result)",
+    "difficulty": 5,
+    "hint": "使用Session对象进行多次请求，注意get的params参数和post的json参数。",
+    "explanation": "本题综合考查了requests.Session、带参数的GET请求（params）、POST JSON提交（json）、超时设置（timeout）以及JSON解析（r.json()）。通过Session复用连接，能提高效率。标准答案中从headers提取Host值仅为示例操作，实际提取路径依赖httpbin返回结构。",
+    "qid": "Q-PY058-003",
+    "source_node_id": "PY-058",
+    "node_id": "PY-058"
+  }
+]

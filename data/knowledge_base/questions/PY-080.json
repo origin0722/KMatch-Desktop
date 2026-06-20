@@ -1,0 +1,43 @@
+[
+  {
+    "type": "choice",
+    "question": "在RESTful API设计中，下列关于分页参数offset的说法，哪一项是正确的？",
+    "options": [
+      "A. offset 通常从 0 开始计数，表示跳过的记录数",
+      "B. offset 必须从 1 开始计数，表示页码偏移量",
+      "C. offset 用于指定返回结果的最大记录数",
+      "D. offset 只能在 GET 请求中使用，POST 不支持"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "思考常见的偏移量起始值约定。",
+    "explanation": "常见错误认为offset从1开始，但正确的RESTful设计通常从0开始计数，表示跳过多少条记录。选项C混淆了limit/size的作用；选项D没有根据。",
+    "qid": "Q-PY080-001",
+    "source_node_id": "PY-080",
+    "node_id": "PY-080"
+  },
+  {
+    "type": "fill",
+    "question": "RESTful API 中，对资源进行部分字段更新应使用的 HTTP 方法是 _____。",
+    "options": [],
+    "answer": "PATCH",
+    "difficulty": 1,
+    "hint": "注意区分全量替换与部分更新的语义。",
+    "explanation": "根据规范，PUT 用于全量更新整个资源，PATCH 用于部分字段更新。常见错误是使用 PUT 执行部分更新。",
+    "qid": "Q-PY080-002",
+    "source_node_id": "PY-080",
+    "node_id": "PY-080"
+  },
+  {
+    "type": "code",
+    "question": "使用 FastAPI 框架实现一个用户管理 API，要求如下：\n1. 基础路径为 `/api/v1`。\n2. 用户模型包含 id (int)、name (str)、email (str)。\n3. 提供 GET `/users` 端点支持分页查询，参数 offset (默认 0) 和 limit (默认 20)，返回用户列表。\n4. 提供 POST `/users` 端点创建新用户，成功返回 201 状态码和创建的用户对象（自动生成 id）。\n5. 提供 GET `/users/{user_id}` 端点获取单个用户，若不存在则返回 404。\n请写出完整代码，包含必要的导入和数据存储（可用内存列表）。\n注意：应使用 Pydantic 模型，并确保 OpenAPI 文档自动生成。",
+    "options": [],
+    "answer": "from fastapi import FastAPI, HTTPException\nfrom pydantic import BaseModel\nfrom typing import List\n\napp = FastAPI()\n\nclass UserCreate(BaseModel):\n    name: str\n    email: str\n\nclass User(BaseModel):\n    id: int\n    name: str\n    email: str\n\n# 模拟数据库\nusers_db: List[User] = []\nnext_id = 1\n\n@app.get(\"/api/v1/users\")\ndef list_users(offset: int = 0, limit: int = 20):\n    return users_db[offset : offset + limit]\n\n@app.post(\"/api/v1/users\", status_code=201)\ndef create_user(user_in: UserCreate):\n    global next_id\n    new_user = User(id=next_id, name=user_in.name, email=user_in.email)\n    users_db.append(new_user)\n    next_id += 1\n    return new_user\n\n@app.get(\"/api/v1/users/{user_id}\")\ndef get_user(user_id: int):\n    for user in users_db:\n        if user.id == user_id:\n            return user\n    raise HTTPException(status_code=404, detail=\"User not found\")",
+    "difficulty": 4,
+    "hint": "使用 FastAPI 装饰器设置路径和状态码，Pydantic 定义请求/响应模型。",
+    "explanation": "该实现涵盖了版本化路径(/api/v1)、资源名词复数形式(/users)、GET分页查询(offset/limit)、POST创建返回201 Created、单个资源查询与404处理，并利用Pydantic模型自动生成OpenAPI文档。",
+    "qid": "Q-PY080-003",
+    "source_node_id": "PY-080",
+    "node_id": "PY-080"
+  }
+]

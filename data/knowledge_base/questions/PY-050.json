@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于 Python 高阶函数与 functools.partial 的描述，哪一项是正确的？",
+    "options": [
+      "A. 高阶函数必须同时满足“接受函数作为参数”和“返回函数”两个条件",
+      "B. functools.partial 会直接修改原函数的行为，使其参数固定",
+      "C. sorted() 不是高阶函数，因为它不返回函数",
+      "D. sorted() 属于高阶函数，因为其 key 参数可以接受函数"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆高阶函数的定义：接受函数作为参数或者返回函数，二者满足其一即可。sorted() 可以通过 key 参数接收一个函数。",
+    "explanation": "高阶函数只需满足接受函数作为参数或返回函数中的一个条件，A 错误。partial 会返回一个新的偏函数，原函数行为不变，B 错误。sorted() 的 key 参数可以接收函数（如 lambda 或自定义函数），因此属于高阶函数的应用，C 错误，D 正确。",
+    "qid": "Q-PY050-001",
+    "source_node_id": "PY-050",
+    "node_id": "PY-050"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，functools 模块提供了创建偏函数的工具函数，该函数的名称是 _____。",
+    "answer": "partial",
+    "difficulty": 1,
+    "hint": "该函数允许固定原函数的部分参数，返回一个新函数。",
+    "explanation": "functools.partial(func, *args, **kwargs) 用于固定函数的部分参数，生成一个偏函数（partial function），这是高阶函数的一种典型应用。",
+    "qid": "Q-PY050-002",
+    "source_node_id": "PY-050",
+    "node_id": "PY-050"
+  },
+  {
+    "type": "code",
+    "question": "请编写完整可运行的 Python 代码，实现以下功能：\n1. 定义一个高阶函数 `make_key(field)`，它接受一个字段名，并返回一个可用于 `sorted()` 的 key 函数（该函数从字典中提取对应字段的值）。\n2. 使用 `functools.partial` 创建一个偏函数 `sort_by_age_desc`，它固定了 `sorted()` 的 `key` 参数为 `make_key('age')` 的返回值，并固定 `reverse=True`。\n3. 给定数据 `data = [{\"name\": \"Bob\", \"age\": 25}, {\"name\": \"Alice\", \"age\": 30}, {\"name\": \"Tom\", \"age\": 20}]`，调用 `sort_by_age_desc(data)` 并按年龄降序打印排序后的列表。\n要求代码包含必要的 import，并直接输出最终排序结果。",
+    "answer": "import functools\n\ndef make_key(field):\n    return lambda x: x[field]\n\nsort_by_age_desc = functools.partial(sorted, key=make_key('age'), reverse=True)\n\ndata = [{\"name\": \"Bob\", \"age\": 25}, {\"name\": \"Alice\", \"age\": 30}, {\"name\": \"Tom\", \"age\": 20}]\nprint(sort_by_age_desc(data))\n",
+    "difficulty": 4,
+    "hint": "函数工厂 make_key 返回一个 lambda 函数；partial 可以固定 sorted 的 key 和 reverse 参数。",
+    "explanation": "make_key 是一个函数工厂，返回提取特定字段的 lambda，体现了高阶函数返回函数的能力。partial 将 sorted 与特定 key 函数和 reverse 绑定，生成一个新的可调用对象，展示了偏函数的用法。最终输出：[{'name': 'Alice', 'age': 30}, {'name': 'Bob', 'age': 25}, {'name': 'Tom', 'age': 20}]。",
+    "qid": "Q-PY050-003",
+    "source_node_id": "PY-050",
+    "node_id": "PY-050"
+  }
+]

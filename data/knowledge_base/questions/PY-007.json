@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于 while 循环的说法，哪个是正确的？",
+    "options": [
+      "A. while 循环的条件判断仅在第一次进入循环时执行一次，之后便不再检查条件。",
+      "B. continue 语句可以直接退出 while 循环。",
+      "C. 无论 while 循环是否通过 break 退出，while/else 中的 else 块总会执行。",
+      "D. 编写 while 循环时，应在循环开始前初始化循环变量，并在循环体内改变条件变量，否则可能陷入无限循环。"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "hint": "思考循环条件检查的时机以及 break/continue 的作用。",
+    "explanation": "A 错误，while 循环在每次迭代前都会检查条件；B 错误，continue 仅跳过本次迭代剩余代码，退出循环应使用 break；C 错误，while/else 中的 else 块只在循环正常结束（没有遇到 break）时执行；D 正确，正确改变循环条件变量是避免无限循环的关键。",
+    "qid": "Q-PY007-001",
+    "source_node_id": "PY-007",
+    "node_id": "PY-007"
+  },
+  {
+    "type": "choice",
+    "question": "关于 while 循环的 break 和 else 子句，下列哪一项描述是正确的？",
+    "options": [
+      "A. 只要 while 条件初始为假，循环体仍会执行一次。",
+      "B. continue 语句也可以像 break 一样立即退出 while 循环。",
+      "C. 无论循环如何结束，while/else 中的 else 块都会被执行。",
+      "D. 如果 while 循环因遇到 break 而退出，与之关联的 else 块不会执行。"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "hint": "回忆 while/else 的规则：正常结束与非正常结束的区别。",
+    "explanation": "A 错误，条件初始为假时循环体一次都不执行；B 错误，continue 只跳过当前迭代，break 才退出循环；C 错误，else 块仅在循环条件变为假正常结束时执行，遇到 break 退出时不执行；D 正确，break 退出属于非正常结束，此时 else 块不会执行。",
+    "qid": "Q-PY007-002",
+    "source_node_id": "PY-007",
+    "node_id": "PY-007"
+  },
+  {
+    "type": "fill",
+    "question": "在 while 循环中，如果想要立即终止整个循环，不再执行后续迭代，应使用 ______ 语句。",
+    "answer": "break",
+    "difficulty": 1,
+    "hint": "想一想两种控制循环流程的关键字，哪个是用于完全退出的。",
+    "explanation": "break 用于立即退出包含它的最内层循环，continue 用于跳过当前迭代的剩余部分进入下一次迭代。题目要求立即终止整个循环，所以是 break。",
+    "qid": "Q-PY007-003",
+    "source_node_id": "PY-007",
+    "node_id": "PY-007"
+  }
+]

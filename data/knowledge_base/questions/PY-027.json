@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 字典，下列哪个说法是正确的？",
+    "options": [
+      "A. Python dict 使用链地址法（链表）解决哈希冲突",
+      "B. Python dict 的查找操作在所有情况下都是 O(1) 时间复杂度",
+      "C. 可哈希对象只需定义 __hash__ 方法即可作为字典键",
+      "D. 从 Python 3.6 开始字典保证插入顺序"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆 Python dict 的内部实现和键的要求。",
+    "explanation": "A 错误，Python dict 使用开放寻址法，而非链地址法。B 错误，最坏情况下哈希冲突严重时查找复杂度会退化为 O(n)。C 错误，可哈希对象必须同时实现 __hash__ 和 __eq__ 方法，否则可能破坏字典键的唯一性语义。D 正确，Python 3.6 起 dict 的实现改为保留插入顺序，并在 3.7 中成为语言规范。",
+    "qid": "Q-PY027-001",
+    "source_node_id": "PY-027",
+    "node_id": "PY-027"
+  },
+  {
+    "type": "fill",
+    "question": "Python 字典底层使用_____寻址法解决哈希冲突。",
+    "answer": "开放寻址",
+    "difficulty": 2,
+    "hint": "与链地址法相对，Python dict 不采用链表挂载冲突键。",
+    "explanation": "Python 字典使用开放寻址法，所有条目直接存储在数组中，冲突时通过探测寻找下一个可用位置，而链地址法则使用链表存储冲突的键值对。",
+    "qid": "Q-PY027-002",
+    "source_node_id": "PY-027",
+    "node_id": "PY-027"
+  },
+  {
+    "type": "code",
+    "question": "请实现一个简单的哈希表类 HashTable，要求：\n1. 使用开放寻址法（线性探测）解决冲突；\n2. 初始容量为 16；\n3. 当负载因子（实际元素数 / 容量）超过 0.75 时，自动进行 rehash，将容量扩大一倍；\n4. 支持通过 ht[key] 进行增、删、查操作；\n5. 删除操作使用惰性删除（用一个哨兵对象标记已删除位置），以保证探测链不被破坏。\n编写完整可运行的 Python 代码，包含必要的示例演示。",
+    "answer": "class HashTable:\n    _DUMMY = object()  # 哨兵，标记已删除位置\n\n    def __init__(self, capacity=16):\n        self.capacity = capacity\n        self.slots = [None] * capacity\n        self.size = 0  # 当前有效元素个数\n\n    def _hash(self, key):\n        return hash(key) % self.capacity\n\n    def _find_slot(self, key):\n        \"\"\"返回 key 应处的槽位下标，若不存在则返回下一个可插入的空位下标。\"\"\"\n        idx = self._hash(key)\n        first_dummy = -1\n        while self.slots[idx] is not None:\n            if self.slots[idx] is HashTable._DUMMY:\n                if first_dummy == -1:\n                    first_dummy = idx\n            elif self.slots[idx][0] == key:\n                return idx  # 找到匹配键\n            idx = (idx + 1) % self.capacity\n        # 遇到 None，若有遇到 dummy 则优先返回第一个 dummy 位置\n        return first_dummy if first_dummy != -1 else idx\n\n    def _rehash(self):\n        old_slots = self.slots\n        self.capacity *= 2\n        self.slots = [None] * self.capacity\n        self.size = 0\n        for entry in old_slots:\n            if entry is not None and entry is not HashTable._DUMMY:\n                self[entry[0]] = entry[1]  # 重新插入\n\n    def __setitem__(self, key, value):\n        slot = self._find_slot(key)\n        if self.slots[slot] is not None and self.slots[slot] is not HashTable._DUMMY and self.slots[slot][0] == key:\n            self.slots[slot] = (key, value)  # 更新\n        else:\n            self.slots[slot] = (key, value)\n            self.size += 1\n            if self.size / self.capacity > 0.75:\n                self._rehash()\n\n    def __getitem__(self, key):\n        slot = self._find_slot(key)\n        entry = self.slots[slot]\n        if entry is None or entry is HashTable._DUMMY:\n            raise KeyError(key)\n        return entry[1]\n\n    def __delitem__(self, key):\n        slot = self._find_slot(key)\n        entry = self.slots[slot]\n        if entry is None or entry is HashTable._DUMMY:\n            raise KeyError(key)\n        self.slots[slot] = HashTable._DUMMY\n        self.size -= 1\n\n    def __contains__(self, key):\n        try:\n            self[key]\n            return True\n        except KeyError:\n            return False\n\n    def __repr__(self):\n        items = [repr(entry) for entry in self.slots if entry is not None and entry is not HashTable._DUMMY]\n        return '{' + ', '.join(f'{k!r}: {v!r}' for k, v in (e for e in self.slots if e is not None and e is not HashTable._DUMMY)) + '}'\n\n\n# 示例演示\nif __name__ == '__main__':\n    ht = HashTable()\n    # 插入\n    ht['a'] = 1\n    ht['b'] = 2\n    ht['c'] = 3\n    print('增加后:', ht)\n    # 查询\n    print(\"ht['a'] =\", ht['a'])\n    # 更新\n    ht['a'] = 10\n    print('更新后:', ht)\n    # 删除\n    del ht['b']\n    print('删除 b 后:', ht)\n    # 测试 rehash，插入多条让负载因子超过 0.75\n    for i in range(20):\n        ht[i] = i * i\n    print('插入 20 条后内容:', ht)\n    print('容量:', ht.capacity)\n    # 测试惰性删除后仍能正确查找\n    ht2 = HashTable()\n    ht2['key1'] = 1\n    ht2['key2'] = 2\n    ht2['key3'] = 3\n    del ht2['key2']\n    print('删除 key2 后查找 key3:', ht2['key3'])",
+    "difficulty": 5,
+    "hint": "注意使用哨兵对象（_DUMMY）处理删除，线性探测时若遇到哨兵需继续探测，但插入时可复用哨兵位置。触发 rehash 的条件是“满足 size / capacity > 0.75”。",
+    "explanation": "该实现综合了多个哈希表关键点：使用内置 hash() 作为哈希函数完成键到索引的映射；采用线性探测的开放寻址法解决冲突；通过哨兵 _DUMMY 实现惰性删除，避免破坏探测链；当负载因子超过 0.75 时，自动触发 rehash 扩容并重新插入所有有效条目；键的比较依赖 Python 的 == 操作（底层调用 __eq__），因此要求键必须是可哈希且实现了相等比较的自定义对象。",
+    "qid": "Q-PY027-003",
+    "source_node_id": "PY-027",
+    "node_id": "PY-027"
+  }
+]

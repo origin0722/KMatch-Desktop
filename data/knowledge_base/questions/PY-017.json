@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 包，以下哪个说法是正确的？",
+    "options": [
+      "A. 一个不包含 __init__.py 文件的目录也可以作为 Python 包被导入",
+      "B. 使用 from module import * 导入是推荐的做法，不会导致命名空间污染",
+      "C. 包是一个包含 __init__.py 文件的目录",
+      "D. 执行 import math 后，可以直接使用 sqrt() 而不需要通过 math.sqrt()"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "回想 Python 识别包的必要条件。",
+    "explanation": "Python 要求包必须是一个包含 __init__.py 文件的目录，否则不会被识别为包。选项 A 是常见误解，认为普通目录也能作为包导入；选项 B 中 from module import * 会污染命名空间，不推荐使用；选项 D 中正确调用应为 math.sqrt()。",
+    "qid": "Q-PY017-001",
+    "source_node_id": "PY-017",
+    "node_id": "PY-017"
+  },
+  {
+    "type": "choice",
+    "question": "关于 Python 模块的导入与执行，以下哪个说法是正确的？",
+    "options": [
+      "A. 使用 from module import * 是推荐做法，不会导致命名空间污染",
+      "B. 当一个模块被其他文件导入时，其内部的 if __name__ == '__main__': 代码块会被执行",
+      "C. 执行 import math 后，可以直接使用 sqrt() 而不需要通过 math.sqrt()",
+      "D. 可以使用 import module as m 的方式给模块取别名"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "思考别名导入的语法和 __name__ 变量的行为。",
+    "explanation": "选项 D 正确，Python 支持通过 as 关键字为导入的模块指定别名。选项 A 错误，from module import * 会导入所有名称，容易污染命名空间，不推荐；选项 B 错误，当模块被导入时，其 __name__ 不是 '__main__'，因此 if 代码块不会执行；选项 C 错误，导入整个模块后需通过模块名访问其中的函数，即 math.sqrt()。",
+    "qid": "Q-PY017-002",
+    "source_node_id": "PY-017",
+    "node_id": "PY-017"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，一个包必须是一个包含 ______ 文件的目录。",
+    "answer": "__init__.py",
+    "difficulty": 2,
+    "hint": "这个文件通常为空，但必须存在以标识包。",
+    "explanation": "包是一个包含 __init__.py 文件的目录，Python 解释器通过该文件将目录识别为包，缺失该文件则无法通过 import 导入包。",
+    "qid": "Q-PY017-003",
+    "source_node_id": "PY-017",
+    "node_id": "PY-017"
+  }
+]

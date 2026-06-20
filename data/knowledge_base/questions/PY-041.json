@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 魔术方法的描述，哪个是正确的？",
+    "options": [
+      "A. print(obj) 会自动调用 __repr__ 方法来获取输出字符串",
+      "B. 只要在类中定义了 __eq__，!= 运算符就会自动实现相反的比较",
+      "C. 实现 __getitem__ 方法后就无需定义 __len__ 也能直接使用 len()",
+      "D. __eq__ 方法用于定义 == 运算符的相等比较行为"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆 print()、比较和容器魔术方法的正确调用关系。",
+    "explanation": "A 错误，print() 优先调用 __str__；B 作为本知识点的常见错误认知，!= 不会自动实现；C 错误，len() 需要定义 __len__ 才能使用；D 正确。",
+    "qid": "Q-PY041-001",
+    "source_node_id": "PY-041",
+    "node_id": "PY-041"
+  },
+  {
+    "type": "fill",
+    "question": "要使用 with 语句管理自定义对象，必须在类中实现 _____ 和 _____ 两个魔术方法。",
+    "answer": "__enter__, __exit__",
+    "difficulty": 2,
+    "hint": "上下文管理协议需要两个方法分别负责进入和退出。",
+    "explanation": "根据 key_points，__enter__ 和 __exit__ 用于支持 with 语句。",
+    "qid": "Q-PY041-002",
+    "source_node_id": "PY-041",
+    "node_id": "PY-041"
+  },
+  {
+    "type": "code",
+    "question": "请实现一个名为 Playlist 的类，表示歌曲播放列表。要求：\n1. 初始化接受一个歌曲名列表（字符串）；\n2. 使用 print(playlist) 输出如“Playlist: ['song1', 'song2']”的用户友好字符串；\n3. 使用 repr(playlist) 输出如“Playlist(songs=['song1', 'song2'])”的开发者表示；\n4. 使用 == 比较两个播放列表，当内部歌曲列表相同时返回 True；\n5. 使用 < 比较，当歌曲数量少于另一个时返回 True（歌曲数越多列表“越大”）；\n6. 使用 len(playlist) 返回歌曲数量；\n7. 支持索引 playlist[i] 获取第 i 首歌曲；\n8. 支持 with 语句：进入时打印“Playing...”，退出时打印“Stopped.”（即使发生异常也要打印）。",
+    "answer": "class Playlist:\n    def __init__(self, songs):\n        self.songs = list(songs)\n    def __str__(self):\n        return f\"Playlist: {self.songs}\"\n    def __repr__(self):\n        return f\"Playlist(songs={self.songs!r})\"\n    def __eq__(self, other):\n        if isinstance(other, Playlist):\n            return self.songs == other.songs\n        return NotImplemented\n    def __lt__(self, other):\n        if isinstance(other, Playlist):\n            return len(self.songs) < len(other.songs)\n        return NotImplemented\n    def __len__(self):\n        return len(self.songs)\n    def __getitem__(self, index):\n        return self.songs[index]\n    def __enter__(self):\n        print(\"Playing...\")\n        return self\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        print(\"Stopped.\")\n        return False",
+    "difficulty": 5,
+    "hint": "需要实现 __str__, __repr__, __eq__, __lt__, __len__, __getitem__, __enter__, __exit__ 方法。使用 return NotImplemented 处理类型不匹配。__exit__ 返回 False 以传播异常。",
+    "explanation": "综合了多个魔术方法，满足所有要求。注意 __repr__ 中使用 !r 保留原字符串引号，__exit__ 参数签名正确，异常退出仍会打印“Stopped.”。",
+    "qid": "Q-PY041-003",
+    "source_node_id": "PY-041",
+    "node_id": "PY-041"
+  }
+]

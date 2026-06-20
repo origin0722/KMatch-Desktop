@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于文件打开模式，以下哪个说法是正确的？",
+    "options": [
+      "A. 使用 'w' 模式打开已有文件时，新内容会追加到原文件末尾而不是清空覆盖",
+      "B. 以 'r' 模式打开不存在的文件时，open() 会自动创建该空文件",
+      "C. f.read() 返回的结果是一个包含所有行的列表",
+      "D. 'w' 模式会清空原文件并覆盖写入新内容"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆 'w' 模式为覆盖写，'r' 不自动创建文件，f.read() 返回字符串。",
+    "explanation": "A、B、C 均为常见错误认知。'w' 模式会清空文件后再写入新内容；'r' 模式打开不存在的文件会抛出 FileNotFoundError；f.read() 返回整个文件内容的字符串，而非列表。因此 D 正确。",
+    "qid": "Q-PY016-001",
+    "source_node_id": "PY-016",
+    "node_id": "PY-016"
+  },
+  {
+    "type": "choice",
+    "question": "关于文件读写与 JSON 操作，以下说法正确的是？",
+    "options": [
+      "A. json.load(f) 用于从 JSON 文件读取数据并解析为 Python 对象",
+      "B. json.load(f) 可以将 Python 对象序列化并写入到 JSON 文件中",
+      "C. f.read() 返回的结果是一个包含所有行的列表",
+      "D. 使用 'w' 模式打开已有文件时，新内容会追加到原文件末尾"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "json.load 是读取函数，json.dump 用于写入；f.read() 返回字符串；'w' 模式是覆盖写。",
+    "explanation": "B、C、D 均为常见错误。json.load(f) 从文件读取 JSON 数据并解析，而 json.dump() 用于写入；f.read() 返回整个内容字符串；'w' 模式会清空后写入。因此 A 正确。",
+    "qid": "Q-PY016-002",
+    "source_node_id": "PY-016",
+    "node_id": "PY-016"
+  },
+  {
+    "type": "fill",
+    "question": "要读取 CSV 文件，可以使用 csv 模块的 ______ 方法创建一个读取器对象，传入文件对象 f。",
+    "answer": "reader",
+    "difficulty": 2,
+    "hint": "思考 csv 模块中哪个函数用于读取 CSV 文件，其名称与 writer 相对。",
+    "explanation": "csv.reader(f) 返回一个 reader 对象，用于遍历 CSV 文件的行；写入则使用 csv.writer(f)。",
+    "qid": "Q-PY016-003",
+    "source_node_id": "PY-016",
+    "node_id": "PY-016"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 中的比较和逻辑运算，以下哪个说法是正确的？",
+    "options": [
+      "A. 使用 == 可以判断两个对象是否为同一个对象",
+      "B. 逻辑运算符 and 和 or 会无条件计算两侧表达式",
+      "C. 链式比较 a < b < c 等价于 a < b and b < c",
+      "D. 布尔值不能参与算术运算"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "explanation": "链式比较 a < b < c 在 Python 中等价于 a < b and b < c，而非先计算前一部分布尔值再与 c 比较。选项 A 错误，应使用 is 判断身份；B 错误，and 和 or 具有短路求值特性；D 错误，True == 1、False == 0，可参与算术。",
+    "qid": "Q-PY005-001",
+    "source_node_id": "PY-005",
+    "node_id": "PY-005",
+    "hint": ""
+  },
+  {
+    "type": "choice",
+    "question": "下列关于 Python 逻辑运算符的说法，正确的是？",
+    "options": [
+      "A. 使用 == 可以判断两个对象是否为同一个对象",
+      "B. 逻辑运算符 and 和 or 总是计算两侧表达式",
+      "C. 布尔值不能参与算术运算",
+      "D. and 和 or 是短路求值，可能不会计算右侧表达式"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "explanation": "Python 中 and 和 or 采用短路求值，当左侧表达式能确定结果时不再计算右侧。选项 A 错误，身份判断应使用 is；B 与之相反，忽略短路特性；C 错误，布尔值可参与算术运算，True 等价于 1，False 等价于 0。",
+    "qid": "Q-PY005-002",
+    "source_node_id": "PY-005",
+    "node_id": "PY-005",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，链式比较 a < b < c 等价于逻辑表达式 __________。",
+    "answer": "a < b and b < c",
+    "difficulty": 2,
+    "explanation": "Python 会将链式比较展开为用 and 连接的形式，即 a < b and b < c，且 b 只被求值一次。",
+    "qid": "Q-PY005-003",
+    "source_node_id": "PY-005",
+    "node_id": "PY-005",
+    "hint": ""
+  }
+]

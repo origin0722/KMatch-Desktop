@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于字符串匹配算法的说法，正确的是：",
+    "options": [
+      "A. Python 的 str.find() 方法内部使用 KMP 算法进行字符串匹配",
+      "B. 暴力匹配算法因 O(n*m) 的时间复杂度在任何情况下都不应使用",
+      "C. KMP 算法在匹配失败时需要回溯文本串指针以重新对齐",
+      "D. Python 的 str.find() 方法使用了诸如 Boyer-Moore 等高效算法，而非 KMP"
+    ],
+    "answer": "D",
+    "difficulty": 4,
+    "hint": "想一想 Python 内置字符串方法的实现依据，以及 KMP 算法的核心思想是不回溯文本指针。",
+    "explanation": "Python 的 str.find() 基于 Boyer-Moore 等高效算法，并非 KMP；暴力匹配虽 O(n*m) 但在短文本或简单场景仍适用；KMP 的核心优势是匹配失败时文本指针不回溯，通过 next 数组移动模式串。",
+    "qid": "Q-PY031-001",
+    "source_node_id": "PY-031",
+    "node_id": "PY-031"
+  },
+  {
+    "type": "fill",
+    "question": "KMP 字符串匹配算法的核心是预先计算模式串的_____数组，从而在匹配失败时避免文本指针回溯，达到 O(n+m) 的时间复杂度。",
+    "answer": "next",
+    "difficulty": 3,
+    "hint": "该数组记录了模式串的最长相等前后缀长度。",
+    "explanation": "KMP 算法利用前缀函数（通常称为 next 数组）存储已匹配部分的信息，当发生失配时，模式串根据 next 值跳过无需比较的前缀，文本指针不回溯，实现线性时间。",
+    "qid": "Q-PY031-002",
+    "source_node_id": "PY-031",
+    "node_id": "PY-031"
+  },
+  {
+    "type": "code",
+    "question": "请实现 KMP 字符串匹配函数 kmp_search(text: str, pattern: str) -> int。该函数返回 pattern 在 text 中首次出现的起始索引，若未找到返回 -1。要求：构建 next 数组，时间复杂度 O(n+m)。\n\n示例输入输出：\n输入: text = \"ababcabcabababd\", pattern = \"ababd\"\n输出: 10\n输入: text = \"hello\", pattern = \"ll\"\n输出: 2\n输入: text = \"aaaa\", pattern = \"bb\"\n输出: -1",
+    "answer": "def kmp_search(text: str, pattern: str) -> int:\n    n, m = len(text), len(pattern)\n    if m == 0:\n        return 0\n    if n < m:\n        return -1\n    # 构建 next 数组\n    next = [0] * m\n    j = 0\n    for i in range(1, m):\n        while j > 0 and pattern[i] != pattern[j]:\n            j = next[j-1]\n        if pattern[i] == pattern[j]:\n            j += 1\n        next[i] = j\n    # 匹配\n    j = 0\n    for i in range(n):\n        while j > 0 and text[i] != pattern[j]:\n            j = next[j-1]\n        if text[i] == pattern[j]:\n            j += 1\n        if j == m:\n            return i - m + 1\n    return -1",
+    "difficulty": 5,
+    "hint": "首先构建 next 数组（也叫前缀表），记录每个位置的最长相等前后缀长度；匹配时双指针扫描，失配时模式指针回退到 next[j-1]。",
+    "explanation": "标准 KMP 实现，先构建 next 数组，再扫描文本，保持文本指针不回溯，时间复杂度 O(n+m)。",
+    "qid": "Q-PY031-003",
+    "source_node_id": "PY-031",
+    "node_id": "PY-031"
+  }
+]

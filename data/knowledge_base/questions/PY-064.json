@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于NumPy矩阵运算，下列哪项描述是正确的？",
+    "options": [
+      "A. 使用 axis=0 进行求和是沿着列方向（水平）操作",
+      "B. mean、sum 等统计函数只能对整个数组计算，不能指定轴向",
+      "C. 矩阵乘法 @ 运算符只能用于严格二维的数组",
+      "D. 向量化运算在大多数情况下比逐元素循环快很多倍，但并非在任何数据规模下都能快 100 倍以上"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "复习 axis 方向、统计函数轴向参数以及向量化加速的适用范围",
+    "explanation": "A 错误：axis=0 表示沿行方向（垂直）操作；B 错误：mean、sum 等可通过 axis 参数指定轴向；C 错误：@ 可用于高维数组，会在最后两个维度上执行矩阵乘法；D 正确：向量化运算通常比循环快 100 倍以上，但在极小规模数据下差异可能不明显，并非任何规模都能保证 100 倍以上加速。",
+    "qid": "Q-PY064-001",
+    "source_node_id": "PY-064",
+    "node_id": "PY-064"
+  },
+  {
+    "type": "fill",
+    "question": "在 NumPy 中，求方阵 A 的逆矩阵可以使用函数 __________。",
+    "answer": "np.linalg.inv",
+    "difficulty": 2,
+    "hint": "属于 linalg 子模块的求逆函数",
+    "explanation": "np.linalg.inv(A) 返回矩阵 A 的逆矩阵，是 NumPy 中核心的线性代数函数之一。",
+    "qid": "Q-PY064-002",
+    "source_node_id": "PY-064",
+    "node_id": "PY-064"
+  },
+  {
+    "type": "code",
+    "question": "给定两个二维方阵 A 和 B，编写代码计算 (A @ B) 的逆矩阵，然后输出该逆矩阵所有元素的平均值以及沿行方向（axis=0）的和。请写出包含 import numpy 的完整可运行代码，并打印结果。",
+    "answer": "import numpy as np\n\ndef compute(A, B):\n    C = A @ B\n    invC = np.linalg.inv(C)\n    mean_val = np.mean(invC)\n    sum_ax0 = np.sum(invC, axis=0)\n    return mean_val, sum_ax0\n\n# 示例\nA = np.array([[1, 2], [3, 4]])\nB = np.array([[5, 6], [7, 8]])\nmean_val, sum_ax0 = compute(A, B)\nprint(\"均值:\", mean_val)\nprint(\"沿行方向求和:\", sum_ax0)",
+    "difficulty": 4,
+    "hint": "使用 @ 进行矩阵乘法，np.linalg.inv 求逆，np.mean 求均值，np.sum(..., axis=0) 沿行方向求和。",
+    "explanation": "代码首先通过 A @ B 进行矩阵乘法，然后调用 np.linalg.inv 计算逆矩阵，接着利用 np.mean 求整体均值、np.sum 并指定 axis=0 沿行方向（垂直方向）求和，最后打印结果。综合了矩阵乘法、逆矩阵、统计运算和轴向操作等多个 NumPy 关键功能。",
+    "qid": "Q-PY064-003",
+    "source_node_id": "PY-064",
+    "node_id": "PY-064"
+  }
+]

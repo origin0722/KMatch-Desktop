@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "对于列表的 sort() 方法，以下描述正确的是？",
+    "options": [
+      "A. sort() 会返回排序后的新列表，原列表不变",
+      "B. sort() 是原地排序，不会返回新列表",
+      "C. pop() 必须指定要删除元素的索引",
+      "D. remove(x) 会删除列表中所有等于 x 的元素"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "原地排序（in-place）意味着直接修改原对象，不创建新对象。",
+    "explanation": "sort() 是列表的原地排序方法，不返回新列表；返回新排序列表的函数是 sorted()。A、C、D 均为常见错误认知：sort() 不返回新列表；pop() 可以不带参数删除最后一个元素；remove(x) 只删除第一个匹配项。",
+    "qid": "Q-PY009-001",
+    "source_node_id": "PY-009",
+    "node_id": "PY-009"
+  },
+  {
+    "type": "choice",
+    "question": "列表方法 remove(x) 的功能是？",
+    "options": [
+      "A. remove(x) 会删除列表中所有等于 x 的元素",
+      "B. remove(x) 删除列表中第一个等于 x 的元素",
+      "C. append(x) 和 extend(x) 效果相同，都是将多个元素追加到列表",
+      "D. sort() 会返回排序后的新列表，原列表不变"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "注意区分“删除所有匹配项”与“只删除第一个匹配项”。",
+    "explanation": "remove(x) 只删除列表中第一个匹配 x 的元素；若想删除所有匹配项，需要循环或列表推导式。A、C、D 都是典型错误认知：remove 不会删除所有；append 追加单个元素，extend 追加可迭代对象的每个元素，效果不同；sort 是原地排序，不返回新列表。",
+    "qid": "Q-PY009-002",
+    "source_node_id": "PY-009",
+    "node_id": "PY-009"
+  },
+  {
+    "type": "fill",
+    "question": "对列表进行排序时，若想返回一个新的排序列表而不改变原列表，应使用内置函数 ______。",
+    "answer": "sorted",
+    "difficulty": 1,
+    "hint": "该函数名称与 sort 相似，但它是返回新列表的。",
+    "explanation": "sorted() 返回排序后的新列表，原列表不变；而 list.sort() 是原地排序，不返回新列表。这是常见考查点。",
+    "qid": "Q-PY009-003",
+    "source_node_id": "PY-009",
+    "node_id": "PY-009"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于全局变量的使用，以下哪项是正确的？",
+    "options": [
+      "A. 函数内读取全局变量时必须使用 global 声明",
+      "B. 对全局列表执行 append 操作必须事先用 global 声明该列表",
+      "C. nonlocal 关键字可以用于修改全局变量",
+      "D. 函数内修改全局不可变对象（如整数）必须使用 global 关键字"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "思考 global 何时必须使用",
+    "explanation": "读取全局变量无需 global；对全局可变对象（如列表）进行 append 等 in-place 修改不需要 global；nonlocal 专门用于外层非全局变量，不能用于全局作用域。只有修改全局不可变对象时，才必须使用 global 关键字声明。",
+    "qid": "Q-PY014-001",
+    "source_node_id": "PY-014",
+    "node_id": "PY-014"
+  },
+  {
+    "type": "choice",
+    "question": "以下关于 nonlocal 关键字的说法，正确的是？",
+    "options": [
+      "A. nonlocal 关键字可以用于修改全局变量",
+      "B. 对全局列表执行 append 操作必须事先用 global 声明该列表",
+      "C. nonlocal 关键字用于修改外层函数（非全局）变量",
+      "D. 在函数内读取全局变量时必须使用 global 声明"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "区分 nonlocal 与 global 的作用域层次",
+    "explanation": "nonlocal 只能在嵌套函数内使用，用于向解释器声明某个变量来自外层函数作用域（非全局），从而允许在内层函数中修改它。它不能用于全局变量。读取全局变量不需要 global；对全局列表的 in-place 修改也不需要 global。",
+    "qid": "Q-PY014-002",
+    "source_node_id": "PY-014",
+    "node_id": "PY-014"
+  },
+  {
+    "type": "fill",
+    "question": "在嵌套函数中，若需对内层函数的外层（非全局）变量进行重新赋值，必须使用_____关键字声明该变量。",
+    "answer": "nonlocal",
+    "difficulty": 2,
+    "hint": "注意区分 global 和 nonlocal 的使用场景",
+    "explanation": "nonlocal 关键字用于在嵌套函数中声明变量来自外层函数作用域，从而允许修改该变量。如果不需要修改而只是读取，则不需要声明。",
+    "qid": "Q-PY014-003",
+    "source_node_id": "PY-014",
+    "node_id": "PY-014"
+  }
+]

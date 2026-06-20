@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "在 Flask 框架中，以下哪项描述是正确的？",
+    "options": [
+      "A. 使用 @app.route('/login') 不指定 methods 时，该路由默认支持 GET 和 POST 请求",
+      "B. 对于 URL 中的查询字符串参数，应使用 request.form 来获取",
+      "C. 调用 url_for 函数会直接让浏览器跳转到指定端点",
+      "D. render_template() 可渲染 Jinja2 模板并向模板传递上下文变量"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回顾 Flask 中路由默认方法、获取不同请求数据的属性以及 url_for 的实际作用。",
+    "explanation": "D 正确，render_template() 用于渲染 Jinja2 模板并支持传入 **context。A 错误，不指定 methods 时默认仅支持 GET。B 错误，查询字符串参数应使用 request.args 获取。C 错误，url_for 仅生成 URL，不触发浏览器跳转，跳转需使用 redirect。",
+    "qid": "Q-PY071-001",
+    "source_node_id": "PY-071",
+    "node_id": "PY-071"
+  },
+  {
+    "type": "fill",
+    "question": "在终端中使用 Flask 内置命令启动开发服务器的命令是 _____。",
+    "answer": "flask run",
+    "difficulty": 2,
+    "hint": "不要写成完整的模块调用方式，使用 Flask 提供的 CLI 命令。",
+    "explanation": "Flask 应用可以通过 `flask run` 命令启动开发服务器，这依赖于设置 FLASK_APP 环境变量，是推荐的启动方式之一，另一种是 `app.run(debug=True)`。",
+    "qid": "Q-PY071-002",
+    "source_node_id": "PY-071",
+    "node_id": "PY-071"
+  },
+  {
+    "type": "code",
+    "question": "编写一个 Flask 应用，满足以下需求：\n1. 创建 Flask 应用实例；\n2. 定义路由 /login，允许 GET 和 POST 请求；\n3. 当 GET 请求时，渲染模板 login.html，并传入 title='Login Page'；\n4. 当 POST 请求时，从表单中获取 username 字段，然后重定向到 /welcome/<username>；\n5. 定义路由 /welcome/<username>，显示 'Welcome, <username>!'；\n6. 使用 if __name__ == '__main__' 运行应用并开启 debug。\n请提供完整可运行的代码。",
+    "answer": "from flask import Flask, render_template, request, redirect, url_for\n\napp = Flask(__name__)\n\n@app.route('/login', methods=['GET', 'POST'])\ndef login():\n    if request.method == 'POST':\n        username = request.form['username']\n        return redirect(url_for('welcome', username=username))\n    return render_template('login.html', title='Login Page')\n\n@app.route('/welcome/<username>')\ndef welcome(username):\n    return f'Welcome, {username}!'\n\nif __name__ == '__main__':\n    app.run(debug=True)",
+    "difficulty": 4,
+    "hint": "注意使用 url_for 生成动态路由的 URL 时，参数名需与路由变量名一致。",
+    "explanation": "该代码综合了 Flask 应用创建、带 methods 的路由、模板渲染、请求数据获取（request.form）、重定向与 URL 构建（redirect + url_for）以及动态路由等关键知识点。",
+    "qid": "Q-PY071-003",
+    "source_node_id": "PY-071",
+    "node_id": "PY-071"
+  }
+]

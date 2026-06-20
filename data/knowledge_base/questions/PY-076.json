@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "运行 docker run -p 8000:8000 myapp 命令时，关于端口映射的说法正确的是？",
+    "options": [
+      "A. 前者指定容器端口，后者指定主机端口",
+      "B. 前者指定主机端口，后者指定容器端口",
+      "C. CMD 指令是在镜像构建时执行的",
+      "D. Dockerfile 中 COPY 与 RUN 的顺序对构建缓存没有影响"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "注意 docker run -p 的格式为 主机端口:容器端口。",
+    "explanation": "docker run -p 8000:8000 表示将主机的8000端口映射到容器的8000端口，因此前者是主机端口，后者是容器端口。A项将顺序搞反，是常见错误；C项和D项为知识点中其他典型错误认知。",
+    "qid": "Q-PY076-001",
+    "source_node_id": "PY-076",
+    "node_id": "PY-076"
+  },
+  {
+    "type": "choice",
+    "question": "关于 Dockerfile 中 COPY 和 RUN 指令的顺序对构建缓存的影响，以下说法正确的是？",
+    "options": [
+      "A. 顺序对缓存没有任何影响",
+      "B. CMD 是在镜像构建时执行的，而不是容器启动时执行的",
+      "C. docker-compose up 只能启动单个容器，不能同时启动多服务",
+      "D. 顺序会影响构建缓存，因此合理安排顺序可优化构建速度"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "考虑 Docker 分层构建缓存机制：不变的层可以复用。",
+    "explanation": "Docker 构建镜像时采用分层缓存，如果指令顺序不当（如先 COPY 经常变动的源码再 RUN 安装依赖），源代码变动后缓存失效，依赖安装也会重新执行。因此 A 错误，D 正确。B 和 C 为其他典型错误认知，与本题无关。",
+    "qid": "Q-PY076-002",
+    "source_node_id": "PY-076",
+    "node_id": "PY-076"
+  },
+  {
+    "type": "fill",
+    "question": "使用 Docker 容器时，要将宿主机目录挂载到容器内以实现数据持久化，应在 docker run 命令中添加参数 _____ /host/data:/container/data。",
+    "answer": "-v",
+    "difficulty": 2,
+    "hint": "该参数也可用 --volume 长格式。",
+    "explanation": "-v 或 --volume 用于挂载卷，将宿主机目录与容器目录绑定，实现数据持久化。",
+    "qid": "Q-PY076-003",
+    "source_node_id": "PY-076",
+    "node_id": "PY-076"
+  }
+]

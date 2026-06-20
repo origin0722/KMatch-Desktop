@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "在爬虫项目实践中，关于反爬与数据处理，以下哪项是正确的做法？",
+    "options": [
+      "A. 使用爬虫时无需遵守 robots.txt 协议，直接抓取即可",
+      "B. 请求异常时只需固定间隔简单重试几次，无需指数退避策略",
+      "C. 数据清洗只需去除 HTML 标签，无需处理多余空格或格式化字段",
+      "D. 应随机切换 User-Agent 池，以防止被封禁"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "考虑爬虫的健壮性和礼貌性。",
+    "explanation": "随机切换 User-Agent 池是预防反爬的有效手段（对应 key_points）。A、B、C 均为常见错误认知：必须遵守 robots.txt；异常重回应采用指数退避而非简单固定间隔；数据清洗不仅要去标签还需处理空格与格式化字段。",
+    "qid": "Q-PY083-001",
+    "source_node_id": "PY-083",
+    "node_id": "PY-083"
+  },
+  {
+    "type": "fill",
+    "question": "在爬虫异常处理中，为了在请求失败时给服务器恢复时间并避免连续冲击，通常采用______策略，即每次重试的等待时间按倍数递增。",
+    "answer": "指数退避",
+    "difficulty": 2,
+    "hint": "英文为 exponential backoff。",
+    "explanation": "指数退避（exponential backoff）是网络爬虫中推荐的重试策略，能有效降低对目标服务器的压力，同时提高请求成功率。固定间隔重试属于常见错误做法。",
+    "qid": "Q-PY083-002",
+    "source_node_id": "PY-083",
+    "node_id": "PY-083"
+  },
+  {
+    "type": "code",
+    "question": "编写一个爬虫程序，从给定的网址列表中抓取博客标题（位于 <h1 class='title'> 标签内）和发布日期（位于 <time class='date'> 标签内）。要求：\n1) 使用 User-Agent 池随机切换；\n2) 请求时若发生异常，采用指数退避重试（最多3次，退避因子为2）；\n3) 对抓取到的标题和日期去除 HTML 标签及首尾空格，并进行必要格式化；\n4) 将结果保存为 CSV 文件 posts.csv（字段：title, date）；\n5) 使用 logging 记录 INFO 级别日志，记录每次请求及重试信息。\n请写出完整 Python 代码。",
+    "answer": "import requests\nfrom bs4 import BeautifulSoup\nimport csv\nimport random\nimport time\nimport logging\n\nlogging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')\n\nUSER_AGENTS = [\n    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Safari/605.1.15',\n    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'\n]\n\ndef fetch_with_retry(url, max_retries=3, backoff_factor=2):\n    for attempt in range(max_retries):\n        try:\n            headers = {'User-Agent': random.choice(USER_AGENTS)}\n            logging.info(f\"Fetching {url} (attempt {attempt+1})\")\n            resp = requests.get(url, headers=headers, timeout=10)\n            resp.raise_for_status()\n            return resp\n        except Exception as e:\n            wait = backoff_factor ** attempt\n            logging.warning(f\"Request failed for {url}: {e}. Retrying in {wait}s...\")\n            time.sleep(wait)\n    logging.error(f\"All retries exhausted for {url}\")\n    return None\n\ndef main():\n    urls = [\"http://example.com/blog1\", \"http://example.com/blog2\"]\n    posts = []\n    for url in urls:\n        resp = fetch_with_retry(url)\n        if resp:\n            soup = BeautifulSoup(resp.text, 'html.parser')\n            title_tag = soup.find('h1', class_='title')\n            date_tag = soup.find('time', class_='date')\n            title = title_tag.get_text(strip=True) if title_tag else ''\n            date = date_tag.get_text(strip=True) if date_tag else ''\n            posts.append({'title': title, 'date': date})\n        else:\n            posts.append({'title': 'FAILED', 'date': 'FAILED'})\n    \n    with open('posts.csv', 'w', newline='', encoding='utf-8') as f:\n        writer = csv.DictWriter(f, fieldnames=['title', 'date'])\n        writer.writeheader()\n        writer.writerows(posts)\n    logging.info(f\"Saved {len(posts)} posts to posts.csv\")\n\nif __name__ == \"__main__\":\n    main()",
+    "difficulty": 5,
+    "hint": "使用 requests、BeautifulSoup、csv、logging 等库，注意指数退避的休眠计算。",
+    "explanation": "代码综合运用了 key_points 中的多项技能：User-Agent 池随机切换防止封禁、异常处理与指数退避重试、数据清洗（BeautifulSoup 去除标签，strip 去空格）、CSV 导出以及日志记录。体现了完整的爬虫项目设计思维。",
+    "qid": "Q-PY083-003",
+    "source_node_id": "PY-083",
+    "node_id": "PY-083"
+  }
+]

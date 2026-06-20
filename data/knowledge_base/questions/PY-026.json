@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于二分查找，以下说法正确的是？",
+    "options": [
+      "A. 二分查找无需数组有序，只要每次取中间值就能正确排除一半元素",
+      "B. 二分查找必须使用递归实现，因此空间复杂度为 O(log n)",
+      "C. 二分查找要求数组必须有序，时间复杂度为 O(log n)",
+      "D. 当目标不存在时，bisect.bisect_left 会返回 -1"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "二分查找的核心前提是数据有序，否则无法通过中间值比较排除一半元素。",
+    "explanation": "C选项正确描述了二分查找的前提和复杂度。A错误，因为二分查找必须在有序数组上工作，否则无法保证排除一半。B错误，二分查找可以用迭代实现，空间复杂度为O(1)。D错误，bisect_left始终返回插入位置，不会返回-1。",
+    "qid": "Q-PY026-001",
+    "source_node_id": "PY-026",
+    "node_id": "PY-026"
+  },
+  {
+    "type": "choice",
+    "question": "关于 Python 的 bisect 模块，以下说法正确的是？",
+    "options": [
+      "A. bisect.bisect_left 用于查找插入位置，即使目标不存在也会返回正确的插入点",
+      "B. bisect.bisect_left 在目标不存在时会返回 -1，与 list.index 一致",
+      "C. bisect.insort 在插入重复元素时会覆盖原有值以保证不重复",
+      "D. 二分查找必须使用递归实现，因此空间复杂度为 O(log n)"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "bisect 模块的函数专注于有序列表的二分查找和插入，不会覆盖元素。",
+    "explanation": "A正确，bisect_left返回元素应该插入的位置，保持列表有序。B错误，bisect_left始终返回一个有效的索引（0到len(list)），不会返回-1。C错误，bisect.insort会插入元素，允许重复，不会覆盖原有值。D错误，二分查找可用迭代实现，空间O(1)，且bisect模块内部实现也不是必须递归。",
+    "qid": "Q-PY026-002",
+    "source_node_id": "PY-026",
+    "node_id": "PY-026"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，使用 bisect 模块将元素 x 插入有序列表 a 并保持有序的函数是 _____。",
+    "answer": "bisect.insort",
+    "difficulty": 2,
+    "hint": "该函数名以 insort 结尾，与 bisect_left/right 同模块。",
+    "explanation": "bisect.insort 函数通过二分查找确定插入位置，然后调用列表的 insert 方法，保持列表有序。注意模块名为 bisect，函数全称是 bisect.insort。",
+    "qid": "Q-PY026-003",
+    "source_node_id": "PY-026",
+    "node_id": "PY-026"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于继承与多态的 Python 说法，正确的是：",
+    "options": [
+      "A. 子类重写父类方法后，就无法再从子类内部调用父类的该方法了",
+      "B. 多态要求不同子类必须继承自同一个父类才能实现",
+      "C. super() 只能在 __init__ 方法中使用",
+      "D. 使用 super() 可以在任意方法中调用父类的方法，不限于 __init__"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆 super() 的用途以及多态的概念。",
+    "explanation": "A 错误，可以通过 super().method() 调用父类方法。B 错误，多态可以通过鸭子类型实现，不必统一的父类。C 错误，super() 可用于任何方法。D 正确，super() 可调用父类的任意方法。",
+    "qid": "Q-PY039-001",
+    "source_node_id": "PY-039",
+    "node_id": "PY-039"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，若要判断一个对象是否是某个类或其子类的实例，应使用内置函数 _____。",
+    "answer": "isinstance",
+    "difficulty": 1,
+    "explanation": "isinstance(obj, class) 会考虑继承关系，返回布尔值。",
+    "qid": "Q-PY039-002",
+    "source_node_id": "PY-039",
+    "node_id": "PY-039",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "实现以下需求：\n1. 定义基类 Shape，构造方法 __init__(self, color) 保存 color 属性。\n2. 定义子类 Circle(Shape)，构造方法增加 radius 参数，通过 super().__init__(color) 初始化颜色，并保存 radius。实现 area 方法返回圆的面积（使用圆周率 3.14159）。\n3. 定义子类 Square(Shape)，构造增加 side，调用父类构造，实现 area 返回 side ** 2。\n4. 定义函数 print_area(shape)，使用 isinstance 检查 shape 是否是 Shape 的实例：如果不是，打印 'Not a shape'；如果是，打印 'Area of {color} shape: {area:.2f}'。\n5. 创建红色 Circle 半径3.0，蓝色 Square 边长4.0，调用 print_area 分别输出。",
+    "answer": "class Shape:\n    def __init__(self, color):\n        self.color = color\n\nclass Circle(Shape):\n    def __init__(self, color, radius):\n        super().__init__(color)\n        self.radius = radius\n    \n    def area(self):\n        return 3.14159 * self.radius ** 2\n\nclass Square(Shape):\n    def __init__(self, color, side):\n        super().__init__(color)\n        self.side = side\n    \n    def area(self):\n        return self.side ** 2\n\ndef print_area(shape):\n    if not isinstance(shape, Shape):\n        print('Not a shape')\n    else:\n        print(f'Area of {shape.color} shape: {shape.area():.2f}')\n\n# 示例调用\nc = Circle('red', 3.0)\ns = Square('blue', 4.0)\nprint_area(c)\nprint_area(s)",
+    "difficulty": 3,
+    "explanation": "综合应用继承、super()、方法重写、多态和 isinstance 检查。print_area 通过相同接口调用不同子类的 area 方法，展现多态行为。",
+    "qid": "Q-PY039-003",
+    "source_node_id": "PY-039",
+    "node_id": "PY-039",
+    "hint": ""
+  }
+]

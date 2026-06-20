@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于二叉树与二叉搜索树（BST），下列描述正确的是：",
+    "options": [
+      "A. 二叉树要求每个节点都有两个子节点",
+      "B. 层序遍历应该用栈来实现",
+      "C. 中序遍历的顺序是'根左右'",
+      "D. BST的查找效率通常可以达到O(log n)"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "注意区分满二叉树和普通二叉树的定义，以及不同遍历方式的顺序和使用的数据结构。",
+    "explanation": "A错误，二叉树每个节点最多有两个子节点，并非必须有两个。B错误，层序遍历（BFS）使用队列而非栈。C错误，中序遍历顺序是‘左根右’，‘根左右’是前序遍历。D正确，在平衡的二叉搜索树中，查找效率为O(log n)。",
+    "qid": "Q-PY028-001",
+    "source_node_id": "PY-028",
+    "node_id": "PY-028"
+  },
+  {
+    "type": "fill",
+    "question": "二叉树的层序遍历（广度优先遍历）需要使用_____辅助数据结构来实现。",
+    "answer": "队列",
+    "difficulty": 2,
+    "hint": "回忆BFS遍历需要先进先出的特性。",
+    "explanation": "层序遍历按层次从上到下、从左到右访问节点，需要队列（FIFO）保存同一层的节点顺序。栈用于DFS的迭代实现。",
+    "qid": "Q-PY028-002",
+    "source_node_id": "PY-028",
+    "node_id": "PY-028"
+  },
+  {
+    "type": "code",
+    "question": "请实现一个二叉搜索树（BST）类BinarySearchTree，包含插入方法insert(value)、查找方法search(value)以及中序遍历方法inorder_traversal()。中序遍历应返回节点值列表，查找返回布尔值。要求符合BST性质（左子树所有值小于根，右子树所有值大于根）。只需写出类定义及方法代码。",
+    "answer": "class Node:\n    def __init__(self, value):\n        self.value = value\n        self.left = None\n        self.right = None\n\nclass BinarySearchTree:\n    def __init__(self):\n        self.root = None\n\n    def insert(self, value):\n        if self.root is None:\n            self.root = Node(value)\n        else:\n            self._insert_rec(self.root, value)\n\n    def _insert_rec(self, node, value):\n        if value < node.value:\n            if node.left is None:\n                node.left = Node(value)\n            else:\n                self._insert_rec(node.left, value)\n        elif value > node.value:\n            if node.right is None:\n                node.right = Node(value)\n            else:\n                self._insert_rec(node.right, value)\n\n    def search(self, value):\n        return self._search_rec(self.root, value)\n\n    def _search_rec(self, node, value):\n        if node is None:\n            return False\n        if value == node.value:\n            return True\n        elif value < node.value:\n            return self._search_rec(node.left, value)\n        else:\n            return self._search_rec(node.right, value)\n\n    def inorder_traversal(self):\n        res = []\n        self._inorder_rec(self.root, res)\n        return res\n\n    def _inorder_rec(self, node, res):\n        if node:\n            self._inorder_rec(node.left, res)\n            res.append(node.value)\n            self._inorder_rec(node.right, res)",
+    "difficulty": 5,
+    "hint": "插入时根据值的大小决定向左或向右递归，中序遍历顺序为左-根-右。",
+    "explanation": "本题综合考察BST的插入、查找和中序遍历。插入和查找均利用BST有序性质（左<根<右）实现递归，中序遍历按左根右顺序将节点值加入列表，得到升序序列。",
+    "qid": "Q-PY028-003",
+    "source_node_id": "PY-028",
+    "node_id": "PY-028"
+  }
+]

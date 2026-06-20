@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "在 with obj as x: 语句中，关于变量 x 的描述正确的是？",
+    "options": [
+      "A. x 是上下文管理器对象本身",
+      "B. x 是调用 obj.__enter__() 的返回值",
+      "C. x 是调用 obj.__exit__() 的返回值",
+      "D. x 是 obj 的类型名称"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "回忆 with 语句的执行流程：先调用 __enter__ 获得资源，再赋值给 as 后的变量。",
+    "explanation": "with obj as x 在执行时会调用 obj.__enter__()，并将其返回值绑定到 x。obj 本身只是上下文管理器对象，并非资源对象。选项 A 是常见错误。",
+    "qid": "Q-PY044-001",
+    "source_node_id": "PY-044",
+    "node_id": "PY-044"
+  },
+  {
+    "type": "fill",
+    "question": "在上下文管理器的 __exit__(exc_type, exc_val, exc_tb) 方法中，如果返回 True，则会______异常，使异常不再向外传播。",
+    "answer": "抑制",
+    "difficulty": 3,
+    "hint": "__exit__ 返回 True 表示异常已处理，无需再抛出。",
+    "explanation": "根据知识点：__exit__ 接收异常信息，返回 True 可抑制异常，即阻止异常继续向上层传播，这在某些场景（如忽略特定错误）中很有用。",
+    "qid": "Q-PY044-002",
+    "source_node_id": "PY-044",
+    "node_id": "PY-044"
+  },
+  {
+    "type": "code",
+    "question": "请使用 contextlib.contextmanager 装饰器实现一个名为 Timer 的上下文管理器，要求：进入 with 块时记录开始时间，退出时打印代码块的执行耗时（单位秒，保留3位小数）。只需给出装饰器及其生成器函数的代码。",
+    "answer": "from contextlib import contextmanager\nimport time\n\n@contextmanager\ndef Timer():\n    start = time.time()\n    yield\n    end = time.time()\n    print(f'执行耗时: {end - start:.3f} 秒')\n",
+    "difficulty": 4,
+    "hint": "用 yield 分隔进入和退出逻辑，yield 前获取时间，yield 后计算差值并打印。",
+    "explanation": "该代码利用 @contextmanager 将一个生成器函数变成上下文管理器。yield 之前相当于 __enter__，记录开始时间；yield 之后相当于 __exit__，计算并输出耗时。这是对 key_points 中 'contextlib.contextmanager 用 yield 拆分 enter/exit' 和常见用法 'with Timer' 的综合应用。",
+    "qid": "Q-PY044-003",
+    "source_node_id": "PY-044",
+    "node_id": "PY-044"
+  }
+]

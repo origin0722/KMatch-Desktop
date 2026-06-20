@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 GitHub Actions，以下哪项说法是正确的？",
+    "options": [
+      "A. 工作流 YAML 文件可以放在仓库的任意位置",
+      "B. CI/CD 流程中的部署阶段必须手动完成，无法自动化",
+      "C. 工作流中的密码等敏感信息可直接写在 YAML 文件中，以便调试",
+      "D. 敏感信息应存储于仓库的 Secrets 中，通过 `${{ secrets.XXX }}` 引用"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "explanation": "GitHub Actions 工作流必须放在 .github/workflows/ 目录；CI/CD 包含自动部署阶段；敏感信息绝不可硬编码，应使用仓库的 Secrets 管理。",
+    "qid": "Q-PY077-001",
+    "source_node_id": "PY-077",
+    "node_id": "PY-077",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在 GitHub Actions 工作流文件中，触发事件通过 `_____` 字段定义，例如 `on: [push, pull_request]`。",
+    "answer": "on",
+    "difficulty": 2,
+    "explanation": "key `on` 是工作流触发的条件，支持 push、pull_request 等事件。",
+    "qid": "Q-PY077-002",
+    "source_node_id": "PY-077",
+    "node_id": "PY-077",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "编写一个 Python 函数 `ci_pipeline()`，模拟 GitHub Actions 的典型工作流步骤：检出代码（打印 'Checkout'）、设置环境（'Setup'）、安装依赖（'Install'）、运行测试（'Test'）、构建（'Build'）和部署（'Deploy'）。部署时需使用密码，密码应通过环境变量 `DEPLOY_PASSWORD` 获取，不得硬编码。如果环境变量未设置，打印 'Deploy failed: missing password' 并提前结束。所有步骤成功则打印 'CI/CD pipeline succeeded'。请提供完整可运行的 Python 代码（包含必要的 import）。",
+    "answer": "import os\n\ndef ci_pipeline():\n    steps = ['Checkout', 'Setup', 'Install', 'Test', 'Build']\n    for step in steps:\n        print(step)\n    password = os.environ.get('DEPLOY_PASSWORD')\n    if not password:\n        print('Deploy failed: missing password')\n        return\n    print('Deploy')\n    print('CI/CD pipeline succeeded')\n\nif __name__ == '__main__':\n    ci_pipeline()",
+    "difficulty": 5,
+    "explanation": "模拟 CI/CD 流水线，按顺序执行步骤，部署时从环境变量读取密码，避免硬编码，符合 secrets 管理原则。",
+    "qid": "Q-PY077-003",
+    "source_node_id": "PY-077",
+    "node_id": "PY-077",
+    "hint": ""
+  }
+]

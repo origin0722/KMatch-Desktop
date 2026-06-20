@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 的 f-string，以下哪种说法是正确的？",
+    "options": [
+      "A. f-string 只能插入简单变量名，不支持如 {num:.2f} 或 {s:>10} 的格式说明符",
+      "B. str.format() 和 % 格式化只是语法差异，可以随意替换，没有推荐与不推荐的差别",
+      "C. 格式化日期必须先调用 strftime()，不能在 f'{d:%Y-%m-%d}' 中直接书写格式",
+      "D. f-string 支持格式说明符，例如 f'{x:.2f}' 可以保留两位小数"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "explanation": "f-string 不仅支持变量插值，还支持丰富的格式说明符，如保留小数位数、对齐等；日期格式化也可以直接在 f-string 中使用 %Y-%m-%d 等指令。",
+    "qid": "Q-PY019-001",
+    "source_node_id": "PY-019",
+    "node_id": "PY-019",
+    "hint": ""
+  },
+  {
+    "type": "choice",
+    "question": "关于 Python 字符串格式化方法的选择，以下哪种说法是正确的？",
+    "options": [
+      "A. f-string 只能插入简单变量名，不支持格式说明符",
+      "B. str.format() 和 % 格式化可以随意替换，因为它们的推荐程度无差异",
+      "C. 在 f-string 中格式化日期必须借助 strftime()，不能直接写 %Y-%m-%d",
+      "D. Python 推荐使用 f-string，因为其性能最好、语法更 Pythonic，而 % 格式化是旧式风格，不推荐"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "explanation": "f-string 是 Python 3.6 引入的推荐格式化方式，% 格式化是遗留风格，不推荐使用；f-string 完全支持格式说明符和日期格式化指令。",
+    "qid": "Q-PY019-002",
+    "source_node_id": "PY-019",
+    "node_id": "PY-019",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 的 f-string 中，要将变量 price 显示为保留两位小数的形式，应使用的表达式为_____。",
+    "answer": "{price:.2f}",
+    "difficulty": 1,
+    "explanation": "f-string 中使用冒号引入格式说明符，:.2f 表示浮点数保留两位小数。",
+    "qid": "Q-PY019-003",
+    "source_node_id": "PY-019",
+    "node_id": "PY-019",
+    "hint": ""
+  }
+]

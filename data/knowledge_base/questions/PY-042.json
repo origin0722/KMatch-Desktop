@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于抽象基类(ABC)，以下哪个说法是正确的？",
+    "options": [
+      "A. 抽象基类可以直接被实例化",
+      "B. 子类即使没有实现全部的 @abstractmethod 方法，也可以成功创建实例",
+      "C. 只要类继承自 ABC，就一定是抽象类且无法实例化",
+      "D. 使用 @abstractmethod 声明的方法必须在子类中实现，且抽象类本身不能直接实例化"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "注意抽象类实例化与抽象方法实现之间的关系。",
+    "explanation": "A错误，抽象基类不能直接实例化。B错误，子类若未实现所有@abstractmethod方法，实例化会失败。C错误，只有包含至少一个@abstractmethod的ABC子类才是真正无法实例化的抽象类。D正确，符合ABC的设计契约。",
+    "qid": "Q-PY042-001",
+    "source_node_id": "PY-042",
+    "node_id": "PY-042"
+  },
+  {
+    "type": "fill",
+    "question": "在定义抽象基类时，使用 @_____ 装饰器来声明子类必须实现的方法。",
+    "answer": "abstractmethod",
+    "difficulty": 2,
+    "hint": "从 abc 模块导入的装饰器。",
+    "explanation": "abc模块中的@abstractmethod用于标记抽象方法，强制子类必须实现。",
+    "qid": "Q-PY042-002",
+    "source_node_id": "PY-042",
+    "node_id": "PY-042"
+  },
+  {
+    "type": "code",
+    "question": "编写Python代码，完成以下任务：\n1. 从 abc 模块导入 ABC 和 abstractmethod。\n2. 定义一个抽象基类 Vehicle，包含抽象方法 start_engine()。\n3. 定义一个子类 Car，继承 Vehicle，实现 start_engine() 方法，返回字符串 'Car engine started'。\n4. 尝试直接实例化 Vehicle，捕获 TypeError 异常并打印消息 'Cannot instantiate abstract class'。\n要求代码完整可运行，并展示抽象类作为接口契约的用法。",
+    "answer": "from abc import ABC, abstractmethod\n\nclass Vehicle(ABC):\n    @abstractmethod\n    def start_engine(self):\n        pass\n\nclass Car(Vehicle):\n    def start_engine(self):\n        return 'Car engine started'\n\nif __name__ == '__main__':\n    # 抽象类不可实例化，此处演示异常捕获\n    try:\n        v = Vehicle()\n    except TypeError:\n        print('Cannot instantiate abstract class')\n    \n    # 子类可正常实例化并调用方法\n    car = Car()\n    print(car.start_engine())\n",
+    "difficulty": 4,
+    "hint": "使用 try-except 捕获实例化抽象类时抛出的 TypeError，并确保子类实现了所有抽象方法。",
+    "explanation": "Vehicle 继承自 ABC 且包含 @abstractmethod，因此不能实例化，尝试实例化会抛出 TypeError。Car 正确实现了 start_engine()，因此可以实例化。这体现了 ABC 作为接口契约的作用。",
+    "qid": "Q-PY042-003",
+    "source_node_id": "PY-042",
+    "node_id": "PY-042"
+  }
+]

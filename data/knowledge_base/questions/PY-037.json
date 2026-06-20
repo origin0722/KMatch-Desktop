@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 中的 __init__ 方法，以下哪个说法是正确的？",
+    "options": [
+      "A. __init__ 是构造方法，负责创建实例对象",
+      "B. 可以在 __init__ 方法中通过 return 语句返回一个新的对象来替换当前实例",
+      "C. 在调用类创建对象时，需要显式传递 self 参数，如 ClassName(self, args)",
+      "D. __init__ 方法不能返回除 None 以外的值"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回顾 __init__ 与 __new__ 的分工，以及 __init__ 对返回值的要求。",
+    "explanation": "__init__ 是初始化方法，负责设置实例属性，不允许返回非 None 值（否则会引发 TypeError）。创建实例对象是 __new__ 的工作。调用类时 Python 会自动传入 self，无需显式传递。",
+    "qid": "Q-PY037-001",
+    "source_node_id": "PY-037",
+    "node_id": "PY-037"
+  },
+  {
+    "type": "choice",
+    "question": "关于 __init__ 方法的参数，以下哪个说法是正确的？",
+    "options": [
+      "A. 参数传递时必须显式包含 self，如 ClassName(self, args)",
+      "B. 可以在 __init__ 方法中返回一个新对象来替换实例",
+      "C. 所有参数都必须由调用者提供，不能设置默认值",
+      "D. 可以使用默认参数让某些属性变为可选"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "考虑 __init__ 的参数定义方式与普通函数的异同。",
+    "explanation": "__init__ 的参数可以设置默认值，这与普通函数一样，从而让某些属性成为可选项。显式传递 self 是错误的（Python 自动处理），__init__ 不能返回非 None 值。",
+    "qid": "Q-PY037-002",
+    "source_node_id": "PY-037",
+    "node_id": "PY-037"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 类的实例化过程中，_____ 方法负责创建实例对象，而 __init__ 负责初始化。",
+    "answer": "__new__",
+    "difficulty": 2,
+    "hint": "注意构造过程的两步：先创建，再初始化。",
+    "explanation": "实例化时先调用 __new__ 创建并返回实例对象，然后自动调用 __init__ 对该实例进行初始化。通常无须重写 __new__。",
+    "qid": "Q-PY037-003",
+    "source_node_id": "PY-037",
+    "node_id": "PY-037"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于ETL流程的描述，哪一项是正确的？",
+    "options": [
+      "A. ETL只能从数据库提取数据，无法处理CSV、JSON等文件来源",
+      "B. 数据清洗就是去重，不需要处理缺失值或做类型转换",
+      "C. Load阶段只能写入数据库，不支持写入文件或数据仓库",
+      "D. Transform步骤包括处理缺失值、去重、类型转换和标准化等操作"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "Transform阶段是数据清洗的核心，涵盖多种处理操作。",
+    "explanation": "正确选项D：Transform阶段通常包括处理缺失值、去重、类型转换和标准化等多个方面，而不仅仅局限于去重。A、B、C均为常见错误认知，分别错误地限制了数据源、清洗内容和加载目标。",
+    "qid": "Q-PY084-001",
+    "source_node_id": "PY-084",
+    "node_id": "PY-084"
+  },
+  {
+    "type": "fill",
+    "question": "在流水线模式中，通常使用 _____(extract, transform, load) 将提取、转换和加载步骤串联起来。",
+    "answer": "pipe",
+    "difficulty": 2,
+    "hint": "该函数名常见于函数式编程或数据处理管道。",
+    "explanation": "pipe函数接收多个函数作为参数，并依次调用它们，将前一步的输出作为下一步的输入，实现流水线模式。",
+    "qid": "Q-PY084-002",
+    "source_node_id": "PY-084",
+    "node_id": "PY-084"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个完整的ETL流水线，实现以下功能：\n1. extract: 从CSV文件'sales.csv'中读取数据（假设该文件存在）；\n2. transform: 对数据中的数值列缺失值用0填充，并去除完全重复的行；\n3. load: 将清洗后的数据加载到SQLite数据库'etl.db'的表'sales_clean'中（如果表已存在则替换）。\n要求使用pandas和SQLAlchemy，并将提取、转换、加载封装为函数，通过一个pipe函数将三者串联执行。写出完整可运行代码。",
+    "answer": "import pandas as pd\nfrom sqlalchemy import create_engine\n\ndef extract():\n    return pd.read_csv('sales.csv')\n\ndef transform(df):\n    numeric_cols = df.select_dtypes(include='number').columns\n    df[numeric_cols] = df[numeric_cols].fillna(0)\n    df.drop_duplicates(inplace=True)\n    return df\n\ndef load(df):\n    engine = create_engine('sqlite:///etl.db')\n    df.to_sql('sales_clean', engine, if_exists='replace', index=False)\n\ndef pipe(*funcs):\n    def runner(data=None):\n        for func in funcs:\n            data = func(data)\n        return data\n    return runner\n\nif __name__ == '__main__':\n    pipeline = pipe(extract, transform, load)\n    pipeline()",
+    "difficulty": 4,
+    "hint": "pipe函数可以设计为闭包，依次调用传入的函数。注意处理缺失值时区分数值列。",
+    "explanation": "代码定义了extract、transform、load三个函数，并利用pipe函数将它们串联为流水线。transform中选择数值列进行缺失值填充并去重，load使用SQLAlchemy引擎将DataFrame写入SQLite。这种结构体现了ETL的核心思想。",
+    "qid": "Q-PY084-003",
+    "source_node_id": "PY-084",
+    "node_id": "PY-084"
+  }
+]

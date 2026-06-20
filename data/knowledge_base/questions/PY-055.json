@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 多线程编程，以下哪一项说法是正确的？",
+    "options": [
+      "A. Python 的 Queue 模块提供了线程安全的队列，无需额外加锁即可在多个线程间安全传递数据",
+      "B. Python 多线程可以让多个线程同时执行 Python 字节码，从而加速 CPU 密集型任务",
+      "C. 在 I/O 密集型任务中，GIL 同样会阻塞其他线程，因此多线程无法改善 I/O 性能",
+      "D. 使用 Queue 进行线程间数据传递时，仍需手动加锁以保证线程安全"
+    ],
+    "answer": "A",
+    "difficulty": 3,
+    "hint": "思考 GIL 的影响范围以及 Queue 的内置线程安全性。",
+    "explanation": "选项 A 正确：Queue 内部已实现必要的锁，是线程安全的。选项 B 错误：由于 GIL 的存在，同一时刻只有一个线程能执行 Python 字节码，多线程无法加速 CPU 密集型任务；选项 C 错误：GIL 在线程执行 I/O 操作时会释放，因此 I/O 密集型任务能通过多线程获得性能提升；选项 D 错误：Queue 自身是线程安全的，不需要用户手动加锁。",
+    "qid": "Q-PY055-001",
+    "source_node_id": "PY-055",
+    "node_id": "PY-055"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 多线程编程中，为了保护共享数据避免竞态条件，可以使用 threading 模块提供的 ______ 对象，并通过 with 语句自动获取和释放锁。",
+    "answer": "Lock",
+    "difficulty": 2,
+    "hint": "该对象名称首字母大写，是 threading 模块中用于实现互斥锁的类。",
+    "explanation": "threading.Lock 是实现互斥锁的类，通过 `with lock:` 上下文管理器可以自动调用 acquire() 和 release()，确保锁的正确管理。",
+    "qid": "Q-PY055-002",
+    "source_node_id": "PY-055",
+    "node_id": "PY-055"
+  },
+  {
+    "type": "code",
+    "question": "编写一个多线程程序，模拟 I/O 密集型任务：给定一个 URL 列表，使用 `ThreadPoolExecutor`（最多 3 个工作线程）并发“下载”每个 URL（用 `time.sleep(0.1)` 模拟 I/O 操作，返回 URL 字符串的长度作为内容大小）。要求：\n1. 使用 `queue.Queue` 收集每个任务的执行结果（元组形式：`(url, content_length)`）。\n2. 使用 `threading.Lock` 保护一个共享计数器，统计成功完成的任务数量。\n3. 主线程在所有任务完成后，从队列取出全部结果，打印结果列表和成功计数。\n请给出完整可运行的 Python 代码（包含必要的 import）。",
+    "answer": "import time\nimport threading\nfrom concurrent.futures import ThreadPoolExecutor\nfrom queue import Queue\n\ndef fetch(url):\n    # 模拟 I/O 操作\n    time.sleep(0.1)\n    return len(url)\n\ndef download(url, results_queue, success_lock, success_counter):\n    try:\n        content_length = fetch(url)\n        results_queue.put((url, content_length))\n        with success_lock:\n            success_counter[0] += 1\n    except Exception as e:\n        print(f\"Error fetching {url}: {e}\")\n\ndef main():\n    urls = [\"http://example.com\", \"http://test.org\", \"http://sample.net\",\n            \"http://demo.io\", \"http://foo.bar\"]\n    results_queue = Queue()\n    success_lock = threading.Lock()\n    success_counter = [0]  # 使用列表以便在函数内部修改\n\n    with ThreadPoolExecutor(max_workers=3) as executor:\n        for url in urls:\n            executor.submit(download, url, results_queue, success_lock, success_counter)\n\n    # 所有任务完成后，从队列中取出结果\n    results = []\n    while not results_queue.empty():\n        results.append(results_queue.get_nowait())\n\n    print(\"Results:\", results)\n    print(\"Success count:\", success_counter[0])\n\nif __name__ == \"__main__\":\n    main()",
+    "difficulty": 5,
+    "hint": "注意线程间共享变量的修改方式，以及 `Queue` 在任务完成后可安全取出所有结果。",
+    "explanation": "代码使用 ThreadPoolExecutor 并发执行下载任务；每个任务将结果放入 Queue（线程安全），并通过 Lock 保护共享计数器；主线程在 with 块结束后（executor.shutdown 已调用）从队列中读取所有结果。这综合了线程池、Queue 和 Lock 的典型用法。",
+    "qid": "Q-PY055-003",
+    "source_node_id": "PY-055",
+    "node_id": "PY-055"
+  }
+]

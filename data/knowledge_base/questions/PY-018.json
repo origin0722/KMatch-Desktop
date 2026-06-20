@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于生成器表达式，以下哪个说法是正确的？",
+    "options": [
+      "A. 生成器表达式使用方括号包裹，如 [x for x in range(10)]",
+      "B. 生成器表达式的结果可以直接通过索引访问，如 g = (x for x in range(10)); print(g[0])",
+      "C. 在生成器表达式中，if 筛选条件可以放在 for 之前并包含 else 分支",
+      "D. 生成器表达式惰性求值，适合大数据量处理，节省内存"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "生成器表达式使用圆括号，是迭代器，不支持索引，惰性求值。",
+    "explanation": "生成器表达式使用圆括号，如 (x**2 for x in range(10))，惰性求值，元素按需生成，适合大数据量以节省内存。方括号是列表推导式，生成器表达式不能索引，if 筛选应放在 for 之后且不含 else。",
+    "qid": "Q-PY018-001",
+    "source_node_id": "PY-018",
+    "node_id": "PY-018"
+  },
+  {
+    "type": "choice",
+    "question": "关于列表推导式和生成器表达式，以下哪个说法符合 Python 最佳实践？",
+    "options": [
+      "A. 生成器表达式可以用方括号创建，[x for x in range(10)] 是生成器表达式",
+      "B. 可以索引生成器表达式的结果，如 g = (x for x in range(10)); print(g[0])",
+      "C. 在列表推导式中，if 筛选可以放在 for 之前并包含 else，如 [x if x>0 for x in data]",
+      "D. 嵌套推导式最多两层，超过应改用传统循环"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "嵌套过深会严重降低可读性，应控制在两层以内。",
+    "explanation": "嵌套推导式不应超过两层，否则可读性差，应改用传统 for 循环。A 错误：方括号创建的是列表推导式，不是生成器表达式。B 错误：生成器表达式是惰性迭代器，不支持索引。C 错误：if 筛选必须放在 for 之后，且不能有 else；if-else 表达式应放在 for 之前且必须包含 else。",
+    "qid": "Q-PY018-002",
+    "source_node_id": "PY-018",
+    "node_id": "PY-018"
+  },
+  {
+    "type": "fill",
+    "question": "处理大数据量时，为节省内存应使用 _____ 来惰性生成数据，而不是列表推导式。",
+    "answer": "生成器表达式",
+    "difficulty": 2,
+    "hint": "它使用圆括号创建，元素按需产生。",
+    "explanation": "生成器表达式惰性求值，不会一次性创建所有元素，因此适合处理大数据集以节省内存。",
+    "qid": "Q-PY018-003",
+    "source_node_id": "PY-018",
+    "node_id": "PY-018"
+  }
+]

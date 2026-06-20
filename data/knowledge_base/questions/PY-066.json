@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于Pandas数据清洗方法的说法中，哪一个是正确的？",
+    "options": [
+      "A. df.dropna()会原地删除DataFrame中的缺失值行，无需赋值",
+      "B. df.fillna(value)会直接修改原DataFrame",
+      "C. df.drop_duplicates()默认根据索引值判断重复",
+      "D. df.isnull().sum()可以统计每列的缺失值数量"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "explanation": "A、B、C均为常见错误认知：dropna()默认返回新DataFrame，需赋值才生效；fillna()默认inplace=False，不修改原DataFrame；drop_duplicates()默认根据所有列的值判断重复，而非索引。D正确，isnull().sum()是统计缺失值的标准方法。",
+    "qid": "Q-PY066-001",
+    "source_node_id": "PY-066",
+    "node_id": "PY-066",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在Pandas中，要删除DataFrame中的重复行，应使用 _____ 方法。",
+    "answer": "drop_duplicates()",
+    "difficulty": 2,
+    "explanation": "df.drop_duplicates() 用于删除重复的行，默认根据所有列的值判断是否重复，返回去重后的新DataFrame。",
+    "qid": "Q-PY066-002",
+    "source_node_id": "PY-066",
+    "node_id": "PY-066",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "编写函数 clean_data(df)，输入为一个包含列 'A'、'B'、'C' 的DataFrame，其中可能存在缺失值(NaN)和重复行。要求完成以下清洗步骤：\n1. 删除所有重复行；\n2. 用0填充所有缺失值；\n3. 将列 'B' 的数据类型转换为整数(int)；\n4. 打印各列的缺失值数量（应为全部为0）；\n5. 返回清洗后的DataFrame。\n请写出完整可运行的代码，包括必要的 import。",
+    "answer": "import pandas as pd\n\ndef clean_data(df):\n    # 删除重复行\n    df_cleaned = df.drop_duplicates()\n    # 填充缺失值为0\n    df_cleaned = df_cleaned.fillna(0)\n    # 转换'B'列为整数类型\n    df_cleaned['B'] = df_cleaned['B'].astype(int)\n    # 打印缺失值数量\n    print(df_cleaned.isnull().sum())\n    return df_cleaned",
+    "difficulty": 4,
+    "hint": "注意 drop_duplicates、fillna、astype 和 isnull().sum() 的组合使用，且各方法需赋值以保留结果。",
+    "explanation": "该题综合了 drop_duplicates()、fillna(0)、astype(int) 和 isnull().sum() 四个关键操作，考查链式数据清洗和类型转换的能力。",
+    "qid": "Q-PY066-003",
+    "source_node_id": "PY-066",
+    "node_id": "PY-066"
+  }
+]

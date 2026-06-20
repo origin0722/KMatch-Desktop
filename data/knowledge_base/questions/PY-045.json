@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于迭代器与生成器的描述，正确的是：",
+    "options": [
+      "A. 迭代器对象的 __iter__ 方法用于获取下一项元素",
+      "B. 生成器函数被调用时会立即执行函数体直到遇到 yield 语句",
+      "C. 生成器被遍历完所有产出后，再次遍历会重新从第一个 yield 开始执行",
+      "D. 生成器是特殊的迭代器，惰性求值，遍历完后再次遍历不产生值"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回顾生成器的惰性求值特性和遍历完后的行为。",
+    "explanation": "A错误，__iter__返回迭代器自身，__next__获取下一项；B错误，调用生成器函数返回生成器对象，不立即执行；C错误，生成器遍历完后不再产生值；D正确，生成器实现了迭代器协议，惰性求值，耗尽后再次迭代无输出。",
+    "qid": "Q-PY045-001",
+    "source_node_id": "PY-045",
+    "node_id": "PY-045"
+  },
+  {
+    "type": "fill",
+    "question": "在生成器函数中，使用 _____ 语句可以暂停函数执行并向调用者返回一个值，之后可以从暂停处继续执行。",
+    "answer": "yield",
+    "difficulty": 3,
+    "hint": "这是 Python 生成器的核心关键字。",
+    "explanation": "yield 关键字用于生成器函数，当执行到 yield 时，函数返回该值并暂停，下次调用 next() 时从暂停处继续。",
+    "qid": "Q-PY045-002",
+    "source_node_id": "PY-045",
+    "node_id": "PY-045"
+  },
+  {
+    "type": "code",
+    "question": "编写一个生成器函数 flatten(nested_list)，接收一个嵌套列表作为参数，列表中的每个元素可能是整数或者另一个列表（可能多层嵌套）。要求使用 yield 和 yield from 实现惰性地依次产出所有整数。\n\n示例输入：\nnested = [[1,2,[3]],4,[5,[6]]]\n\n运行 for num in flatten(nested): print(num) 输出：\n1\n2\n3\n4\n5\n6\n\n并展示生成器遍历完后再次遍历不会产出任何元素。",
+    "answer": "def flatten(nested_list):\n    for item in nested_list:\n        if isinstance(item, list):\n            yield from flatten(item)\n        else:\n            yield item\n\n# 演示\nnested = [[1,2,[3]],4,[5,[6]]]\ngen = flatten(nested)\nprint('第一次遍历:')\nfor num in gen:\n    print(num)\nprint('遍历完后再次遍历:')\nfor num in gen:\n    print(num)  # 无输出",
+    "difficulty": 5,
+    "hint": "使用递归和 yield from 委托给子生成器。",
+    "explanation": "该生成器递归检查每个元素，若是列表则用 yield from 委托给自身生成的子生成器，惰性产出所有叶子整数。演示部分展示了耗尽后再次遍历无输出。",
+    "qid": "Q-PY045-003",
+    "source_node_id": "PY-045",
+    "node_id": "PY-045"
+  }
+]

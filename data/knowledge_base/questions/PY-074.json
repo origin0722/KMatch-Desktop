@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 SQLAlchemy ORM 的说法，下列哪一项是正确的？",
+    "options": [
+      "A. 调用 declarative_base() 会直接在数据库中创建对应的表",
+      "B. session.add(obj) 执行后对象立即被写入数据库",
+      "C. relationship() 定义的关联会自动在表结构中创建外键约束，不需要显式指定 ForeignKey",
+      "D. session.query().filter() 返回的是可迭代的查询对象，而非普通列表"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "explanation": "D 正确，Query 对象是可迭代的查询构建器，并非普通 Python 列表，故不能随意索引。A 错误，declarative_base() 只是创建用于定义模型的基类，表结构需要调用 create_all() 后才在数据库中创建。B 错误，session.add() 将对象加入会话，必须调用 commit() 才会持久化到数据库。C 错误，relationship() 定义了 ORM 层面的关联，但数据库中的外键约束需要通过 Column(ForeignKey(...)) 显式指定。",
+    "qid": "Q-PY074-001",
+    "source_node_id": "PY-074",
+    "node_id": "PY-074",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在 SQLAlchemy ORM 中，定义模型之间的关联关系需使用______() 函数。",
+    "answer": "relationship",
+    "difficulty": 2,
+    "explanation": "根据 key_points，relationship() 用于定义模型之间的对象关联，通常与 ForeignKey 配合使用。",
+    "qid": "Q-PY074-002",
+    "source_node_id": "PY-074",
+    "node_id": "PY-074",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "请使用 SQLAlchemy ORM 编写一个完整脚本：定义 User 模型，包含 id（Integer，主键）、name（String）、email（String）字段；创建 SQLite 内存数据库；插入两条记录（'Alice', 'alice@example.com' 和 'Bob', 'bob@example.com'）；提交事务；然后查询所有 name 为 'Alice' 的记录并打印其 email。",
+    "answer": "from sqlalchemy import create_engine, Column, Integer, String\nfrom sqlalchemy.ext.declarative import declarative_base\nfrom sqlalchemy.orm import sessionmaker\n\nBase = declarative_base()\n\nclass User(Base):\n    __tablename__ = 'users'\n    id = Column(Integer, primary_key=True)\n    name = Column(String)\n    email = Column(String)\n\nengine = create_engine('sqlite:///:memory:')\nBase.metadata.create_all(engine)\nSession = sessionmaker(bind=engine)\nsession = Session()\n\nalice = User(name='Alice', email='alice@example.com')\nbob = User(name='Bob', email='bob@example.com')\nsession.add(alice)\nsession.add(bob)\nsession.commit()\n\nresults = session.query(User).filter(User.name == 'Alice').all()\nfor user in results:\n    print(user.email)",
+    "difficulty": 4,
+    "hint": "记得先创建基类、定义模型类，然后创建引擎、绑定会话，添加后 commit()，查询时使用 filter() 并调用 all() 获取结果。",
+    "explanation": "该代码综合运用了 declarative_base() 创建基类、Column/Integer/String 定义字段、session.add() 与 commit() 持久化对象，以及 session.query(Model).filter(...) 进行查询过滤，覆盖了多个核心知识点。",
+    "qid": "Q-PY074-003",
+    "source_node_id": "PY-074",
+    "node_id": "PY-074"
+  }
+]

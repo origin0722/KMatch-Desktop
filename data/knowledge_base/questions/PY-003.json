@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于Python字符串的描述，正确的是？",
+    "options": [
+      "A. s.replace('a','b') 会修改原字符串 s",
+      "B. 字符串是不可变的，所有修改操作都会返回新字符串",
+      "C. 切片 s[1:3] 返回索引 1 到 3 的字符，包含索引 3",
+      "D. 如果找不到子串，.find() 方法返回 None"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "explanation": "字符串不可变，replace等操作返回新字符串。A错误，C错误因为切片不包含结束索引，D错误因为find返回-1。",
+    "qid": "Q-PY003-001",
+    "source_node_id": "PY-003",
+    "node_id": "PY-003",
+    "hint": ""
+  },
+  {
+    "type": "choice",
+    "question": "关于字符串切片操作，以下哪项是正确的？",
+    "options": [
+      "A. 切片 s[1:3] 返回索引 1 和 2 的字符，不包含索引 3",
+      "B. 连接字符串列表应使用列表对象 .join(连接符)",
+      "C. s.replace('a','b') 会直接修改原字符串 s",
+      "D. .find() 方法在未找到子串时返回 None"
+    ],
+    "answer": "A",
+    "difficulty": 1,
+    "explanation": "切片s[start:stop]包含start不包含stop。B错误，正确是'连接符'.join(列表)；C错误，replace不修改原字符串；D错误，find返回-1。",
+    "qid": "Q-PY003-002",
+    "source_node_id": "PY-003",
+    "node_id": "PY-003",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在Python中，使用字符串的 _____ 方法可以去除首尾空白字符。",
+    "answer": ".strip()",
+    "difficulty": 1,
+    "hint": "该方法返回去除前后空白的新字符串。",
+    "explanation": ".strip() 方法用于删除字符串头尾的空白符号（包括空格、制表符、换行符等），返回新字符串。",
+    "qid": "Q-PY003-003",
+    "source_node_id": "PY-003",
+    "node_id": "PY-003"
+  }
+]

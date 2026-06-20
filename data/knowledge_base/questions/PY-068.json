@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Seaborn 的说法，下列哪一项是正确的？",
+    "options": [
+      "A. Seaborn 是完全独立的可视化库，无需安装或导入 Matplotlib 即可使用",
+      "B. sns.heatmap() 可以直接传入原始 DataFrame 并自动计算出相关性矩阵再绘图",
+      "C. sns.pairplot() 的 hue 参数可以接受任意数值型列名来生成渐变色",
+      "D. Seaborn 基于 Matplotlib，提供了更高阶的统计可视化封装"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆 Seaborn 与 Matplotlib 的关系及其设计目标。",
+    "explanation": "Seaborn 建立在 Matplotlib 之上，是对 Matplotlib 的更高阶封装，因此 A 错误；heatmap 需显式传入相关系数矩阵，不能自动从原始 DataFrame 计算，故 B 错误；pairplot 的 hue 参数通常用于分类变量，不能直接对数值列产生渐变色，C 错误。",
+    "qid": "Q-PY068-001",
+    "source_node_id": "PY-068",
+    "node_id": "PY-068"
+  },
+  {
+    "type": "fill",
+    "question": "使用 Seaborn 绘制箱线图，展示分类变量 'cat' 不同取值下数值变量 'val' 的分布，应调用 _____ 函数。",
+    "answer": "sns.boxplot()",
+    "difficulty": 3,
+    "hint": "回忆 key_points 中关于箱线图的函数名称。",
+    "explanation": "sns.boxplot(x='cat', y='val') 用于绘制按分类变量分组的箱线图，展示数值分布。",
+    "qid": "Q-PY068-002",
+    "source_node_id": "PY-068",
+    "node_id": "PY-068"
+  },
+  {
+    "type": "code",
+    "question": "给定一个 Pandas DataFrame df，包含数值列 'A','B','C','D' 和分类列 'category'。请编写代码完成以下任务：\n1. 设置 Seaborn 全局样式为 'whitegrid'；\n2. 绘制 df 数值列的相关性热力图（需要先计算相关系数矩阵）；\n3. 绘制箱线图展示不同 category 下列 'A' 的分布；\n4. 绘制成对关系矩阵图，按 category 列着色。\n要求导入必要的库，并确保图表分别显示。",
+    "answer": "import matplotlib.pyplot as plt\nimport seaborn as sns\nimport pandas as pd\n\n# 假设 df 已存在，此处仅作演示，实际运行时需提供 df\n# df = pd.DataFrame(...)\n\nsns.set_theme(style='whitegrid')\n\n# 1. 相关性热力图\ncorr_matrix = df[['A', 'B', 'C', 'D']].corr()\nplt.figure()\nsns.heatmap(corr_matrix, annot=True, cmap='coolwarm')\nplt.title('Correlation Heatmap')\nplt.show()\n\n# 2. 箱线图\nplt.figure()\nsns.boxplot(x='category', y='A', data=df)\nplt.title('Boxplot of A by Category')\nplt.show()\n\n# 3. 成对关系矩阵图\nsns.pairplot(df, vars=['A', 'B', 'C', 'D'], hue='category')\nplt.show()\n",
+    "difficulty": 4,
+    "hint": "注意 heatmap 需要先通过 .corr() 计算相关系数矩阵，pairplot 可以通过 vars 指定列。",
+    "explanation": "代码综合运用了 set_theme 设置全局样式，使用 heatmap 绘制相关性热力图（传入 corr() 的结果），boxplot 展示分组分布，pairplot 绘制成对关系并按 category 着色。",
+    "qid": "Q-PY068-003",
+    "source_node_id": "PY-068",
+    "node_id": "PY-068"
+  }
+]

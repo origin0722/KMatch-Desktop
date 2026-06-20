@@ -1,0 +1,43 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 API 性能优化，下列说法正确的是？",
+    "options": [
+      "A. 为所有查询都添加 select_related 或 prefetch_related 就能彻底解决 N+1 查询问题并提升性能。",
+      "B. Redis 缓存了热点数据后，将 TTL 设置得越长越好，以最大化缓存命中率。",
+      "C. 连接池的 pool_size 配置得越大，数据库的并发处理能力就越强。",
+      "D. select_related 适用于外键/一对一关联预加载，prefetch_related 适用于多对多/反向关联，合理使用可避免 N+1 查询。"
+    ],
+    "answer": "D",
+    "difficulty": 4,
+    "hint": "注意 select_related 和 prefetch_related 的适用场景，以及缓存、连接池的合理配置。",
+    "explanation": "A 错误，因为无差别添加预加载可能导致不必要的 JOIN 或多余查询，反而降低性能；B 错误，过长 TTL 会浪费内存并可能导致数据过期不及时；C 错误，过大连接池会消耗数据库连接资源，可能超过数据库最大连接数导致拒绝连接；D 正确，正确使用 select_related 和 prefetch_related 能有效减少查询次数。",
+    "qid": "Q-PY088-001",
+    "source_node_id": "PY-088",
+    "node_id": "PY-088"
+  },
+  {
+    "type": "fill",
+    "question": "在 SQLAlchemy 中，配置数据库连接池时，用于指定连接池最大固定连接数的参数是______。",
+    "options": [],
+    "answer": "pool_size",
+    "difficulty": 2,
+    "hint": "它常与 max_overflow 配合使用。",
+    "explanation": "SQLAlchemy 的 create_engine 函数中，pool_size 参数设置连接池中保持的连接数（默认 5），max_overflow 设置超出后的最大附加连接数，合理配置可复用连接，避免频繁创建销毁。",
+    "qid": "Q-PY088-002",
+    "source_node_id": "PY-088",
+    "node_id": "PY-088"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个 Flask 应用，实现一个 GET /users/<int:user_id>/orders 接口，返回指定用户及其所有订单。要求：\n1) 使用 SQLAlchemy 模型 User 与 Order (一对多关系，Order 有外键指向 User)，查询时预加载关联订单以避免 N+1 问题；\n2) 使用 Redis 缓存查询结果 (键为 `user_orders:<user_id>`，过期时间 60 秒)；\n3) 对所有响应启用 gzip 压缩。\n写出完整可运行代码，包含必要的 import、模型定义、路由及缓存逻辑。",
+    "options": [],
+    "answer": "import json\nfrom flask import Flask, jsonify\nfrom flask_sqlalchemy import SQLAlchemy\nfrom flask_redis import FlaskRedis\nfrom flask_compress import Compress\nfrom sqlalchemy.orm import joinedload\n\napp = Flask(__name__)\n\n# 配置\napp.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'\napp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False\napp.config['REDIS_URL'] = 'redis://localhost:6379/0'\n\ndb = SQLAlchemy(app)\nredis_client = FlaskRedis(app)\ncompress = Compress(app)\n\n# 模型定义\nclass User(db.Model):\n    __tablename__ = 'user'\n    id = db.Column(db.Integer, primary_key=True)\n    name = db.Column(db.String(50))\n    orders = db.relationship('Order', backref='user', lazy=True)\n\nclass Order(db.Model):\n    __tablename__ = 'order'\n    id = db.Column(db.Integer, primary_key=True)\n    item = db.Column(db.String(100))\n    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))\n\n# 路由\n@app.route('/users/<int:user_id>/orders')\n@compress.compressed()\ndef get_user_orders(user_id):\n    # 尝试从 Redis 获取缓存\n    cache_key = f'user_orders:{user_id}'\n    cached = redis_client.get(cache_key)\n    if cached:\n        return jsonify(json.loads(cached))\n    \n    # 查询数据库，使用 joinedload 预加载订单，避免 N+1\n    user = User.query.options(joinedload(User.orders)).get(user_id)\n    if not user:\n        return jsonify({'error': 'User not found'}), 404\n    \n    # 构建响应数据\n    data = {\n        'id': user.id,\n        'name': user.name,\n        'orders': [{'id': o.id, 'item': o.item} for o in user.orders]\n    }\n    # 存入 Redis，设置过期时间 60 秒\n    redis_client.setex(cache_key, 60, json.dumps(data))\n    return jsonify(data)\n\nif __name__ == '__main__':\n    app.run(debug=True)",
+    "difficulty": 5,
+    "hint": "使用 joinedload 预加载关联对象，Flask-Compress 的 @compress.compressed() 装饰器启用响应压缩，redis_client.setex 设置带 TTL 的缓存。",
+    "explanation": "1) SQLAlchemy 使用 joinedload 生成 JOIN 查询，一次性获取用户及其所有订单，避免懒加载导致的 N+1 问题；2) 优先读取 Redis 缓存，命中则直接返回，未命中查询数据库后将结果序列化存入 Redis，并设置 60 秒过期，减轻数据库压力；3) 通过 Flask-Compress 中间件和 @compress.compressed() 装饰器，自动对响应进行 gzip 压缩，减少传输体积。该代码综合了数据库查询优化、缓存和响应压缩三个 API 性能优化关键点。",
+    "qid": "Q-PY088-003",
+    "source_node_id": "PY-088",
+    "node_id": "PY-088"
+  }
+]

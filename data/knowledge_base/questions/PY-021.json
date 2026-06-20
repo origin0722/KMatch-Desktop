@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于队列的实现，下列哪项描述是正确的？",
+    "options": [
+      "A. 使用列表的 pop(0) 方法可以实现高效的队列。",
+      "B. collections.deque 的 popleft() 操作时间复杂度为 O(n)。",
+      "C. 深度优先搜索（DFS）通常使用队列来实现。",
+      "D. 使用 collections.deque 的 popleft() 方法实现队列出队操作的时间复杂度为 O(1)。"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆 deque 的两个关键方法：append() 和 popleft() 的时间复杂度。",
+    "explanation": "列表的 pop(0) 会移动后续所有元素，时间复杂度为 O(n)；collections.deque 是双端队列，popleft() 为 O(1)；DFS 使用栈（LIFO）而非队列（FIFO）。因此只有 D 正确。",
+    "qid": "Q-PY021-001",
+    "source_node_id": "PY-021",
+    "node_id": "PY-021"
+  },
+  {
+    "type": "choice",
+    "question": "关于栈，下列说法正确的是？",
+    "options": [
+      "A. 栈是先进先出（FIFO）的数据结构。",
+      "B. 深度优先搜索（DFS）通常使用队列来实现。",
+      "C. collections.deque 的 popleft() 操作时间复杂度为 O(n)。",
+      "D. 栈是后进先出（LIFO）的数据结构，可使用列表的 append() 和 pop() 模拟。"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "栈的核心操作是在同一端进行添加和删除。",
+    "explanation": "栈遵循 LIFO 原则，Python 中可用列表的 append() 和 pop() 高效模拟；A 错误地将栈描述为 FIFO；B 中 DFS 使用栈；C 中 deque 的 popleft() 是 O(1)。",
+    "qid": "Q-PY021-002",
+    "source_node_id": "PY-021",
+    "node_id": "PY-021"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，使用列表模拟栈时，入栈（push）操作通常调用列表的 _____ 方法。",
+    "answer": "append",
+    "difficulty": 2,
+    "hint": "该方法将元素添加到列表末尾，正好对应栈顶。",
+    "explanation": "列表的 append() 方法在末尾添加元素，对应压栈；pop() 从末尾移除元素，对应出栈，两者组合实现了 LIFO 栈。",
+    "qid": "Q-PY021-003",
+    "source_node_id": "PY-021",
+    "node_id": "PY-021"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于配置外部化和分层配置，以下说法正确的是：",
+    "options": [
+      "A. 配置外部化要求所有配置项都必须通过环境变量提供，不允许使用默认值。",
+      "B. 使用 yaml.load 可以直接加载任意 YAML 文件，与 yaml.safe_load 一样安全。",
+      "C. Pydantic 的 BaseSettings 只能从环境变量加载配置，无法与 YAML 或 JSON 文件结合使用。",
+      "D. 推荐使用层级配置：默认值 → 配置文件 → 环境变量 → 命令行参数，内层可覆盖外层。"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "思考配置优先级和安全性。",
+    "explanation": "A错：配置外部化不排斥默认值，分层配置中默认值是重要一环。B错：yaml.load 可执行任意代码，不安全，应使用 yaml.safe_load。C错：BaseSettings 虽然原生加载环境变量，但可以通过构造函数接受字典等数据，结合文件加载使用。D正确描述了推荐的配置覆盖顺序。",
+    "qid": "Q-PY079-001",
+    "source_node_id": "PY-079",
+    "node_id": "PY-079"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，为了安全地加载 YAML 配置文件，应该使用 _____ 函数。",
+    "answer": "yaml.safe_load",
+    "difficulty": 2,
+    "hint": "该函数名以 safe 开头。",
+    "explanation": "根据 key_point，YAML 可读性最好，加载时使用 yaml.safe_load(f) 以避免不安全的反序列化风险。",
+    "qid": "Q-PY079-002",
+    "source_node_id": "PY-079",
+    "node_id": "PY-079"
+  },
+  {
+    "type": "code",
+    "question": "编写一个配置加载模块，实现以下功能：\n1. 从指定 YAML 配置文件（如 'config.yaml'）读取默认配置，YAML 内容为键值对。\n2. 读取系统环境变量中以前缀 'APP_' 开头的变量，去掉前缀后将变量名转为小写，作为配置项覆盖 YAML 中的值（如果该配置项存在）。\n3. 使用 Pydantic 的 BaseSettings 进行类型安全验证，要求必须存在 'host' (str) 和 'port' (int) 配置项，并提供默认值：host='localhost', port=8000。\n4. 定义加载函数 load_settings(config_path: str) -> Settings，返回配置对象。\n编写完整可运行的 Python 代码（包含必要的 import），假设环境中已有 PyYAML 和 pydantic-settings。",
+    "answer": "import os\nimport yaml\nfrom pydantic_settings import BaseSettings\n\n\nclass Settings(BaseSettings):\n    host: str = 'localhost'\n    port: int = 8000\n\n\ndef load_settings(config_path: str) -> Settings:\n    with open(config_path, 'r') as f:\n        yaml_config = yaml.safe_load(f)  # 安全加载 YAML\n    env_prefix = 'APP_'\n    # 环境变量覆盖（优先级高于 YAML）\n    for key, value in os.environ.items():\n        if key.startswith(env_prefix):\n            config_key = key[len(env_prefix):].lower()\n            if config_key in Settings.model_fields:\n                yaml_config[config_key] = value\n    # BaseSettings 自动进行类型转换与验证\n    return Settings(**yaml_config)\n",
+    "difficulty": 4,
+    "hint": "注意使用 yaml.safe_load 保证安全，利用 BaseSettings 的 model_fields（或 __fields__）检查有效配置项，环境变量值均为字符串，但 pydantic 会自动转换为目标类型。",
+    "explanation": "代码综合了多个 key_points：使用 yaml.safe_load 从文件加载配置；通过环境变量实现分层覆盖（默认值→YAML→环境变量）；采用 BaseSettings 进行类型安全验证与默认值设置；启动时检查必要配置项的存在性（若 YAML 和环境变量均未提供，pydantic 会抛出 ValidationError）。",
+    "qid": "Q-PY079-003",
+    "source_node_id": "PY-079",
+    "node_id": "PY-079"
+  }
+]

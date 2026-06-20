@@ -1,0 +1,64 @@
+{
+  "$schema": "profile_schema.json",
+  "profile_id": "UP-ADV-001",
+  "name": "想进阶后端的老赵",
+  "created_at": "2026-07-01T10:00:00Z",
+  "type": "进阶学习者",
+  "description": "有扎实 Python 基础的大三学生，做过课程项目和个人博客，能独立写小型应用。目标是提升代码架构能力和工程素养，学习 FastAPI + Docker 全栈部署。",
+  "demographics": {
+    "age_range": "18-25",
+    "education": "本科在读（大三）",
+    "major": "软件工程",
+    "programming_experience_months": 18,
+    "python_experience_months": 8,
+    "previously_learned_languages": ["Java", "JavaScript", "C"]
+  },
+  "theory_level": 3,
+  "practical_level": 4,
+  "learning_style": "kinesthetic",
+  "target_direction": "Python 后端开发进阶（FastAPI + Docker + 部署）",
+  "preferred_pace": "fast",
+  "time_per_week": 10,
+  "known_topics": [
+    {"node_id": "PY-001", "mastery": 0.95, "last_test_score": 9.5},
+    {"node_id": "PY-002", "mastery": 0.92, "last_test_score": 9.2},
+    {"node_id": "PY-003", "mastery": 0.90, "last_test_score": 9.0},
+    {"node_id": "PY-012", "mastery": 0.88, "last_test_score": 8.8},
+    {"node_id": "PY-015", "mastery": 0.85, "last_test_score": 8.5},
+    {"node_id": "PY-020", "mastery": 0.82, "last_test_score": 8.2}
+  ],
+  "weak_topics": [
+    {"node_id": "PY-050", "mastery": 0.35, "error_patterns": ["装饰器闭包变量作用域错误"]},
+    {"node_id": "PY-055", "mastery": 0.30, "error_patterns": ["__init__ vs __new__ 混淆"]},
+    {"node_id": "PY-060", "mastery": 0.20, "error_patterns": ["异步编程 await/async 执行顺序理解错误"]}
+  ],
+  "weakness_areas": [
+    "有项目经验但主要用 Java，Python 生态熟悉度不足",
+    "对异步编程、高性能 API 设计缺乏经验",
+    "Docker 和部署流程不熟悉"
+  ],
+  "raw_assessment_data": {
+    "theory_test": {
+      "total_questions": 10,
+      "correct": 8,
+      "answers": []
+    },
+    "practical_test": {
+      "total_exercises": 5,
+      "completed": 5,
+      "average_score": 8.0
+    },
+    "learning_style_quiz": {
+      "visual": 1,
+      "auditory": 1,
+      "read_write": 2,
+      "kinesthetic": 3
+    }
+  },
+  "learning_history": [],
+  "recommended_path": {
+    "current_node": "PY-050",
+    "next_nodes": ["PY-055", "PY-060", "PY-065"],
+    "estimated_completion_weeks": 3
+  }
+}

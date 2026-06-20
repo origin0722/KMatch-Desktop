@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "在构建 FastAPI + SQLAlchemy 的 CRUD 应用时，以下哪种做法是正确的？",
+    "options": [
+      "A. 查询不存在的资源时，需要在路由中显式捕获异常并返回 404 响应",
+      "B. 数据库查询不存在的资源时会自动触发异常，FastAPI 会自动将其转换为 404 响应",
+      "C. 实现分页查询只需要使用 query.limit(limit)，无需 offset()",
+      "D. 访问 SQLAlchemy 模型的关系属性总会自动加载关联数据，无需额外处理"
+    ],
+    "answer": "A",
+    "difficulty": 3,
+    "hint": "考虑错误处理、分页和关系加载的正确实现方式。",
+    "explanation": "选项 B、C、D 均为常见错误认知：B 错误地认为异常会自动转换为 404，实际需要在路由中主动捕获并返回友好消息；C 忽略了 offset() 来定位起始位置；D 忽略了懒加载可能导致的 N+1 查询问题，可能需要显式 eager loading。A 是正确的错误处理方式。",
+    "qid": "Q-PY081-001",
+    "source_node_id": "PY-081",
+    "node_id": "PY-081"
+  },
+  {
+    "type": "fill",
+    "question": "在 FastAPI 应用中，除了定义 SQLAlchemy 模型，通常还需要定义 Pydantic _____ 来对请求和响应数据进行验证与序列化。",
+    "answer": "Schema",
+    "difficulty": 2,
+    "hint": "Pydantic 用于数据模型的定义，通常称为 _____。",
+    "explanation": "在 SQLAlchemy + FastAPI 架构中，SQLAlchemy 模型负责与数据库交互，而 Pydantic Schema 负责定义 API 的请求/响应数据结构，提供自动验证和序列化功能，避免直接将数据库模型暴露给 API。",
+    "qid": "Q-PY081-002",
+    "source_node_id": "PY-081",
+    "node_id": "PY-081"
+  },
+  {
+    "type": "code",
+    "question": "编写一个分页查询函数 `get_items`，使用 SQLAlchemy 查询 `Item` 模型，并按 id 升序排序，跳过前 `skip` 条记录，返回最多 `limit` 条记录。同时使用 `joinedload` 预加载每个 Item 的 `owner` 关联对象，避免 N+1 查询。最后将每个 ORM 实例转换为 Pydantic `ItemSchema` 对象（假设 `ItemSchema` 已配置 `orm_mode = True`）。函数签名：`def get_items(db: Session, skip: int = 0, limit: int = 10) -> List[ItemSchema]:`。请写出完整实现（包含必要的 import）。",
+    "answer": "from sqlalchemy.orm import Session, joinedload\nfrom models import Item\nfrom schemas import ItemSchema\nfrom typing import List\n\ndef get_items(db: Session, skip: int = 0, limit: int = 10) -> List[ItemSchema]:\n    items = (\n        db.query(Item)\n        .options(joinedload(Item.owner))\n        .order_by(Item.id)\n        .offset(skip)\n        .limit(limit)\n        .all()\n    )\n    return [ItemSchema.from_orm(item) for item in items]",
+    "difficulty": 4,
+    "hint": "需要使用 query.offset() 和 query.limit() 实现分页，并使用 options(joinedload(...)) 进行预加载。",
+    "explanation": "该实现综合了分页（offset/skip 与 limit）、关系预加载（joinedload 避免 N+1）以及 ORM 到 Pydantic Schema 的转换（from_orm）。这是构建高性能数据驱动 API 的常见模式。",
+    "qid": "Q-PY081-003",
+    "source_node_id": "PY-081",
+    "node_id": "PY-081"
+  }
+]

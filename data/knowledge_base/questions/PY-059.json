@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 pytest，以下哪个说法是正确的？",
+    "options": [
+      "A. pytest 只能够识别和执行 test_ 开头的测试类中的方法，无法直接运行模块层级的 test_ 函数。",
+      "B. pytest 中必须使用 unittest 风格的 assertEqual 等方法才能展示断言失败的详细差异信息。",
+      "C. pytest 提供了 @pytest.fixture 装饰器，用于定义可复用的测试前置数据，测试函数通过参数注入使用。",
+      "D. 使用 pytest 的 --cov 选项可以直接生成覆盖率报告，这是 pytest 的内置功能，无需安装额外插件。"
+    ],
+    "answer": "C",
+    "difficulty": 3,
+    "hint": "回忆 pytest 的自动发现机制、断言风格、fixture 用法和插件机制。",
+    "explanation": "A 错误：pytest 可以自动发现模块层级的 test_ 函数，无需类包装。B 错误：pytest 直接使用 assert 语句，失败时会自动输出详细的差异对比。C 正确：@pytest.fixture 定义前置数据，测试函数通过参数名注入返回值。D 错误：--cov 选项由 pytest-cov 插件提供，需要额外安装。",
+    "qid": "Q-PY059-001",
+    "source_node_id": "PY-059",
+    "node_id": "PY-059"
+  },
+  {
+    "type": "fill",
+    "question": "pytest 支持数据驱动测试，可以使用装饰器 @pytest.mark._____ 为同一个测试函数提供多组不同的输入数据和期望结果。",
+    "answer": "parametrize",
+    "difficulty": 2,
+    "hint": "考虑 pytest 参数化测试机制的常见拼写。",
+    "explanation": "pytest 通过 @pytest.mark.parametrize 装饰器实现参数化测试，允许为测试函数提供多组 (输入, 期望输出) 组合，避免编写重复的测试代码。",
+    "qid": "Q-PY059-002",
+    "source_node_id": "PY-059",
+    "node_id": "PY-059"
+  },
+  {
+    "type": "code",
+    "question": "假设项目中有一个 calculator 模块，其中定义了 divide(a, b) 函数：当 b 为 0 时抛出 ZeroDivisionError，否则返回 a / b 的结果。请编写 pytest 测试文件 test_calculator.py，满足以下要求：\n1. 使用 @pytest.fixture 创建一个返回 (10, 2) 的 fixture，测试函数通过该 fixture 验证 divide(10,2) 返回 5。\n2. 使用 @pytest.mark.parametrize 对多组数据 (a, b, expected) 进行测试，例如 (10,2,5)、(9,3,3)、(12,4,3)。\n3. 使用 pytest.raises(ZeroDivisionError) 验证除零情况。\n测试文件只需包含必要的 import 语句和测试函数，代码完整、可直接运行。",
+    "answer": "import pytest\nfrom calculator import divide\n\n@pytest.fixture\ndef default_values():\n    return (10, 2)\n\ndef test_divide_default(default_values):\n    a, b = default_values\n    assert divide(a, b) == 5\n\n@pytest.mark.parametrize(\"a, b, expected\", [\n    (10, 2, 5),\n    (9, 3, 3),\n    (12, 4, 3)\n])\ndef test_divide_param(a, b, expected):\n    assert divide(a, b) == expected\n\ndef test_divide_by_zero():\n    with pytest.raises(ZeroDivisionError):\n        divide(1, 0)",
+    "difficulty": 5,
+    "hint": "注意 fixture 通过参数注入，parametrize 装饰器接收参数名列表和数据，异常测试使用 with pytest.raises(...) 上下文。",
+    "explanation": "该测试文件展示了 pytest 核心特性：@pytest.fixture 定义共享前置数据并通过参数名注入；@pytest.mark.parametrize 对测试函数进行多数据驱动；pytest.raises 用于验证特定异常被抛出。代码包含必要 import，结构完整，可独立运行。",
+    "qid": "Q-PY059-003",
+    "source_node_id": "PY-059",
+    "node_id": "PY-059"
+  }
+]

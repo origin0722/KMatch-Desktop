@@ -1,0 +1,43 @@
+[
+  {
+    "type": "choice",
+    "question": "在 Python 中使用 PyJWT 处理 JWT 时，以下哪种做法是正确的？",
+    "options": [
+      "A. 将用户密码直接存放在 JWT 的 Payload 中，以便服务端快速读取",
+      "B. 设置过期时间 exp 时使用 datetime.now() 来生成当前时间",
+      "C. 校验 bcrypt 密码时，使用 == 直接比对存储的哈希值",
+      "D. 验证 JWT 时调用 jwt.decode(token, secret, algorithms=['HS256'])"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "注意 JWT 的 Payload 仅被 Base64 编码而非加密，密码校验应使用专用函数，时间戳应统一使用 UTC 以避免时区问题。",
+    "explanation": "选项 A 错误：JWT 的 Payload 只进行 Base64 编码，不是加密，存放密码等敏感信息非常不安全。选项 B 错误：应使用 datetime.utcnow() 而非 datetime.now()，以避免不同时区导致的时间不一致。选项 C 错误：bcrypt 哈希值包含了盐值，每次即使对同一密码生成的哈希也不同，不能直接用 == 比对，必须使用 bcrypt.checkpw()。选项 D 正确：验证时必须通过 algorithms 参数明确指定算法列表，如 ['HS256']，省略或使用通配算法可能导致安全漏洞。",
+    "qid": "Q-PY082-001",
+    "source_node_id": "PY-082",
+    "node_id": "PY-082"
+  },
+  {
+    "type": "fill",
+    "question": "在构造 JWT 的 Payload 时，为了设置 1 小时的有效期，应使用类似于以下代码中的时间获取方式：payload['exp'] = _____ + timedelta(hours=1)。",
+    "options": [],
+    "answer": "datetime.utcnow()",
+    "difficulty": 3,
+    "hint": "使用 UTC 时间可以避免时区转换和夏令时带来的不一致问题。",
+    "explanation": "根据最佳实践，JWT 中的 exp 应基于 UTC 时间设置，使用 datetime.utcnow() 获取当前 UTC 时间，而不是时区敏感的 datetime.now()。",
+    "qid": "Q-PY082-002",
+    "source_node_id": "PY-082",
+    "node_id": "PY-082"
+  },
+  {
+    "type": "code",
+    "question": "编写一个函数 create_token(username, password)，实现用户登录并生成 JWT。假设系统中已存储用户数据字典 users_db，键为用户名，值为 'password'（bcrypt 哈希后的 bytes）和 'user_id'。请使用 bcrypt 验证密码，验证通过后生成一个有效期为 1 小时的 JWT（算法 HS256，secret 为 'my-secret'），并返回 Token 字符串；若验证失败则抛出 ValueError('Invalid credentials')。",
+    "options": [],
+    "answer": "import jwt\nimport bcrypt\nfrom datetime import datetime, timedelta\n\ndef create_token(username: str, password: str) -> str:\n    users_db = {\n        \"alice\": {\"password\": bcrypt.hashpw(b\"alice123\", bcrypt.gensalt()), \"user_id\": 1}\n    }\n    user = users_db.get(username)\n    if not user:\n        raise ValueError(\"Invalid credentials\")\n    if not bcrypt.checkpw(password.encode(), user[\"password\"]):\n        raise ValueError(\"Invalid credentials\")\n    payload = {\n        \"user_id\": user[\"user_id\"],\n        \"exp\": datetime.utcnow() + timedelta(hours=1)\n    }\n    token = jwt.encode(payload, \"my-secret\", algorithm=\"HS256\")\n    return token",
+    "difficulty": 5,
+    "hint": "使用 bcrypt.checkpw 校验密码，Payload 中设置 exp 为 UTC 时间加 1 小时，调用 jwt.encode 并指定 algorithm 参数。",
+    "explanation": "代码中先通过用户字典查找用户，使用 bcrypt.checkpw 安全校验密码，构造 Payload 时包含 user_id 和基于 datetime.utcnow() 的过期时间，最后用 jwt.encode 签发 Token，明确指定 HS256 算法。",
+    "qid": "Q-PY082-003",
+    "source_node_id": "PY-082",
+    "node_id": "PY-082"
+  }
+]

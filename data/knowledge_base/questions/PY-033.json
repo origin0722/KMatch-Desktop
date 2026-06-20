@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于分治法的描述，哪一项是正确的？",
+    "options": [
+      "A. 分治法只包括分解和递归解决两个步骤，合并可有可无",
+      "B. 只要问题能递归分解，就可以用分治法高效解决，无需考虑子问题特征",
+      "C. 主定理适用于所有分治递归的时间复杂度分析",
+      "D. 分治法要求子问题相互独立且与原问题同构"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回顾分治法的三个步骤与适用条件。",
+    "explanation": "分治法必须包含分解、递归解决、合并三个步骤（A错）；分治法的子问题需独立且同构，并非仅递归分解即可高效解决（B错）；主定理只能用于特定形式的递归式，并非所有分治递归（C错）；正确选项D对应知识点“适用特征：子问题独立且同构”。",
+    "qid": "Q-PY033-001",
+    "source_node_id": "PY-033",
+    "node_id": "PY-033"
+  },
+  {
+    "type": "fill",
+    "question": "分治法算法的时间复杂度分析常使用______（Master Theorem）。",
+    "answer": "主定理",
+    "difficulty": 2,
+    "hint": "Master Theorem的中文名称。",
+    "explanation": "根据知识点“时间分析用主定理(Master Theorem)”，分析分治法时间复杂度常使用主定理。",
+    "qid": "Q-PY033-002",
+    "source_node_id": "PY-033",
+    "node_id": "PY-033"
+  },
+  {
+    "type": "code",
+    "question": "给定一个整数列表 nums，请使用分治策略实现函数 max_subarray(nums)，返回该列表中连续子数组的最大和。\n要求严格遵循分治三步骤：\n1. 分解：将数组从中间位置分成左右两个子数组；\n2. 递归解决：分别求解左右两部分的最大子数组和；\n3. 合并：求解跨越中间点的最大子数组和，并返回三者中的最大值。\n注意处理基本情况（子数组长度为1时直接返回该元素）。\n输入：nums = [-2,1,-3,4,-1,2,1,-5,4]\n输出：6  （子数组 [4,-1,2,1] 的和）\n请提供完整可运行的Python代码。",
+    "answer": "def max_subarray(nums):\n    if not nums:\n        return 0\n    def max_crossing_sum(nums, left, mid, right):\n        left_sum = float('-inf')\n        total = 0\n        for i in range(mid, left - 1, -1):\n            total += nums[i]\n            if total > left_sum:\n                left_sum = total\n        right_sum = float('-inf')\n        total = 0\n        for i in range(mid + 1, right + 1):\n            total += nums[i]\n            if total > right_sum:\n                right_sum = total\n        return left_sum + right_sum\n\n    def max_subarray_rec(nums, left, right):\n        if left == right:\n            return nums[left]\n        mid = (left + right) // 2\n        left_max = max_subarray_rec(nums, left, mid)\n        right_max = max_subarray_rec(nums, mid + 1, right)\n        cross_max = max_crossing_sum(nums, left, mid, right)\n        return max(left_max, right_max, cross_max)\n\n    return max_subarray_rec(nums, 0, len(nums) - 1)\n\n# 测试\nnums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]\nprint(max_subarray(nums))  # 输出 6",
+    "difficulty": 5,
+    "hint": "需要分别计算左右内部的最大子数组和跨越中点的最大子数组和。跨越中点的部分可通过从中点向左右扩展求最大和。",
+    "explanation": "该代码完整实现了分治法求最大子数组和：通过分解（取中点）、递归求解左右子问题、合并（计算跨越边界的和），综合了分治的三个步骤与递归思想，难度较高，体现了对分治策略的深入理解。",
+    "qid": "Q-PY033-003",
+    "source_node_id": "PY-033",
+    "node_id": "PY-033"
+  }
+]

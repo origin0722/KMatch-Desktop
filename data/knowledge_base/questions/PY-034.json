@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 的 heapq 模块与堆，以下哪个说法是正确的？",
+    "options": [
+      "A. Python 的 heapq 默认实现最大堆",
+      "B. heapify 建堆的时间复杂度为 O(n log n)",
+      "C. heappush 操作的时间复杂度为 O(log n)",
+      "D. 堆排序仅需执行 heapify 即可完成"
+    ],
+    "answer": "C",
+    "difficulty": 3,
+    "hint": "回忆 Python heapq 是最小堆还是最大堆？heapify 的效率是多少？",
+    "explanation": "Python 的 heapq 模块默认实现最小堆（A错误）；heapify 建堆的时间复杂度为 O(n)（B错误）；heappush 和 heappop 均为 O(log n)（C正确）；堆排序需要先 heapify 建堆，然后反复 heappop 取出所有元素，仅执行 heapify 只是将列表转为堆结构，并未完成排序（D错误）。",
+    "qid": "Q-PY034-001",
+    "source_node_id": "PY-034",
+    "node_id": "PY-034"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，使用 heapq 模块的 ______ 方法可以将列表原地转换为最小堆，其时间复杂度为 O(n)。",
+    "answer": "heapify",
+    "difficulty": 2,
+    "hint": "该方法的名称暗示 '使其成为堆'。",
+    "explanation": "heapq.heapify(list) 会在线性时间内将列表调整为满足堆属性的顺序，是建堆的推荐方式。",
+    "qid": "Q-PY034-002",
+    "source_node_id": "PY-034",
+    "node_id": "PY-034"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个函数 top_k_smallest(nums: list[int], k: int) -> list[int]，返回列表 nums 中最小的 k 个元素（升序排列）。要求使用 heapq 模块并自己管理堆，不能使用 heapq.nsmallest。例如输入 nums=[4,2,1,7,5,9], k=3，输出 [1,2,4]。请提供完整可运行代码。",
+    "answer": "import heapq\n\ndef top_k_smallest(nums, k):\n    if k <= 0:\n        return []\n    # 直接使用最小堆，建堆后弹出 k 次即可\n    heap = nums[:]\n    heapq.heapify(heap)\n    result = [heapq.heappop(heap) for _ in range(min(k, len(nums)))]\n    return result\n\nif __name__ == '__main__':\n    print(top_k_smallest([4,2,1,7,5,9], 3))  # [1,2,4]",
+    "difficulty": 4,
+    "hint": "先利用 heapify 将列表转换为堆，然后反复弹出堆顶元素，即为最小的 k 个元素。注意 heapq 默认是最小堆。",
+    "explanation": "该解法先用 heapify(nums) 建堆（O(n)），再连续弹出 k 次堆顶（每次 O(log n)），总体 O(n + k log n)，得到升序的最小的 k 个元素，完全使用了 heapq 的建堆与弹出操作，符合要求。",
+    "qid": "Q-PY034-003",
+    "source_node_id": "PY-034",
+    "node_id": "PY-034"
+  }
+]

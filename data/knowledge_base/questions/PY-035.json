@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于并查集（Union-Find）的说法中，正确的是：",
+    "options": [
+      "A. find(x) 查找根节点时不会修改树结构，因此多次调用不影响性能。",
+      "B. union(x,y) 合并时总是把 y 的根作为 x 的根的子节点，不考虑树的大小。",
+      "C. 路径压缩和按秩合并同时使用可使每次 find/union 达到严格的 O(1) 时间。",
+      "D. 路径压缩在 find 时将路径上所有节点直接连接到根，以加速后续查找。"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回想并查集优化技术：路径压缩会修改树的结构，按秩合并控制树高，复杂度为反阿克曼函数。",
+    "explanation": "A 错误，find 时路径压缩会修改树结构；B 错误，合理的合并应按秩（小树并入大树）；C 错误，同时使用两种优化后时间复杂度为 O(α(n))，不是严格常数；D 正确，描述了路径压缩的核心思想。",
+    "qid": "Q-PY035-001",
+    "source_node_id": "PY-035",
+    "node_id": "PY-035"
+  },
+  {
+    "type": "fill",
+    "question": "在并查集中，合并两个集合时总是将秩（树高）较小的树的根连接到秩较大的树的根下，这种优化方法称为_____。",
+    "answer": "按秩合并",
+    "difficulty": 2,
+    "hint": "它与路径压缩一起使并查集操作接近常数时间。",
+    "explanation": "按秩合并（union by rank）通过控制树高避免退化，是并查集的核心优化之一，与路径压缩配合可获得几乎 O(1) 的性能。",
+    "qid": "Q-PY035-002",
+    "source_node_id": "PY-035",
+    "node_id": "PY-035"
+  },
+  {
+    "type": "code",
+    "question": "请实现一个并查集类 UnionFind，包含 __init__(self, n) 初始化 n 个节点、find(self, x) 查找根（带路径压缩）、union(self, x, y) 合并（按秩合并）。然后编写函数 count_components(n, edges)，其中 edges 是无向边列表，每条边为 (u, v)，返回图中连通分量的数量。示例输入：n=5, edges=[[0,1],[1,2],[3,4]]，应输出2。",
+    "answer": "class UnionFind:\n    def __init__(self, n):\n        self.parent = list(range(n))\n        self.rank = [0] * n\n\n    def find(self, x):\n        if self.parent[x] != x:\n            self.parent[x] = self.find(self.parent[x])\n        return self.parent[x]\n\n    def union(self, x, y):\n        root_x = self.find(x)\n        root_y = self.find(y)\n        if root_x == root_y:\n            return False\n        if self.rank[root_x] < self.rank[root_y]:\n            self.parent[root_x] = root_y\n        elif self.rank[root_x] > self.rank[root_y]:\n            self.parent[root_y] = root_x\n        else:\n            self.parent[root_y] = root_x\n            self.rank[root_x] += 1\n        return True\n\ndef count_components(n, edges):\n    uf = UnionFind(n)\n    for u, v in edges:\n        uf.union(u, v)\n    roots = set()\n    for i in range(n):\n        roots.add(uf.find(i))\n    return len(roots)",
+    "difficulty": 5,
+    "hint": "使用 parent 数组和 rank 数组，find 递归实现路径压缩，union 比较 rank 决定合并方向，最后统计不同根的数量。",
+    "explanation": "代码实现了完整的并查集，使用了路径压缩（find 中将节点直接指向根）和按秩合并（比较树高决定合并方向），并在 count_components 中通过集合统计不同根得到连通分量数，综合运用了并查集的核心知识点。",
+    "qid": "Q-PY035-003",
+    "source_node_id": "PY-035",
+    "node_id": "PY-035"
+  }
+]

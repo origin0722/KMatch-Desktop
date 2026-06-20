@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 封装和 property，以下描述正确的是？",
+    "options": [
+      "A. 以双下划线开头的属性是完全私有的，外部无法访问。",
+      "B. 使用 @property 后就只能有读取功能，无法设置或删除。",
+      "C. 单下划线前缀 _attr 会触发强制保护，解释器会阻止外部访问。",
+      "D. __attr 会触发名称改写，但外部仍可通过 _ClassName__attr 访问，因此只是伪私有。"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆 Python 的名称改写机制和 property 的可扩展性。",
+    "explanation": "选项 A 错误，双下划线属性通过名称改写（_ClassName__attr）仍然可被外部访问，并非完全私有。选项 B 错误，@property 可以结合 @attr.setter 和 @attr.deleter 实现设置和删除。选项 C 错误，单下划线只是约定，解释器不做强制拦截。选项 D 正确表述了 Python 伪私有机制。",
+    "qid": "Q-PY040-001",
+    "source_node_id": "PY-040",
+    "node_id": "PY-040"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中，类 MyClass 内部定义了 __secret 属性，其名称会被改写为 _____ 来实现伪私有。",
+    "answer": "_MyClass__secret",
+    "difficulty": 3,
+    "hint": "改写规则是 _ClassName__attr。",
+    "explanation": "双下划线前缀会触发名称改写，将 __secret 自动变为 _MyClass__secret，以避免子类意外覆盖，但外部仍可通过改写后的名称访问。",
+    "qid": "Q-PY040-002",
+    "source_node_id": "PY-040",
+    "node_id": "PY-040"
+  },
+  {
+    "type": "code",
+    "question": "请实现一个 Temperature 类，满足以下要求：\n1. 使用双下划线私有属性 __celsius 存储摄氏温度。\n2. 通过 property 提供华氏温度 fahrenheit，支持读取、设置和删除。\n3. 设置华氏温度时，自动转换为摄氏温度存储；读取时根据当前摄氏温度计算返回华氏温度。\n4. 设置摄氏温度时（通过 celsius property），设置值不能低于绝对零度 -273.15，否则抛出 ValueError。\n5. 删除温度时，将 __celsius 置为 None。\n请写出完整可运行的 Python 代码。",
+    "answer": "class Temperature:\n    def __init__(self, celsius=0):\n        self.celsius = celsius\n\n    @property\n    def celsius(self):\n        return self.__celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if value < -273.15:\n            raise ValueError('温度不能低于绝对零度 -273.15°C')\n        self.__celsius = value\n\n    @property\n    def fahrenheit(self):\n        if self.__celsius is None:\n            return None\n        return self.__celsius * 9 / 5 + 32\n\n    @fahrenheit.setter\n    def fahrenheit(self, value):\n        if value is None:\n            self.__celsius = None\n        else:\n            self.celsius = (value - 32) * 5 / 9\n\n    @fahrenheit.deleter\n    def fahrenheit(self):\n        self.__celsius = None\n",
+    "difficulty": 4,
+    "hint": "使用 __celsius 触发名称改写，结合 @property 和 @setter 实现转换与验证。",
+    "explanation": "该类通过 __celsius 实现伪私有存储，celsius 的 setter 进行绝对零度验证。fahrenheit 的 getter 使用计算属性，setter 将华氏温度转为摄氏温度并复用验证逻辑，deleter 将存储置为 None。综合运用了名称改写、property 计算属性和验证逻辑。",
+    "qid": "Q-PY040-003",
+    "source_node_id": "PY-040",
+    "node_id": "PY-040"
+  }
+]

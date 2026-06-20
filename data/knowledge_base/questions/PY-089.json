@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于微服务架构的设计原则，以下哪项描述是正确的？",
+    "options": [
+      "A. 微服务拆分应按照业务领域边界进行，每个服务围绕特定的业务功能构建",
+      "B. 微服务拆分应按照技术层级（如前端层、后端层、数据层）划分，以降低开发复杂度",
+      "C. 微服务之间只能使用 HTTP REST 进行同步调用，不能使用 gRPC 或消息队列等异步通信",
+      "D. API 网关主要用于服务之间的内部通信，以简化服务间调用链路"
+    ],
+    "answer": "A",
+    "difficulty": 3,
+    "explanation": "微服务拆分应遵循业务领域边界（如用户服务、订单服务），而非技术分层。选项B、C、D均为常见错误认知：B将拆分误解为技术层级，C忽略了gRPC和消息队列等异步方式，D误用了API网关的角色（网关是对外统一入口，不是内部通信通道）。",
+    "qid": "Q-PY089-001",
+    "source_node_id": "PY-089",
+    "node_id": "PY-089",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在微服务架构中，API 网关作为系统统一的对外入口，通常承担请求路由、身份鉴权和_____等职责。",
+    "answer": "限流",
+    "difficulty": 2,
+    "explanation": "API 网关的关键功能包括统一入口、鉴权和限流（Rate Limiting），限流用于保护后端服务免受过载攻击。",
+    "qid": "Q-PY089-002",
+    "source_node_id": "PY-089",
+    "node_id": "PY-089",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "模拟实现一个简单的微服务系统：包含用户服务、订单服务和 API 网关。\n要求：\n1. 用户服务（端口 5001）：提供 POST /users 创建用户（传入 JSON {'name': '...'}，返回 {'user_id': int, 'name': ...}，用内存字典存储）；提供 GET /users/<id> 查询用户。\n2. 订单服务（端口 5002）：提供 POST /orders 创建订单（传入 JSON {'user_id': int, 'item': '...'}），需要先向用户服务发送 HTTP GET 请求验证用户存在，若存在则创建订单（内存存储）并返回 {'order_id': int, 'user_id': ..., 'item': ...}，若用户不存在返回 404。\n3. API 网关（端口 5000）：转发所有请求到对应的内部服务（路径以 /users 开头转发到用户服务，以 /orders 开头转发到订单服务）。需要验证请求头 X-Auth-Token 必须为 'secret'，否则返回 403；对每个客户端 IP 使用令牌桶算法进行限流，每分钟最多允许 5 个请求，超出返回 429。\n请编写一个可直接运行的 Python 脚本（使用 Flask 框架和 requests 库），在 __main__ 中启动三个服务（使用线程），并在最后提供一段打印输出示例说明使用方法。",
+    "answer": "from flask import Flask, request, jsonify\nimport threading\nimport time\nimport requests\nfrom collections import defaultdict\n\napp_user = Flask('user_service')\napp_order = Flask('order_service')\napp_gateway = Flask('gateway')\n\n# 用户服务数据\nusers = {}\nuser_id_counter = 1\n\n@app_user.route('/users', methods=['POST'])\ndef create_user():\n    global user_id_counter\n    data = request.get_json()\n    name = data.get('name')\n    uid = user_id_counter\n    user_id_counter += 1\n    users[uid] = {'user_id': uid, 'name': name}\n    return jsonify(users[uid]), 201\n\n@app_user.route('/users/<int:uid>', methods=['GET'])\ndef get_user(uid):\n    user = users.get(uid)\n    if user:\n        return jsonify(user)\n    return jsonify({'error': 'User not found'}), 404\n\n# 订单服务数据\norders = {}\norder_id_counter = 1\n\n@app_order.route('/orders', methods=['POST'])\ndef create_order():\n    global order_id_counter\n    data = request.get_json()\n    user_id = data.get('user_id')\n    item = data.get('item')\n    try:\n        resp = requests.get(f'http://localhost:5001/users/{user_id}', timeout=2)\n        if resp.status_code != 200:\n            return jsonify({'error': 'User not found'}), 404\n    except requests.RequestException:\n        return jsonify({'error': 'User service unavailable'}), 503\n    oid = order_id_counter\n    order_id_counter += 1\n    orders[oid] = {'order_id': oid, 'user_id': user_id, 'item': item}\n    return jsonify(orders[oid]), 201\n\n# API 网关\nip_buckets = defaultdict(lambda: {'tokens': 5, 'last_time': time.time()})\nRATE = 5  # 每分钟 5 次\n\ndef check_rate_limit(ip):\n    bucket = ip_buckets[ip]\n    now = time.time()\n    elapsed = now - bucket['last_time']\n    if elapsed >= 60:\n        bucket['tokens'] = RATE\n        bucket['last_time'] = now\n    else:\n        refill = int(elapsed * RATE / 60)\n        bucket['tokens'] = min(RATE, bucket['tokens'] + refill)\n        bucket['last_time'] = now\n    if bucket['tokens'] > 0:\n        bucket['tokens'] -= 1\n        return True\n    return False\n\n@app_gateway.route('/<path:path>', methods=['GET', 'POST'])\ndef gateway(path):\n    token = request.headers.get('X-Auth-Token')\n    if token != 'secret':\n        return jsonify({'error': 'Forbidden'}), 403\n    ip = request.remote_addr or '127.0.0.1'\n    if not check_rate_limit(ip):\n        return jsonify({'error': 'Too Many Requests'}), 429\n    if path.startswith('users'):\n        target = f'http://localhost:5001/{path}'\n    elif path.startswith('orders'):\n        target = f'http://localhost:5002/{path}'\n    else:\n        return jsonify({'error': 'Not Found'}), 404\n    if request.method == 'GET':\n        resp = requests.get(target, timeout=5)\n    else:\n        resp = requests.post(target, json=request.get_json(), timeout=5)\n    return (resp.text, resp.status_code)\n\ndef run_user():\n    app_user.run(port=5001)\n\ndef run_order():\n    app_order.run(port=5002)\n\ndef run_gateway():\n    app_gateway.run(port=5000)\n\nif __name__ == '__main__':\n    t1 = threading.Thread(target=run_user, daemon=True)\n    t2 = threading.Thread(target=run_order, daemon=True)\n    t3 = threading.Thread(target=run_gateway, daemon=True)\n    t1.start()\n    t2.start()\n    t3.start()\n    time.sleep(2)\n    print('=== 服务已启动 ===')\n    print('创建用户：')\n    r = requests.post('http://localhost:5000/users', json={'name': 'Alice'}, headers={'X-Auth-Token': 'secret'})\n    print(r.status_code, r.json())\n    print('创建订单：')\n    r = requests.post('http://localhost:5000/orders', json={'user_id': 1, 'item': 'book'}, headers={'X-Auth-Token': 'secret'})\n    print(r.status_code, r.json())\n    print('无令牌请求：')\n    r = requests.post('http://localhost:5000/orders', json={'user_id': 1, 'item': 'pen'})\n    print(r.status_code, r.json())\n    print('限流测试（连续 7 次请求）：')\n    for i in range(7):\n        r = requests.post('http://localhost:5000/users', json={'name': f'User{i}'}, headers={'X-Auth-Token': 'secret'})\n        print(f'第{i+1}次:', r.status_code)\n    try:\n        while True:\n            time.sleep(1)\n    except KeyboardInterrupt:\n        print('关闭服务')\n",
+    "difficulty": 5,
+    "hint": "网关中捕获所有路径 <path:path>，根据路径前缀转发到对应服务；令牌桶使用时间差补充令牌；每个服务独立内存字典作为数据库。",
+    "explanation": "本题综合了微服务拆分（用户、订单）、同步 HTTP 通信（服务间调用）、独立数据库（内存字典）、API 网关（统一入口、鉴权、限流）等多个关键知识点，并要求使用 Flask 和线程实现可运行脚本，符合挑战级难度。",
+    "qid": "Q-PY089-003",
+    "source_node_id": "PY-089",
+    "node_id": "PY-089"
+  }
+]

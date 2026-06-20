@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于Python中range()函数的描述，正确的是？",
+    "options": [
+      "A. range(n) 生成的整数序列包含 n",
+      "B. range() 返回一个列表，数据量大时会占用大量内存",
+      "C. for/else 中的 else 块在循环被 break 终止时也会执行",
+      "D. range(n) 生成从 0 到 n-1 的整数序列"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "range(n) 不包括结束值 n，且 range 是惰性对象。",
+    "explanation": "正确描述：range(n) 生成 0 到 n-1 的整数，不包含 n；range() 返回惰性可迭代序列，不是列表，不占大量内存；for/else 中，如果循环被 break 终止，else 块不会执行。",
+    "qid": "Q-PY008-001",
+    "source_node_id": "PY-008",
+    "node_id": "PY-008"
+  },
+  {
+    "type": "choice",
+    "question": "关于Python中的 enumerate() 函数，下列哪项描述是正确的？",
+    "options": [
+      "A. enumerate() 只能获取索引，不能同时获取对应的值",
+      "B. range(n) 生成的整数序列包含 n",
+      "C. for/else 中的 else 块在循环被 break 终止时也会执行",
+      "D. enumerate() 可以同时获取索引和对应的值"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "enumerate(iterable) 产生 (index, value) 对。",
+    "explanation": "正确：enumerate() 返回一个枚举对象，每次迭代产生一个包含索引和对应值的元组。其他选项均为常见错误：range(n) 不包含 n，range() 是惰性序列而非列表，for/else 被 break 终止时不执行 else 块。",
+    "qid": "Q-PY008-002",
+    "source_node_id": "PY-008",
+    "node_id": "PY-008"
+  },
+  {
+    "type": "fill",
+    "question": "已知 `range(5)` 生成的整数序列为 0,1,2,3,4，它不包含数字 _____。",
+    "answer": "5",
+    "difficulty": 1,
+    "hint": "range(n) 生成从 0 到 n-1 的序列，不包括结束值。",
+    "explanation": "range(5) 的结束参数为 5，但生成的序列到 4 为止，因此不包含数字 5。",
+    "qid": "Q-PY008-003",
+    "source_node_id": "PY-008",
+    "node_id": "PY-008"
+  }
+]

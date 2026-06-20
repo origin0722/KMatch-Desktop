@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于Python方法的描述，哪一项是正确的？",
+    "options": [
+      "A. 类方法的第一个参数是 self",
+      "B. @staticmethod 装饰的方法会自动接收 cls 参数",
+      "C. 实例方法可以省略 self 参数",
+      "D. 工厂模式中建议使用 @classmethod 以允许子类创建正确类型的实例"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆 @classmethod 在工厂模式中的作用，特别是子类继承时。",
+    "explanation": "类方法通过 cls 参数传递类，子类调用时会自动传递子类，从而创建正确类型的子类实例。实例方法必须显式包含 self，类方法使用 cls，静态方法无自动参数。",
+    "qid": "Q-PY038-001",
+    "source_node_id": "PY-038",
+    "node_id": "PY-038"
+  },
+  {
+    "type": "choice",
+    "question": "以下说法中，哪个正确描述了静态方法的特点？",
+    "options": [
+      "A. 静态方法不需要任何自动参数",
+      "B. 静态方法会自动接收 cls 或 self 参数",
+      "C. 类方法的第一个参数是 self",
+      "D. 实例方法可以省略 self"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "回顾 @staticmethod 的定义：无自动参数，与普通函数类似。",
+    "explanation": "@staticmethod 装饰的方法不需要特殊的第一个参数，不会自动传递实例或类。选项 B、C、D 均为常见错误认知。",
+    "qid": "Q-PY038-002",
+    "source_node_id": "PY-038",
+    "node_id": "PY-038"
+  },
+  {
+    "type": "fill",
+    "question": "在Python中，为实现从字符串创建对象的工厂方法，通常会使用 _____ 装饰器，并将第一个参数命名为 cls。",
+    "answer": "@classmethod",
+    "difficulty": 2,
+    "hint": "该装饰器使得方法能访问类本身，常用于替代构造函数。",
+    "explanation": "类工厂方法使用 @classmethod，第一个参数cls代表类，子类可继承并正确返回子类实例。@staticmethod不能传递类，不适合工厂模式。",
+    "qid": "Q-PY038-003",
+    "source_node_id": "PY-038",
+    "node_id": "PY-038"
+  }
+]

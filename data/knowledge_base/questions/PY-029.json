@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于图的遍历，以下哪项说法是正确的？",
+    "options": [
+      "A. 邻接矩阵是图最常用的表示，因为它简单直观",
+      "B. BFS算法可以使用栈或递归来实现，就像DFS一样",
+      "C. 无权图的最短路径可以用DFS来高效求解",
+      "D. 拓扑排序和环检测通常使用DFS而非BFS来实现"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回想DFS和BFS各自的典型应用场景，以及图存储结构的选择依据。",
+    "explanation": "选项A错误：邻接表在稀疏图中更节省空间，是实际中最常用的表示，这种错误源于忽略邻接表的优势（对应常见误区）。选项B错误：BFS必须用队列逐层扩散，栈或递归会破坏层次顺序（对应常见误区）。选项C错误：无权图最短路径是BFS的典型应用，DFS无法保证最短（对应常见误区）。选项D正确：拓扑排序和环检测这类需要深入探索路径的问题，正是DFS的拿手好戏（来自key_points）。",
+    "qid": "Q-PY029-001",
+    "source_node_id": "PY-029",
+    "node_id": "PY-029"
+  },
+  {
+    "type": "fill",
+    "question": "图的广度优先搜索（BFS）算法必须使用_____数据结构来逐层访问节点。",
+    "answer": "队列",
+    "difficulty": 2,
+    "hint": "先进先出的容器才能保证按层扩散。",
+    "explanation": "BFS的核心思想是“逐层扩散”，要求先访问完当前层所有节点后再访问下一层。队列的FIFO特性正好满足这一需求，而栈或递归会深入到一条路径，变成DFS。",
+    "qid": "Q-PY029-002",
+    "source_node_id": "PY-029",
+    "node_id": "PY-029"
+  },
+  {
+    "type": "code",
+    "question": "给定一个无向图，用邻接表字典表示（如 graph = {'A': ['B','C'], 'B': ['A','D'], ...}）。请实现两个函数：\n1. bfs_shortest_distances(graph, start)：使用 BFS 返回从 start 到所有节点的最短路径长度（边数），不可达的节点对应值为 -1。\n2. dfs_iterative(graph, start)：使用栈（非递归）实现深度优先遍历，返回访问顺序的列表。\n要求：使用 collections.deque 作为队列，用 list 作为栈，并正确处理已访问节点。",
+    "answer": "from collections import deque\n\ndef bfs_shortest_distances(graph, start):\n    dist = {node: -1 for node in graph}\n    dist[start] = 0\n    queue = deque([start])\n    while queue:\n        node = queue.popleft()\n        for neighbor in graph[node]:\n            if dist[neighbor] == -1:\n                dist[neighbor] = dist[node] + 1\n                queue.append(neighbor)\n    return dist\n\ndef dfs_iterative(graph, start):\n    visited = set()\n    order = []\n    stack = [start]\n    while stack:\n        node = stack.pop()\n        if node not in visited:\n            visited.add(node)\n            order.append(node)\n            # 邻接节点逆序压栈以保持常见顺序（可选）\n            for neighbor in reversed(graph[node]):\n                if neighbor not in visited:\n                    stack.append(neighbor)\n    return order",
+    "difficulty": 4,
+    "hint": "BFS 距离初始化为 -1，发现未访问邻居时更新距离并入队；迭代 DFS 用栈，只有在弹出并检查未访问时才记录顺序，注意压栈顺序影响结果。",
+    "explanation": "该代码综合了图的邻接表表示、BFS 用队列求无权最短路、DFS 用栈模拟递归。BFS 部分通过距离数组记录层数，不可达保持 -1；DFS 部分使用显式栈和 visited 集合，弹出时访问并记录，逆序压入邻居以模拟递归的常见顺序（先左后右）。两者都正确处理了重复访问问题。",
+    "qid": "Q-PY029-003",
+    "source_node_id": "PY-029",
+    "node_id": "PY-029"
+  }
+]

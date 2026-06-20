@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于 Python 内置函数的说法，哪一个是正确的？",
+    "options": [
+      "A. zip(a,b) 会以较长序列为准，自动为较短序列填充值",
+      "B. sorted(seq) 会直接修改原序列并返回 None",
+      "C. all([]) 的结果是 True",
+      "D. map(func, seq) 会原地修改 seq 中的元素"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "all() 对空序列的行为是 Python 设计逻辑中的“空真”。",
+    "explanation": "all([]) 返回 True，因为没有元素为假。zip() 以短序列为准；sorted() 返回新列表而不修改原序列；map() 返回迭代器，不修改原序列。A、B、D 均为常见错误认知。",
+    "qid": "Q-PY020-001",
+    "source_node_id": "PY-020",
+    "node_id": "PY-020"
+  },
+  {
+    "type": "choice",
+    "question": "以下关于 Python 内置函数的说法，哪一个是正确的？",
+    "options": [
+      "A. sorted(seq) 会直接修改原序列并返回 None",
+      "B. all([]) 的结果是 False，因为没有任何元素为真",
+      "C. zip(a,b) 会以较长序列为准，自动为较短序列填充值",
+      "D. zip(a,b) 并行迭代，以较短序列为准，返回最短长度"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "zip 用于并行迭代，其行为基于最短的序列。",
+    "explanation": "zip() 与最短输入序列的长度对齐；sorted() 返回新列表，不修改原序列；all([]) 返回 True，而非 False。A、B、C 均为常见错误，D 正确描述了 zip 的行为。",
+    "qid": "Q-PY020-002",
+    "source_node_id": "PY-020",
+    "node_id": "PY-020"
+  },
+  {
+    "type": "fill",
+    "question": "使用 ______ 函数可以将一个函数应用到可迭代对象的每个元素上，并返回一个包含结果的迭代器。",
+    "answer": "map",
+    "difficulty": 2,
+    "hint": "它不是 filter，也不是 sorted。",
+    "explanation": "map(func, seq) 对 seq 中每个元素应用 func，返回 map 迭代器，常用于数据批量处理。",
+    "qid": "Q-PY020-003",
+    "source_node_id": "PY-020",
+    "node_id": "PY-020"
+  }
+]

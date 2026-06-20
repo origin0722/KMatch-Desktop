@@ -1,0 +1,43 @@
+[
+  {
+    "type": "choice",
+    "question": "关于Python内置函数 filter() 的行为，下列说法正确的是？",
+    "options": [
+      "A. filter() 会移除使函数返回 True 的元素，保留返回 False 的元素",
+      "B. filter() 会就地修改原可迭代对象，不返回新迭代器",
+      "C. filter() 会保留使函数返回 True 的元素，移除返回 False 的元素",
+      "D. filter() 可以使用多行 lambda 函数作为筛选条件"
+    ],
+    "answer": "C",
+    "difficulty": 3,
+    "hint": "回忆 filter() 是根据函数返回值 True/False 决定保留还是丢弃元素。",
+    "explanation": "filter(func, iter) 的功能是构造一个迭代器，仅包含使得 func(x) 为 True 的元素，所以 C 正确。A 是常见误解，将保留与移除的条件弄反；B 错误，filter() 返回新迭代器，不会修改原对象；D 错误，lambda 只能包含单个表达式，不能包含多行语句或复杂控制流。",
+    "qid": "Q-PY048-001",
+    "source_node_id": "PY-048",
+    "node_id": "PY-048"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 中执行累积计算时，常常使用 reduce() 函数。使用前必须通过 'from _____ import reduce' 导入。",
+    "options": [],
+    "answer": "functools",
+    "difficulty": 2,
+    "hint": "该模块名与函数式编程工具相关。",
+    "explanation": "reduce() 内置在 functools 模块中，Python 3 将其从内置函数移到了 functools，因此必须使用 from functools import reduce 导入。",
+    "qid": "Q-PY048-002",
+    "source_node_id": "PY-048",
+    "node_id": "PY-048"
+  },
+  {
+    "type": "code",
+    "question": "编写一个函数式数据管道：给定一个整数列表，先用 filter() 和 lambda 筛选出所有偶数，再用 map() 和 lambda 将每个偶数平方，最后用 reduce() 计算所有平方值的乘积。要求写出完整的 Python 代码，包含必要的 import 语句，并定义一个函数 process(nums) 返回该乘积。\n\n示例输入：[1, 2, 3, 4, 5, 6]\n示例输出：2304 （因为 2²×4²×6² = 4×16×36 = 2304）",
+    "options": [],
+    "answer": "from functools import reduce\n\ndef process(nums):\n    evens = filter(lambda x: x % 2 == 0, nums)\n    squares = map(lambda x: x ** 2, evens)\n    product = reduce(lambda x, y: x * y, squares)\n    return product",
+    "difficulty": 4,
+    "hint": "filter() 保留偶数，map() 平方，reduce() 乘法，注意 from functools import reduce。",
+    "explanation": "本题综合 map()、filter()、reduce() 和 lambda。首先用 filter(lambda x: x % 2 == 0, nums) 获取偶数，然后用 map(lambda x: x ** 2, ...) 平方，最后从 functools 导入的 reduce(lambda x, y: x * y, ...) 计算乘积。代码简洁地体现了函数式管道风格。",
+    "qid": "Q-PY048-003",
+    "source_node_id": "PY-048",
+    "node_id": "PY-048"
+  }
+]

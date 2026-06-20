@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于测试覆盖率与质量门禁，以下哪项说法正确？",
+    "options": [
+      "A. 测试全部通过就说明覆盖率一定达到了80%以上",
+      "B. pre-commit hooks 通过后可以不再依赖 CI 中的质量门禁",
+      "C. pytest-cov 除了生成覆盖率报告还能同时检查代码风格和类型",
+      "D. CI 质量门禁通常包括测试、覆盖率、lint和类型检查"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回顾 CI 质量门禁由哪些环节组成。",
+    "explanation": "正确选项 D 直接来自知识点：CI 质量门禁通常需要测试全部通过、覆盖率达到阈值、lint 无警告、类型检查通过。A 错误，因为测试全部通过不代表覆盖率一定达标，可能存在未测试的代码分支。B 错误，pre-commit hooks 是本地提交前检查，不能替代 CI 上的全面质量门禁。C 错误，pytest-cov 仅负责覆盖率报告，代码风格和类型检查由 black/ruff/mypy 等独立工具完成。",
+    "qid": "Q-PY092-001",
+    "source_node_id": "PY-092",
+    "node_id": "PY-092"
+  },
+  {
+    "type": "fill",
+    "question": "在CI中使用coverage.py设定覆盖率阈值，需在配置中指定 fail_under=_____，当覆盖率低于该值时视为失败。",
+    "answer": "80",
+    "difficulty": 2,
+    "hint": "常见门禁阈值。",
+    "explanation": "根据知识点，coverage.py 的 fail_under=80 配置用于在术语低于 80% 时使 CI 失败，这是常见的质量门禁实践。",
+    "qid": "Q-PY092-002",
+    "source_node_id": "PY-092",
+    "node_id": "PY-092"
+  },
+  {
+    "type": "code",
+    "question": "编写一个 Python 脚本，使用 subprocess 调用 coverage 工具执行测试并检查覆盖率门禁。首先运行 `coverage run -m pytest tests/` 收集覆盖率数据，然后运行 `coverage report --fail-under=80` 输出报告并判断是否达到阈值。如果覆盖率不达标（report命令返回非零退出码），脚本应以非零退出码退出。要求包含必要的 import 并可直接执行。",
+    "answer": "import subprocess\nimport sys\n\n# 运行测试并收集覆盖率数据\nsubprocess.run([\"coverage\", \"run\", \"-m\", \"pytest\", \"tests/\"], check=True)\n\n# 生成覆盖率报告并设定 fail-under 阈值\nresult = subprocess.run([\"coverage\", \"report\", \"--fail-under=80\"])\n\n# 如果覆盖率不达标，以非零退出码退出\nif result.returncode != 0:\n    sys.exit(result.returncode)\n",
+    "difficulty": 4,
+    "hint": "使用 subprocess.run() 并检查 returncode。",
+    "explanation": "该脚本综合了知识点中的 `coverage.py` 覆盖率收集与 `fail_under=80` 阈值门禁。通过 subprocess 调用 coverage 命令，先收集数据，再输出报告并检查阈值。若 report 命令因覆盖率不足返回非零退出码，脚本也以该退出码退出，从而实现 CI 质量门禁中的覆盖率检查。",
+    "qid": "Q-PY092-003",
+    "source_node_id": "PY-092",
+    "node_id": "PY-092"
+  }
+]

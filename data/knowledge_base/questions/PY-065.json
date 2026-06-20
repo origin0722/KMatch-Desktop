@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于Pandas中索引操作的描述，以下哪个选项是正确的？",
+    "options": [
+      "A. df.loc[0] 总是根据整数位置选取第一行",
+      "B. df.iloc[0] 根据行标签选取第一行",
+      "C. df.loc[0] 根据行标签'0'选取行，df.iloc[0] 根据整数位置选取第一行",
+      "D. df.describe() 用于查看数据前5行"
+    ],
+    "answer": "C",
+    "difficulty": 3,
+    "hint": "区分基于标签的.loc与基于整数位置的.iloc",
+    "explanation": "df.loc通过索引标签进行选择，若标签包含0，则选取该行；df.iloc始终按整数位置选取。A和B混淆了二者的功能，D则是将describe()与head()的功能颠倒。",
+    "qid": "Q-PY065-001",
+    "source_node_id": "PY-065",
+    "node_id": "PY-065"
+  },
+  {
+    "type": "fill",
+    "question": "要从文件'data.csv'读取数据生成DataFrame，通常使用的代码为：df = ______。",
+    "answer": "pd.read_csv('data.csv')",
+    "difficulty": 2,
+    "hint": "pandas中专门读取CSV的函数名",
+    "explanation": "pd.read_csv()是pandas用于读取CSV文件并将其转换为DataFrame的主要函数。",
+    "qid": "Q-PY065-002",
+    "source_node_id": "PY-065",
+    "node_id": "PY-065"
+  },
+  {
+    "type": "code",
+    "question": "编写一个完整的Python程序，使用pandas完成下列操作：\n1. 读取'data.csv'（该文件包含列'Name','Age','Score'，默认整数索引）。\n2. 打印前5行数据。\n3. 打印数据概览信息。\n4. 打印描述性统计。\n5. 选择并打印'Score'列。\n6. 使用标签索引选择索引为2的行并打印。\n7. 使用整数位置索引选择第0行并打印。\n输出应清晰标注每部分内容。",
+    "answer": "import pandas as pd\n\ndf = pd.read_csv('data.csv')\nprint('前5行:')\nprint(df.head())\nprint('\\n数据概览:')\ndf.info()\nprint('\\n描述性统计:')\nprint(df.describe())\nprint('\\nScore列:')\nprint(df['Score'])\nprint('\\n标签索引为2的行:')\nprint(df.loc[2])\nprint('\\n整数位置第0行:')\nprint(df.iloc[0])",
+    "difficulty": 4,
+    "hint": "使用pd.read_csv读入，然后用.head()、.info()、.describe()、列选择和.loc/.iloc索引",
+    "explanation": "该代码涵盖了pandas的基本数据读取和常用数据探查方法，并展示了如何通过标签（.loc[2]）和整数位置（.iloc[0]）进行行选择，实践了多个关键知识点。",
+    "qid": "Q-PY065-003",
+    "source_node_id": "PY-065",
+    "node_id": "PY-065"
+  }
+]

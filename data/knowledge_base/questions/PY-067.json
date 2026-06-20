@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于Matplotlib绘图，下列哪个说法是正确的？",
+    "options": [
+      "A. plt.plot(x,y) 完成后图形会自动显示，无需调用 plt.show() 或保存",
+      "B. plt.scatter(x,y) 无法根据数据列映射点的颜色或大小",
+      "C. plt.subplots(2,2) 返回的 axes 是单一坐标轴对象，而非二维数组",
+      "D. plt.savefig('name.png', dpi=150) 用于保存图像"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "plt.savefig() 可以保存图像，plt.show() 用于显示；散点图可通过c和size映射；subplots返回二维axes数组。",
+    "explanation": "A错误，需要plt.show()才能显示图形；B错误，plt.scatter()支持c和size参数映射颜色和大小；C错误，plt.subplots(2,2)返回的axes是二维数组；D正确，plt.savefig()用于保存图像，dpi设置分辨率。",
+    "qid": "Q-PY067-001",
+    "source_node_id": "PY-067",
+    "node_id": "PY-067"
+  },
+  {
+    "type": "choice",
+    "question": "关于plt.plot()与plt.scatter()的功能，以下哪项是正确的？",
+    "options": [
+      "A. plt.plot() 可以完全替代 plt.scatter() 绘制所有散点图，包括需要颜色和大小的数据映射",
+      "B. plt.scatter(x,y) 无法根据数据列映射点的颜色或大小",
+      "C. plt.plot(x,y) 完成后图形会自动显示，无需调用 plt.show()",
+      "D. plt.scatter() 通过c和size参数可以映射数据，而plt.plot()不具备此功能，因此散点图颜色大小映射应使用scatter()"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "plt.scatter() 特有c和size参数用于颜色和大小映射，plt.plot() 主要用于线图。",
+    "explanation": "A错误，plot无法通过c/size映射颜色大小；B错误，scatter可以映射；C错误，需要show()；D正确，scatter支持数据映射，plot不支持，两者有各自适用场景。",
+    "qid": "Q-PY067-002",
+    "source_node_id": "PY-067",
+    "node_id": "PY-067"
+  },
+  {
+    "type": "fill",
+    "question": "使用 plt.savefig('figure.png', _____=150) 可以设置保存图像的分辨率。",
+    "answer": "dpi",
+    "difficulty": 2,
+    "hint": "key_points 中保存图像示例有 dpi=150。",
+    "explanation": "plt.savefig() 通过 dpi 参数设置图像分辨率，如 dpi=150 指定每英寸点数。",
+    "qid": "Q-PY067-003",
+    "source_node_id": "PY-067",
+    "node_id": "PY-067"
+  }
+]

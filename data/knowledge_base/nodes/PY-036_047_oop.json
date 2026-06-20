@@ -1,0 +1,467 @@
+[
+  {
+    "id": "PY-036",
+    "name": "类与对象基础",
+    "difficulty": 2,
+    "category": "面向对象编程",
+    "summary": "class 关键字定义类，类实例化产生对象。__init__ 初始化实例属性。self 绑定实例本身。类属性在所有实例间共享。方法是类中定义的函数，访问实例属性通过 self。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "class ClassName: 定义类",
+      "__init__(self,...) 构造方法，初始化实例属性",
+      "self 绑定到调用方法的实例",
+      "类属性 vs 实例属性：类属性所有实例共享",
+      "实例通过 self.attr 访问属性"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "定义一个 Person 类，包含 name 和 age 属性，以及 introduce() 方法",
+        "answer": "class Person:\n    def __init__(self,name,age):\n        self.name=name\n        self.age=age\n    def introduce(self):\n        return f'我是{self.name}，{self.age}岁'",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "类",
+      "对象",
+      "OOP",
+      "class"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "误以为类属性为每个实例单独拥有，而不清楚它被所有实例共享",
+      "在类的方法中直接使用属性名，忘记通过 self 来访问实例属性",
+      "把 __init__ 当作每次调用实例都会执行的构造函数，实际上它仅在实例化时执行一次",
+      "认为 self 是 Python 关键字或指向类本身，而不知道它只是约定名称并绑定到调用方法的实例"
+    ]
+  },
+  {
+    "id": "PY-037",
+    "name": "构造方法与 __init__",
+    "difficulty": 2,
+    "category": "面向对象编程",
+    "summary": "__init__ 是实例化时自动调用的初始化方法。参数传递到 __init__ 的对应形参。可以设置默认参数值。__new__ 在 __init__ 之前调用，负责创建实例（通常不重写）。",
+    "prerequisites": [
+      "PY-036"
+    ],
+    "key_points": [
+      "__init__(self,...): 对象初始化方法",
+      "实例化: obj=ClassName(args) → __init__",
+      "__new__ 负责创建对象，__init__ 负责初始化",
+      "__init__ 不能返回非 None 值",
+      "可以使用默认参数让某些属性可选"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "__init__ 方法的返回值应该是？",
+        "options": [
+          "A. self",
+          "B. None",
+          "C. 实例对象",
+          "D. 任意值"
+        ],
+        "answer": "B",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "构造方法",
+      "__init__",
+      "OOP"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "认为 __init__ 是构造方法，负责创建实例对象，而实际上 __new__ 创建对象，__init__ 只是初始化",
+      "以为在 __init__ 方法中可以 return 一个新对象或任意值来替换实例",
+      "在调用类创建对象时，误认为需要显式传递 self 参数，如 ClassName(self, args)",
+      "认为 __init__ 的参数不能设置默认值，或者认为所有参数都必须提供"
+    ]
+  },
+  {
+    "id": "PY-038",
+    "name": "实例方法与类方法",
+    "difficulty": 2,
+    "category": "面向对象编程",
+    "summary": "实例方法第一个参数是 self；类方法用 @classmethod 装饰，第一个参数是 cls；静态方法用 @staticmethod 装饰，无自动参数。类方法常用于工厂模式创建对象，静态方法表示工具函数。",
+    "prerequisites": [
+      "PY-036"
+    ],
+    "key_points": [
+      "实例方法: 访问实例数据，def method(self,...)",
+      "@classmethod: 访问类数据，def method(cls,...)",
+      "@staticmethod: 与类相关但不依赖实例/类",
+      "类工厂: @classmethod def from_string(cls,text)",
+      "方法类型选择: 需要实例数据→实例方法，需要类数据→类方法"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "定义一个 Date 类，添加 @classmethod from_string() 解析 '2026-01-01'",
+        "answer": "class Date:\n    def __init__(self,y,m,d):\n        self.y,self.m,self.d=y,m,d\n    @classmethod\n    def from_string(cls,s):\n        y,m,d=map(int,s.split('-'))\n        return cls(y,m,d)",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "实例方法",
+      "类方法",
+      "静态方法",
+      "OOP"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "认为类方法的第一个参数是 self 而不是 cls",
+      "认为用 @staticmethod 装饰的方法仍然会自动接收 cls 或 self 参数",
+      "把工厂方法写成 @staticmethod 而不是 @classmethod，导致子类无法正确创建实例",
+      "误以为实例方法可以省略第一个参数 self"
+    ]
+  },
+  {
+    "id": "PY-039",
+    "name": "继承与多态",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "继承让子类复用父类代码。super() 调用父类方法。多态让不同子类对同一接口返回不同结果——相同方法名表现不同行为。鸭子类型：'如果它走路像鸭子，它就是鸭子'。",
+    "prerequisites": [
+      "PY-036"
+    ],
+    "key_points": [
+      "class Child(Parent): 单继承",
+      "super().__init__() 调用父类构造",
+      "多态: 不同子类实现同名方法的不同行为",
+      "方法重写(override): 子类覆盖父类方法",
+      "isinstance() 检查类型，issubclass() 检查继承"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "定义 Animal 父类和 Dog、Cat 子类，重写 speak() 方法",
+        "answer": "class Animal:\n    def speak(self):pass\nclass Dog(Animal):\n    def speak(self):return 'Woof'\nclass Cat(Animal):\n    def speak(self):return 'Meow'",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "继承",
+      "多态",
+      "super",
+      "OOP"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "子类重写父类方法后，就无法再从子类内部调用父类的该方法了",
+      "多态要求不同子类必须继承自同一个父类才能实现",
+      "super() 只能在 __init__ 方法中使用",
+      "isinstance() 检查类型时会忽略继承关系，只判断对象是否是该类的直接实例"
+    ]
+  },
+  {
+    "id": "PY-040",
+    "name": "封装与 property",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "封装隐藏内部实现，通过公开接口访问。Python 用 _name 约定表示受保护，__name 触发名称改写。@property 将方法转为属性访问，可添加 getter/setter/deleter 控制访问。",
+    "prerequisites": [
+      "PY-036"
+    ],
+    "key_points": [
+      "_attr: 约定受保护（实际仍可访问）",
+      "__attr: 名称改写 _ClassName__attr（伪私有）",
+      "@property: getter，@attr.setter: setter",
+      "property 实现计算属性和验证逻辑",
+      "Python 依靠约定而非强制，信任开发者"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 @property 定义一个 Circle 类，radius 属性自动计算 area",
+        "answer": "import math\nclass Circle:\n    def __init__(self,radius):\n        self._radius=radius\n    @property\n    def radius(self):return self._radius\n    @radius.setter\n    def radius(self,v):\n        if v<=0:raise ValueError\n        self._radius=v\n    @property\n    def area(self):return math.pi*self._radius**2",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "封装",
+      "property",
+      "OOP"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "认为以双下划线开头的属性是完全私有的，外部无法访问。",
+      "以为使用 @property 后就只能有读取功能，无法设置或删除。",
+      "混淆 property 和普通属性，误认为 @property 声明的属性可以直接赋值并自动验证。",
+      "认为 Python 中单下划线前缀 `_attr` 是强制保护，解释器会阻止外部访问。"
+    ]
+  },
+  {
+    "id": "PY-041",
+    "name": "魔术方法",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "魔术方法(Dunder Methods)以 __ 开头结尾，实现对象的内置行为。__str__ 定义 print() 输出，__repr__ 定义开发者表示，__eq__/__lt__ 定义比较，__len__/__getitem__ 定义容器行为。",
+    "prerequisites": [
+      "PY-036"
+    ],
+    "key_points": [
+      "__str__: str(obj)/print() 的用户友好输出",
+      "__repr__: repr(obj) 的开发者表示(用于调试)",
+      "__eq__: == 比较，__lt__: < 比较",
+      "__len__: len(obj)，__getitem__: obj[i] 索引",
+      "__enter__/__exit__: with 语句支持"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "定义一个 Vector 类，支持 + 和 * 运算符",
+        "answer": "class Vector:\n    def __init__(self,x,y):\n        self.x,self.y=x,y\n    def __add__(self,other):\n        return Vector(self.x+other.x,self.y+other.y)\n    def __mul__(self,s):\n        return Vector(self.x*s,self.y*s)\n    def __repr__(self):\n        return f'Vector({self.x},{self.y})'",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "魔术方法",
+      "dunder",
+      "运算符重载"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "print(obj) 会自动调用 __repr__ 方法来获取输出字符串",
+      "只要在类中定义了 __eq__，!= 运算符就会自动实现相反的比较",
+      "实现 __getitem__ 方法后就无需定义 __len__ 也能直接使用 len()",
+      "只需实现 __enter__ 即可使用 with 语句，__exit__ 是可选的"
+    ]
+  },
+  {
+    "id": "PY-042",
+    "name": "抽象基类 ABC",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "abc 模块定义抽象基类(Abstract Base Class)。@abstractmethod 声明子类必须实现的方法。抽象类不能直接实例化。ABC 作为接口契约，确保子类实现特定方法。",
+    "prerequisites": [
+      "PY-039"
+    ],
+    "key_points": [
+      "from abc import ABC, abstractmethod",
+      "@abstractmethod: 子类必须实现",
+      "抽象类不能实例化",
+      "ABC 定义接口契约",
+      "collections.abc 提供容器抽象基类"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 ABC 定义一个 Shape 抽象类，要求子类实现 area()",
+        "answer": "from abc import ABC, abstractmethod\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):pass\nclass Square(Shape):\n    def __init__(self,s):self.s=s\n    def area(self):return self.s**2",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "抽象类",
+      "ABC",
+      "接口",
+      "OOP"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "抽象基类可以直接被实例化",
+      "子类即使没有实现全部的 @abstractmethod 方法，也可以成功创建实例",
+      "只要类继承自 ABC，就一定是抽象类且无法实例化",
+      "必须从 collections.abc 导入 ABC 和 abstractmethod，而不能从 abc 模块导入"
+    ]
+  },
+  {
+    "id": "PY-043",
+    "name": "装饰器原理",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "装饰器是接受函数并返回新函数的可调用对象。@decorator 语法糖等价于 func=decorator(func)。装饰器用于日志、计时、权限检查、缓存等横切关注点。带参数的装饰器需要三层嵌套。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "装饰器本质: decorator(func)(*args,**kwargs)",
+      "@符号语法糖: @timer 等价于 func=timer(func)",
+      "使用 @functools.wraps 保留原函数元信息",
+      "装饰器链: @d1 @d2 等价于 d1(d2(func))",
+      "带参数装饰器: 三层函数嵌套",
+      "应用: 日志、计时、缓存、认证、重试"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个计时装饰器，打印函数执行时间",
+        "answer": "import time\nfrom functools import wraps\ndef timer(func):\n    @wraps(func)\n    def wrapper(*a,**k):\n        start=time.time()\n        result=func(*a,**k)\n        print(f'{func.__name__}:{time.time()-start:.3f}s')\n        return result\n    return wrapper",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "装饰器",
+      "decorator",
+      "@",
+      "高阶函数"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "在使用@装饰链时，@d1  @d2 的顺序表示先应用 d1 再应用 d2",
+      "带参数的装饰器只需要两层嵌套函数即可实现",
+      "装饰器会自动保留原始函数的 __name__ 和 __doc__ 属性",
+      "@decorator 语法只是定义时的一种标记，不会在定义时立即调用 decorator(func)"
+    ]
+  },
+  {
+    "id": "PY-044",
+    "name": "上下文管理器",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "上下文管理器实现 __enter__ 和 __exit__，支持 with 语句。with 确保资源正确获取和释放。contextlib.contextmanager 装饰器用生成器简化上下文管理器编写。",
+    "prerequisites": [
+      "PY-016",
+      "PY-043"
+    ],
+    "key_points": [
+      "with obj as x: 进入 __enter__，退出 __exit__",
+      "__exit__ 接收异常信息，返回 True 抑制异常",
+      "contextlib.contextmanager 用 yield 拆分 enter/exit",
+      "常见: with open(), with lock, with Timer",
+      "嵌套: with A() as a, B() as b:"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 @contextmanager 实现一个临时切换目录的上下文管理器",
+        "answer": "from contextlib import contextmanager\nimport os\n@contextmanager\ndef cd(path):\n    old=os.getcwd()\n    os.chdir(path)\n    try:yield\n    finally:os.chdir(old)",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "上下文管理器",
+      "with",
+      "contextlib"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "with obj as x 中的 x 是上下文管理器对象本身",
+      "__exit__ 返回 True 会重新抛出异常",
+      "contextlib.contextmanager 装饰的函数必须实现 __enter__/__exit__",
+      "with 语句一次只能管理一个上下文管理器"
+    ]
+  },
+  {
+    "id": "PY-045",
+    "name": "迭代器与生成器",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "迭代器实现 __iter__ 和 __next__，支持 for 循环遍历。生成器是特殊的迭代器，用 yield 关键字定义。生成器惰性求值，被遍历完后再遍历返回空。yield from 委托子生成器。",
+    "prerequisites": [
+      "PY-043"
+    ],
+    "key_points": [
+      "迭代器协议: __iter__ 返回 self，__next__ 返回下一项",
+      "生成器函数: def gen(): yield value",
+      "yield 暂停函数执行并返回值",
+      "生成器惰性求值节省内存",
+      "yield from sub_gen() 委托生成"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个生成器，生成无限斐波那契数列",
+        "answer": "def fibonacci():\n    a,b=0,1\n    while True:\n        yield a\n        a,b=b,a+b",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "迭代器",
+      "生成器",
+      "yield"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "迭代器对象的 __iter__ 方法用于获取下一项元素",
+      "生成器函数被调用时会立即执行函数体直到遇到 yield 语句",
+      "生成器被遍历完所有产出后，再次遍历会重新从第一个 yield 开始执行",
+      "yield from sub_gen() 的委托生成与直接用 for 循环取值效果完全相同"
+    ]
+  },
+  {
+    "id": "PY-046",
+    "name": "元类入门",
+    "difficulty": 4,
+    "category": "面向对象编程",
+    "summary": "元类(metaclass)是类的类，控制类的创建过程。type 是默认元类。自定义元类继承 type 并重写 __new__/__init__。元类用于框架级别的类验证、自动注册、属性注入等。",
+    "prerequisites": [
+      "PY-041"
+    ],
+    "key_points": [
+      "元类是类的类，控制类创建",
+      "type(name,bases,dict) 动态创建类",
+      "class MyMeta(type): 定义自定义元类",
+      "__new__(mcs,name,bases,namespace) 在类创建前被调用",
+      "元类 vs 装饰器: 元类作用于所有子类，装饰器仅当前类"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "Python 中默认的元类是什么？",
+        "options": [
+          "A. class",
+          "B. object",
+          "C. type",
+          "D. meta"
+        ],
+        "answer": "C",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "元类",
+      "metaclass",
+      "type",
+      "高级"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "元类是用来控制实例对象创建的，而不是控制类本身的创建过程",
+      "type() 只能用来检查对象类型，不能动态创建新类",
+      "类装饰器可以像元类一样自动影响所有子类的创建",
+      "元类的 __new__ 方法是在类被实例化（创建对象）时调用的"
+    ]
+  },
+  {
+    "id": "PY-047",
+    "name": "设计模式实践",
+    "difficulty": 3,
+    "category": "面向对象编程",
+    "summary": "常见设计模式在 Python 中的实现：单例(Singleton)用类属性或装饰器；工厂(Factory)用类方法/函数；观察者(Observer)用回调或信号；策略(Strategy)用函数参数。Python 的鸭子类型简化了许多设计模式的实现。",
+    "prerequisites": [
+      "PY-039"
+    ],
+    "key_points": [
+      "单例: __new__ 控制只创建一个实例",
+      "工厂: 函数/类方法根据参数返回不同子类实例",
+      "观察者: 事件发生后通知所有注册的观察者",
+      "策略: 将可变行为封装为可互换的函数/类",
+      "Python 中很多 GoF 模式已被语言特性简化"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现单例模式的配置类（用 __new__ 实现）",
+        "answer": "class Config:\n    _instance=None\n    def __new__(cls):\n        if cls._instance is None:\n            cls._instance=super().__new__(cls)\n            cls._instance.settings={}\n        return cls._instance",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "设计模式",
+      "单例",
+      "工厂",
+      "观察者"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "Python 中实现单例模式必须重写 __new__ 方法",
+      "工厂模式在 Python 里只能通过专门的工厂类来实现",
+      "使用观察者模式时必须让观察者继承同一个抽象观察者类",
+      "策略模式需要为每个策略定义一个类，无法直接使用函数"
+    ]
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于json模块中的函数，以下哪个说法是正确的？",
+    "options": [
+      "A. json.dumps() 将 Python 对象转换为 JSON 格式的字符串，而 json.dump() 将 Python 对象写入文件对象",
+      "B. json.dumps 用于将 Python 对象直接写入文件",
+      "C. json.loads 可以直接读取并解析 JSON 文件",
+      "D. indent 参数用于让 JSON 输出更紧凑以减少体积"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "注意 dumps 和 dump 的一个字母差异，一个返回字符串，一个写入文件。",
+    "explanation": "正确选项 A 是 json.dumps 和 json.dump 的标准功能。选项 B 是常见错误：json.dumps 返回字符串，不能直接写入文件；写入文件应使用 json.dump。选项 C 错误：json.loads 解析 JSON 字符串，而不是直接读取文件；读取文件应使用 json.load。选项 D 错误：indent 参数用于美化输出、增加缩进，而不是使输出更紧凑。",
+    "qid": "Q-PY054-001",
+    "source_node_id": "PY-054",
+    "node_id": "PY-054"
+  },
+  {
+    "type": "choice",
+    "question": "在 json.dumps() 中使用 ensure_ascii 参数时，哪个说法正确？",
+    "options": [
+      "A. 设置 ensure_ascii=False 可以让 JSON 输出保留中文，而不转义为 Unicode 转义序列",
+      "B. 设置 ensure_ascii=False 会使中文被转义为 Unicode 编码",
+      "C. json.dumps 用于将 Python 对象直接写入文件",
+      "D. json.loads 可以直接读取并解析 JSON 文件"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "该参数控制非 ASCII 字符的处理方式。",
+    "explanation": "正确选项 A：ensure_ascii=False 时，JSON 输出中中文等字符将保持可读形式，而不会被转义成 \\uXXXX。选项 B 正好与事实相反，是常见错误。选项 C 和 D 均为其他常见错误，与本题参数无关。",
+    "qid": "Q-PY054-002",
+    "source_node_id": "PY-054",
+    "node_id": "PY-054"
+  },
+  {
+    "type": "fill",
+    "question": "使用 xml.etree.ElementTree 解析 XML 文件时，常通过 ET.parse('file.xml') 获取 ElementTree 对象，然后使用该对象的 ______() 方法获取文档的根元素。",
+    "answer": "getroot",
+    "difficulty": 2,
+    "hint": "方法名提示“获取根”。",
+    "explanation": "根据知识点，ET.parse(file) 返回 ElementTree 对象，调用其 getroot() 方法即可获得整个 XML 树的根元素，之后可以使用 find/findall 等 XPath 查询方法。",
+    "qid": "Q-PY054-003",
+    "source_node_id": "PY-054",
+    "node_id": "PY-054"
+  }
+]

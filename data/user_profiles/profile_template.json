@@ -1,0 +1,73 @@
+{
+  "$schema": "profile_schema.json",
+  "profile_id": "UP-TPL-001",
+  "name": "用户模板",
+  "created_at": "2026-07-01T10:00:00Z",
+  "type": "通用模板",
+  "description": "用户画像模板，包含所有必填和可选字段的完整示例。用于新增画像时参考。",
+  "demographics": {
+    "age_range": "18-25",
+    "education": "本科在读",
+    "major": "计算机科学与技术",
+    "programming_experience_months": 6,
+    "python_experience_months": 3,
+    "previously_learned_languages": ["C", "Java"]
+  },
+  "theory_level": 2,
+  "practical_level": 1,
+  "learning_style": "visual",
+  "target_direction": "Python 面向对象编程与小型项目开发",
+  "preferred_pace": "normal",
+  "time_per_week": 8,
+  "known_topics": [
+    {"node_id": "PY-001", "mastery": 0.90, "last_test_score": 9.0},
+    {"node_id": "PY-002", "mastery": 0.85, "last_test_score": 8.5},
+    {"node_id": "PY-003", "mastery": 0.75, "last_test_score": 7.5}
+  ],
+  "weak_topics": [
+    {"node_id": "PY-012", "mastery": 0.35, "error_patterns": ["切片索引混淆"]},
+    {"node_id": "PY-015", "mastery": 0.20, "error_patterns": ["函数参数传递理解错误"]}
+  ],
+  "weakness_areas": [
+    "列表和字典等复合数据结构的操作不熟练",
+    "函数抽象能力较弱，习惯写平铺直叙的代码"
+  ],
+  "raw_assessment_data": {
+    "theory_test": {
+      "total_questions": 10,
+      "correct": 7,
+      "answers": [
+        {"q_id": 1, "node_id": "PY-001", "correct": true, "time_seconds": 30},
+        {"q_id": 2, "node_id": "PY-001", "correct": true, "time_seconds": 25},
+        {"q_id": 3, "node_id": "PY-002", "correct": true, "time_seconds": 45},
+        {"q_id": 4, "node_id": "PY-003", "correct": false, "time_seconds": 60, "chosen_answer": "B", "correct_answer": "C"},
+        {"q_id": 5, "node_id": "PY-012", "correct": false, "time_seconds": 90, "chosen_answer": "A", "correct_answer": "D"}
+      ]
+    },
+    "practical_test": {
+      "total_exercises": 5,
+      "completed": 3,
+      "average_score": 6.0
+    },
+    "learning_style_quiz": {
+      "visual": 3,
+      "auditory": 1,
+      "read_write": 2,
+      "kinesthetic": 1
+    }
+  },
+  "learning_history": [
+    {
+      "date": "2026-07-01",
+      "node_id": "PY-012",
+      "action": "started",
+      "resources_generated": ["lecture", "practice_guide", "test"],
+      "test_score": null
+    }
+  ],
+  "recommended_path": {
+    "current_node": "PY-012",
+    "next_nodes": ["PY-015", "PY-018"],
+    "estimated_completion_weeks": 4
+  }
+}

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于 Python 爬虫开发的说法中，哪一项是正确的？",
+    "options": [
+      "A. 爬取公开网站时不需要检查和遵守 robots.txt 权限规定",
+      "B. 使用 requests.get().text 获取的字符串已经是提取好的可见文本，无需再用 BeautifulSoup 解析",
+      "C. 只要设置了 User-Agent 就一定能绕过所有反爬措施",
+      "D. 使用 .find() 提取元素时可能返回 None，因此应当进行非空判断"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "explanation": "A 错误，爬虫应遵守目标网站 robots.txt 中的权限规定；B 错误，requests 返回的是原始 HTML 文本，需要 BeautifulSoup 等解析器才能提取结构化数据；C 错误，仅设置 User-Agent 无法绕过所有反爬，IP 代理、请求频率控制等也是常见手段；D 正确，.find() 未找到匹配元素时会返回 None，若不加判断直接使用其属性或方法会引发异常。",
+    "qid": "Q-PY069-001",
+    "source_node_id": "PY-069",
+    "node_id": "PY-069",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在开始爬取一个网站之前，应先检查其根目录下的______文件，以了解爬虫的允许范围。",
+    "answer": "robots.txt",
+    "difficulty": 2,
+    "explanation": "robots.txt 文件规定了搜索引擎爬虫或其他自动化程序可以访问的路径和禁止访问的路径，爬虫开发前应当检查并遵守。",
+    "qid": "Q-PY069-002",
+    "source_node_id": "PY-069",
+    "node_id": "PY-069",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "请编写一个函数 crawl_links(url)，接收一个 URL 作为参数，完成以下任务：\n1. 设置请求头包含 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'；\n2. 发送 GET 请求获取页面内容，如请求失败或状态码异常则打印错误信息并返回；\n3. 使用 BeautifulSoup 解析 HTML，提取所有 <a> 标签的 href 属性；\n4. 打印每个有效的链接地址；\n5. 每次请求后调用 time.sleep(1) 控制频率。\n请给出完整可运行代码（包含必要的 import）。",
+    "answer": "import requests\nfrom bs4 import BeautifulSoup\nimport time\n\ndef crawl_links(url):\n    headers = {\n        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'\n    }\n    try:\n        response = requests.get(url, headers=headers, timeout=10)\n        response.raise_for_status()\n    except requests.RequestException as e:\n        print(f\"请求失败: {e}\")\n        return\n    \n    soup = BeautifulSoup(response.text, 'html.parser')\n    links = soup.find_all('a')\n    for link in links:\n        href = link.get('href')\n        if href:\n            print(href)\n    \n    time.sleep(1)\n\nif __name__ == \"__main__\":\n    crawl_links(\"https://example.com\")\n",
+    "difficulty": 4,
+    "hint": "使用 requests.get 设置 headers，response.text 传给 BeautifulSoup，用 .find_all('a') 遍历并获取 href 属性，记得用 try/except 和 time.sleep。",
+    "explanation": "代码综合了多个关键点：requests 带 headers 发送请求，异常处理（try/except），BeautifulSoup 解析 HTML，.find_all() 提取标签，控制请求频率（time.sleep）。同时体现了爬虫的基本流程：发请求→解析→提取。",
+    "qid": "Q-PY069-003",
+    "source_node_id": "PY-069",
+    "node_id": "PY-069"
+  }
+]

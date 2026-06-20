@@ -1,0 +1,605 @@
+[
+  {
+    "id": "PY-021",
+    "name": "栈与队列",
+    "difficulty": 2,
+    "category": "数据结构与算法",
+    "summary": "栈是后进先出(LIFO)结构，用 list.append()+list.pop() 模拟。队列是先进先出(FIFO)结构，用 collections.deque 实现高效操作。两者都是线性数据结构的基础。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "栈 LIFO: push=append(), pop=pop()",
+      "队列 FIFO: from collections import deque; d.append()/d.popleft()",
+      "list 做队列 pop(0) 是 O(n)，deque 是 O(1)",
+      "栈应用：括号匹配、撤销操作、DFS",
+      "队列应用：BFS、任务调度、滑动窗口"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下哪个是栈的典型特征？",
+        "options": [
+          "A. 先进先出",
+          "B. 后进先出",
+          "C. 随机访问",
+          "D. 按键排序"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "用栈实现括号匹配函数 is_balanced(s)，检查 ()[]{} 是否匹配",
+        "answer": "def is_balanced(s):\n    stack=[]\n    d={')':'(',']':'[','}':'{'}\n    for c in s:\n        if c in '([{':stack.append(c)\n        elif c in ')]}':\n            if not stack or stack.pop()!=d[c]:return False\n    return not stack",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "栈",
+      "队列",
+      "数据结构"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "栈是先进先出（FIFO）的数据结构。",
+      "使用列表的 pop(0) 方法可以实现高效的队列。",
+      "深度优先搜索（DFS）通常使用队列来实现。",
+      "collections.deque 的 popleft() 操作时间复杂度为 O(n)。"
+    ]
+  },
+  {
+    "id": "PY-022",
+    "name": "链表基础",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "链表由节点(Node)组成，每个节点包含数据和指向下个节点的引用。与列表不同，链表插入删除 O(1) 但访问 O(n)。常见类型：单链表、双链表、循环链表。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "链表节点: class Node: data; Node next",
+      "单链表末尾指向 None",
+      "插入/删除 O(1)，查找 O(n)",
+      "Python 中通常用 list 代替链表",
+      "双链表每个节点同时有 prev 和 next 引用"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "单链表中，删除某个节点需要知道什么？",
+        "options": [
+          "A. 该节点的值",
+          "B. 该节点的前驱节点",
+          "C. 该节点的后继节点",
+          "D. 链表长度"
+        ],
+        "answer": "B",
+        "difficulty": 2
+      },
+      {
+        "type": "code",
+        "question": "实现单链表的反转函数 reverse(head)",
+        "answer": "def reverse(head):\n    prev=None\n    curr=head\n    while curr:\n        nxt=curr.next\n        curr.next=prev\n        prev=curr\n        curr=nxt\n    return prev",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "链表",
+      "数据结构",
+      "指针"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "认为 Python 内置的 list 类型是链表实现",
+      "认为单链表的每个节点也包含 prev 引用指向前驱节点",
+      "认为在链表任意位置插入元素的时间复杂度总是 O(1)，无需考虑查找位置的 O(n) 时间",
+      "认为循环链表的尾节点也指向 None"
+    ]
+  },
+  {
+    "id": "PY-023",
+    "name": "递归思想",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "递归是函数调用自身解决问题的方法。两个关键要素：基本情况（终止条件）和递归情况（缩小问题规模）。递归简洁但可能栈溢出，Python 默认递归深度约 1000。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "递归 = 基础情形 + 递归步骤",
+      "每次递归调用压入调用栈",
+      "基础情形不满足则栈溢出 RecursionError",
+      "sys.setrecursionlimit() 调整递归深度上限",
+      "递归通常可转化为迭代，迭代更高效"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用递归实现斐波那契数列第 n 项",
+        "answer": "def fib(n):\n    if n<=1:return n\n    return fib(n-1)+fib(n-2)",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "用递归实现二分查找",
+        "answer": "def binary_search(arr,target,left,right):\n    if left>right:return -1\n    mid=(left+right)//2\n    if arr[mid]==target:return mid\n    if arr[mid]>target:return binary_search(arr,target,left,mid-1)\n    return binary_search(arr,target,mid+1,right)",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "递归",
+      "算法",
+      "分治"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "误以为递归函数可以没有基本情况，靠递推步骤自然收敛",
+      "认为递归调用不消耗内存栈，因此不会因深度过大而栈溢出",
+      "误用 sys.setrecursionlimit() 设置极大值后就能无限制递归，忽略了物理内存限制",
+      "认为递归总能比迭代更高效，因此应优先使用递归而非迭代"
+    ]
+  },
+  {
+    "id": "PY-024",
+    "name": "排序算法基础",
+    "difficulty": 2,
+    "category": "数据结构与算法",
+    "summary": "冒泡排序 O(n²) 重复交换相邻逆序对；选择排序 O(n²) 每次选最小元素放到前面；插入排序 O(n²) 构建有序序列，对部分有序数据接近 O(n)。三种都是原地排序。",
+    "prerequisites": [
+      "PY-008",
+      "PY-009"
+    ],
+    "key_points": [
+      "冒泡排序: 相邻比较交换，每轮最大元素浮到最后",
+      "选择排序: 每轮选最小元素放到 i 位",
+      "插入排序: 将元素插入已排序部分的正确位置",
+      "三种都是 O(n²) 比较排序，原地排序",
+      "插入排序对接近有序的数据最快"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现冒泡排序",
+        "answer": "def bubble_sort(arr):\n    n=len(arr)\n    for i in range(n-1):\n        for j in range(n-1-i):\n            if arr[j]>arr[j+1]:\n                arr[j],arr[j+1]=arr[j+1],arr[j]\n    return arr",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "排序",
+      "算法",
+      "冒泡",
+      "选择",
+      "插入"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "冒泡排序每一轮都将未排序部分的最小元素放到最前面",
+      "选择排序通过不断比较并交换相邻元素来将最小元素移到前面",
+      "插入排序对于已经有序的数组，时间复杂度仍然是 O(n²)",
+      "这三种排序算法都需要借助额外的数组空间，因此不是原地排序"
+    ]
+  },
+  {
+    "id": "PY-025",
+    "name": "高级排序算法",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "快速排序 O(n log n) 用分治策略，选 pivot 分区后递归排序。归并排序 O(n log n) 始终二分再合并，稳定但需 O(n) 额外空间。Python 内置 sort() 用 Timsort（归并+插入的混合算法）。",
+    "prerequisites": [
+      "PY-024"
+    ],
+    "key_points": [
+      "快速排序: 选 pivot，小于 pivot 放左、大于放右，递归",
+      "归并排序: 二分递归 + 合并有序数组，稳定排序",
+      "快排平均 O(n log n)，最坏 O(n²)（已有序且 pivot 选第一个）",
+      "归并排序始终 O(n log n)，但需要 O(n) 额外空间",
+      "Python 内置 sorted()/list.sort() 用 Timsort，稳定且高效"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现快速排序",
+        "answer": "def quick_sort(arr):\n    if len(arr)<=1:return arr\n    pivot=arr[0]\n    left=[x for x in arr[1:] if x<=pivot]\n    right=[x for x in arr[1:] if x>pivot]\n    return quick_sort(left)+[pivot]+quick_sort(right)",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "排序",
+      "快速排序",
+      "归并排序",
+      "分治"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "认为快速排序的时间复杂度始终为 O(n log n)",
+      "认为归并排序是原地排序算法，不需要额外空间",
+      "认为 Python 的 list.sort() 实现基于快速排序",
+      "认为快速排序中基准元素的选择对性能没有影响"
+    ]
+  },
+  {
+    "id": "PY-026",
+    "name": "二分查找",
+    "difficulty": 2,
+    "category": "数据结构与算法",
+    "summary": "二分查找在有序数组中每次排除一半元素，时间复杂度 O(log n)。Python 的 bisect 模块提供二分查找和插入功能。变体包括查找第一个/最后一个匹配、查找插入位置。",
+    "prerequisites": [
+      "PY-006",
+      "PY-009"
+    ],
+    "key_points": [
+      "前提: 数组必须有序",
+      "每次比较中间元素，排除一半",
+      "时间复杂度 O(log n)，空间 O(1)",
+      "bisect.bisect_left/right 查找插入位置",
+      "bisect.insort 保持有序插入"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现二分查找，找到返回索引，未找到返回 -1",
+        "answer": "def binary_search(arr,target):\n    left,right=0,len(arr)-1\n    while left<=right:\n        mid=(left+right)//2\n        if arr[mid]==target:return mid\n        elif arr[mid]<target:left=mid+1\n        else:right=mid-1\n    return -1",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "查找",
+      "二分",
+      "算法"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "二分查找无需数组有序，只要每次取中间值就能正确排除一半元素",
+      "bisect.bisect_left 在目标不存在时会返回 -1，与 list.index 一致",
+      "bisect.insort 在插入重复元素时会覆盖原有值以保证不重复",
+      "二分查找必须使用递归实现，因此空间复杂度为 O(log n)"
+    ]
+  },
+  {
+    "id": "PY-027",
+    "name": "哈希表原理",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "哈希表通过哈希函数将键映射到数组索引，实现 O(1) 平均查找。Python dict 使用开放寻址法解决冲突。哈希冲突解决策略：链地址法（链表）和开放寻址法（线性探测）。",
+    "prerequisites": [
+      "PY-011"
+    ],
+    "key_points": [
+      "哈希函数: key→index，理想情况下均匀分布",
+      "Python dict 使用开放寻址，3.6+ 保证插入顺序",
+      "平均 O(1) 增删查，最坏 O(n)",
+      "负载因子过高触发 rehash",
+      "键必须可哈希（实现 __hash__ 和 __eq__）"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下哪个不能作为 Python dict 的键？",
+        "options": [
+          "A. 整数",
+          "B. 字符串",
+          "C. 列表",
+          "D. 元组"
+        ],
+        "answer": "C",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "哈希表",
+      "字典",
+      "数据结构"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "Python dict 使用链地址法（链表）解决哈希冲突",
+      "Python dict 的查找操作在所有情况下都是 O(1) 时间复杂度",
+      "可哈希对象只需定义 __hash__ 方法即可作为字典键",
+      "从 Python 3.6 开始字典不保证插入顺序"
+    ]
+  },
+  {
+    "id": "PY-028",
+    "name": "树与二叉树",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "树是层次化数据结构，由节点和边组成。二叉树每个节点最多两个子节点。遍历方式：前序（根左右）、中序（左根右）、后序（左右根）、层序（BFS）。二叉搜索树(BST)左<根<右。",
+    "prerequisites": [
+      "PY-022",
+      "PY-023"
+    ],
+    "key_points": [
+      "树的基本概念: 根、叶、父、子、深度、高度",
+      "二叉树: 最多两个子节点 left/right",
+      "三种 DFS 遍历: 前序/中序/后序",
+      "BFS 层序遍历用队列",
+      "BST: 左子树 < 根 < 右子树，查找 O(log n)"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现二叉树的中序遍历（递归）",
+        "answer": "def inorder(root):\n    if not root:return\n    inorder(root.left)\n    print(root.val)\n    inorder(root.right)",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "树",
+      "二叉树",
+      "遍历",
+      "BST"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "二叉树要求每个节点都有两个子节点",
+      "层序遍历应该用栈来实现",
+      "中序遍历的顺序是'根左右'",
+      "在二叉搜索树中，左子树可以包含等于根节点的值"
+    ]
+  },
+  {
+    "id": "PY-029",
+    "name": "图的遍历",
+    "difficulty": 4,
+    "category": "数据结构与算法",
+    "summary": "图由顶点和边组成，可表示为邻接矩阵或邻接表。DFS 用栈/递归深入探索，BFS 用队列逐层扩散。DFS 适合连通性、拓扑排序；BFS 适合最短路径、层序问题。",
+    "prerequisites": [
+      "PY-028"
+    ],
+    "key_points": [
+      "图表示: 邻接表 {v:[neighbors]} 最常用",
+      "DFS 用栈/递归: 一条路走到底再回溯",
+      "BFS 用队列: 逐层扩散，找最短路径",
+      "DFS 用于: 连通分量、拓扑排序、环检测",
+      "BFS 用于: 无权最短路、社交距离"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现图的 BFS 遍历",
+        "answer": "from collections import deque\ndef bfs(graph,start):\n    visited=set()\n    q=deque([start])\n    while q:\n        v=q.popleft()\n        if v in visited:continue\n        visited.add(v)\n        print(v)\n        q.extend(graph[v])",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "图",
+      "遍历",
+      "DFS",
+      "BFS"
+    ],
+    "estimated_minutes": 40,
+    "common_mistakes": [
+      "认为邻接矩阵比邻接表更常用，忽略邻接表在稀疏图上的空间优势",
+      "以为BFS可以用栈或递归实现，实际上BFS必须用队列逐层扩散",
+      "认为DFS可以用于无权图的最短路径问题，实际上最短路径是BFS的典型应用",
+      "以为拓扑排序和环检测是BFS的适用场景，实际上这些是DFS的经典应用"
+    ]
+  },
+  {
+    "id": "PY-030",
+    "name": "动态规划入门",
+    "difficulty": 4,
+    "category": "数据结构与算法",
+    "summary": "动态规划(DP)解决具有最优子结构和重叠子问题特征的问题。核心思想是用数组/字典缓存子问题结果避免重复计算。经典问题：斐波那契、背包问题、最长公共子序列。",
+    "prerequisites": [
+      "PY-023",
+      "PY-025"
+    ],
+    "key_points": [
+      "DP 两要素: 最优子结构 + 重叠子问题",
+      "自顶向下（记忆化递归）vs 自底向上（递推）",
+      "状态定义: dp[i] 表示什么",
+      "状态转移: dp[i] = f(dp[i-1], dp[i-2], ...)",
+      "经典问题: 0-1背包、LCS、LIS、编辑距离"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 DP 解决爬楼梯问题：每次1或2步，n 阶有几种方法",
+        "answer": "def climb_stairs(n):\n    if n<=2:return n\n    dp=[0]*(n+1)\n    dp[1],dp[2]=1,2\n    for i in range(3,n+1):\n        dp[i]=dp[i-1]+dp[i-2]\n    return dp[n]",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "动态规划",
+      "DP",
+      "算法"
+    ],
+    "estimated_minutes": 45,
+    "common_mistakes": [
+      "动态规划只能用于求解最优化问题（如最大/最小值），不能用于计数或可行性问题。",
+      "记忆化递归效率总是低于递推实现，因此任何时候都应优先使用递推。",
+      "状态转移方程中 dp[i] 只能依赖于像 dp[i-1]、dp[i-2] 这样的相邻前项。",
+      "0-1背包问题可以用贪心算法高效解决，无需使用动态规划。"
+    ]
+  },
+  {
+    "id": "PY-031",
+    "name": "字符串匹配算法",
+    "difficulty": 4,
+    "category": "数据结构与算法",
+    "summary": "KMP 算法利用前缀函数(next数组)避免暴力匹配中的回溯，O(n+m) 时间复杂度。Python 的 str.find() 用 Boyer-Moore 等高效算法。暴力匹配 O(n*m) 在长文本上不适用。",
+    "prerequisites": [
+      "PY-003",
+      "PY-008"
+    ],
+    "key_points": [
+      "暴力匹配: 每个位置开始比较，O(n*m)",
+      "KMP: 利用已匹配信息构造 next 数组，O(n+m)",
+      "Python 内置 .find()/.index() 已高度优化",
+      "正则表达式 re.search() 用于复杂模式匹配"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现暴力字符串匹配 find(s,pattern)，返回首次匹配索引",
+        "answer": "def find(s,pattern):\n    n,m=len(s),len(pattern)\n    for i in range(n-m+1):\n        if s[i:i+m]==pattern:\n            return i\n    return -1",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "字符串",
+      "匹配",
+      "KMP",
+      "算法"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "认为 Python 的 str.find() 方法内部使用 KMP 算法进行字符串匹配",
+      "暴力匹配算法因 O(n*m) 的时间复杂度在任何情况下都不应使用",
+      "KMP 算法在匹配失败时需要回溯文本串指针以重新对齐"
+    ]
+  },
+  {
+    "id": "PY-032",
+    "name": "贪心算法",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "贪心算法每步选择当前最优解，不保证全局最优。适用问题需满足贪心选择性质。经典应用：活动选择、Huffman 编码、最小生成树(Prim/Kruskal)、找零钱问题。",
+    "prerequisites": [
+      "PY-023"
+    ],
+    "key_points": [
+      "贪心=每步局部最优→期望全局最优",
+      "前提: 问题具有贪心选择性质和最优子结构",
+      "经典问题: 活动选择、背包(分数版)、找零",
+      "Huffman 编码: 贪心建最优前缀码",
+      "与 DP 的区别: 贪心不回溯，DP 考虑所有可能"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "会议室安排：给定多个区间 [start,end)，求最多安排几个不冲突的会议",
+        "answer": "def max_meetings(intervals):\n    intervals.sort(key=lambda x:x[1])\n    count,end=0,0\n    for s,e in intervals:\n        if s>=end:\n            count+=1\n            end=e\n    return count",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "贪心",
+      "算法"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "贪心算法总是能找到全局最优解，即使问题不具备贪心选择性质",
+      "贪心算法在决策过程中可以像动态规划一样回溯和修正之前的选择",
+      "分数背包问题不能应用贪心算法求解",
+      "Huffman 编码是通过动态规划自底向上构建的，而非贪心选择"
+    ]
+  },
+  {
+    "id": "PY-033",
+    "name": "分治策略",
+    "difficulty": 4,
+    "category": "数据结构与算法",
+    "summary": "分治法将大问题分解为小问题解决后合并结果。三步：分解(Divide)→解决(Conquer)→合并(Combine)。代表算法：归并排序、快速排序、大整数乘法(Karatsuba)、最近点对。",
+    "prerequisites": [
+      "PY-025"
+    ],
+    "key_points": [
+      "分治三步骤: 分解→递归解决→合并",
+      "适用特征: 子问题独立且同构",
+      "时间分析用主定理(Master Theorem)",
+      "经典例子: 归并/快排、二分查找、Strassen 矩阵乘法"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "归并排序的时间复杂度是？",
+        "options": [
+          "A. O(n)",
+          "B. O(n log n)",
+          "C. O(n²)",
+          "D. O(log n)"
+        ],
+        "answer": "B",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "分治",
+      "算法",
+      "递归"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "分治法只包括分解和递归解决两个步骤，合并可有可无",
+      "只要问题能递归分解，就可以用分治法高效解决，无需考虑子问题特征",
+      "主定理适用于所有分治递归的时间复杂度分析"
+    ]
+  },
+  {
+    "id": "PY-034",
+    "name": "堆与优先队列",
+    "difficulty": 3,
+    "category": "数据结构与算法",
+    "summary": "堆是完全二叉树，最小堆的父节点 ≤ 子节点。Python heapq 模块实现最小堆，heappush O(log n)、heappop O(log n)。用于优先队列、TopK 问题、堆排序。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "最小堆: 每个父节点 ≤ 子节点",
+      "heapq.heapify(list) 原地建堆 O(n)",
+      "heapq.heappush(heap,item)/heappop(heap) O(log n)",
+      "heapq.nlargest/nSmallest(k,seq) 获取TopK",
+      "堆排序: 建堆+反复弹出 O(n log n)"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用堆实现找到列表中第 k 大的元素",
+        "answer": "import heapq\ndef kth_largest(nums,k):\n    heap=[]\n    for x in nums:\n        heapq.heappush(heap,x)\n        if len(heap)>k:\n            heapq.heappop(heap)\n    return heap[0]",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "堆",
+      "优先队列",
+      "heapq"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "误认为 Python heapq 默认实现最大堆",
+      "误认为 heapify 建堆的时间复杂度是 O(n log n)",
+      "误认为堆排序仅需执行 heapify 即可完成",
+      "误认为 heappush 操作的时间复杂度是 O(1)"
+    ]
+  },
+  {
+    "id": "PY-035",
+    "name": "并查集",
+    "difficulty": 4,
+    "category": "数据结构与算法",
+    "summary": "并查集(Union-Find)维护不相交集合，支持 union 合并和 find 查找所属集合。路径压缩+按秩合并优化后近乎 O(1)。用于连通性判断、Kruskal MST、朋友圈问题。",
+    "prerequisites": [
+      "PY-028"
+    ],
+    "key_points": [
+      "find(x): 找 x 的根（代表元），路径压缩加速",
+      "union(x,y): 合并 x 和 y 所在集合",
+      "路径压缩: find 时把路径上所有节点直接连到根",
+      "按秩合并: 小树合并到大树下，控制树高",
+      "应用: 连通分量、最小生成树、社交网络"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现并查集，包含 find 和 union 操作",
+        "answer": "class UnionFind:\n    def __init__(self,n):\n        self.parent=list(range(n))\n        self.rank=[0]*n\n    def find(self,x):\n        if self.parent[x]!=x:\n            self.parent[x]=self.find(self.parent[x])\n        return self.parent[x]\n    def union(self,x,y):\n        rx,ry=self.find(x),self.find(y)\n        if rx==ry:return\n        if self.rank[rx]<self.rank[ry]:rx,ry=ry,rx\n        self.parent[ry]=rx\n        if self.rank[rx]==self.rank[ry]:self.rank[rx]+=1",
+        "difficulty": 4
+      }
+    ],
+    "tags": [
+      "并查集",
+      "数据结构",
+      "图"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "find(x) 查找根节点时不会修改树结构，因此多次调用不影响性能。",
+      "union(x,y) 合并时总是把 y 的根作为 x 的根的子节点，不考虑树的大小。",
+      "路径压缩和按秩合并同时使用可使每次 find/union 达到严格的 O(1) 时间。",
+      "并查集只能用于无向图的连通分量问题，无法用于最小生成树或社交网络等场景。"
+    ]
+  }
+]

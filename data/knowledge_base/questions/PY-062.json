@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于 Python 包管理和虚拟环境的说法，正确的是？",
+    "options": [
+      "A. pip install package 后依赖版本会自动写入 requirements.txt",
+      "B. python -m venv .venv 命令会自动激活新创建的虚拟环境",
+      "C. pip freeze > requirements.txt 可以导出当前环境的依赖及版本",
+      "D. poetry 仍然依赖 requirements.txt 和 pip freeze 来锁定依赖"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "回想 pip freeze 和 requirements.txt 的正确配合方式。",
+    "explanation": "pip freeze 可将当前虚拟环境中已安装的包及版本输出，重定向到 requirements.txt 才能锁定依赖；而 pip install 并不会自动写入该文件，python -m venv 创建虚拟环境后需手动激活，poetry 使用 pyproject.toml 和 poetry.lock 独立管理依赖，不再依赖 pip freeze 和 requirements.txt。",
+    "qid": "Q-PY062-001",
+    "source_node_id": "PY-062",
+    "node_id": "PY-062"
+  },
+  {
+    "type": "choice",
+    "question": "为批量安装项目所需的依赖，以下哪项操作是正确的？",
+    "options": [
+      "A. pip install package 后依赖版本会自动写入 requirements.txt",
+      "B. python -m venv .venv 命令会自动激活新创建的虚拟环境",
+      "C. poetry 仍然依赖 requirements.txt 和 pip freeze 来锁定依赖",
+      "D. pip install -r requirements.txt 命令用于批量安装文件中列出的依赖"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "思考如何从记录依赖的文件中一键安装所有包。",
+    "explanation": "pip install -r requirements.txt 会读取 requirements.txt 中每行一个的包名与版本，并批量安装；其他选项均为常见的错误认知。",
+    "qid": "Q-PY062-002",
+    "source_node_id": "PY-062",
+    "node_id": "PY-062"
+  },
+  {
+    "type": "fill",
+    "question": "要锁定当前虚拟环境中所有已安装包的精确版本并保存到 requirements.txt，应先确保环境激活，然后执行命令：_____ > requirements.txt",
+    "answer": "pip freeze",
+    "difficulty": 2,
+    "hint": "该命令会列出当前环境中的所有包名及版本号。",
+    "explanation": "使用 pip freeze 可以导出当前环境所安装的包及其版本，配合重定向符号 > 写入 requirements.txt，从而锁定依赖版本，方便在其他环境中复现。",
+    "qid": "Q-PY062-003",
+    "source_node_id": "PY-062",
+    "node_id": "PY-062"
+  }
+]

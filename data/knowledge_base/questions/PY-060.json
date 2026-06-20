@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 logging 模块的日志级别与配置，以下说法正确的是：",
+    "options": [
+      "A. 日志级别从 DEBUG 到 CRITICAL 是按严重程度从低到高排列",
+      "B. 日志级别从 DEBUG 到 CRITICAL 是按严重程度从高到低排列",
+      "C. 一次 basicConfig 调用就能同时将日志输出到控制台和文件",
+      "D. 在模块中使用 getLogger() 而不传入 __name__，也能利用层级命名进行过滤"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "回顾五级日志的关系：DEBUG < INFO < WARNING < ERROR < CRITICAL。",
+    "explanation": "logging 模块定义的严重程度为 DEBUG(10) < INFO(20) < WARNING(30) < ERROR(40) < CRITICAL(50)，从 DEBUG 到 CRITICAL 严重程度逐渐升高，因此 A 正确。B 颠倒了顺序。C 是常见误解，basicConfig 默认只创建一个 StreamHandler；要同时输出控制台和文件，需要分别添加 Handler。D 也是错误认知，不传 __name__ 会使 logger 失去模块层级命名，无法按层级过滤。",
+    "qid": "Q-PY060-001",
+    "source_node_id": "PY-060",
+    "node_id": "PY-060"
+  },
+  {
+    "type": "choice",
+    "question": "关于 logging 的实际使用，以下说法正确的是：",
+    "options": [
+      "A. 生产环境日志格式可以随意，没有必要特意输出 JSON 格式",
+      "B. 要同时将日志输出到控制台和文件，应为 logger 分别添加 StreamHandler 和 FileHandler",
+      "C. 一次 basicConfig 调用就能同时将日志输出到控制台和文件",
+      "D. 在模块中使用 getLogger() 而不传入 __name__，也能利用层级命名进行过滤"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "basicConfig 适合简单配置，复杂需求需要手动添加 Handler。",
+    "explanation": "生产环境为了便于集中采集与分析，推荐使用结构化的 JSON 格式日志，故 A 错误。要同时输出到多个目标，需要通过 logger.addHandler() 分别添加 StreamHandler(控制台) 和 FileHandler(文件)，B 正确，C 错误。模块级 logger 应使用 getLogger(__name__) 才能利用层级命名进行过滤，D 错误。",
+    "qid": "Q-PY060-002",
+    "source_node_id": "PY-060",
+    "node_id": "PY-060"
+  },
+  {
+    "type": "fill",
+    "question": "在模块中，为了能够利用日志层级命名进行过滤，应该使用 logging.getLogger(_____) 来获取 logger 实例。",
+    "answer": "__name__",
+    "difficulty": 2,
+    "hint": "传入当前模块的内置变量，它会提供模块的完全限定名。",
+    "explanation": "logging.getLogger(__name__) 会为每个模块创建以模块限定名（如 'app.module'）命名的 logger，从而可以利用 logger 的层级关系（如按 'app' 过滤）进行精细的日志控制。",
+    "qid": "Q-PY060-003",
+    "source_node_id": "PY-060",
+    "node_id": "PY-060"
+  }
+]

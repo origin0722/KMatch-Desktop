@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于Python闭包的延迟绑定特性，下列哪一项描述是正确的？",
+    "options": [
+      "A. 闭包在定义时就已经绑定了外部变量的当前值，因此在循环中创建的lambda会分别记住每次循环时的变量值。",
+      "B. 在循环中创建多个lambda时，只要在每个lambda中直接使用循环变量，调用时就得到各自不同的值。",
+      "C. Python闭包引用外部变量，其值是在闭包被调用时才确定，因此在循环中创建的lambda若没特殊处理，都会引用循环变量的最终值。",
+      "D. 重新赋值外层变量时不需要nonlocal，因为在嵌套函数内部可以自动修改外部变量。"
+    ],
+    "answer": "C",
+    "difficulty": 3,
+    "hint": "回忆一下：闭包是在函数被调用时才去查找外部变量的值，而不是定义时。",
+    "explanation": "C正确反映了Python的延迟绑定机制。A错误地认为闭包在定义时绑定值；B错误地认为直接使用循环变量就能自动得到不同值；D错误地认为不需要nonlocal即可修改外层变量，这会导致创建新的局部变量。",
+    "qid": "Q-PY049-001",
+    "source_node_id": "PY-049",
+    "node_id": "PY-049"
+  },
+  {
+    "type": "fill",
+    "question": "在嵌套函数内部，如果要对闭包所引用的外部非全局变量进行重新赋值，必须使用_____关键字进行声明，否则Python会将其视为该嵌套函数内部的局部变量。",
+    "answer": "nonlocal",
+    "difficulty": 3,
+    "hint": "它是Python 3引入的用于声明嵌套作用域中变量可被修改的关键字。",
+    "explanation": "在嵌套函数中修改外层函数的变量时，需要用`nonlocal`声明，让解释器知道该变量不是局部变量，从而正确地修改闭包引用的外层变量。",
+    "qid": "Q-PY049-002",
+    "source_node_id": "PY-049",
+    "node_id": "PY-049"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个函数`make_loggers(names: list) -> dict`，接收字符串列表`names`。返回一个字典，键为每个`name`，值是一个闭包函数`logger(action: str)`。调用`logger(action)`时，打印格式为`\"{name}: {action} ({count})\"`，其中`count`从1开始，每次调用该logger时递增。要求：\n1. 使用`nonlocal`关键字维护每个logger的调用计数。\n2. 在循环中创建这些闭包时，必须正确处理Python的延迟绑定特性，确保每个logger绑定的`name`是循环中对应的名字，而不是循环结束后的最终值。\n3. 函数代码完整可运行。",
+    "answer": "def make_loggers(names):\n    loggers = {}\n    for name in names:\n        def create_logger(name=name):\n            count = 0\n            def logger(action):\n                nonlocal count\n                count += 1\n                print(f\"{name}: {action} ({count})\")\n            return logger\n        loggers[name] = create_logger()\n    return loggers\n",
+    "difficulty": 5,
+    "hint": "可以使用默认参数`name=name`在定义时冻结当前循环变量的值，同时在内部闭包中用`nonlocal`声明`count`以修改外层变量。",
+    "explanation": "该代码在循环中通过外层立即执行函数`create_logger`并利用默认参数冻结`name`值，避免了延迟绑定问题。`logger`内部通过`nonlocal count`声明来递增并记录调用次数，这些点综合了闭包定义、延迟绑定陷阱和`nonlocal`的使用。",
+    "qid": "Q-PY049-003",
+    "source_node_id": "PY-049",
+    "node_id": "PY-049"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于Python的sqlite3模块，以下说法正确的是？",
+    "options": [
+      "A. 执行写操作后无需提交事务，因为sqlite3会自动持久化更改",
+      "B. sqlite3的参数化查询使用%s占位符，与MySQL等数据库相同",
+      "C. 调用cursor.execute()执行查询后，结果会直接自动加载到cursor中，无需再调用fetchone或fetchall",
+      "D. 使用with语句管理数据库连接时，退出上下文会自动提交或回滚事务"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回顾sqlite3中事务管理和参数化查询的占位符规则。",
+    "explanation": "A错误，写操作后必须显式调用commit()或借助with语句自动提交，否则更改不会持久化。B错误，sqlite3的参数化占位符是?，不是%s。C错误，执行查询后需要使用fetchone()或fetchall()获取结果。D正确，with conn: 会在正常退出时自动commit()，异常退出时自动rollback()。",
+    "qid": "Q-PY073-001",
+    "source_node_id": "PY-073",
+    "node_id": "PY-073"
+  },
+  {
+    "type": "fill",
+    "question": "在Python的sqlite3模块中，为防止SQL注入，参数化查询时应使用_____作为占位符。",
+    "answer": "?",
+    "difficulty": 1,
+    "hint": "这种占位符不同于MySQL中的%s。",
+    "explanation": "sqlite3模块使用问号(?)作为参数占位符，通过c.execute(SQL, [params])传递参数，能有效防止SQL注入。",
+    "qid": "Q-PY073-002",
+    "source_node_id": "PY-073",
+    "node_id": "PY-073"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个完整的Python程序，完成以下任务：\n1. 连接到名为'students.db'的SQLite数据库文件（若不存在则自动创建）。\n2. 创建一个表student，包含字段：id INTEGER PRIMARY KEY, name TEXT, grade REAL。\n3. 使用参数化查询插入三条学生记录：('张三', 85.5), ('李四', 92.0), ('王五', 77.5)。\n4. 查询所有学生信息并逐行打印。\n5. 程序应使用with语句管理数据库连接，确保操作成功时自动提交，发生异常时自动回滚。\n6. 如果任何数据库操作失败，捕获异常并打印'数据库操作出错：'后跟具体错误信息。",
+    "answer": "import sqlite3\n\ntry:\n    conn = sqlite3.connect('students.db')\n    with conn:\n        cursor = conn.cursor()\n        cursor.execute('''CREATE TABLE IF NOT EXISTS student\n                     (id INTEGER PRIMARY KEY, name TEXT, grade REAL)''')\n        students = [('张三', 85.5), ('李四', 92.0), ('王五', 77.5)]\n        cursor.executemany('INSERT INTO student (name, grade) VALUES (?, ?)', students)\n        cursor.execute('SELECT * FROM student')\n        rows = cursor.fetchall()\n        for row in rows:\n            print(row)\nexcept sqlite3.Error as e:\n    print('数据库操作出错：', e)",
+    "difficulty": 4,
+    "hint": "使用executemany()批量插入数据，注意参数化占位符是?。with语句可以自动处理commit与rollback。",
+    "explanation": "代码先建立连接，使用with conn: 管理事务。游标执行建表语句（IF NOT EXISTS避免重复报错），然后用executemany()和参数化查询（?占位符）批量插入三条记录，随后查询所有行并用fetchall()获取，遍历打印。若with块内一切正常，退出时自动提交；若发生异常，则自动回滚并进入except块打印错误信息。",
+    "qid": "Q-PY073-003",
+    "source_node_id": "PY-073",
+    "node_id": "PY-073"
+  }
+]

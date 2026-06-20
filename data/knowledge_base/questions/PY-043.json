@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于装饰器的说法中，哪一项是正确的？",
+    "options": [
+      "A. 在使用 @d1 @d2 装饰函数时，会先应用 d1 再应用 d2",
+      "B. 带参数的装饰器只需要使用两层嵌套函数即可实现",
+      "C. 装饰器会自动保留原始函数的 __name__ 和 __doc__ 属性",
+      "D. @timer 语法糖等价于 func = timer(func)"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "回忆 @ 语法糖的本质和装饰器链的执行顺序。",
+    "explanation": "D 正确，@timer 就等价于 func = timer(func)。A 错误，装饰器链 @d1 @d2 等价于 d1(d2(func))，即先应用 d2 再应用 d1。B 错误，带参数的装饰器需要三层嵌套函数。C 错误，装饰器不会自动保留元信息，需使用 @functools.wraps。",
+    "qid": "Q-PY043-001",
+    "source_node_id": "PY-043",
+    "node_id": "PY-043"
+  },
+  {
+    "type": "fill",
+    "question": "对于函数 func，使用装饰器 @d1 和 @d2 修饰，即：@d1\\n@d2\\ndef func(): pass，这等价于执行了 func = _____。",
+    "answer": "d1(d2(func))",
+    "difficulty": 2,
+    "hint": "注意装饰器链是从下往上应用的。",
+    "explanation": "装饰器链 @d1 @d2 表示先用 d2 装饰原始函数，再将结果传给 d1，因此等价于 d1(d2(func))。",
+    "qid": "Q-PY043-002",
+    "source_node_id": "PY-043",
+    "node_id": "PY-043"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个带参数的装饰器 retry，接收 max_retries (最大重试次数) 和 delay (重试间隔秒数)。当被装饰函数抛出异常时，捕获异常并重试，每次重试前等待 delay 秒；若已达最大重试次数仍异常，则抛出最后一次异常。装饰器内部使用 functools.wraps 保留原始函数的元信息。要求代码包含必要的 import 语句，并实现装饰器。",
+    "answer": "import functools\nimport time\n\ndef retry(max_retries, delay):\n    def decorator(func):\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            last_exception = None\n            for attempt in range(max_retries + 1):\n                try:\n                    return func(*args, **kwargs)\n                except Exception as e:\n                    last_exception = e\n                    if attempt < max_retries:\n                        time.sleep(delay)\n            raise last_exception\n        return wrapper\n    return decorator",
+    "difficulty": 4,
+    "hint": "带参数的装饰器需要三层嵌套：最外层接收参数，中间层接收函数，最内层是包装函数。",
+    "explanation": "retry 使用了三层嵌套，外层接收 config，中间层接收被装饰的函数，内层 wrapper 执行重试逻辑，并使用 @functools.wraps 保留元信息。代码包含必要的 import，逻辑完整。",
+    "qid": "Q-PY043-003",
+    "source_node_id": "PY-043",
+    "node_id": "PY-043"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于Python元类的说法，正确的是：",
+    "options": [
+      "A. 元类是用来控制实例对象创建的，而不是控制类本身的创建过程",
+      "B. type() 只能用来检查对象类型，不能动态创建新类",
+      "C. 类装饰器可以像元类一样自动影响所有子类的创建",
+      "D. 元类的 __new__ 方法在类创建之前被调用，用于控制类的创建过程"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "元类是类的类，负责类的创建。",
+    "explanation": "元类控制类的创建过程（而非实例创建），A项错误；type()可以传入三个参数（类名、基类、属性字典）动态创建类，B项错误；类装饰器只作用于被装饰的当前类，不会自动影响所有子类，而元类会作用于所有子类，C项错误；元类的 __new__ 方法在类创建之前被调用，这正是它控制类创建的关键，D项正确。",
+    "qid": "Q-PY046-001",
+    "source_node_id": "PY-046",
+    "node_id": "PY-046"
+  },
+  {
+    "type": "fill",
+    "question": "在使用 type(name, bases, ______) 动态创建类时，第三个参数是一个包含类属性的字典，通常被称为 ______。",
+    "answer": "属性字典 (或 dict / 命名空间字典)",
+    "difficulty": 2,
+    "hint": "该参数为类提供方法和属性的命名空间。",
+    "explanation": "type(name, bases, dict) 中的第三个参数 dict 是一个字典，用于定义类的属性和方法，成为该类的命名空间。",
+    "qid": "Q-PY046-002",
+    "source_node_id": "PY-046",
+    "node_id": "PY-046"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个元类 ValidatorMeta，继承自 type，重写 __new__ 方法，实现以下功能：\n- 在类创建时检查类名是否以大写字母开头；\n- 若通过，则向类的命名空间中注入一个属性 created_at，其值为调用 datetime.datetime.now() 返回的字符串表示；\n- 若不通过，则抛出 ValueError 异常。\n然后，使用该元类创建两个类：GoodClass（符合命名规则，打印其 created_at）和 bad（不符合命名规则，代码中需体现该异常将被触发，但为避免中断运行可以注释掉 bad 的定义）。\n请写出完整的、可运行的 Python 代码，包含必要的 import。",
+    "answer": "import datetime\n\nclass ValidatorMeta(type):\n    def __new__(mcs, name, bases, namespace):\n        if not name[0].isupper():\n            raise ValueError(f\"类名 '{name}' 必须以大写字母开头\")\n        namespace['created_at'] = str(datetime.datetime.now())\n        return super().__new__(mcs, name, bases, namespace)\n\n# 正常创建的类\nclass GoodClass(metaclass=ValidatorMeta):\n    pass\n\nprint(f\"类 {GoodClass.__name__} 创建成功，created_at = {GoodClass.created_at}\")\n\n# 违反命名规则的类，取消注释将触发 ValueError\n# class bad(metaclass=ValidatorMeta):\n#     pass\n",
+    "difficulty": 5,
+    "hint": "在 __new__ 中检查 name 参数，并可向 namespace 字典注入键值对。",
+    "explanation": "元类的 __new__ 方法在类创建前调用，接收 mcs（元类）、name（类名）、bases（基类元组）和 namespace（类属性字典）。通过 name[0].isupper() 检查首字母是否大写，若不满足则抛出 ValueError；满足则在 namespace 中添加 created_at 键，然后通过 super().__new__ 完成类的创建。使用 metaclass=ValidatorMeta 指定元类。bad 类定义被注释，以演示校验机制而不中断脚本执行。",
+    "qid": "Q-PY046-003",
+    "source_node_id": "PY-046",
+    "node_id": "PY-046"
+  }
+]

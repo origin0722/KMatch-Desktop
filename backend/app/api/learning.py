@@ -1,0 +1,183 @@
+"""
+学习报告 API 路由
+
+POST /api/learning/report
+  - interactive 模式可视化报告: 按 session_id 补跑 graph_controller + content_generator
+    + reviewer (单轮，不回环)，返回三类可视化数据契约 learning_report。
+  - 幂等: 首次补跑后缓存 learning_report，同 session 重复调用直接返回 (省 9+ 次 LLM)。
+
+与 demo 模式互补: demo 模式在 assess 一次返回时内联计算 learning_report 嵌入
+AssessResponse；interactive 模式 submit 保持轻量 (仅判分+画像+反馈)，报告数据
+由本端点按需触发补跑 (B 端进报告页时调用)。
+"""
+
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+
+from app.agents.content_generator import content_generator_node
+from app.agents.graph_controller import graph_controller_node
+from app.agents.llm import llm_configured
+from app.agents.report_builder import build_learning_report
+from app.agents.reviewer import reviewer_node
+from app.api.diagnostics import _INTERACTIVE_SESSIONS
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
+router = APIRouter()
+
+
+class LearningReportRequest(BaseModel):
+    """可视化报告请求 (interactive 补跑)。"""
+
+    session_id: str = Field(..., description="assess(interactive) + submit 后的 session_id")
+
+
+class LearningReportResponse(BaseModel):
+    """可视化报告响应: 含完整路径/内容/审核产出 + 三类可视化预计算数据。"""
+
+    session_id: str
+    profile: dict = Field(default_factory=dict)
+    knowledge_graph: dict = Field(default_factory=dict, description="学习路径图谱 (补跑 graph_controller 产出)")
+    generated_content: dict = Field(default_factory=dict, description="生成资源 (补跑 content_generator 产出)")
+    review_results: dict = Field(default_factory=dict, description="内容审核报告 (单轮 reviewer)")
+    learning_report: dict = Field(default_factory=dict, description="三类可视化预计算数据契约")
+    orchestration_log: list = Field(default_factory=list)
+
+
+def _get_kg(request: Request):
+    """从 app.state 获取全局 KnowledgeGraph 单例 (与 diagnostics/graph/project 一致)。"""
+    kg = getattr(request.app.state, "kg", None)
+    if kg is None:
+        raise HTTPException(status_code=503, detail="知识图谱引擎未就绪（Neo4j 未连接）")
+    return kg
+
+
+def _run_report_pipeline(profile: dict, kg) -> dict:
+    """补跑 graph_controller → content_generator → reviewer (单轮，不回环)。
+
+    绕过 LangGraph 直接 fold 调用 node 函数 (签名均为 (state)->partial delta)，
+    与 submit/feedback 端点风格一致。orchestration_log 手动追加 (绕过 Annotated reducer)。
+    """
+    state = {
+        "user_profile": profile,
+        "knowledge_graph": {},
+        "generated_content": {},
+        "content_phase_entered": False,
+        "retry_count": 0,
+        "max_retries": 1,
+        "orchestration_log": [f"[{datetime.utcnow().isoformat()}] 📊 学习报告: 开始补跑"],
+    }
+    log = list(state["orchestration_log"])
+
+    def _fold(delta: dict) -> None:
+        """把 node 返回的 partial delta 合并进 state，追加其日志段。"""
+        nonlocal state, log
+        if not isinstance(delta, dict):
+            return
+        seg = delta.get("orchestration_log", [])
+        if seg:
+            log.extend(seg)
+        # 合并非日志字段 (节点返回的 knowledge_graph/generated_content 等)
+        for k, v in delta.items():
+            if k == "orchestration_log":
+                continue
+            state[k] = v
+
+    # ① 路径组装
+    _fold(graph_controller_node(kg)(state))
+    # ② 内容生成 (置 content_phase_entered=True，reviewer 据此进内容模式)
+    _fold(content_generator_node(kg)(state))
+    # ③ 内容审核 (单轮，不回环 — 完整回环是 demo workflow 职责)
+    _fold(reviewer_node(kg)(state))
+
+    log.append(f"[{datetime.utcnow().isoformat()}] ✅ 学习报告: 补跑完成")
+    state["orchestration_log"] = log
+    return state
+
+
+@router.post("/report", response_model=LearningReportResponse,
+             summary="可视化报告 (interactive 补跑路径+内容+审核，返回三类可视化数据)")
+def learning_report(req: LearningReportRequest, request: Request):
+    """interactive 模式可视化报告。
+
+    B 端在 submit 拿到画像后，进报告页时调用本接口:
+      - 首次: 补跑 graph_controller/content_generator/reviewer (单轮) → 组装 learning_report → 缓存
+      - 后续: 命中缓存直接返回 (幂等，省 9+ 次 LLM 调用)
+
+    校验序: session(404) → profile(409) → LLM(503) → kg(503) → 补跑。
+    reviewer 单轮不通过时内容仍交付 (passed=False + retry_hint)，不内联回环。
+    """
+    # ① session 存在
+    session = _INTERACTIVE_SESSIONS.get(req.session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"会话 {req.session_id} 不存在或已过期（缓存上限 {len(_INTERACTIVE_SESSIONS)}）",
+        )
+
+    # ② profile 已缓存 (submit 后回写)
+    profile = session.get("profile")
+    if not profile:
+        raise HTTPException(
+            status_code=409,
+            detail="画像未就绪：请先 POST /api/diagnostics/submit 提交答题产出画像",
+        )
+
+    # ③ 幂等: 已缓存报告 → 直接返回
+    cached = session.get("learning_report_cache")
+    if cached:
+        logger.info("学习报告命中缓存 session=%s", req.session_id)
+        return LearningReportResponse(
+            session_id=req.session_id,
+            profile=profile,
+            knowledge_graph=session.get("knowledge_graph", {}),
+            generated_content=session.get("generated_content", {}),
+            review_results=session.get("review_results", {}),
+            learning_report=cached,
+            orchestration_log=session.get("report_log", []),
+        )
+
+    # ④ 环境依赖
+    if not llm_configured():
+        raise HTTPException(status_code=503, detail="LLM 未配置，无法补跑内容生成")
+    kg = _get_kg(request)
+
+    # ⑤ 补跑
+    try:
+        state = _run_report_pipeline(profile, kg)
+    except Exception as e:
+        logger.error("学习报告补跑失败 session=%s", req.session_id, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"报告补跑失败: {e}")
+
+    knowledge_graph = state.get("knowledge_graph", {})
+    generated_content = state.get("generated_content", {})
+    review_results = state.get("review_results", {})
+
+    learning_report = build_learning_report(
+        profile, knowledge_graph, generated_content, review_results, kg=kg
+    )
+
+    # 回写 session 缓存 (供后续 /feedback 及幂等复用)
+    session["knowledge_graph"] = knowledge_graph
+    session["generated_content"] = generated_content
+    session["review_results"] = review_results
+    session["learning_report_cache"] = learning_report
+    session["report_log"] = state.get("orchestration_log", [])
+
+    logger.info("学习报告补跑完成 session=%s resources=%d passed=%s",
+                req.session_id,
+                len(generated_content.get("resources", [])),
+                review_results.get("passed"))
+
+    return LearningReportResponse(
+        session_id=req.session_id,
+        profile=profile,
+        knowledge_graph=knowledge_graph,
+        generated_content=generated_content,
+        review_results=review_results,
+        learning_report=learning_report,
+        orchestration_log=state.get("orchestration_log", []),
+    )

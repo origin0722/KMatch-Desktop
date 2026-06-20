@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 git pull 和 git fetch 的描述，正确的是？",
+    "options": [
+      "A. git pull 和 git fetch 功能相同，都只是从远程下载更新而不合并本地分支。",
+      "B. git pull 是拉取远程更新并自动合并到当前分支，git fetch 仅下载不合并。",
+      "C. 执行 git add . 后，就可以直接使用 git push 将修改推送到远程仓库。",
+      "D. git branch feature 命令会创建并自动切换到新分支 feature。"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "pull 会合并，fetch 仅下载。",
+    "explanation": "git pull 等同于 git fetch + merge，会自动尝试合并远程更改；而 git fetch 仅获取远程数据，不影响本地工作区。A 错误地将两者等同，C 遗漏了 commit 步骤，D 描述的是 git checkout -b 的功能。",
+    "qid": "Q-PY075-001",
+    "source_node_id": "PY-075",
+    "node_id": "PY-075"
+  },
+  {
+    "type": "choice",
+    "question": "关于分支的合并与删除，以下说法正确的是？",
+    "options": [
+      "A. git merge feature 合并后，feature 分支会被自动删除。",
+      "B. git branch feature 创建并自动切换到 feature 分支。",
+      "C. 要删除分支，可以使用 git branch -d feature，但合并后不会自动删除。",
+      "D. git pull 和 git fetch 功能相同，都只是从远程下载更新而不合并本地分支。"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "hint": "合并后分支依然存在，需手动删除。",
+    "explanation": "git merge 仅合并内容，分支仍保留，需用 git branch -d 手动删除。A 错误认为分支会自动删除，B 混淆了 git branch 和 git checkout -b，D 错误描述了 git pull 和 git fetch 的差异。",
+    "qid": "Q-PY075-002",
+    "source_node_id": "PY-075",
+    "node_id": "PY-075"
+  },
+  {
+    "type": "fill",
+    "question": "在 Git 中，初始化一个本地仓库的命令是 ______。",
+    "answer": "git init",
+    "difficulty": 1,
+    "hint": "该命令会在当前目录创建 .git 隐藏文件夹。",
+    "explanation": "git init 用于在当前目录初始化一个新的 Git 仓库，会创建 .git 子目录，包含所有必要的仓库文件。",
+    "qid": "Q-PY075-003",
+    "source_node_id": "PY-075",
+    "node_id": "PY-075"
+  }
+]

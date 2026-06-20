@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于消息队列的以下说法中，正确的是？",
+    "options": [
+      "A. 使用 RQ 也能像 Celery Beat 一样方便地实现分布式定时任务调度",
+      "B. 生产者将消息放入队列后会同步等待 Worker 处理完并返回结果",
+      "C. Celery 自带完整的 Web 监控界面，不需要安装 Flower 等第三方工具",
+      "D. Celery 支持通过 beat 组件实现定时任务调度，并可搭配 Flower 进行实时监控"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆 RQ 与 Celery 的功能区别、消息队列的异步本质，以及监控工具 Flower 的角色。",
+    "explanation": "RQ 轻量但不提供内置的分布式定时任务调度（需额外方案），Celery 的 Beat 可实现该功能；消息队列是异步机制，生产者不会同步等待结果；Celery 本身没有 Web 监控界面，需借助 Flower 等第三方工具；因此只有 D 正确。",
+    "qid": "Q-PY090-001",
+    "source_node_id": "PY-090",
+    "node_id": "PY-090"
+  },
+  {
+    "type": "fill",
+    "question": "Celery 生态中，用于实时监控任务队列状态的第三方 Web 工具名为 _____。",
+    "answer": "Flower",
+    "difficulty": 2,
+    "hint": "该工具的名称是一种花。",
+    "explanation": "Flower 是 Celery 推荐的实时监控工具，提供 Web 界面查看任务状态、Worker 负载等，需要单独安装，Celery 自身不包含该界面。",
+    "qid": "Q-PY090-002",
+    "source_node_id": "PY-090",
+    "node_id": "PY-090"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个使用 Celery 的 Python 脚本，实现以下功能：\n1) 定义一个异步任务 send_report，模拟生成并发送每日报告（只需打印 \"Daily report sent.\"）；\n2) 配置定时任务调度器，使该任务在每天上午 8:00 自动执行。\n要求：创建 Celery 应用实例，使用 redis 作为 broker（地址可假设为 redis://localhost:6379/0），并在配置中定义 beat_schedule。",
+    "answer": "from celery import Celery\nfrom celery.schedules import crontab\n\napp = Celery('tasks', broker='redis://localhost:6379/0')\n\napp.conf.beat_schedule = {\n    'send-report-every-day': {\n        'task': 'tasks.send_report',\n        'schedule': crontab(hour=8, minute=0),\n    },\n}\napp.conf.timezone = 'UTC'\n\n@app.task\ndef send_report():\n    print('Daily report sent.')",
+    "difficulty": 5,
+    "hint": "使用 celery.schedules.crontab 来设定每天的具体时间，不要忘记创建 Celery 实例并指定 broker。",
+    "explanation": "此题综合了 Celery 的任务定义、beat 定时调度配置以及 broker 设置，覆盖了分布式任务队列与定时任务两个关键点。",
+    "qid": "Q-PY090-003",
+    "source_node_id": "PY-090",
+    "node_id": "PY-090"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于链表（Linked List）的说法，下列哪个是正确的？",
+    "options": [
+      "A. Python 内置的 list 类型底层采用链表实现，因此在两端插入和删除是 O(1)",
+      "B. 单链表的每个节点都同时包含 prev 和 next 两个引用，以支持双向遍历",
+      "C. 在单链表任意位置插入新节点的时间复杂度总是 O(1)，因为只需修改指针",
+      "D. 单链表的末尾节点指向 None，作为链表结束的标志"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "单链表节点仅有一个引用，指向下一个节点；链表插入本身是 O(1)，但定位到插入位置需要 O(n)。",
+    "explanation": "单链表每个节点只持有 next 引用，最后一个节点的 next 指向 None，这是结束标志。选项 A 错把 Python 的 list 当成链表实现（实际是动态数组）；选项 B 是双链表的特征而非单链表；选项 C 忽略了在链表中查找位置也需要 O(n) 时间。",
+    "qid": "Q-PY022-001",
+    "source_node_id": "PY-022",
+    "node_id": "PY-022"
+  },
+  {
+    "type": "fill",
+    "question": "在单链表的节点类定义中，每个节点通常包含 data 属性用于存储数据，以及一个名为 ______ 的属性，用于指向下一个节点。",
+    "answer": "next",
+    "difficulty": 2,
+    "explanation": "根据知识点“链表节点: class Node: data; Node next”，单链表节点使用 next 属性引用下一个节点。",
+    "qid": "Q-PY022-002",
+    "source_node_id": "PY-022",
+    "node_id": "PY-022",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "已知单链表节点类定义如下（无需修改）：\n\nclass Node:\n    def __init__(self, data):\n        self.data = data\n        self.next = None\n\n请编写函数 reverse_list(head)，接收链表的头节点 head（可能为 None），返回反转后链表的新头节点。\n要求原地修改 next 引用，不能创建新节点或使用额外列表存储数据。\n\n示例：\n输入链表：1 -> 2 -> 3 -> None\n调用 reverse_list 后应返回节点 3，链表变为：3 -> 2 -> 1 -> None",
+    "answer": "def reverse_list(head):\n    prev = None\n    curr = head\n    while curr:\n        next_node = curr.next\n        curr.next = prev\n        prev = curr\n        curr = next_node\n    return prev\n",
+    "difficulty": 4,
+    "hint": "使用三个指针 prev、curr、next_node，依次反转每个节点的 next 引用。",
+    "explanation": "迭代反转单链表是典型的指针操作：用 prev 记录已反转部分的头节点，遍历原链表时将当前节点的 next 指向前驱，然后更新 prev 和 curr。时间复杂度 O(n)，空间复杂度 O(1)，综合考察了单链表的节点结构和遍历操作。",
+    "qid": "Q-PY022-003",
+    "source_node_id": "PY-022",
+    "node_id": "PY-022"
+  }
+]

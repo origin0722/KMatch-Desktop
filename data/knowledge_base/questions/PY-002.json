@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 print() 函数，以下哪一项是正确的？",
+    "options": [
+      "A. print() 默认以逗号分隔多个参数",
+      "B. print() 默认以空格分隔多个参数",
+      "C. print() 的 end 参数用于设置多个参数之间的分隔符",
+      "D. print() 的 sep 参数用于指定输出结束符"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "explanation": "print() 接受多个参数时默认用空格分隔。A 错误地把逗号当作默认分隔符；C 混淆了 end 和 sep 的用途，end 设置结束符；D 也把 sep 的作用说反了，sep 才是分隔符。",
+    "qid": "Q-PY002-001",
+    "source_node_id": "PY-002",
+    "node_id": "PY-002",
+    "hint": ""
+  },
+  {
+    "type": "choice",
+    "question": "关于 Python 的基本输入与格式化输出，以下哪一项是正确的？",
+    "options": [
+      "A. input() 能根据用户输入自动识别并返回数字类型",
+      "B. 使用 f-string 时只需在字符串内写 {变量名}，不需要前缀 f",
+      "C. input() 始终返回字符串类型",
+      "D. print() 的 end 参数用于设置多个参数之间的分隔符"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "explanation": "input() 总是返回字符串，即使输入的是数字也需要用 int() 或 float() 转换。A 错误地认为 input() 会自动返回数值；B 忽略了 f 前缀的必要性；D 把 end 的作用（结束符）错当成分隔符。",
+    "qid": "Q-PY002-002",
+    "source_node_id": "PY-002",
+    "node_id": "PY-002",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "print() 函数通过 _____ 参数来指定输出项之间的分隔符。",
+    "answer": "sep",
+    "difficulty": 1,
+    "explanation": "print() 的 sep 参数用于设置多个输出项之间的分隔符，默认值为空格；end 参数用于设置输出结尾字符，默认值为换行符。",
+    "qid": "Q-PY002-003",
+    "source_node_id": "PY-002",
+    "node_id": "PY-002",
+    "hint": ""
+  }
+]

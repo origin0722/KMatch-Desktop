@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 try/except/finally 结构中的 finally 块，以下哪个说法是正确的？",
+    "options": [
+      "A. 在 try 块中使用 return 语句时，finally 块中的清理代码不会被执行。",
+      "B. 要捕获多个异常类型就必须分别编写多个独立的 except 子句，不能使用括号元组形式。",
+      "C. else 块的作用是无论异常是否发生都会执行，与 finally 功能相同。",
+      "D. finally 块中的代码无论是否发生异常，以及 try 块中是否执行了 return，都会被执行。"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "finally 块中的清理代码一定会被执行，即使 try 块中出现了 return 语句或异常。这是 finally 的机制，常用于释放资源。其他选项分别描述了关于 finally、捕获多个异常以及 else 块的常见误解。",
+    "qid": "Q-PY015-001",
+    "source_node_id": "PY-015",
+    "node_id": "PY-015"
+  },
+  {
+    "type": "choice",
+    "question": "关于 try/except 结构中的 else 子句，以下哪个说法是正确的？",
+    "options": [
+      "A. else 块的作用是无论异常是否发生都会执行，与 finally 功能相同。",
+      "B. raise 关键字只能用于抛出 Python 内置的异常类型，无法抛出自定义异常。",
+      "C. 在 try 块中使用 return 语句时，finally 块中的清理代码不会被执行。",
+      "D. else 块只有在 try 块没有发生异常时才会执行。"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "else 块仅在 try 块中没有发生任何异常时执行；finally 块不论是否异常都会执行。A 混淆了 else 和 finally，B 错误地限制了 raise 只能抛出内置异常，C 对 finally 的语义理解错误。",
+    "qid": "Q-PY015-002",
+    "source_node_id": "PY-015",
+    "node_id": "PY-015"
+  },
+  {
+    "type": "fill",
+    "question": "在Python中，使用______关键字可以抛出一个异常。",
+    "answer": "raise",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "raise 关键字用于抛出一个异常实例或异常类，可以抛出内置异常或自定义异常。",
+    "qid": "Q-PY015-003",
+    "source_node_id": "PY-015",
+    "node_id": "PY-015"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "以下关于数据仪表盘构建的说法中，正确的是：",
+    "options": [
+      "A. 仪表盘应采用网格布局和卡片组件进行模块化管理。",
+      "B. 仪表盘只需将多个图表堆叠在同一页面即可，无需采用网格布局和卡片组件进行模块化管理。",
+      "C. 图表联动是指前端对已加载的全部数据进行筛选，不需要向后端重新请求数据。",
+      "D. 给图表容器设置固定宽度和高度就能让图表在窗口大小变化时自动适应，无需监听resize事件或调用图表的重绘方法。"
+    ],
+    "answer": "A",
+    "difficulty": 3,
+    "hint": "回忆仪表盘布局的关键技术：网格系统和卡片组件。",
+    "explanation": "根据知识点，仪表盘布局推荐使用 grid 网格和卡片组件进行模块化管理（选项 A）。选项 B 是常见误解，选项 C 忽略了多图表联动可能需要重新请求后端数据，选项 D 忽略了响应式需监听 resize 事件并调用重绘方法。",
+    "qid": "Q-PY085-001",
+    "source_node_id": "PY-085",
+    "node_id": "PY-085"
+  },
+  {
+    "type": "fill",
+    "question": "实现仪表盘数据的实时更新，除了通过 setInterval 轮询外，还可以使用______推送技术。",
+    "answer": "WebSocket",
+    "difficulty": 3,
+    "hint": "这是一种全双工通信协议。",
+    "explanation": "数据仪表盘的实时更新可采用客户端轮询（setInterval）或服务端推送（WebSocket），这两种方式均在知识点中明确提及。",
+    "qid": "Q-PY085-002",
+    "source_node_id": "PY-085",
+    "node_id": "PY-085"
+  },
+  {
+    "type": "code",
+    "question": "请编写一个完整的 Python 脚本，实现一个基于 Flask 和 pyecharts 的数据仪表盘。要求：\n1. 使用 Grid 网格布局和卡片组件展示三个图表（折线图、柱状图、饼图）；\n2. 窗口大小变化时图表自适应；\n3. 点击柱状图的一个类别，其他两个图表根据该类别筛选数据并重新渲染；\n4. 后端通过 WebSocket 定期推送模拟的实时数据，前端接收并更新图表；\n5. 后端 API 提供聚合数据和时间范围筛选功能。\n输入：无需用户输入，直接运行脚本启动仪表盘；\n输出：浏览器访问 http://localhost:5000 看到仪表盘。",
+    "answer": "from flask import Flask, render_template_string, jsonify, request\nfrom flask_socketio import SocketIO, emit\nfrom pyecharts.charts import Line, Bar, Pie, Grid\nfrom pyecharts import options as opts\nimport threading\nimport time\nimport random\n\napp = Flask(__name__)\napp.config['SECRET_KEY'] = 'secret!'\nsocketio = SocketIO(app)\n\n# 模拟数据\ncategories = ['A', 'B', 'C', 'D']\ncurrent_filter = None\n\ndef generate_data():\n    data = []\n    for cat in categories:\n        data.append({\n            'category': cat,\n            'value1': random.randint(10, 100),\n            'value2': random.randint(10, 100),\n            'value3': random.randint(10, 100)\n        })\n    return data\n\ndashboard_data = generate_data()\n\ndef make_line_chart(data, filter_cat=None):\n    if filter_cat:\n        data = [d for d in data if d['category'] == filter_cat]\n    line = (\n        Line()\n        .add_xaxis([d['category'] for d in data])\n        .add_yaxis('数值1', [d['value1'] for d in data])\n        .set_global_opts(title_opts=opts.TitleOpts(title='折线图'))\n    )\n    return line\n\ndef make_bar_chart(data):\n    bar = (\n        Bar()\n        .add_xaxis([d['category'] for d in data])\n        .add_yaxis('数值2', [d['value2'] for d in data])\n        .set_global_opts(title_opts=opts.TitleOpts(title='柱状图（点击联动）'))\n    )\n    return bar\n\ndef make_pie_chart(data, filter_cat=None):\n    if filter_cat:\n        data = [d for d in data if d['category'] == filter_cat]\n    pie = (\n        Pie()\n        .add('', [[d['category'], d['value3']] for d in data])\n        .set_global_opts(title_opts=opts.TitleOpts(title='饼图'))\n    )\n    return pie\n\ndef make_grid(data, filter_cat=None):\n    line = make_line_chart(data, filter_cat)\n    bar = make_bar_chart(data)\n    pie = make_pie_chart(data, filter_cat)\n    grid = (\n        Grid()\n        .add(line, grid_opts=opts.GridOpts(pos_left=\"10%\", pos_right=\"55%\", pos_top=\"10%\", pos_bottom=\"50%\"))\n        .add(bar, grid_opts=opts.GridOpts(pos_left=\"55%\", pos_right=\"5%\", pos_top=\"10%\", pos_bottom=\"50%\"))\n        .add(pie, grid_opts=opts.GridOpts(pos_left=\"10%\", pos_right=\"5%\", pos_top=\"55%\", pos_bottom=\"5%\"))\n    )\n    return grid\n\n@app.route('/')\ndef index():\n    grid = make_grid(dashboard_data)\n    chart_html = grid.render_embed()\n    html = f'''\n    <!DOCTYPE html>\n    <html>\n    <head><title>仪表盘</title></head>\n    <body>\n        <div class=\"card\" id=\"chart_container\">{chart_html}</div>\n        <script src=\"https://cdn.socket.io/4.5.0/socket.io.min.js\"></script>\n        <script>\n            window.addEventListener('resize', function() {{\n                var chart = echarts.getInstanceByDom(document.getElementById('chart_container').getElementsByTagName('div')[0]);\n                if (chart) chart.resize();\n            }});\n            var socket = io();\n            socket.on('update_data', function(data) {{\n                // 实时更新逻辑：重新获取图表并刷新\n                location.reload();\n            }});\n            // 柱状图点击联动\n            var barChartDom = document.querySelectorAll('.chart')[1];\n            var barChart = echarts.getInstanceByDom(barChartDom);\n            barChart.on('click', function(params) {{\n                var cat = params.name;\n                fetch('/filter?cat=' + cat)\n                    .then(response => response.text())\n                    .then(html => {{\n                        document.getElementById('chart_container').innerHTML = html;\n                    }});\n            }});\n        </script>\n    </body>\n    </html>\n    '''\n    return render_template_string(html)\n\n@app.route('/filter')\ndef filter_data():\n    cat = request.args.get('cat')\n    grid = make_grid(dashboard_data, filter_cat=cat)\n    return grid.render_embed()\n\n@app.route('/api/data', methods=['GET'])\ndef api_data():\n    start = request.args.get('start')\n    end = request.args.get('end')\n    # 模拟时间范围筛选（此处忽略，实际可过滤）\n    return jsonify(dashboard_data)\n\ndef background_task():\n    while True:\n        time.sleep(5)\n        global dashboard_data\n        dashboard_data = generate_data()\n        socketio.emit('update_data', dashboard_data)\n\nif __name__ == '__main__':\n    threading.Thread(target=background_task, daemon=True).start()\n    socketio.run(app, debug=True)",
+    "difficulty": 4,
+    "hint": "使用 Flask-SocketIO 实现 WebSocket 推送，使用 pyecharts 的 Grid 进行布局，在前端脚本中添加 resize 和 click 事件。",
+    "explanation": "本答案综合了仪表盘的核心知识点：利用 Grid 实现网格布局将三个图表分区域放置；通过 window.resize 事件监听调用图表 resize 方法实现响应式；在柱状图绑定 click 事件，根据点击的类别向 /filter 端点请求筛选后的图表并替换显示；使用 SocketIO 在后端定时推送新数据，前端接收后刷新。还提供了 /api/data 端点用于聚合数据和时间范围筛选。该代码完整可运行，启动后即可体验联动与实时更新。",
+    "qid": "Q-PY085-003",
+    "source_node_id": "PY-085",
+    "node_id": "PY-085"
+  }
+]

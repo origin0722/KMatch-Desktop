@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于快速排序和归并排序，以下哪个说法是正确的？",
+    "options": [
+      "A. 快速排序的时间复杂度始终为 O(n log n)",
+      "B. 归并排序是原地排序算法，不需要额外空间",
+      "C. 快速排序中基准元素的选择对性能没有影响",
+      "D. Python内置的list.sort()方法基于Timsort，是一种稳定且高效的混合排序算法"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆快排的最坏情况、归并排序的空间需求以及Python内置排序的实现。",
+    "explanation": "快速排序在极端情况（如已排序且选第一个元素为pivot）下时间复杂度为 O(n²)，因此 A 错误；归并排序需要 O(n) 额外空间来合并，不是原地算法，B 错误；基准（pivot）的选择直接影响快速排序的性能，避免最坏情况，C 错误；Python 的 list.sort() 底层使用 Timsort，是一种结合归并排序和插入排序的稳定混合算法，D 正确。",
+    "qid": "Q-PY025-001",
+    "source_node_id": "PY-025",
+    "node_id": "PY-025"
+  },
+  {
+    "type": "fill",
+    "question": "在已有序序列且选取第一个元素作为基准时，快速排序的最坏时间复杂度是______。",
+    "answer": "O(n²)",
+    "difficulty": 3,
+    "hint": "考虑每次划分极不平衡的情况。",
+    "explanation": "当输入已有序且选择第一个元素作为 pivot 时，每次划分只分出一个元素，递归深度为 n，总比较次数为 n+(n-1)+...+1 = O(n²)，因此最坏时间复杂度为 O(n²)。",
+    "qid": "Q-PY025-002",
+    "source_node_id": "PY-025",
+    "node_id": "PY-025"
+  },
+  {
+    "type": "code",
+    "question": "编写一个函数 merge_sort(arr)，使用归并排序算法对整数列表进行升序排序。要求：1) 返回一个新排序列表，不修改原列表；2) 排序稳定；3) 时间复杂度 O(n log n)，空间复杂度 O(n)。",
+    "answer": "def merge(left, right):\n    result = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            result.append(left[i])\n            i += 1\n        else:\n            result.append(right[j])\n            j += 1\n    result.extend(left[i:])\n    result.extend(right[j:])\n    return result\n\ndef merge_sort(arr):\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)",
+    "difficulty": 4,
+    "hint": "先递归地将列表二分，再合并两个有序子列表，合并时注意相等元素的顺序以保持稳定性。",
+    "explanation": "上述代码实现了典型的归并排序：递归终止条件为列表长度 ≤1；通过切片分成左右两部分，递归排序；merge 函数合并两个有序列表，使用 left[i] <= right[j] 确保相等元素保持原顺序，从而稳定。时间 O(n log n)，每次合并需要额外数组，空间 O(n)。",
+    "qid": "Q-PY025-003",
+    "source_node_id": "PY-025",
+    "node_id": "PY-025"
+  }
+]

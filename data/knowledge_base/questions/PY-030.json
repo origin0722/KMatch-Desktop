@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于动态规划，下列说法正确的是：",
+    "options": [
+      "A. 动态规划只能用于求解最优化问题（如最大/最小值），不能用于计数或可行性问题。",
+      "B. 记忆化递归效率总是低于递推实现，因此任何时候都应优先使用递推。",
+      "C. 状态转移方程中 dp[i] 只能依赖于像 dp[i-1]、dp[i-2] 这样的相邻前项。",
+      "D. 0-1背包问题必须使用动态规划，贪心算法无法保证最优解。"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "explanation": "A错误，动态规划也可用于计数（如斐波那契数列）和可行性问题。B错误，记忆化递归可能只计算必要的子问题，效率不一定低于递推。C错误，状态转移可以依赖于 dp[i-k] 等非相邻前项，视问题而定。D正确，0-1背包无法用贪心获得最优解，必须使用动态规划。",
+    "qid": "Q-PY030-001",
+    "source_node_id": "PY-030",
+    "node_id": "PY-030",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "动态规划问题必须具备最优子结构和_____两个要素。",
+    "answer": "重叠子问题",
+    "difficulty": 2,
+    "explanation": "根据动态规划的要点，其两要素为最优子结构与重叠子问题，这是识别 DP 问题的关键特征。",
+    "qid": "Q-PY030-002",
+    "source_node_id": "PY-030",
+    "node_id": "PY-030",
+    "hint": ""
+  },
+  {
+    "type": "code",
+    "question": "使用动态规划解决编辑距离问题：给定两个字符串 word1 和 word2，计算将 word1 转换成 word2 所需的最少操作次数。允许的操作：插入一个字符、删除一个字符、替换一个字符。请实现函数 minDistance(word1: str, word2: str) -> int。要求使用自底向上的二维 DP 数组实现。示例：输入 word1 = 'horse', word2 = 'ros'，输出 3。",
+    "answer": "def minDistance(word1: str, word2: str) -> int:\n    m, n = len(word1), len(word2)\n    # dp[i][j] 表示 word1 前 i 个字符到 word2 前 j 个字符的编辑距离\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n    # 初始化边界\n    for i in range(m + 1):\n        dp[i][0] = i\n    for j in range(n + 1):\n        dp[0][j] = j\n    # 填充 dp 表\n    for i in range(1, m + 1):\n        for j in range(1, n + 1):\n            if word1[i - 1] == word2[j - 1]:\n                dp[i][j] = dp[i - 1][j - 1]\n            else:\n                dp[i][j] = 1 + min(dp[i - 1][j],      # 删除\n                                   dp[i][j - 1],      # 插入\n                                   dp[i - 1][j - 1])  # 替换\n    return dp[m][n]",
+    "difficulty": 5,
+    "explanation": "该解法体现了动态规划的关键要素：状态定义 dp[i][j] 表示子串的编辑距离；状态转移方程根据字符是否相等进行递推；自底向上的二维迭代实现，避免了重复子问题的计算。属于经典 DP 问题之一。",
+    "qid": "Q-PY030-003",
+    "source_node_id": "PY-030",
+    "node_id": "PY-030",
+    "hint": ""
+  }
+]

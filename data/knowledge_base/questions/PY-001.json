@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "下列关于 Python 变量的说法，正确的是：",
+    "options": [
+      "A. 变量必须先声明类型才能赋值使用",
+      "B. Python 的 int 类型有固定的 32 位或 64 位上限",
+      "C. 字符串是不可变序列，不能通过索引修改字符",
+      "D. 布尔类型是完全独立的，与 int 无关"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "hint": "字符串是序列类型，但有些操作无法进行",
+    "explanation": "正确项 C 描述了字符串的不可变性，是 Python 的真实特性；A、B、D 均为常见错误认知，分别对应需要声明类型、int 有位数上限、bool 与 int 无关。",
+    "qid": "Q-PY001-001",
+    "source_node_id": "PY-001",
+    "node_id": "PY-001"
+  },
+  {
+    "type": "choice",
+    "question": "以下关于 Python 基本数据类型的描述，哪一个是正确的？",
+    "options": [
+      "A. 变量必须先声明类型才能使用",
+      "B. Python 中 int 类型的值有位数上限",
+      "C. 可以通过索引修改字符串中的字符",
+      "D. 布尔类型是 int 的子类"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "hint": "思考布尔值与整数的关系",
+    "explanation": "布尔类型只有 True/False，实际上是 int 的子类；A、B、C 都是常见错误认识，分别违背了 Python 的动态类型、任意精度整数和字符串不可变性的特点。",
+    "qid": "Q-PY001-002",
+    "source_node_id": "PY-001",
+    "node_id": "PY-001"
+  },
+  {
+    "type": "fill",
+    "question": "查看变量类型的 Python 内置函数是 _____。",
+    "answer": "type",
+    "difficulty": 1,
+    "hint": "该函数可以输出对象的类型信息",
+    "explanation": "type() 是 Python 内置函数，用于返回对象的类型，如 type(10) 返回 <class 'int'>。",
+    "qid": "Q-PY001-003",
+    "source_node_id": "PY-001",
+    "node_id": "PY-001"
+  }
+]

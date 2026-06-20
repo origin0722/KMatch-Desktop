@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于函数默认参数，以下哪项描述是正确的？",
+    "options": [
+      "A. 默认参数值在函数每次调用时都会被重新计算",
+      "B. 将空列表作为默认参数值是安全的，每次调用都会得到一个全新的空列表",
+      "C. 默认参数值在函数定义时仅计算一次，因此使用可变对象作为默认值可能导致意外行为",
+      "D. *args 可以用于收集关键字参数"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "explanation": "默认参数在函数定义时求值一次，后续调用都复用该对象；若默认值为可变对象（如列表），多次调用会共享同一对象，容易引发预期外的修改行为。选项A、B、D均为典型错误认知。",
+    "qid": "Q-PY013-001",
+    "source_node_id": "PY-013",
+    "node_id": "PY-013",
+    "hint": ""
+  },
+  {
+    "type": "choice",
+    "question": "关于 *args 和 **kwargs，以下哪项是正确的？",
+    "options": [
+      "A. *args 可以收集关键字参数",
+      "B. 每次调用函数时，默认参数值都会重新计算",
+      "C. 将空列表作为默认参数值是安全的",
+      "D. *args 收集多余的位置参数为元组，**kwargs 收集多余的关键字参数为字典"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "explanation": "*args 只能收集多余的位置参数并打包为元组，**kwargs 收集多余的关键字参数为字典。A、B、C 均为常见错误理解。",
+    "qid": "Q-PY013-002",
+    "source_node_id": "PY-013",
+    "node_id": "PY-013",
+    "hint": ""
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 函数定义中，参数顺序为：位置参数、_____、默认参数、**kwargs。请填写缺失的部分。",
+    "answer": "*args",
+    "difficulty": 2,
+    "hint": "该部分用于收集多余的位置参数。",
+    "explanation": "函数定义时参数的合法顺序是：位置参数 → *args → 默认参数 → **kwargs。*args 必须出现在默认参数之前。",
+    "qid": "Q-PY013-003",
+    "source_node_id": "PY-013",
+    "node_id": "PY-013"
+  }
+]

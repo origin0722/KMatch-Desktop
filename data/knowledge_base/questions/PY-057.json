@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python asyncio 的说法，以下哪项是正确的？",
+    "options": [
+      "A. asyncio 可以利用多线程并行执行 CPU 密集型任务以加速计算",
+      "B. 直接调用一个 async def 定义的协程函数就会立即执行其中的代码",
+      "C. 在已有运行的事件循环（如 Jupyter Notebook 内核）中再次调用 asyncio.run() 启动新事件循环是可行的",
+      "D. asyncio.gather() 可以并发执行多个协程，适合 I/O 密集型高并发场景"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "asyncio 是单线程异步并发，并非多线程并行；协程调用返回协程对象，需要用 await 或事件循环来执行；嵌套事件循环会引发错误。",
+    "explanation": "选项 A 错误，因为 asyncio 运行在单线程中，不能利用多线程加速 CPU 密集型任务，它只适合 I/O 密集型并发。选项 B 错误，直接调用 async def 函数会返回一个协程对象，不会执行内部代码，必须用 await 或 asyncio.run() 才能驱动执行。选项 C 错误，在已有运行中事件循环的环境里再次调用 asyncio.run() 会抛出 RuntimeError，因为每个线程通常只能有一个事件循环运行。选项 D 正确，asyncio.gather() 可以并发调度多个协程，非常适用于 I/O 密集型高并发场景。",
+    "qid": "Q-PY057-001",
+    "source_node_id": "PY-057",
+    "node_id": "PY-057"
+  },
+  {
+    "type": "fill",
+    "question": "asyncio.______() 函数可以一次性并发运行多个协程，并等待所有协程完成后返回结果列表。",
+    "answer": "gather",
+    "difficulty": 2,
+    "hint": "该函数接收多个可等待对象（如协程、Task）作为参数，例如 asyncio.gather(task1, task2)。",
+    "explanation": "asyncio.gather() 是并发执行多个协程的核心函数，它会自动将传入的协程封装为 Task 并调度执行，等待全部完成后返回一个由结果组成的列表。",
+    "qid": "Q-PY057-002",
+    "source_node_id": "PY-057",
+    "node_id": "PY-057"
+  },
+  {
+    "type": "code",
+    "question": "编写一个完整的异步程序，使用 aiohttp 客户端并发抓取多个 URL 的响应内容，并打印每个 URL 对应的内容长度（字符数）。要求：\n1. 定义一个异步函数 fetch(url, session) 负责获取单个 URL 的文本内容并返回 (url, 内容长度)；\n2. 定义一个异步主函数 main(urls)，使用 asyncio.gather 并发执行所有抓取任务，然后逐个打印结果；\n3. 程序入口使用 asyncio.run() 启动事件循环，并给出一个示例 URL 列表 ['https://httpbin.org/ip', 'https://httpbin.org/user-agent'] 调用主函数；\n4. 注意处理可能出现的异常（例如网络错误），在 fetch 中捕获异常并返回 (url, -1) 表示失败。\n\n输入：无标准输入，URL 列表硬编码在代码中。\n输出：每个 URL 及其内容长度，例如：\nhttps://httpbin.org/ip 31\nhttps://httpbin.org/user-agent 42\n失败时输出长度 -1。",
+    "answer": "import asyncio\nimport aiohttp\n\nasync def fetch(url, session):\n    try:\n        async with session.get(url) as response:\n            text = await response.text()\n            return (url, len(text))\n    except Exception:\n        return (url, -1)\n\nasync def main(urls):\n    async with aiohttp.ClientSession() as session:\n        tasks = [fetch(url, session) for url in urls]\n        results = await asyncio.gather(*tasks)\n        for url, length in results:\n            print(url, length)\n\nif __name__ == '__main__':\n    urls = ['https://httpbin.org/ip', 'https://httpbin.org/user-agent']\n    asyncio.run(main(urls))",
+    "difficulty": 4,
+    "hint": "使用 aiohttp.ClientSession 作为异步上下文管理器；asyncio.gather 可以接收多个协程并返回结果列表；捕获异常使用 try...except。",
+    "explanation": "代码综合运用了 async/await 定义协程、aiohttp 实现异步 HTTP 请求、asyncio.gather 并发执行多个任务、异常处理，以及 asyncio.run() 启动事件循环。在 ClientSession 上下文中创建一系列抓取任务，并发等待所有响应，然后打印每个 URL 的内容长度（失败时输出 -1）。这展示了 asyncio 在 I/O 密集型场景下的典型用法。",
+    "qid": "Q-PY057-003",
+    "source_node_id": "PY-057",
+    "node_id": "PY-057"
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 类型注解，下列哪个描述是正确的？",
+    "options": [
+      "A. 在函数中添加类型注解会在运行时自动检查类型并抛出 TypeError",
+      "B. Optional[str] 表示参数可以不传递，因此不需要提供默认值",
+      "C. mypy 是 Python 内置模块，安装 Python 后可直接使用",
+      "D. 类型注解不影响运行时，仅用于静态类型检查工具（如 mypy）和 IDE 提示"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "类型注解遵循 PEP 484，是一种可选的静态类型提示。",
+    "explanation": "Python 的类型注解不会在运行时强制执行，它主要供 mypy 等静态检查工具和 IDE 使用。选项 A 错误假定了自动运行检查；B 误解了 Optional 仍需要提供默认值；C 误以为 mypy 是内置模块。",
+    "qid": "Q-PY051-001",
+    "source_node_id": "PY-051",
+    "node_id": "PY-051"
+  },
+  {
+    "type": "fill",
+    "question": "Python 3.10 引入了更简洁的联合类型语法：可以使用 _____ 操作符来替代 typing.Union，例如 int | str 等价于 Union[int, str]。",
+    "answer": "|",
+    "difficulty": 3,
+    "hint": "这是一个按位或运算符，在此上下文中用于类型联合。",
+    "explanation": "PEP 604 在 Python 3.10 中引入 X | Y 语法作为 Union[X, Y] 的简写，使类型注解更易读。",
+    "qid": "Q-PY051-002",
+    "source_node_id": "PY-051",
+    "node_id": "PY-051"
+  },
+  {
+    "type": "code",
+    "question": "编写一个完整的 Python 模块，要求：\n1. 导入所需类型：List, Optional, Callable, Union。\n2. 定义一个数据类 Task，使用 @dataclass 装饰，包含字段：id (int), title (str), tags (List[str]), assignee (Optional[str], 默认 None), priority (Union[int, str], 默认 1), callback (Callable[[str], None], 默认一个打印 \"No callback\" 的 lambda)。\n3. 定义函数 execute_task，接受 Task 实例，返回 None，函数打印任务标题，然后调用 task.callback(task.title)。\n所有函数和字段需附带正确的类型注解，代码必须可运行（虽然仅供静态检查）。",
+    "answer": "from typing import List, Optional, Callable, Union\nfrom dataclasses import dataclass, field\n\n@dataclass\nclass Task:\n    id: int\n    title: str\n    tags: List[str]\n    assignee: Optional[str] = None\n    priority: Union[int, str] = 1\n    callback: Callable[[str], None] = field(default_factory=lambda: lambda x: print(\"No callback\"))\n\n\ndef execute_task(task: Task) -> None:\n    print(task.title)\n    task.callback(task.title)\n",
+    "difficulty": 4,
+    "hint": "使用 field(default_factory=...) 为 dataclass 字段提供可变默认值，Callback 类型使用 Callable[[args], return] 语法。",
+    "explanation": "代码展示了类型注解与 dataclass 的结合，使用了 typing 中的 List, Optional, Callable, Union，并正确设置了可变默认值的回调字段。execute_task 函数符合类型标注要求。",
+    "qid": "Q-PY051-003",
+    "source_node_id": "PY-051",
+    "node_id": "PY-051"
+  }
+]

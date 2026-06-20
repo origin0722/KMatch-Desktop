@@ -1,0 +1,43 @@
+[
+  {
+    "type": "choice",
+    "question": "下列有关 Python 多进程编程的说法，正确的是？",
+    "options": [
+      "A. 多进程绕过 GIL，因此任何时候都应该用多进程替代多线程以获得更好性能",
+      "B. 在子进程中可以直接修改主进程的全局变量，其他进程会自动看到改变",
+      "C. multiprocessing.Pipe 只能实现单向通信，一端发送另一端接收",
+      "D. 使用 multiprocessing.Pool.map 可以将任务分配到多个进程并行处理"
+    ],
+    "answer": "D",
+    "difficulty": 3,
+    "hint": "回忆进程池 map 方法的设计目的，以及全局变量、管道通信的真实特性。",
+    "explanation": "D 正确，Pool.map 会将数据分块交给多个子进程并行执行，最后收集结果。A 错误，多进程虽有并行优势，但创建开销大，I/O 密集型任务多线程更合适；B 错误，每个进程内存独立，全局变量不会跨进程共享；C 错误，multiprocessing.Pipe 默认是双向的，两端既发送又接收。",
+    "qid": "Q-PY056-001",
+    "source_node_id": "PY-056",
+    "node_id": "PY-056"
+  },
+  {
+    "type": "fill",
+    "question": "在 multiprocessing 模块中，创建 Process 对象并指定 target 函数后，需要调用 _____ 方法才能真正启动子进程运行。",
+    "options": [],
+    "answer": "start",
+    "difficulty": 2,
+    "hint": "方法名与“开始”有关，注意与 run() 方法的区别。",
+    "explanation": "Process 对象通过 start() 方法启动子进程，它会调用底层操作系统创建新进程并执行 target 函数；直接调用 run() 只会在当前进程中执行函数，不会创建子进程。",
+    "qid": "Q-PY056-002",
+    "source_node_id": "PY-056",
+    "node_id": "PY-056"
+  },
+  {
+    "type": "code",
+    "question": "使用 multiprocessing 模块实现以下功能：\n1. 定义函数 square(n)，返回整数的平方；\n2. 创建列表 numbers = [1, 2, 3, 4, 5]；\n3. 使用进程池 Pool(processes=2) 的 map 方法并行计算每个数的平方；\n4. 打印结果列表。\n要求：包含 if __name__ == '__main__' 保护。",
+    "options": [],
+    "answer": "import multiprocessing\n\ndef square(n):\n    return n * n\n\nif __name__ == '__main__':\n    numbers = [1, 2, 3, 4, 5]\n    with multiprocessing.Pool(processes=2) as pool:\n        result = pool.map(square, numbers)\n    print(result)\n",
+    "difficulty": 4,
+    "hint": "记得导入 multiprocessing，并使用 with 语句或手动 close/join 管理进程池。",
+    "explanation": "本题综合考查了 multiprocessing.Pool 的并行 map 和进程保护机制。square 是顶层函数（需可被 pickle 序列化），在 __main__ 中创建池并调用 map，池会自动分配任务到两个子进程并行执行，最后输出的顺序与输入一致。",
+    "qid": "Q-PY056-003",
+    "source_node_id": "PY-056",
+    "node_id": "PY-056"
+  }
+]

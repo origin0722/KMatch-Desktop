@@ -1,0 +1,47 @@
+[
+  {
+    "type": "choice",
+    "question": "关于 Python 的 if/elif/else 条件判断，下列哪个说法是正确的？",
+    "options": [
+      "A. if 条件后的冒号可以省略，直接写代码块",
+      "B. 空列表作为 if 条件时会被判定为 True",
+      "C. 一个 if 语句中可以包含多个 else 子句",
+      "D. 数字 0 作为 if 条件时被视为 False"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "hint": "注意 Python 的真值测试规则：零值、空容器等视为 False。",
+    "explanation": "在 Python 中，0、空列表 []、空字符串 '' 等均为假值，条件判断时会被视为 False。if 语句必须有冒号并缩进，else 只能出现一次且必须在所有 elif 之后，不能放在 elif 前面。",
+    "qid": "Q-PY006-001",
+    "source_node_id": "PY-006",
+    "node_id": "PY-006"
+  },
+  {
+    "type": "choice",
+    "question": "关于 Python 的条件表达式（三元运算符），以下哪个说法是正确的？",
+    "options": [
+      "A. 三元表达式的顺序是 condition ? x : y",
+      "B. 三元表达式的顺序是 x if condition else y",
+      "C. 空字符串作为三元表达式条件时会被视为 True",
+      "D. if 结构中 else 可以写在 elif 前面"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "回忆 Python 三元表达式的唯一合法格式。",
+    "explanation": "Python 中三元表达式写作 x if condition else y。A 是 C 类语言的语法，Python 不支持。C 错误，因为空字符串是假值。D 错误，else 必须放在所有 elif 之后，不能提前。",
+    "qid": "Q-PY006-002",
+    "source_node_id": "PY-006",
+    "node_id": "PY-006"
+  },
+  {
+    "type": "fill",
+    "question": "在 Python 的 if 语句中，用于检查多个条件分支的关键字是______。",
+    "answer": "elif",
+    "difficulty": 1,
+    "hint": "它是 else if 的缩写。",
+    "explanation": "elif 关键字用于在 if 之后添加更多的条件判断，实现多分支选择，可以有多个 elif，但 else 最多一个且必须放在最后。",
+    "qid": "Q-PY006-003",
+    "source_node_id": "PY-006",
+    "node_id": "PY-006"
+  }
+]
