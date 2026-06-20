@@ -37,19 +37,44 @@
           class="message"
           :class="msg.role"
         >
-          <!-- 助手消息: Markdown 渲染 -->
+          <!-- 助手消息: Markdown 渲染 (过滤 tool_call 块) -->
           <div v-if="msg.role === 'assistant'" class="msg-body assistant-msg">
             <div class="msg-avatar">
               <el-icon :size="18"><Cpu /></el-icon>
             </div>
             <div class="msg-content">
-              <MarkdownViewer v-if="msg.content" :content="msg.content" />
+              <MarkdownViewer v-if="msg.content" :content="cleanToolCalls(msg.content)" />
               <span v-else-if="chat.streaming && chat.currentStreamId === msg.id" class="typing">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </span>
               <span v-else class="empty-msg">—</span>
               <div class="msg-actions" v-if="msg.content && !chat.streaming">
                 <el-button size="small" text @click="copyText(msg.content)">复制</el-button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 工具消息: 文件读取/目录列表 -->
+          <div v-else-if="msg.role === 'tool'" class="msg-body tool-msg">
+            <div class="msg-avatar tool-avatar">
+              <el-icon :size="16"><FolderOpened /></el-icon>
+            </div>
+            <div class="msg-content">
+              <div class="tool-header">
+                <el-tag size="small" :type="msg.toolResult?.error ? 'danger' : ''">
+                  {{ msg.toolCall?.tool || 'tool' }}
+                </el-tag>
+                <code class="tool-path">{{ msg.toolCall?.path || '' }}</code>
+              </div>
+              <div v-if="msg.toolResult?.error" class="tool-error">{{ msg.toolResult.error }}</div>
+              <div v-else-if="msg.toolResult?.content" class="tool-content">
+                <pre><code>{{ msg.toolResult.content.slice(0, 2000) }}</code></pre>
+                <span v-if="msg.toolResult.content.length > 2000" class="truncated">… 内容已截断</span>
+              </div>
+              <div v-else-if="msg.toolResult?.files" class="tool-files">
+                <div v-for="f in msg.toolResult.files.slice(0, 20)" :key="f" class="tool-file">
+                  {{ f }}
+                </div>
               </div>
             </div>
           </div>
@@ -167,6 +192,12 @@ async function copyText(text) {
   } catch {
     ElMessage.warning('复制失败')
   }
+}
+
+/** 从助手消息中移除 tool_call 代码块 (展示用) */
+function cleanToolCalls(content) {
+  if (!content) return ''
+  return content.replace(/```tool_call\n[\s\S]*?```/g, '')
 }
 </script>
 
