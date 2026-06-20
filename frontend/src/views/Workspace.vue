@@ -12,16 +12,14 @@
         <span>{{ ws.rootName }}</span>
       </div>
       <div class="title-right">
-        <el-button text size="small" @click="$router.push('/learn')">
-          <el-icon><Reading /></el-icon>&nbsp;学习场景
-        </el-button>
+        <span class="title-hint">IDE 工作区 · 二次开发 + 个性化学习</span>
       </div>
     </div>
 
     <!-- IDE 主体 -->
     <div class="ide-body">
-      <ActivityBar @refresh="ws.refreshTree()" @focus-explorer="() => {}" />
-      <FileExplorer />
+      <ActivityBar />
+      <SidePanel />
       <div class="editor-area">
         <EditorTabs />
         <MonacoEditor />
@@ -37,7 +35,7 @@
 import { onMounted } from 'vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import ActivityBar from '@/ide/ActivityBar.vue'
-import FileExplorer from '@/ide/FileExplorer.vue'
+import SidePanel from '@/ide/SidePanel.vue'
 import EditorTabs from '@/ide/EditorTabs.vue'
 import MonacoEditor from '@/ide/MonacoEditor.vue'
 import StatusBar from '@/ide/StatusBar.vue'
@@ -76,7 +74,7 @@ onMounted(() => ws.loadRecent())
   -webkit-app-region: no-drag;
 }
 .title-right { -webkit-app-region: no-drag; }
-.title-right :deep(.el-button) { color: var(--ktext-secondary); }
+.title-hint { font-size: 11px; color: var(--ktext-muted); }
 
 .ide-body {
   flex: 1;

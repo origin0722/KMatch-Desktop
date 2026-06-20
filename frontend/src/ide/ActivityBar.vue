@@ -1,12 +1,12 @@
 <template>
   <div class="activity-bar">
     <div
-      v-for="item in items"
+      v-for="item in PANELS"
       :key="item.id"
       class="activity-item"
-      :class="{ active: item.active }"
+      :class="{ active: sidebar.activePanel === item.id }"
       :title="item.title"
-      @click="item.action"
+      @click="sidebar.setPanel(item.id)"
     >
       <el-icon :size="22"><component :is="item.icon" /></el-icon>
     </div>
@@ -29,23 +29,13 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useWorkspaceStore } from '@/stores/workspace'
+import { PANELS, useSidebarStore } from '@/stores/sidebar'
 import { useThemeStore } from '@/stores/theme'
 
-const emit = defineEmits(['refresh', 'focus-explorer'])
-const router = useRouter()
-const ws = useWorkspaceStore()
+const sidebar = useSidebarStore()
 const theme = useThemeStore()
 const themeMode = computed(() => theme.mode)
 const toggleTheme = () => theme.toggle()
-
-const items = computed(() => [
-  { id: 'files', icon: 'Files', title: '资源管理器', active: true, action: () => emit('focus-explorer') },
-  { id: 'graph', icon: 'Share', title: '项目图谱', active: false, action: () => emit('refresh') },
-  { id: 'learn', icon: 'Reading', title: '学习场景', active: false, action: () => router.push('/learn') },
-  { id: 'home', icon: 'HomeFilled', title: '首页', active: false, action: () => router.push('/learn/dashboard') },
-])
 </script>
 
 <style scoped>

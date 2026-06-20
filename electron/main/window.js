@@ -27,20 +27,30 @@ export function createMainWindow() {
     },
   })
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => { console.log('[window] ready-to-show'); win.show() })
 
-  // 渲染层诊断 (阶段1 调试用)
+  // 渲染层加载时序诊断 (阶段1 调试)
+  win.webContents.on('did-start-loading', () => console.log('[wc] did-start-loading'))
+  win.webContents.on('did-stop-loading', () => console.log('[wc] did-stop-loading'))
+  win.webContents.on('dom-ready', () => console.log('[wc] dom-ready'))
+  win.webContents.on('did-finish-load', () => console.log('[wc] did-finish-load'))
   win.webContents.on('console-message', (_e, _lvl, msg, line, src) => {
     console.log(`[renderer] ${msg}${src ? ` (${src}:${line})` : ''}`)
   })
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
-    console.error(`[renderer] did-fail-load code=${code} desc=${desc} url=${url}`)
+    console.error(`[wc] did-fail-load code=${code} desc=${desc} url=${url}`)
   })
   win.webContents.on('render-process-gone', (_e, d) => {
-    console.error('[renderer] render-process-gone', JSON.stringify(d))
+    console.error('[wc] render-process-gone', JSON.stringify(d))
+  })
+  win.webContents.on('preload-error', (_e, p, err) => {
+    console.error(`[wc] preload-error ${p}: ${err}`)
   })
   win.on('closed', () => console.log('[window] closed'))
   win.on('unresponsive', () => console.log('[window] unresponsive'))
+  win.on('close', (e) => {
+    console.log('[window] close-event (default prevented:', e.defaultPrevented, ')')
+  })
 
   // 外链在系统浏览器打开, 不在应用内导航
   win.webContents.setWindowOpenHandler(({ url }) => {
