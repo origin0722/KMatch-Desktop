@@ -16,10 +16,9 @@
       </div>
     </div>
 
-    <!-- IDE 主体: 活动栏 | 侧栏 | 主区 | AI面板 -->
+    <!-- IDE 主体: 活动栏 | 主区(文件树+编辑器/视图) | AI面板 -->
     <div class="ide-body">
       <ActivityBar />
-      <SidePanel v-show="sidebar.sidebarVisible" />
       <MainArea />
       <AssistantPanel v-if="sidebar.aiPanelVisible" />
     </div>
@@ -33,7 +32,6 @@ import { onMounted } from 'vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
 import ActivityBar from '@/ide/ActivityBar.vue'
-import SidePanel from '@/ide/SidePanel.vue'
 import MainArea from '@/ide/MainArea.vue'
 import AssistantPanel from '@/ide/AssistantPanel.vue'
 import StatusBar from '@/ide/StatusBar.vue'

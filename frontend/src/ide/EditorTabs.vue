@@ -70,6 +70,6 @@ function nameOf(p) {
   border-radius: 4px;
   justify-content: center;
 }
-.tab-close:hover { background: var(--kbg-hover); }
-.dirty { color: var(--kaccent); font-size: 10px; }
+.tab-close:hover { background: var(--km-gray-300); }
+.dirty { color: var(--km-primary); font-size: 10px; }
 </style>

@@ -102,13 +102,113 @@ export const useChatStore = defineStore('chat', () => {
   // ============================================================
   // 状态
   // ============================================================
-  const messages = ref([])           // [{role, content, id, timestamp, toolCall?, toolResult?}]
+  const messages = ref([])
   const streaming = ref(false)
   const currentStreamId = ref(null)
   const error = ref(null)
   const abortController = ref(null)
 
+  // ---- 厂商 & API Key ----
+  const PROVIDERS = [
+    { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
+    { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+    { id: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1' },
+    { id: 'custom', label: '自定义', baseUrl: '' },
+  ]
+
+  const STORAGE_KEY_PROVIDER = 'kmatch-chat-provider'
+  const STORAGE_KEY_APIKEY = 'kmatch-chat-apikey'
+
+  function _loadStr(key, fallback = '') {
+    try { return localStorage.getItem(key) || fallback } catch { return fallback }
+  }
+  function _saveStr(key, val) {
+    try { localStorage.setItem(key, val) } catch { /* noop */ }
+  }
+
+  const provider = ref(_loadStr(STORAGE_KEY_PROVIDER, 'deepseek'))
+  const apiKey = ref(_loadStr(STORAGE_KEY_APIKEY, ''))
+  const model = ref('deepseek-v4-pro')  // 自动从厂商拉取后设置
+  const models = ref([])                // 厂商返回的模型列表
+
   const hasMessages = computed(() => messages.value.length > 0)
+
+  function providerMeta() {
+    return PROVIDERS.find((p) => p.id === provider.value) || PROVIDERS[0]
+  }
+
+  // ---- 自动拉取模型列表 ----
+  async function fetchModels() {
+    const meta = providerMeta()
+    const key = apiKey.value.trim()
+    if (!key) {
+      // 无 key 时用默认模型列表
+      models.value = _fallbackModels(provider.value)
+      if (!model.value || !models.value.find((m) => m === model.value)) {
+        model.value = models.value[0] || ''
+      }
+      return
+    }
+    const base = meta.baseUrl || promptBaseUrl()
+    if (!base) {
+      models.value = _fallbackModels(provider.value)
+      return
+    }
+    try {
+      const resp = await fetch('/api/chat/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_url: base, api_key: key }),
+      })
+      const data = await resp.json()
+      if (data.models?.length) {
+        models.value = data.models.sort()
+        // 自动选第一个，或保留当前有效模型
+        if (!model.value || !data.models.includes(model.value)) {
+          model.value = data.models[0]
+        }
+      } else {
+        models.value = _fallbackModels(provider.value)
+      }
+    } catch {
+      models.value = _fallbackModels(provider.value)
+    }
+  }
+
+  function promptBaseUrl() {
+    if (typeof window !== 'undefined') {
+      const url = window.prompt('请输入自定义 API Base URL (如 https://api.example.com/v1):')
+      return url?.trim() || ''
+    }
+    return ''
+  }
+
+  function _fallbackModels(pid) {
+    const map = {
+      deepseek: ['deepseek-v4-pro', 'deepseek-v3', 'deepseek-reasoner'],
+      openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+      ollama: ['llama3', 'qwen2.5', 'codellama'],
+      custom: [],
+    }
+    return map[pid] || []
+  }
+
+  function setProvider(pid) {
+    provider.value = pid
+    _saveStr(STORAGE_KEY_PROVIDER, pid)
+    fetchModels()
+  }
+
+  function setApiKey(key) {
+    apiKey.value = key
+    _saveStr(STORAGE_KEY_APIKEY, key)
+    fetchModels()
+  }
+
+  function getBaseUrl() {
+    const meta = providerMeta()
+    return meta.baseUrl || ''
+  }
 
   // ============================================================
   // 内部方法
@@ -117,7 +217,7 @@ export const useChatStore = defineStore('chat', () => {
   function _nextId() { return `msg_${Date.now()}_${++_idCounter}` }
 
   function _addMessage(role, content, extra = {}) {
-    const msg = { id: _nextId(), role, content, timestamp: new Date().toISOString(), ...extra }
+    const msg = { id: _nextId(), role, content, timestamp: new Date().toISOString(), think: '', ...extra }
     messages.value.push(msg)
     return msg
   }
@@ -126,7 +226,14 @@ export const useChatStore = defineStore('chat', () => {
     const resp = await fetch('/api/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: apiMessages, stream: true, max_tokens: 4096 }),
+      body: JSON.stringify({
+        messages: apiMessages,
+        stream: true,
+        max_tokens: 4096,
+        model: model.value,
+        api_key: apiKey.value || undefined,
+        base_url: getBaseUrl() || undefined,
+      }),
       signal: abortController.value.signal,
     })
 
@@ -152,6 +259,7 @@ export const useChatStore = defineStore('chat', () => {
         try {
           const data = JSON.parse(dataStr)
           if (data.error) { error.value = data.error; assistantMsg.content = `❌ ${data.error}`; return }
+          if (data.reasoning) assistantMsg.think = (assistantMsg.think || '') + data.reasoning
           if (data.delta) assistantMsg.content += data.delta
         } catch { /* skip */ }
       }
@@ -309,9 +417,16 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
   }
 
+  // 初始化
+  fetchModels()
+
   return {
     messages, streaming, currentStreamId, error,
     hasMessages,
+    // 厂商 & 模型
+    provider, apiKey, model, models, PROVIDERS,
+    setProvider, setApiKey, fetchModels,
+    // 对话
     sendMessage, stopStreaming, clearMessages,
   }
 })

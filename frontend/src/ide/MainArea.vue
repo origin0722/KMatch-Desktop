@@ -1,10 +1,15 @@
 <template>
   <div class="main-area">
-    <!-- 代码视图: 编辑器标签 + Monaco -->
+    <!-- 代码视图: 文件树 + 编辑器标签 + Monaco -->
     <template v-if="sidebar.activeView === 'code'">
-      <EditorTabs />
-      <div class="editor-host">
-        <MonacoEditor />
+      <div class="code-layout">
+        <FileExplorer v-show="sidebar.sidebarVisible" />
+        <div class="editor-area">
+          <EditorTabs />
+          <div class="editor-host">
+            <MonacoEditor />
+          </div>
+        </div>
       </div>
     </template>
 
@@ -24,6 +29,7 @@
 <script setup>
 import { nextTick, watch } from 'vue'
 import { useSidebarStore } from '@/stores/sidebar'
+import FileExplorer from './FileExplorer.vue'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
 import KnowledgeGraph from '@/views/KnowledgeGraph.vue'
@@ -51,6 +57,17 @@ watch(() => sidebar.activeView, async () => {
   background: var(--kbg);
   height: 100%;
   overflow: hidden;
+}
+.code-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.editor-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .editor-host {
   flex: 1;

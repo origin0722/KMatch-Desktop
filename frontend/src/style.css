@@ -1,14 +1,57 @@
-/* 全局基础 — 主题色由 styles/theme.css 的 CSS 变量驱动 */
+/* KMatch 全局基础样式 */
 html, body, #app { height: 100%; width: 100%; overflow: hidden; }
 body {
-  font-family: var(--kfont-ui);
-  background: var(--kbg);
-  color: var(--ktext);
+  font-family: var(--km-font-ui);
+  background: var(--km-bg-base);
+  color: var(--km-gray-700);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Element Plus 滚动条与暗色协调 */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--kborder-strong); border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: var(--ktext-muted); }
-::-webkit-scrollbar-track { background: transparent; }
+/* ---- 滚动条 ---- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; border-radius: 8px; }
+::-webkit-scrollbar-thumb {
+  background: var(--km-scrollbar-thumb);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--km-scrollbar-thumb-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ---- Element Plus 全局微调 ---- */
+.el-button {
+  border-radius: var(--km-radius-sm) !important;
+  transition: all 0.2s var(--km-ease) !important;
+}
+.el-button--primary {
+  --el-button-bg-color: var(--km-primary);
+  --el-button-border-color: var(--km-primary);
+  --el-button-hover-bg-color: var(--km-primary-hover);
+  --el-button-hover-border-color: var(--km-primary-hover);
+  --el-button-active-bg-color: var(--km-primary-active);
+  --el-button-active-border-color: var(--km-primary-active);
+}
+.el-tag {
+  border-radius: 6px !important;
+  border: none !important;
+}
+.el-input__wrapper {
+  border-radius: var(--km-radius-sm) !important;
+  transition: all 0.2s var(--km-ease) !important;
+}
+.el-select .el-input__wrapper {
+  border-radius: var(--km-radius-sm) !important;
+}
+.el-popper {
+  border-radius: var(--km-radius) !important;
+  padding: 4px !important;
+}
+.el-select-dropdown__item {
+  border-radius: 6px;
+}
+.el-select-dropdown__item.is-selected {
+  color: var(--km-primary-active) !important;
+}
+.el-message {
+  border-radius: var(--km-radius) !important;
+}

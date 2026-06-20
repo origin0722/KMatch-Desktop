@@ -1,133 +1,259 @@
 <template>
-  <div class="markdown-viewer" v-html="renderedHtml"></div>
+  <div ref="rootRef" class="markdown-viewer" v-html="renderedHtml" @click="onCodeCopyClick"></div>
 </template>
 
 <script setup>
 /**
- * MarkdownViewer — 基于 marked 的轻量 Markdown 渲染组件
+ * MarkdownViewer — 增强 Markdown 渲染组件
  *
- * 接收 content prop（markdown 字符串），输出 styled HTML。
- * 第4周用于 Learning 页三类资源正文渲染。
+ * - Monaco 代码语法高亮 (colorizeElement API, LSP 级)
+ * - 代码块一键复制按钮
+ * - DOMPurify XSS 消毒
+ * - 支持亮/暗主题
  */
-import { computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import * as monaco from 'monaco-editor'
+import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps({
   content: { type: String, default: '' },
 })
 
-// per-call options (marked v5+ 推荐, BUG-053) + DOMPurify XSS 消毒 (BUG-046)
+const themeStore = useThemeStore()
+const rootRef = ref(null)
+
+// ---- 配置 marked ----
+const renderer = new marked.Renderer()
+
+// 覆写 code 渲染: 包装 .code-block 容器 + 复制按钮 + Monaco 标记
+renderer.code = function ({ text, lang }) {
+  const escaped = escapeHtml(text)
+  const langAttr = lang ? ` data-lang="${lang}"` : ''
+
+  return `<div class="code-block">`
+    + `<button class="code-copy-btn" data-code="${escaped}" type="button" title="复制代码">`
+    + `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`
+    + `</button>`
+    + `<pre><code class="monaco-code"${langAttr}>${escaped}</code></pre>`
+    + `</div>`
+}
+
+// 覆写 codespan
+renderer.codespan = function ({ text }) {
+  return `<code>${escapeHtml(text)}</code>`
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+// lang → Monaco mimeType 映射
+const MIME_MAP = {
+  py: 'text/x-python', python: 'text/x-python',
+  js: 'text/javascript', javascript: 'text/javascript', jsx: 'text/javascript',
+  ts: 'text/typescript', typescript: 'text/typescript', tsx: 'text/typescript',
+  json: 'application/json', jsonc: 'application/json',
+  html: 'text/html', htm: 'text/html', vue: 'text/html',
+  css: 'text/css', scss: 'text/css', less: 'text/css',
+  sql: 'text/x-sql',
+  yaml: 'text/x-yaml', yml: 'text/x-yaml',
+  xml: 'text/xml', svg: 'text/xml',
+  md: 'text/markdown', markdown: 'text/markdown',
+  sh: 'text/x-sh', bash: 'text/x-sh', shell: 'text/x-sh', zsh: 'text/x-sh',
+  java: 'text/x-java',
+  c: 'text/x-c', cpp: 'text/x-c++src', h: 'text/x-c',
+  go: 'text/x-go',
+  rs: 'text/x-rust', rust: 'text/x-rust',
+  php: 'text/x-php',
+  rb: 'text/x-ruby', ruby: 'text/x-ruby',
+  txt: 'text/plain', plaintext: 'text/plain', text: 'text/plain',
+}
+
+function mimeFor(lang) {
+  if (!lang) return 'text/plain'
+  const key = lang.toLowerCase().trim()
+  return MIME_MAP[key] || `text/x-${key}`
+}
+
+function monacoTheme() {
+  return themeStore.mode === 'dark' ? 'vs-dark' : 'vs'
+}
+
+// ---- 渲染 ----
 const renderedHtml = computed(() => {
   if (!props.content) return ''
-  return DOMPurify.sanitize(marked.parse(props.content, { breaks: true, gfm: true }))
+  const raw = marked.parse(props.content, { breaks: true, gfm: true, renderer })
+  return DOMPurify.sanitize(raw, {
+    ADD_ATTR: ['data-code', 'data-lang'],
+  })
 })
+
+// ---- Monaco colorize (DOM 更新后) ----
+let colorizeQueue = null
+
+async function colorizeCodeBlocks() {
+  if (!rootRef.value) return
+
+  const nodes = rootRef.value.querySelectorAll('.monaco-code')
+  if (nodes.length === 0) return
+
+  const theme = monacoTheme()
+  // 取消上一批 (如果用户快速切换)
+  const batchId = Symbol()
+  colorizeQueue = batchId
+
+  const jobs = []
+  for (const node of nodes) {
+    if (node.dataset.colorized === theme) continue // 已是目标主题，跳过
+    const lang = node.dataset.lang || ''
+    const mimeType = mimeFor(lang)
+    const el = /** @type {HTMLElement} */ (node)
+    jobs.push(
+      monaco.editor.colorizeElement(el, { theme, mimeType }).then(() => {
+        el.dataset.colorized = theme
+      })
+    )
+  }
+
+  await Promise.allSettled(jobs)
+  if (colorizeQueue !== batchId) return // 有更新的批次
+}
+
+// 监听 content 变化 → 等 DOM 更新后高亮
+watch(() => props.content, async () => {
+  await nextTick()
+  // 额外延迟一帧，确保 v-html 的 DOM 已被挂载
+  requestAnimationFrame(() => {
+    colorizeCodeBlocks()
+  })
+}, { immediate: true })
+
+// 主题切换 → 重绘已有代码块
+watch(() => themeStore.mode, async () => {
+  await nextTick()
+  // 清除已缓存的 colorized 标记，强制重新上色
+  if (rootRef.value) {
+    for (const node of rootRef.value.querySelectorAll('.monaco-code')) {
+      delete node.dataset.colorized
+    }
+  }
+  colorizeCodeBlocks()
+})
+
+// ---- 代码复制 ----
+function onCodeCopyClick(e) {
+  const btn = e.target.closest('.code-copy-btn')
+  if (!btn) return
+
+  const code = btn.getAttribute('data-code')
+  if (!code) return
+
+  navigator.clipboard.writeText(code).then(() => {
+    btn.classList.add('copied')
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+    setTimeout(() => {
+      btn.classList.remove('copied')
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`
+    }, 2000)
+  }).catch(() => { /* 静默失败 */ })
+}
 </script>
 
 <style scoped>
 .markdown-viewer {
   font-size: 14px;
   line-height: 1.8;
-  color: #303133;
+  color: var(--km-gray-700);
 }
 
 /* ---- 标题 ---- */
 .markdown-viewer :deep(h1) {
-  font-size: 20px;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e4e7ed;
+  font-size: 20px; margin: 0 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--km-border);
 }
-.markdown-viewer :deep(h2) {
-  font-size: 17px;
-  margin: 16px 0 8px;
-}
-.markdown-viewer :deep(h3) {
-  font-size: 15px;
-  margin: 14px 0 6px;
-}
+.markdown-viewer :deep(h2) { font-size: 17px; margin: 16px 0 8px; }
+.markdown-viewer :deep(h3) { font-size: 15px; margin: 14px 0 6px; }
 
-/* ---- 段落 ---- */
-.markdown-viewer :deep(p) {
-  margin: 0 0 8px;
-}
-
-/* ---- 列表 ---- */
+/* ---- 段落 / 列表 ---- */
+.markdown-viewer :deep(p) { margin: 0 0 8px; }
 .markdown-viewer :deep(ul),
-.markdown-viewer :deep(ol) {
-  margin: 0 0 8px;
-  padding-left: 20px;
-}
-.markdown-viewer :deep(li) {
-  margin-bottom: 4px;
-}
+.markdown-viewer :deep(ol) { margin: 0 0 8px; padding-left: 20px; }
+.markdown-viewer :deep(li) { margin-bottom: 4px; }
 
 /* ---- 行内代码 ---- */
 .markdown-viewer :deep(code) {
-  background: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  background: var(--km-gray-200);
+  padding: 2px 6px; border-radius: 4px;
+  font-family: var(--km-font-mono);
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--km-primary-active);
 }
 
-/* ---- 代码块 ---- */
-.markdown-viewer :deep(pre) {
-  background: #f5f7fa;
-  border-radius: 6px;
-  padding: 12px 16px;
-  overflow-x: auto;
-  margin: 0 0 10px;
+/* ---- 代码块容器 ---- */
+.markdown-viewer :deep(.code-block) {
+  position: relative; margin: 0 0 10px;
 }
-.markdown-viewer :deep(pre code) {
-  background: none;
-  padding: 0;
-  color: #303133;
+.markdown-viewer :deep(.code-block pre) {
+  background: var(--km-bg-layer-2);
+  border-radius: var(--km-radius-sm);
+  padding: 12px 16px; overflow-x: auto; margin: 0;
 }
+.markdown-viewer :deep(.code-block pre code) {
+  background: none; padding: 0;
+  color: var(--km-gray-700); font-size: 13px;
+}
+.markdown-viewer :deep(.code-block pre code span) {
+  font-family: inherit; font-size: inherit;
+}
+
+/* ---- 复制按钮 ---- */
+.markdown-viewer :deep(.code-copy-btn) {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--km-gray-200);
+  border: none; border-radius: 6px;
+  cursor: pointer; color: var(--km-gray-500);
+  opacity: 0;
+  transition: all 0.15s var(--km-ease);
+}
+.markdown-viewer :deep(.code-block:hover .code-copy-btn) { opacity: 1; }
+.markdown-viewer :deep(.code-copy-btn:hover) {
+  background: var(--km-gray-300);
+  color: var(--km-gray-700);
+}
+.markdown-viewer :deep(.code-copy-btn.copied) { color: var(--km-success); }
 
 /* ---- 表格 ---- */
 .markdown-viewer :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0 0 10px;
-  font-size: 13px;
+  border-collapse: collapse; width: 100%;
+  margin: 0 0 10px; font-size: 13px;
 }
 .markdown-viewer :deep(th),
 .markdown-viewer :deep(td) {
-  border: 1px solid #e4e7ed;
-  padding: 6px 10px;
-  text-align: left;
+  border: 1px solid var(--km-border); padding: 6px 10px; text-align: left;
 }
-.markdown-viewer :deep(th) {
-  background: #f5f7fa;
-  font-weight: 600;
-}
+.markdown-viewer :deep(th) { background: var(--km-gray-200); font-weight: 600; }
 
 /* ---- 引用 ---- */
 .markdown-viewer :deep(blockquote) {
-  border-left: 3px solid #409eff;
-  margin: 0 0 8px;
-  padding: 6px 12px;
-  background: #ecf5ff;
-  color: #606266;
+  border-left: 3px solid var(--km-primary);
+  margin: 0 0 8px; padding: 6px 14px;
+  background: var(--km-primary-soft);
+  color: var(--km-gray-600);
+  border-radius: 0 var(--km-radius-sm) var(--km-radius-sm) 0;
 }
 
-/* ---- 分割线 ---- */
+/* ---- 分割线 / 图片 / 强调 ---- */
 .markdown-viewer :deep(hr) {
-  border: none;
-  border-top: 1px solid #e4e7ed;
-  margin: 12px 0;
+  border: none; border-top: 1px solid var(--km-border); margin: 12px 0;
 }
-
-/* ---- 图片 ---- */
-.markdown-viewer :deep(img) {
-  max-width: 100%;
-  border-radius: 4px;
-}
-
-/* ---- 强调 ---- */
-.markdown-viewer :deep(strong) {
-  font-weight: 600;
-}
+.markdown-viewer :deep(img) { max-width: 100%; border-radius: 4px; }
+.markdown-viewer :deep(strong) { font-weight: 600; }
 </style>

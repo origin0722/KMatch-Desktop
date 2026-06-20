@@ -1,63 +1,226 @@
 /**
- * 主题变量系统 — TRAE 风格亮/暗
- * IDE 外壳组件统一使用这些变量, 与 Element Plus 暗色模式(html.dark)联动。
- * Monaco 主题由 stores/theme + MonacoEditor 组件按 mode 切 vs / vs-dark。
+ * KMatch 设计系统 — 暖调 Indigo 主题
+ * 参照 Apix token 体系，定制 KMatch 品牌配色
+ *
+ * 层级: base → layer-0 (最低) → layer-1 → layer-2 → layer-3 (最高/浮层)
+ * 阴影: sm (微抬升) → md (卡片) → lg (弹窗/抽屉)
  */
 
+/* ============================================================
+   动画曲线
+   ============================================================ */
 :root {
-  /* —— 亮色 (默认) —— */
-  --kbg: #ffffff;
-  --kbg-elevated: #f8f8f8;
-  --kbg-sidebar: #f3f3f3;
-  --kbg-activity: #2c2c2c; /* 活动栏恒深, 类 TRAE/VS Code */
-  --kbg-statusbar: #007acc;
-  --kbg-hover: #e8e8e8;
-  --kbg-active: #d6e6ff;
+  --km-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --km-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --km-ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
 
-  --kborder: #e0e0e0;
-  --kborder-strong: #cccccc;
+  /* 圆角 */
+  --km-radius-sm: 8px;
+  --km-radius: 12px;
+  --km-radius-lg: 18px;
+  --km-radius-panel: 22px;
 
-  --ktext: #3c3c3c;
-  --ktext-secondary: #6c6c6c;
-  --ktext-muted: #9a9a9a;
-  --ktext-on-dark: #cccccc;
-  --ktext-on-statusbar: #ffffff;
-
-  --kaccent: #2f7dfc;
-  --kaccent-soft: #d6e6ff;
-  --kdanger: #e53935;
-  --kwarning: #f0a020;
-  --ksuccess: #2e9e5b;
-
-  --kshadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --kfont-mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
-  --kfont-ui: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  /* 字体 */
+  --km-font-mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --km-font-ui: -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
 }
 
+/* ============================================================
+   亮色主题 (默认)
+   ============================================================ */
+:root {
+  /* ---- 品牌色: 暖 Indigo ---- */
+  --km-primary: #6c7ce0;
+  --km-primary-hover: #7d8ce8;
+  --km-primary-active: #5b6bd0;
+  --km-primary-light: #eef0fc;
+  --km-primary-soft: #f5f6fd;
+  --km-primary-text: #ffffff;
+
+  /* ---- 功能色 ---- */
+  --km-success: #34b37e;
+  --km-success-light: #eafaf3;
+  --km-warning: #f0a040;
+  --km-warning-light: #fdf6ed;
+  --km-danger: #e05555;
+  --km-danger-light: #fef0f0;
+  --km-info: #5b9bd5;
+  --km-info-light: #eef5fb;
+
+  /* ---- 中性色阶 (暖灰) ---- */
+  --km-gray-100: #f7f6f5;  /* 最浅 — 面板顶层层 */
+  --km-gray-200: #efeeed;  /* 卡片背景 */
+  --km-gray-300: #e4e3e1;  /* 边框、分隔线 */
+  --km-gray-400: #c8c6c4;  /* 禁用文字、占位符 */
+  --km-gray-500: #9a9895;  /* 辅助文字 */
+  --km-gray-600: #6e6c6a;  /* 次要文字 */
+  --km-gray-700: #454341;  /* 正文 */
+  --km-gray-800: #2d2b29;  /* 标题 */
+  --km-gray-900: #1a1817;  /* 最深 */
+
+  /* ---- 面板层级背景 (从底到顶) ---- */
+  --km-bg-base: #ecebe8;       /* 窗口底色 */
+  --km-bg-layer-0: #f2f1ef;    /* 侧栏背景 */
+  --km-bg-layer-1: #f7f6f5;    /* 卡片、面板 */
+  --km-bg-layer-2: #fafaf9;    /* 输入框、编辑区 */
+  --km-bg-layer-3: #ffffff;    /* 浮层、弹窗 */
+
+  /* ---- 活动栏 (恒深) ---- */
+  --km-activity-bg: #27262b;
+  --km-activity-text: #bebcc4;
+  --km-activity-active: #8b9cf0;
+
+  /* ---- 状态栏 ---- */
+  --km-statusbar-bg: #27262b;
+
+  /* ---- 边框 ---- */
+  --km-border: #e4e3e1;
+  --km-border-light: #ebebe9;
+  --km-border-focus: #6c7ce0;
+
+  /* ---- 阴影 ---- */
+  --km-shadow-sm: 0 0.5px 1px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+  --km-shadow-md: 0 1px 3px rgba(0,0,0,0.06), 0 3px 6px rgba(0,0,0,0.04);
+  --km-shadow-lg: 0 2px 6px rgba(0,0,0,0.08), 0 6px 16px rgba(0,0,0,0.05);
+
+  /* ---- 滚动条 ---- */
+  --km-scrollbar-thumb: #d4d2cf;
+  --km-scrollbar-thumb-hover: #b8b5b2;
+
+  /* ============================================================
+     兼容旧 token 名 (渐进迁移)
+     ============================================================ */
+  --kbg: var(--km-bg-layer-1);
+  --kbg-elevated: var(--km-bg-layer-0);
+  --kbg-sidebar: var(--km-bg-layer-0);
+  --kbg-activity: var(--km-activity-bg);
+  --kbg-statusbar: var(--km-statusbar-bg);
+  --kbg-hover: var(--km-gray-200);
+  --kbg-active: var(--km-primary-light);
+
+  --kborder: var(--km-border);
+  --kborder-strong: var(--km-gray-400);
+
+  --ktext: var(--km-gray-700);
+  --ktext-secondary: var(--km-gray-600);
+  --ktext-muted: var(--km-gray-500);
+  --ktext-on-dark: var(--km-activity-text);
+  --ktext-on-statusbar: #ffffff;
+
+  --kaccent: var(--km-primary);
+  --kaccent-soft: var(--km-primary-light);
+  --kdanger: var(--km-danger);
+  --kwarning: var(--km-warning);
+  --ksuccess: var(--km-success);
+
+  --kshadow: var(--km-shadow-sm);
+  --kfont-mono: var(--km-font-mono);
+  --kfont-ui: var(--km-font-ui);
+}
+
+/* ============================================================
+   暗色主题
+   ============================================================ */
 html.dark {
-  /* —— 暗色 (TRAE 风格) —— */
-  --kbg: #1e1e1e;
-  --kbg-elevated: #252526;
-  --kbg-sidebar: #252526;
-  --kbg-activity: #1a1a1a;
-  --kbg-statusbar: #181818;
-  --kbg-hover: #2a2d2e;
-  --kbg-active: #37373d;
+  /* ---- 品牌色 (暗色下提亮) ---- */
+  --km-primary: #8b9cf0;
+  --km-primary-hover: #a0aef4;
+  --km-primary-active: #788aeb;
+  --km-primary-light: #1e2240;
+  --km-primary-soft: #161a34;
+  --km-primary-text: #141520;
 
-  --kborder: #333333;
-  --kborder-strong: #3c3c3c;
+  /* ---- 功能色 ---- */
+  --km-success: #4cc38a;
+  --km-success-light: #162820;
+  --km-warning: #f5b860;
+  --km-warning-light: #2a2416;
+  --km-danger: #ee7070;
+  --km-danger-light: #2a1a1a;
+  --km-info: #6daedb;
+  --km-info-light: #162430;
 
-  --ktext: #d4d4d4;
-  --ktext-secondary: #9d9d9d;
-  --ktext-muted: #6e6e6e;
-  --ktext-on-dark: #cccccc;
-  --ktext-on-statusbar: #d4d4d4;
+  /* ---- 中性色阶 (暖深灰, 略偏棕) ---- */
+  --km-gray-100: #12100f;  /* 最浅 → 暗色下反转: 最深 */
+  --km-gray-200: #1c1a18;
+  --km-gray-300: #2a2826;
+  --km-gray-400: #3e3b39;
+  --km-gray-500: #6b6865;
+  --km-gray-600: #969390;
+  --km-gray-700: #bebbb8;
+  --km-gray-800: #d5d3d0;
+  --km-gray-900: #edebe8;  /* 最深 → 暗色下反转: 最浅 */
 
-  --kaccent: #4a9eff;
-  --kaccent-soft: #1f3a5f;
-  --kdanger: #f0626a;
-  --kwarning: #ffb74d;
-  --ksuccess: #66bb6a;
+  /* ---- 面板层级背景 (从底到顶) ---- */
+  --km-bg-base: #0e0d0b;       /* 窗口底色 */
+  --km-bg-layer-0: #161512;    /* 侧栏 */
+  --km-bg-layer-1: #1e1b18;    /* 卡片、主区 */
+  --km-bg-layer-2: #25221f;    /* 输入框 */
+  --km-bg-layer-3: #2d2926;    /* 浮层 */
 
-  --kshadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  /* ---- 活动栏 ---- */
+  --km-activity-bg: #100f0e;
+  --km-activity-text: #959290;
+  --km-activity-active: #8b9cf0;
+
+  /* ---- 状态栏 ---- */
+  --km-statusbar-bg: #0e0d0b;
+
+  /* ---- 边框 ---- */
+  --km-border: #2a2826;
+  --km-border-light: #22201e;
+  --km-border-focus: #8b9cf0;
+
+  /* ---- 阴影 (暗色下用亮色制造立体感) ---- */
+  --km-shadow-sm: 0 0.5px 1px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --km-shadow-md: 0 1px 3px rgba(0,0,0,0.4), 0 3px 8px rgba(0,0,0,0.3);
+  --km-shadow-lg: 0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.4);
+
+  /* ---- 滚动条 ---- */
+  --km-scrollbar-thumb: #3e3b39;
+  --km-scrollbar-thumb-hover: #55524f;
+
+  /* ============================================================
+     兼容旧 token 名
+     ============================================================ */
+  --kbg: var(--km-bg-layer-1);
+  --kbg-elevated: var(--km-bg-layer-0);
+  --kbg-sidebar: var(--km-bg-layer-0);
+  --kbg-activity: var(--km-activity-bg);
+  --kbg-statusbar: var(--km-statusbar-bg);
+  --kbg-hover: var(--km-gray-200);
+  --kbg-active: var(--km-primary-light);
+
+  --kborder: var(--km-border);
+  --kborder-strong: var(--km-gray-400);
+
+  --ktext: var(--km-gray-700);
+  --ktext-secondary: var(--km-gray-600);
+  --ktext-muted: var(--km-gray-500);
+  --ktext-on-dark: var(--km-activity-text);
+  --ktext-on-statusbar: var(--km-gray-700);
+
+  --kaccent: var(--km-primary);
+  --kaccent-soft: var(--km-primary-light);
+  --kdanger: var(--km-danger);
+  --kwarning: var(--km-warning);
+  --ksuccess: var(--km-success);
+
+  --kshadow: var(--km-shadow-sm);
+  --kfont-mono: var(--km-font-mono);
+  --kfont-ui: var(--km-font-ui);
+}
+
+/* ============================================================
+   全局覆盖
+   ============================================================ */
+::selection {
+  background-color: var(--km-primary);
+  color: var(--km-primary-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--km-border-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

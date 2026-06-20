@@ -37,17 +37,37 @@
           class="message"
           :class="msg.role"
         >
-          <!-- 助手消息: Markdown 渲染 (过滤 tool_call 块) -->
+          <!-- 助手消息: Think 折叠 + Markdown 渲染 -->
           <div v-if="msg.role === 'assistant'" class="msg-body assistant-msg">
             <div class="msg-avatar">
               <el-icon :size="18"><Cpu /></el-icon>
             </div>
             <div class="msg-content">
+              <!-- 思考过程 (可折叠) -->
+              <div v-if="msg.think || (chat.streaming && chat.currentStreamId === msg.id)" class="think-block">
+                <button
+                  class="think-toggle"
+                  @click="toggleThink(msg.id)"
+                >
+                  <svg class="think-icon" :class="{ expanded: isThinkExpanded(msg.id) }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                  <span class="think-label" :class="{ breathing: chat.streaming && chat.currentStreamId === msg.id && !msg.content }">
+                    {{ chat.streaming && chat.currentStreamId === msg.id
+                       ? (msg.content ? '已思考' : '思考中…')
+                       : '已思考' }}
+                  </span>
+                </button>
+                <div v-show="isThinkExpanded(msg.id)" class="think-content">
+                  <pre>{{ msg.think }}</pre>
+                </div>
+              </div>
+              <!-- 正文 -->
               <MarkdownViewer v-if="msg.content" :content="cleanToolCalls(msg.content)" />
-              <span v-else-if="chat.streaming && chat.currentStreamId === msg.id" class="typing">
+              <span v-else-if="chat.streaming && chat.currentStreamId === msg.id && !msg.think" class="typing">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </span>
-              <span v-else class="empty-msg">—</span>
+              <span v-else-if="!msg.content" class="empty-msg">—</span>
               <div class="msg-actions" v-if="msg.content && !chat.streaming">
                 <el-button size="small" text @click="copyText(msg.content)">复制</el-button>
               </div>
@@ -107,7 +127,37 @@
         resize="none"
         @keydown="onKeydown"
       />
-      <div class="input-actions">
+      <div class="input-bar-row">
+        <!-- 厂商选择 -->
+        <el-select
+          :model-value="chat.provider"
+          size="small"
+          class="provider-select"
+          :disabled="chat.streaming"
+          @change="onProviderChange"
+        >
+          <el-option
+            v-for="p in chat.PROVIDERS"
+            :key="p.id"
+            :label="p.label"
+            :value="p.id"
+          />
+        </el-select>
+        <!-- API Key -->
+        <el-button
+          size="small"
+          class="apikey-btn"
+          :class="{ set: !!chat.apiKey }"
+          :title="chat.apiKey ? '已设置 API Key' : '设置 API Key'"
+          :disabled="chat.streaming"
+          @click="onSetApiKey"
+        >
+          🔑
+        </el-button>
+        <!-- 模型 (自动) -->
+        <span class="model-hint" :title="'当前模型: ' + (chat.model || '未选择')">
+          {{ chat.model || '—' }}
+        </span>
         <el-button
           v-if="chat.streaming"
           type="danger"
@@ -132,7 +182,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { Delete, VideoPause, Promotion } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
@@ -145,6 +195,17 @@ const chat = useChatStore()
 const inputText = ref('')
 const inputRef = ref(null)
 const msgContainer = ref(null)
+
+// Think 折叠状态: { [msgId]: boolean }
+const thinkExpanded = reactive({})
+function isThinkExpanded(msgId) {
+  // 流式传输中默认展开
+  if (chat.streaming && chat.currentStreamId === msgId) return true
+  return !!thinkExpanded[msgId]
+}
+function toggleThink(msgId) {
+  thinkExpanded[msgId] = !thinkExpanded[msgId]
+}
 
 // ---------------------------------------------------------------
 // 自动滚动到底部
@@ -172,6 +233,20 @@ function handleSend() {
   if (!text || chat.streaming) return
   inputText.value = ''
   chat.sendMessage(text)
+}
+
+function onProviderChange(val) {
+  chat.setProvider(val)
+}
+
+async function onSetApiKey() {
+  const current = chat.apiKey || ''
+  // 使用 prompt 简单获取 (后续可改为 Dialog)
+  // eslint-disable-next-line no-alert
+  const key = window.prompt('请输入 API Key', current)
+  if (key !== null) {
+    chat.setApiKey(key.trim())
+  }
 }
 
 function onKeydown(e) {
@@ -204,36 +279,43 @@ function cleanToolCalls(content) {
 <style scoped>
 .assistant-panel {
   width: 340px;
-  background: var(--kbg-sidebar);
+  background: var(--km-bg-layer-0);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   height: 100%;
-  border-left: 1px solid var(--kborder);
+  border-left: 1px solid var(--km-border);
 }
 
 /* ---- 头部 ---- */
 .assistant-header {
-  height: 38px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--kborder);
+  padding: 0 14px;
+  border-bottom: 1px solid var(--km-border-light);
   flex-shrink: 0;
+  background: var(--km-bg-layer-0);
 }
 .assistant-title {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 7px;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ktext-secondary);
+  letter-spacing: 0.6px;
+  color: var(--km-gray-600);
   font-weight: 600;
 }
 .status-tag { margin-left: 4px; }
-.header-actions { display: flex; gap: 6px; }
-.icon-btn { cursor: pointer; color: var(--ktext-secondary); }
-.icon-btn:hover { color: var(--ktext); }
+.header-actions { display: flex; gap: 4px; }
+.icon-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  cursor: pointer; color: var(--km-gray-500);
+  transition: all 0.15s var(--km-ease);
+}
+.icon-btn:hover { color: var(--km-gray-700); background: var(--km-gray-200); }
 
 /* ---- 消息区域 ---- */
 .assistant-body {
@@ -241,8 +323,8 @@ function cleanToolCalls(content) {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  gap: 10px;
+  padding: 12px 10px;
+  gap: 12px;
 }
 
 /* 空状态 */
@@ -252,26 +334,39 @@ function cleanToolCalls(content) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 24px;
+  gap: 8px;
+  padding: 28px;
   text-align: center;
 }
-.ph-title { font-size: 15px; font-weight: 600; color: var(--ktext); margin-top: 6px; }
-.ph-hint { font-size: 12px; color: var(--ktext-muted); margin-bottom: 14px; line-height: 1.5; }
+.ph-title { font-size: 15px; font-weight: 600; color: var(--km-gray-700); margin-top: 8px; }
+.ph-hint { font-size: 12px; color: var(--km-gray-500); margin-bottom: 16px; line-height: 1.6; }
 .ph-features {
   display: flex; flex-direction: column; gap: 8px;
   width: 100%; text-align: left;
 }
 .feat {
   font-size: 12px;
-  color: var(--ktext-secondary);
-  background: var(--kbg-hover);
-  padding: 8px 12px;
-  border-radius: 6px;
+  color: var(--km-gray-600);
+  background: var(--km-gray-200);
+  padding: 10px 14px;
+  border-radius: var(--km-radius-sm);
+  transition: all 0.2s var(--km-ease);
+  cursor: default;
+}
+.feat:hover {
+  background: var(--km-primary-light);
+  color: var(--km-primary-active);
 }
 
 /* ---- 消息 ---- */
-.message { display: flex; }
+.message {
+  display: flex;
+  animation: msgIn 0.3s var(--km-ease-out);
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .msg-body {
   display: flex; gap: 8px;
@@ -282,28 +377,77 @@ function cleanToolCalls(content) {
 /* 助手消息 */
 .assistant-msg { width: 100%; }
 .msg-avatar {
-  flex-shrink: 0; width: 28px; height: 28px;
-  border-radius: 6px; background: var(--kbg-active);
+  flex-shrink: 0; width: 30px; height: 30px;
+  border-radius: var(--km-radius-sm);
+  background: var(--km-primary-light);
   display: flex; align-items: center; justify-content: center;
-  color: var(--ktext-secondary);
+  color: var(--km-primary);
 }
+/* Think 思考过程 */
+.think-block {
+  margin-bottom: 10px;
+  background: var(--km-gray-100);
+  border-radius: var(--km-radius-sm);
+  padding: 8px 10px;
+}
+.think-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--km-gray-500);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s var(--km-ease);
+}
+.think-toggle:hover { color: var(--km-gray-700); }
+.think-icon {
+  flex-shrink: 0;
+  transition: transform 0.25s var(--km-ease);
+}
+.think-icon.expanded { transform: rotate(90deg); }
+.think-label { white-space: nowrap; }
+.think-label.breathing {
+  animation: thinkPulse 1.5s ease-in-out infinite;
+}
+@keyframes thinkPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.think-content {
+  margin-top: 6px;
+  border-left: 2px solid var(--km-primary);
+  padding: 4px 0 4px 12px;
+}
+.think-content pre {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--km-gray-500);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--km-font-ui);
+}
+
 .msg-content {
   flex: 1; min-width: 0;
   font-size: 13px; line-height: 1.65;
-  color: var(--ktext);
+  color: var(--km-gray-700);
 }
 .msg-content :deep(pre) {
   max-height: 200px; overflow-y: auto;
-  background: var(--kbg); /* 暗色下适配 */
+  background: var(--km-bg-layer-2);
 }
 .msg-content :deep(code) {
-  background: var(--kbg-hover);
-  color: var(--ktext);
+  background: var(--km-gray-200);
+  color: var(--km-gray-700);
 }
 .msg-actions {
   margin-top: 4px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s var(--km-ease);
 }
 .msg-body:hover .msg-actions { opacity: 1; }
 
@@ -312,55 +456,137 @@ function cleanToolCalls(content) {
   max-width: 85%;
 }
 .user-text {
-  background: var(--kaccent);
-  color: #fff;
+  background: linear-gradient(135deg, var(--km-primary), var(--km-primary-active));
+  color: var(--km-primary-text);
   padding: 8px 12px;
-  border-radius: 10px 10px 2px 10px;
+  border-radius: 12px 12px 4px 12px;
   font-size: 13px; line-height: 1.5;
   white-space: pre-wrap; word-break: break-word;
   margin: 0;
-  font-family: var(--kfont-ui);
+  font-family: var(--km-font-ui);
+  box-shadow: var(--km-shadow-sm);
 }
 
 /* 打字动画 */
-.typing { display: inline-flex; gap: 3px; padding: 4px 0; }
+.typing { display: inline-flex; gap: 4px; padding: 6px 0; }
 .typing .dot {
-  width: 6px; height: 6px;
-  border-radius: 50%; background: var(--ktext-muted);
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--km-primary);
+  opacity: 0.5;
   animation: bounce 1.2s infinite;
 }
 .typing .dot:nth-child(2) { animation-delay: 0.2s; }
 .typing .dot:nth-child(3) { animation-delay: 0.4s; }
 @keyframes bounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-6px); }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-6px); opacity: 1; }
 }
 
-.empty-msg { color: var(--ktext-muted); }
+.empty-msg { color: var(--km-gray-400); }
+
+/* 工具消息 */
+.tool-msg { width: 100%; }
+.tool-avatar {
+  flex-shrink: 0; width: 28px; height: 28px;
+  border-radius: 6px; background: var(--km-info-light);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--km-info);
+}
+.tool-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.tool-path {
+  font-size: 11px;
+  color: var(--km-gray-500);
+  background: var(--km-gray-200);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.tool-content pre {
+  background: var(--km-bg-layer-2);
+  border-radius: var(--km-radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  max-height: 160px; overflow-y: auto;
+}
+.tool-error { color: var(--km-danger); font-size: 12px; }
+.tool-files { display: flex; flex-wrap: wrap; gap: 4px; }
+.tool-file {
+  font-size: 11px;
+  color: var(--km-gray-600);
+  background: var(--km-gray-200);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.truncated {
+  font-size: 11px; color: var(--km-gray-400);
+  display: block; margin-top: 4px;
+}
 
 /* 错误栏 */
 .error-bar {
   display: flex; align-items: center; gap: 6px;
-  padding: 8px 12px; border-radius: 6px;
-  background: var(--kdanger-light, #fef0f0);
-  color: var(--kdanger, #f56c6c);
+  padding: 10px 14px; border-radius: var(--km-radius-sm);
+  background: var(--km-danger-light);
+  color: var(--km-danger);
   font-size: 12px;
 }
 
 /* ---- 输入区 ---- */
 .assistant-input {
-  padding: 10px 12px;
-  border-top: 1px solid var(--kborder);
+  padding: 12px 14px;
+  border-top: 1px solid var(--km-border-light);
   flex-shrink: 0;
+  background: var(--km-bg-layer-0);
 }
 .assistant-input :deep(.el-textarea__inner) {
-  background: var(--kbg);
-  color: var(--ktext);
-  border-color: var(--kborder);
+  background: var(--km-bg-layer-2);
+  color: var(--km-gray-700);
+  border-color: var(--km-border);
+  border-radius: var(--km-radius);
   font-size: 13px;
+  padding: 10px 12px;
+  transition: border-color 0.2s var(--km-ease);
 }
-.input-actions {
-  display: flex; justify-content: flex-end;
-  margin-top: 8px; gap: 6px;
+.assistant-input :deep(.el-textarea__inner:focus) {
+  border-color: var(--km-border-focus);
+}
+.input-bar-row {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  gap: 8px;
+}
+.input-bar-row > :last-child {
+  margin-left: auto;
+}
+.provider-select {
+  width: 120px;
+  flex-shrink: 0;
+}
+.provider-select :deep(.el-input__inner) {
+  font-size: 12px;
+}
+.apikey-btn {
+  width: 30px; height: 30px; padding: 0;
+  font-size: 15px;
+  border-radius: var(--km-radius-sm);
+  opacity: 0.45;
+  transition: all 0.2s var(--km-ease);
+}
+.apikey-btn.set {
+  opacity: 1;
+  background: var(--km-primary-light);
+  border-color: var(--km-primary);
+}
+.model-hint {
+  font-size: 11px;
+  color: var(--km-gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 </style>

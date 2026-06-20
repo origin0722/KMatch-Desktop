@@ -85,12 +85,12 @@ function onNodeClick(node) {
 <style scoped>
 .file-explorer {
   width: 240px;
-  background: var(--kbg-sidebar);
+  background: var(--km-bg-layer-0);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   height: 100%;
-  border-right: 1px solid var(--kborder);
+  border-right: 1px solid var(--km-border-light);
   font-size: 13px;
 }
 .explorer-header {
@@ -98,52 +98,60 @@ function onNodeClick(node) {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  height: 38px;
+  height: 40px;
   flex-shrink: 0;
 }
 .explorer-title {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ktext-secondary);
+  letter-spacing: 0.6px;
+  color: var(--km-gray-600);
   font-weight: 600;
 }
-.explorer-actions { display: flex; gap: 6px; }
-.icon-btn { cursor: pointer; color: var(--ktext-secondary); }
-.icon-btn:hover { color: var(--ktext); }
+.explorer-actions { display: flex; gap: 4px; }
+.icon-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  cursor: pointer; color: var(--km-gray-500);
+  transition: all 0.15s var(--km-ease);
+}
+.icon-btn:hover { color: var(--km-gray-700); background: var(--km-gray-200); }
 
 .explorer-empty {
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  color: var(--ktext-secondary);
+  color: var(--km-gray-600);
 }
-.recent-title { font-size: 11px; color: var(--ktext-muted); margin-top: 8px; }
+.recent-title { font-size: 11px; color: var(--km-gray-500); margin-top: 8px; }
 .recent-item {
   display: flex; align-items: center; gap: 6px;
-  padding: 5px 6px; border-radius: 4px; cursor: pointer;
+  padding: 6px 8px; border-radius: var(--km-radius-sm); cursor: pointer;
   font-size: 13px;
+  transition: background 0.15s var(--km-ease);
 }
-.recent-item:hover { background: var(--kbg-hover); }
-.hint { font-size: 11px; color: var(--ktext-muted); margin-top: 8px; line-height: 1.5; }
-.hint code { background: var(--kbg-hover); padding: 1px 4px; border-radius: 3px; }
+.recent-item:hover { background: var(--km-gray-200); }
+.hint { font-size: 11px; color: var(--km-gray-500); margin-top: 8px; line-height: 1.5; }
+.hint code { background: var(--km-gray-200); padding: 1px 4px; border-radius: 3px; }
 
 .tree { flex: 1; overflow-y: auto; padding: 4px 0; }
 .tree-node {
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 24px;
+  height: 26px;
   padding-right: 8px;
   cursor: pointer;
-  color: var(--ktext);
+  color: var(--km-gray-700);
   user-select: none;
+  transition: background 0.1s var(--km-ease);
 }
-.tree-node:hover { background: var(--kbg-hover); }
-.tree-node.active { background: var(--kbg-active); }
-.tree-node.directory { color: var(--ktext-secondary); font-weight: 500; }
+.tree-node:hover { background: var(--km-gray-200); }
+.tree-node.active { background: var(--km-primary-light); color: var(--km-primary-active); }
+.tree-node.directory { color: var(--km-gray-600); font-weight: 500; }
 .node-icon { flex-shrink: 0; opacity: 0.8; }
 .node-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dirty-dot { color: var(--kaccent); font-size: 10px; margin-left: auto; }
+.dirty-dot { color: var(--km-primary); font-size: 10px; margin-left: auto; }
 </style>

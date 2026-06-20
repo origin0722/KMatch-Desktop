@@ -58,20 +58,25 @@ onMounted(() => {
 <style scoped>
 .status-bar {
   height: 24px;
-  background: var(--kbg-statusbar);
-  color: var(--ktext-on-statusbar);
+  background: var(--km-statusbar-bg);
+  color: var(--km-gray-600);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: 12px;
   flex-shrink: 0;
+  border-top: 1px solid var(--km-border-light);
 }
 .status-left, .status-right { display: flex; align-items: center; gap: 14px; }
 .status-item { display: flex; align-items: center; gap: 4px; }
-.status-item.muted { opacity: 0.7; }
+.status-item.muted { opacity: 0.6; }
 .status-item.clickable { cursor: pointer; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: #999; }
-.status-item.ok .dot { background: var(--ksuccess); }
-.status-item.bad .dot { background: var(--kdanger); }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--km-gray-400);
+  transition: background 0.3s var(--km-ease);
+}
+.status-item.ok .dot { background: var(--km-success); box-shadow: 0 0 4px var(--km-success); }
+.status-item.bad .dot { background: var(--km-danger); }
 </style>

@@ -1,20 +1,21 @@
 """
-AI 助手聊天 API — SSE 流式对话 (阶段2)
+AI 助手聊天 API — SSE 流式对话 (阶段3)
 
 POST /api/chat/completions
-  请求: { messages: [{role, content}, ...], stream: bool }
-  响应: SSE 流 text/event-stream (stream=true) 或 JSON (stream=false)
+  请求: { messages, stream?, max_tokens?, model?, api_key?, base_url? }
+  响应: SSE text/event-stream 或 JSON
 
-技术选型:
-  - 复用 lifespan 创建的 app.state.openai_client 单例 (DeepSeek, OpenAI 兼容)
-  - SSE 格式与前端 fetch + ReadableStream 对接
-  - 模型配置: settings.LLM_MODEL (默认 deepseek-v4-pro)
+POST /api/chat/models
+  请求: { base_url, api_key }
+  响应: { models: [...] }  — 从厂商 /models 端点拉取
 """
 
 import json
+from functools import lru_cache
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.config import settings
@@ -25,31 +26,63 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     messages: list[dict] = Field(
         ...,
-        description="对话消息数组, 每项 {role: 'user'|'assistant'|'system', content: str}",
+        description="对话消息数组",
         min_length=1,
     )
     stream: bool = Field(True, description="是否 SSE 流式返回")
     max_tokens: int = Field(4096, ge=1, le=32768, description="最大生成 token 数")
+    model: str | None = Field(None, description="模型名称, 不传则使用默认")
+    api_key: str | None = Field(None, description="用户 API Key, 不传则用服务端默认")
+    base_url: str | None = Field(None, description="API Base URL, 不传则用服务端默认")
+
+
+class ModelsRequest(BaseModel):
+    base_url: str = Field(..., description="API Base URL (如 https://api.deepseek.com/v1)")
+    api_key: str = Field(..., description="API Key")
+
+
+# ----------------------------------------------------------------
+# OpenAI client 缓存 (按 base_url + api_key)
+# ----------------------------------------------------------------
+@lru_cache(maxsize=16)
+def _get_client(base_url: str, api_key: str) -> OpenAI:
+    """缓存 OpenAI client, 相同 (base_url, api_key) 复用"""
+    return OpenAI(base_url=base_url, api_key=api_key)
+
+
+def _resolve_client(req: ChatRequest) -> OpenAI | None:
+    """优先用请求中的 api_key/base_url, 否则回退到服务端默认"""
+    if req.api_key:
+        base = req.base_url or settings.LLM_BASE_URL
+        return _get_client(base, req.api_key)
+    # fallback 到 lifespan 创建的单例
+    return None  # caller 自行处理
 
 
 # ----------------------------------------------------------------
 # 流式生成器 — SSE 格式
 # ----------------------------------------------------------------
-async def _stream_chat(openai_client, messages: list[dict], max_tokens: int):
-    """逐 token 推送 SSE 事件: data: {"delta": "..."} ... data: [DONE]"""
+async def _stream_chat(client: OpenAI, messages: list[dict], max_tokens: int, model: str):
+    """逐 token 推送 SSE 事件"""
     try:
-        stream = openai_client.chat.completions.create(
-            model=settings.LLM_MODEL,
+        stream = client.chat.completions.create(
+            model=model,
             messages=messages,
             stream=True,
             max_tokens=max_tokens,
-            temperature=0.7,  # 对话场景比 Agent 任务稍高
+            temperature=0.7,
         )
 
         for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
-            if delta and delta.content:
-                yield f"data: {json.dumps({'delta': delta.content}, ensure_ascii=False)}\n\n"
+            if delta:
+                data = {}
+                if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                    data['reasoning'] = delta.reasoning_content
+                if delta.content:
+                    data['delta'] = delta.content
+                if data:
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
         yield "data: [DONE]\n\n"
 
@@ -63,32 +96,15 @@ async def _stream_chat(openai_client, messages: list[dict], max_tokens: int):
 # ----------------------------------------------------------------
 @router.post("/completions")
 async def chat_completions(req: ChatRequest, request: Request):
-    """AI 助手对话 (SSE 流式, OpenAI 兼容格式)
+    """AI 助手对话 (SSE 流式, OpenAI 兼容)"""
+    model = req.model or settings.LLM_MODEL
 
-    请求体:
-      {
-        "messages": [
-          {"role": "system", "content": "你是一个编程助手..."},
-          {"role": "user", "content": "解释这段代码..."}
-        ],
-        "stream": true,
-        "max_tokens": 4096
-      }
+    # 优先用户提供的 client, 否则用服务端默认
+    dynamic_client = _resolve_client(req)
+    client = dynamic_client or getattr(request.app.state, "openai_client", None)
 
-    响应 (stream=true):
-      Content-Type: text/event-stream
-      data: {"delta": "你好"}
-      data: {"delta": "！"}
-      data: [DONE]
-
-    响应 (stream=false):
-      Content-Type: application/json
-      { "content": "完整回复文本" }
-    """
-    openai_client = getattr(request.app.state, "openai_client", None)
-
-    if openai_client is None:
-        detail = "LLM 未配置（请设置 LLM_API_KEY）"
+    if client is None:
+        detail = "LLM 未配置（请设置 API Key）"
         if req.stream:
             return StreamingResponse(
                 iter([f"data: {json.dumps({'error': detail}, ensure_ascii=False)}\n\n"]),
@@ -99,19 +115,19 @@ async def chat_completions(req: ChatRequest, request: Request):
 
     if req.stream:
         return StreamingResponse(
-            _stream_chat(openai_client, req.messages, req.max_tokens),
+            _stream_chat(client, req.messages, req.max_tokens, model),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",  # 禁用 nginx 缓冲 (如有反向代理)
+                "X-Accel-Buffering": "no",
             },
         )
 
     # 非流式 fallback
     try:
-        completion = openai_client.chat.completions.create(
-            model=settings.LLM_MODEL,
+        completion = client.chat.completions.create(
+            model=model,
             messages=req.messages,
             stream=False,
             max_tokens=req.max_tokens,
@@ -119,5 +135,17 @@ async def chat_completions(req: ChatRequest, request: Request):
         )
         content = completion.choices[0].message.content if completion.choices else ""
         return {"content": content}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@router.post("/models")
+async def list_models(req: ModelsRequest):
+    """拉取厂商模型列表 (OpenAI 兼容 /models 端点)"""
+    try:
+        client = _get_client(req.base_url, req.api_key)
+        resp = client.models.list()
+        ids = [m.id for m in resp.data] if hasattr(resp, 'data') else []
+        return {"models": ids}
     except Exception as exc:
         return {"error": str(exc)}

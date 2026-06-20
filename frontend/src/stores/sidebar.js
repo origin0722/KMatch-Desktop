@@ -1,9 +1,8 @@
 /**
- * IDE 布局状态 store — 单一指示模型
+ * IDE 布局状态 store — VS Code 风格单一指示模型
  *
  * 活动栏指示同一时间只亮一个 = activeView (code/graph/assessment/agents)
- * 资源管理器侧栏独立显隐 (sidebarVisible), 由侧栏头部折叠按钮控制,
- * 不参与活动栏指示竞争 (避免 📁 与视图图标同时亮)。
+ * 文件树显隐由 sidebarVisible 控制, 点击已激活视图可折叠 (VS Code 行为)
  */
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
@@ -19,7 +18,7 @@ export const ACTIVITY_ITEMS = [
 
 export const useSidebarStore = defineStore('sidebar', () => {
   const activeView = ref('code') // 主区视图 = 活动栏唯一指示
-  const sidebarVisible = ref(true) // 资源管理器侧栏 (独立, 不影响指示)
+  const sidebarVisible = ref(true) // 文件树显隐 (代码视图内)
   const aiPanelVisible = ref(true) // AI 助手面板
 
   function setView(id) {
