@@ -183,6 +183,11 @@ from app.api import kb  # noqa: E402
 
 app.include_router(kb.router, prefix="/api/kb", tags=["知识库管理"])
 
+# 阶段2: AI 助手对话 (SSE 流式, 复用 OpenAI 客户端单例)
+from app.api import chat  # noqa: E402
+
+app.include_router(chat.router, prefix="/api/chat", tags=["AI 助手"])
+
 
 # ============================================================
 # 直接运行入口
