@@ -14,6 +14,7 @@ export const ACTIVITY_ITEMS = [
   { id: 'graph', icon: 'Share', title: '知识图谱' },
   { id: 'assessment', icon: 'Edit', title: '答题测评' },
   { id: 'agents', icon: 'Connection', title: 'Agent 协同' },
+  { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
 ]
 
 export const useSidebarStore = defineStore('sidebar', () => {
