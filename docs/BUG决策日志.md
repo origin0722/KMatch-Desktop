@@ -2127,3 +2127,39 @@ backend/app/agents/code_safety.py (新), backend/app/agents/code_reviewer.py (�
 
 ### 验证
 前端 vite build 通过; 后端 test_chat_safety_api + test_code_reviewer_unit + test_code_tester_unit + test_sandbox_unit 共 74 测试全过 (re-export 身份断言 + 高危/安全/非py/语法错误分支)。safety-check 端点对 exec/os.system 返回 safe=False, 安全代码 safe=True, .js 跳过 checked=False。
+
+---
+
+## 阶段4: 图谱委派工具 + Monaco 符号联动 (2026-06-21)
+
+| 字段 | 值 |
+|:---|:---|
+| **日期** | 2026-06-21 |
+| **阶段** | IDE 化 阶段4 |
+| **类型** | feat (非 Bug, 架构决策记录) |
+| **决策人** | A |
+
+### 决策
+
+把后端三项多 Agent 能力 (code_review/code_test/generate_project_graph) 作为"委派工具"暴露给 IDE AI 助手 chat, 并实现项目代码图谱符号与 Monaco 编辑器双向联动。核心约束: 不偏离图谱事实底座 + 多智能体协同。
+
+1. **前端驱动, 零后端改动**: chat 工具循环已在 chat.js (_executeTool 调 IPC), 委派工具延续此模式, 直接调现有 /api/project/parse|review|test 路由。不新建后端委派端点, 避免重复逻辑。
+2. **Neo4j 在线要求对题**: code_review/code_test 要求 Neo4j 在线 (复用 _get_kg 503 守卫), 体现"图谱约束抗幻觉"核心创新; generate_project_graph 用 write_to_neo4j=false 轻量入口 (纯 AST+Jedi), 离线可用。503 时 AI 转告用户启动 Neo4j。
+3. **长超时**: code_test (LLM 生成 pytest + 沙箱执行) 可达 60s+, 现有 http:request 60s 超时不够 → 给 http:request 加可选 opts.timeoutMs (code_test 传 180s, 默认 60s 不变, 不影响现有调用)。
+4. **Monaco 联动基于项目代码图谱 (非领域图谱)**: KnowledgeGraph.vue 只渲染领域学习路径图谱 (场景一, PY-xxx 节点无行号), 与代码符号无关。故 4b 联动基于 generate_project_graph 产出的项目代码实体 (含 line_start/line_end, 已在 /parse 响应 G6 node properties 中, project.py:262-265), 通过 chat 实体列表 + Monaco 跳转实现, 不新建 G6 视图。
+5. **双向联动**: 新建 stores/projectGraph.js (graph/revealTarget/activeLine/activeEntityId); chat 实体点击 → requestReveal → MonacoEditor watch revealTarget 跳转+行高亮装饰; Monaco 光标移动 → onDidChangeCursorPosition → setActiveLine → chat 实体列表反查高亮 (activeEntityId computed)。
+
+### 执行
+
+electron/preload/index.js + electron/main/ipc/http-proxy.js (http:request 加 opts.timeoutMs);
+frontend/src/stores/chat.js (+3 工具定义/系统提示 +_executeTool 三分支 +_resolveCode +_delegate +结果 summary);
+frontend/src/stores/projectGraph.js (新建);
+frontend/src/ide/MonacoEditor.vue (revealSymbol + 装饰高亮 + 光标回传 + 全局 .symbol-highlight 样式);
+frontend/src/ide/AssistantPanel.vue (委派结果卡: 图谱实体列表/四维度评分/通过率+覆盖率 + 实体点击/反查高亮 + 辅助函数);
+CLAUDE.md (阶段4 进度 + 文件索引)。
+
+### 验证
+
+前端 vite build 通过; 后端 test_project_api + test_code_reviewer_unit + test_code_tester_unit + test_chat_safety_api 共 82 测试全过 (零后端改动, 无回归)。
+4a: AI 调 generate_project_graph/code_review/code_test → 工具卡按类型渲染; Neo4j 离线时 503 由 AI 转告。
+4b: generate_project_graph 后点实体 → 切 code 视图 + 打开文件 + Monaco 滚动高亮行区间; Monaco 移动光标 → chat 实体列表对应项高亮。

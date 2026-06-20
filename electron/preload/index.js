@@ -22,8 +22,8 @@ contextBridge.exposeInMainWorld('api', {
     rename: (a, b) => ipcRenderer.invoke('fs:rename', a, b),
   },
   http: {
-    request: (method, urlPath, body, params) =>
-      ipcRenderer.invoke('http:request', method, urlPath, body, params),
+    request: (method, urlPath, body, params, opts) =>
+      ipcRenderer.invoke('http:request', method, urlPath, body, params, opts),
     // SSE: 启动流, 返回 reqId; 订阅 chunk/done/error 事件
     stream: (urlPath, body) => ipcRenderer.invoke('http:stream', urlPath, body),
     onChunk: (cb) => {

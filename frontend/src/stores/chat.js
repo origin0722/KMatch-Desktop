@@ -16,6 +16,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useProjectGraphStore } from '@/stores/projectGraph'
 
 const MAX_TOOL_ROUNDS = 3
 
@@ -37,6 +38,38 @@ const TOOLS = [
     parameters: {
       path: 'string (相对项目根目录的文件路径)',
       content: 'string (完整文件内容)',
+    },
+  },
+  {
+    name: 'generate_project_graph',
+    description: '解析 Python 代码生成项目代码图谱 (函数/类/方法/调用关系)。参数: path (工作区文件相对路径, 优先) 或 code+filename。',
+    parameters: {
+      path: 'string (工作区文件相对路径, 优先于 code)',
+      code: 'string (源码, path 缺省时用)',
+      filename: 'string (默认 main.py)',
+      write_to_neo4j: 'boolean (默认 false, 仅解析返回不落库)',
+    },
+  },
+  {
+    name: 'code_review',
+    description: '代码审查 (四维度评分: 逻辑/安全/规范/领域合规, 需 Neo4j+LLM 在线)。参数: path 或 code; target_direction (开发目标方向)。',
+    parameters: {
+      path: 'string (工作区文件相对路径, 优先)',
+      code: 'string (源码)',
+      target_direction: 'string (开发目标方向, 必填)',
+      knowledge_node_ids: 'string[] (可选, 指定对照知识点 ID)',
+    },
+  },
+  {
+    name: 'code_test',
+    description: '代码测试 (LLM 生成 pytest 用例并沙箱执行, 需 Neo4j+LLM 在线)。参数: path 或 code+filename; target_direction; mode (默认 generate)。',
+    parameters: {
+      path: 'string (工作区文件相对路径, 优先)',
+      code: 'string (源码)',
+      filename: 'string (默认 main.py)',
+      target_direction: 'string (开发目标方向, 必填)',
+      mode: 'string (generate|baseline, 默认 generate)',
+      knowledge_node_ids: 'string[] (可选)',
     },
   },
 ]
@@ -68,7 +101,7 @@ function buildSystemPrompt(context) {
 
   const toolBlock = `
 ## 可用工具
-你可以通过以下格式调用工具来读写项目文件:
+你可以通过以下格式调用工具来读写项目文件、委派后端多 Agent 能力:
 \`\`\`tool_call
 {"tool": "read_file", "path": "相对路径"}
 \`\`\`
@@ -78,10 +111,26 @@ function buildSystemPrompt(context) {
 \`\`\`tool_call
 {"tool": "write_file", "path": "相对路径", "content": "完整文件内容"}
 \`\`\`
+\`\`\`tool_call
+{"tool": "generate_project_graph", "path": "相对路径", "write_to_neo4j": false}
+\`\`\`
+\`\`\`tool_call
+{"tool": "code_review", "path": "相对路径", "target_direction": "开发目标方向"}
+\`\`\`
+\`\`\`tool_call
+{"tool": "code_test", "path": "相对路径", "target_direction": "开发目标方向", "mode": "generate"}
+\`\`\`
 - read_file/list_directory 调用后返回结果, 你再继续回答。
 - write_file 会触发用户审批门 (Python 文件先经 AST 安全预检), 用户可能批准或拒绝;
   批准后返回写入成功, 拒绝则返回"用户拒绝写入", 你应据此调整后续回答。
-- write_file 的 content 必须是完整可用的文件内容, 不要写占位符。`
+  write_file 的 content 必须是完整可用的文件内容, 不要写占位符。
+- generate_project_graph: 解析 Python 代码生成项目代码图谱 (函数/类/方法/调用关系),
+  返回实体清单与统计; 不依赖 Neo4j (离线可用)。审查/测试工作区文件前可先调它了解结构。
+- code_review: 四维度代码审查 (逻辑/安全/规范/领域合规), 需 Neo4j+LLM 在线;
+  target_direction 必填 (开发目标方向, 从用户上下文推断, 缺失时先问用户)。
+- code_test: LLM 生成 pytest 用例并沙箱执行, 返回通过率/覆盖率/失败用例; 需 Neo4j+LLM 在线。
+- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。
+- 后端返回 503 时表示 Neo4j 图谱引擎未就绪, 你应转告用户启动 Neo4j。`
 
   return {
     role: 'system',
@@ -350,6 +399,42 @@ export const useChatStore = defineStore('chat', () => {
     p.resolve(decision || { approved: false })
   }
 
+  /**
+   * 解析委派工具的代码来源 (阶段4)
+   * 优先 call.path (工作区文件, 便于符号联动), 否则用 call.code + call.filename。
+   * 返回 { code, sourcePath } 或 { error }。sourcePath 用于 4b Monaco 跳转。
+   */
+  async function _resolveCode(call) {
+    if (!hasIpc()) return { error: '该工具仅在 Electron 桌面应用中可用（请打开项目后使用）' }
+    if (call.path) {
+      try {
+        const content = await window.api.fs.readFile(call.path)
+        return { code: content, sourcePath: call.path }
+      } catch (e) {
+        return { error: `读取文件失败: ${e.message || e}` }
+      }
+    }
+    if (call.code === undefined || call.code === null) return { error: '缺少 path 或 code 参数' }
+    return { code: call.code, sourcePath: call.filename || 'main.py' }
+  }
+
+  /** 委派后端 /api/project/* 路由; 返回 { ok, status, data } */
+  async function _delegate(urlPath, body, timeoutMs) {
+    try {
+      const res = await window.api.http.request('POST', urlPath, body, null, timeoutMs ? { timeoutMs } : undefined)
+      const data = res.body
+      if (!res.ok) {
+        const detail = (data && typeof data === 'object' && (data.detail || data.error)) || `HTTP ${res.status}`
+        // 503 = Neo4j 未就绪, 给 AI 可读提示
+        if (res.status === 503) return { ok: false, error: '图谱引擎未就绪（Neo4j 未连接），请先启动 Neo4j' }
+        return { ok: false, error: typeof detail === 'string' ? detail : JSON.stringify(detail) }
+      }
+      return { ok: true, data }
+    } catch (e) {
+      return { ok: false, error: e.message || '委派请求失败' }
+    }
+  }
+
   /** 执行单个工具调用 */
   async function _executeTool(call) {
     try {
@@ -394,6 +479,73 @@ export const useChatStore = defineStore('chat', () => {
 
         return { path: relPath, written: true, bytes: finalContent.length }
       }
+
+      // ---- 阶段4: 图谱委派工具 (复用 /api/project/* 路由) ----
+      if (call.tool === 'generate_project_graph') {
+        const src = await _resolveCode(call)
+        if (src.error) return { error: src.error }
+        const body = {
+          source_type: 'text',
+          code: src.code,
+          filename: call.filename || 'main.py',
+          write_to_neo4j: call.write_to_neo4j === true,
+        }
+        const r = await _delegate('/api/project/parse', body)
+        if (!r.ok) return { error: r.error }
+        const d = r.data || {}
+        // 提取实体 (G6 nodes.properties 含 line_start/line_end/qualified_name/kind)
+        const entities = (d.nodes || []).map((n) => ({
+          id: n.id,
+          name: n.label,
+          kind: n.group,
+          qualified_name: n.properties?.qualified_name || n.label,
+          line_start: n.properties?.line_start,
+          line_end: n.properties?.line_end,
+        }))
+        const result = {
+          tool: 'generate_project_graph',
+          projectId: d.project_id,
+          stats: d.stats || {},
+          entities,
+          relations: d.edges || [],
+          sourcePath: src.sourcePath,
+          written: !!d.written_to_neo4j,
+        }
+        // 供 4b Monaco 符号联动
+        try { useProjectGraphStore().setGraph(result, src.sourcePath) } catch { /* store 未就绪不影响 */ }
+        return result
+      }
+      if (call.tool === 'code_review') {
+        if (!call.target_direction) return { error: '缺少 target_direction 参数（开发目标方向）' }
+        const src = await _resolveCode(call)
+        if (src.error) return { error: src.error }
+        const body = {
+          code: src.code,
+          target_direction: call.target_direction,
+          knowledge_node_ids: call.knowledge_node_ids || null,
+        }
+        const r = await _delegate('/api/project/review', body)
+        if (!r.ok) return { error: r.error }
+        return { tool: 'code_review', review: r.data, sourcePath: src.sourcePath }
+      }
+      if (call.tool === 'code_test') {
+        if (!call.target_direction) return { error: '缺少 target_direction 参数（开发目标方向）' }
+        const src = await _resolveCode(call)
+        if (src.error) return { error: src.error }
+        const body = {
+          source_type: 'text',
+          code: src.code,
+          filename: call.filename || 'main.py',
+          target_direction: call.target_direction,
+          knowledge_node_ids: call.knowledge_node_ids || null,
+          mode: call.mode || 'generate',
+        }
+        // code_test (LLM 生成 + pytest 执行) 可达 60s+, 放宽超时
+        const r = await _delegate('/api/project/test', body, 180000)
+        if (!r.ok) return { error: r.error }
+        return { tool: 'code_test', report: r.data, sourcePath: src.sourcePath }
+      }
+
       return { error: `未知工具: ${call.tool}` }
     } catch (e) {
       return { error: e.message || '工具执行失败' }
@@ -494,9 +646,18 @@ export const useChatStore = defineStore('chat', () => {
       for (const tr of toolResults) {
         let toolContent
         if (tr.result.error) {
-          toolContent = `❌ ${tr.call.tool}(${tr.call.path || ''}) 失败: ${tr.result.error}`
+          toolContent = `❌ ${tr.call.tool}(${tr.call.path || tr.call.filename || ''}) 失败: ${tr.result.error}`
         } else if (tr.call.tool === 'write_file') {
           toolContent = `📝 write_file(${tr.result.path}) 已写入 ${tr.result.bytes ?? 0} 字节`
+        } else if (tr.call.tool === 'generate_project_graph') {
+          const s = tr.result.stats || {}
+          toolContent = `📊 generate_project_graph(${tr.result.sourcePath}) — 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}`
+        } else if (tr.call.tool === 'code_review') {
+          const rv = tr.result.review || {}
+          toolContent = `🔎 code_review(${tr.result.sourcePath}) — ${rv.verdict || '?'} (${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'})`
+        } else if (tr.call.tool === 'code_test') {
+          const sm = (tr.result.report && tr.result.report.summary) || {}
+          toolContent = `🧪 code_test(${tr.result.sourcePath}) — ${sm.passed || 0}/${sm.total || 0} 通过`
         } else {
           toolContent = `📖 ${tr.call.tool}(${tr.result.path || ''})`
         }
@@ -512,6 +673,29 @@ export const useChatStore = defineStore('chat', () => {
         if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
         if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
         if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
+        if (tr.result.tool === 'generate_project_graph') {
+          const s = tr.result.stats || {}
+          const ents = (tr.result.entities || []).slice(0, 20)
+            .map((e) => `- ${e.kind} ${e.qualified_name} (行${e.line_start || '?'}-${e.line_end || '?'})`)
+            .join('\n')
+          return `项目图谱已生成 (${tr.result.sourcePath}, written=${tr.result.written}). 统计: 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}.\n实体清单:\n${ents || '(无)'}`
+        }
+        if (tr.result.tool === 'code_review') {
+          const rv = tr.result.review || {}
+          const dims = rv.dimensions || {}
+          const dimLines = Object.entries(dims).map(([k, v]) => `${k}: ${((v.score ?? 0) * 100).toFixed(0)}%`).join(', ')
+          const highIssues = (Object.values(dims).flatMap((d) => d.issues || []).filter((i) => i.severity === 'high')).slice(0, 5)
+            .map((i) => `- [high] ${i.problem}`).join('\n')
+          return `代码审查结果 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'}, 通过阈值0.85. 维度: ${dimLines}.${rv.retry_hint ? ' 提示: ' + rv.retry_hint : ''}${highIssues ? '\n高危问题:\n' + highIssues : ''}`
+        }
+        if (tr.result.tool === 'code_test') {
+          const rp = tr.result.report || {}
+          const sm = rp.summary || {}
+          const cov = rp.coverage || {}
+          const fails = (rp.failed_tests || []).slice(0, 5)
+            .map((f) => `- ${f.test_name}: ${f.suggestion || f.error_type || '失败'}`).join('\n')
+          return `代码测试结果 (${tr.result.sourcePath}): ${sm.passed || 0}/${sm.total || 0} 通过, 行覆盖${((cov.line_coverage || 0) * 100).toFixed(0)}%, 分支覆盖${((cov.branch_coverage || 0) * 100).toFixed(0)}%, 函数覆盖${((cov.function_coverage || 0) * 100).toFixed(0)}%.${rp.note ? ' 备注: ' + rp.note : ''}${fails ? '\n失败用例:\n' + fails : ''}${rp.rejected ? ' (已拒绝: ' + (rp.reject_reason || '') + ')' : ''}`
+        }
         return ''
       }).filter(Boolean).join('\n\n')
 

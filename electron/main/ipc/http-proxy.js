@@ -10,7 +10,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 const BACKEND_URL = 'http://localhost:8000'
 
 export function registerHttpProxyIpc() {
-  ipcMain.handle('http:request', async (_e, method, urlPath, body, params) => {
+  ipcMain.handle('http:request', async (_e, method, urlPath, body, params, opts) => {
     const url = new URL(BACKEND_URL + urlPath)
     if (params) {
       for (const [k, v] of Object.entries(params)) {
@@ -24,8 +24,11 @@ export function registerHttpProxyIpc() {
     if (body !== undefined && body !== null && init.method !== 'GET') {
       init.body = JSON.stringify(body)
     }
+    // 阶段4: code_test 等 (LLM 生成测试 + pytest 执行) 可达 60s+,
+    // 调用方可经 opts.timeoutMs 放宽超时 (默认 60s, 不影响现有调用)。
+    const timeoutMs = (opts && typeof opts.timeoutMs === 'number') ? opts.timeoutMs : 60000
     try {
-      const resp = await fetch(url.toString(), { ...init, signal: AbortSignal.timeout(60000) })
+      const resp = await fetch(url.toString(), { ...init, signal: AbortSignal.timeout(timeoutMs) })
       const text = await resp.text()
       let parsed
       try { parsed = JSON.parse(text) } catch { parsed = text }

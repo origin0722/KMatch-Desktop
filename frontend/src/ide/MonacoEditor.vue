@@ -16,16 +16,19 @@ import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useThemeStore } from '@/stores/theme'
+import { useProjectGraphStore } from '@/stores/projectGraph'
 
 // Monaco worker (阶段1 仅 editor 通用 worker; ts/js 智能提示阶段4 按需加)
 self.MonacoEnvironment = { getWorker: () => new editorWorker() }
 
 const ws = useWorkspaceStore()
 const theme = useThemeStore()
+const projectGraph = useProjectGraphStore()
 
 const containerRef = ref(null)
 let editor = null
 const models = new Map() // relPath -> ITextModel
+let decorations = []     // 符号高亮装饰 (阶段4b)
 
 const LANG_BY_EXT = {
   '.py': 'python', '.js': 'javascript', '.ts': 'typescript', '.jsx': 'javascript',
@@ -73,7 +76,44 @@ onMounted(async () => {
     }
   })
 
+  // 阶段4b: 光标移动 → 回传 activeLine (供 chat 实体列表反查高亮)
+  editor.onDidChangeCursorPosition((e) => {
+    if (projectGraph.graph && projectGraph.graph.sourcePath === ws.activeFile) {
+      projectGraph.setActiveLine(e.position.lineNumber)
+    }
+  })
+
   if (ws.activeFile) await switchTo(ws.activeFile)
+})
+
+// 阶段4b: chat 实体点击 → 跳转 + 高亮符号区间
+async function revealSymbol(target) {
+  if (!editor || !target) return
+  try {
+    // 若目标文件非当前激活, 先打开并切 model (主动切, 不依赖 watcher 时序)
+    if (target.path !== ws.activeFile) {
+      await ws.openFile(target.path)
+      const model = await getOrCreateModel(target.path)
+      editor.setModel(model)
+    }
+    editor.revealLineInCenter(target.lineStart)
+    editor.setPosition({ lineNumber: target.lineStart, column: 1 })
+    editor.focus()
+    // 高亮 [lineStart, lineEnd] 行区间
+    decorations = editor.deltaDecorations(decorations, [{
+      range: new monaco.Range(target.lineStart, 1, target.lineEnd, 1),
+      options: {
+        isWholeLine: true,
+        className: 'symbol-highlight',
+        overviewRuler: { color: '#1890ff', position: monaco.editor.OverviewRulerLane.Center },
+      },
+    }])
+  } catch (e) { /* reveal 失败忽略 */ }
+  projectGraph.consumeReveal()
+}
+
+watch(() => projectGraph.revealTarget, (t) => {
+  if (t) revealSymbol(t)
 })
 
 watch(() => ws.activeFile, async (p) => {
@@ -107,4 +147,12 @@ onBeforeUnmount(() => {
 .empty-title { font-size: 20px; font-weight: 600; color: var(--ktext); margin-top: 8px; }
 .empty-hint { font-size: 13px; }
 .empty-hint.dim { font-size: 11px; color: var(--ktext-muted); }
+</style>
+
+<!-- 阶段4b: 符号高亮装饰 (全局, Monaco decoration className 不受 scoped 控制) -->
+<style>
+.monaco-editor .symbol-highlight {
+  background: rgba(24, 144, 255, 0.18);
+  border-left: 2px solid #1890ff;
+}
 </style>

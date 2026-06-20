@@ -74,7 +74,7 @@
             </div>
           </div>
 
-          <!-- 工具消息: 文件读取/目录列表 -->
+          <!-- 工具消息: 文件读取/目录列表/委派工具 -->
           <div v-else-if="msg.role === 'tool'" class="msg-body tool-msg">
             <div class="msg-avatar tool-avatar">
               <el-icon :size="16"><FolderOpened /></el-icon>
@@ -84,9 +84,82 @@
                 <el-tag size="small" :type="msg.toolResult?.error ? 'danger' : ''">
                   {{ msg.toolCall?.tool || 'tool' }}
                 </el-tag>
-                <code class="tool-path">{{ msg.toolCall?.path || '' }}</code>
+                <code class="tool-path">{{ msg.toolCall?.path || msg.toolResult?.sourcePath || '' }}</code>
               </div>
               <div v-if="msg.toolResult?.error" class="tool-error">{{ msg.toolResult.error }}</div>
+
+              <!-- generate_project_graph: 实体列表 (可点击跳转 Monaco) -->
+              <div v-else-if="msg.toolResult?.tool === 'generate_project_graph'" class="delegate-card">
+                <div class="delegate-stats">
+                  <span>模块 {{ msg.toolResult.stats?.module || 0 }}</span>
+                  <span>类 {{ msg.toolResult.stats?.class || 0 }}</span>
+                  <span>函数 {{ msg.toolResult.stats?.function || 0 }}</span>
+                  <span>方法 {{ msg.toolResult.stats?.method || 0 }}</span>
+                  <el-tag v-if="msg.toolResult.written" size="small" type="success">已落库</el-tag>
+                </div>
+                <div class="entity-list">
+                  <div
+                    v-for="e in (msg.toolResult.entities || []).slice(0, 30)"
+                    :key="e.id"
+                    class="entity-item"
+                    :class="{ active: projectGraph.activeEntityId === e.id }"
+                    :title="`${e.kind} · 行 ${e.line_start}-${e.line_end}`"
+                    @click="revealEntity(e)"
+                  >
+                    <span class="entity-kind" :class="e.kind">{{ kindLabel(e.kind) }}</span>
+                    <span class="entity-name">{{ e.qualified_name || e.name }}</span>
+                    <span class="entity-line">:{{ e.line_start || '?' }}</span>
+                  </div>
+                  <span v-if="(msg.toolResult.entities?.length || 0) > 30" class="truncated">
+                    … 共 {{ msg.toolResult.entities.length }} 个实体
+                  </span>
+                </div>
+              </div>
+
+              <!-- code_review: 四维度评分 -->
+              <div v-else-if="msg.toolResult?.tool === 'code_review'" class="delegate-card">
+                <div class="review-verdict">
+                  <el-tag size="small" :type="msg.toolResult.review?.verdict === 'pass' ? 'success' : 'danger'">
+                    {{ msg.toolResult.review?.verdict === 'pass' ? '通过' : '打回' }}
+                  </el-tag>
+                  <span class="review-score">总分 {{ pct(msg.toolResult.review?.overall_score) }}</span>
+                  <span class="review-thresh">(阈值 85%)</span>
+                </div>
+                <div class="dim-list">
+                  <div v-for="(v, k) in (msg.toolResult.review?.dimensions || {})" :key="k" class="dim-row">
+                    <span class="dim-name">{{ dimName(k) }}</span>
+                    <el-progress :percentage="pctNum(v.score)" :stroke-width="6" :color="dimColor(v.score)" />
+                  </div>
+                </div>
+                <div v-if="highIssues(msg.toolResult.review).length" class="issue-list">
+                  <div v-for="(iss, i) in highIssues(msg.toolResult.review)" :key="i" class="issue-item high">
+                    ⚠ {{ iss.problem }}
+                  </div>
+                </div>
+                <div v-if="msg.toolResult.review?.retry_hint" class="review-hint">💡 {{ msg.toolResult.review.retry_hint }}</div>
+              </div>
+
+              <!-- code_test: 通过率 + 覆盖率 + 失败用例 -->
+              <div v-else-if="msg.toolResult?.tool === 'code_test'" class="delegate-card">
+                <div class="test-summary">
+                  <el-tag size="small" :type="testPass(msg.toolResult.report) ? 'success' : 'warning'">
+                    {{ msg.toolResult.report?.summary?.passed || 0 }}/{{ msg.toolResult.report?.summary?.total || 0 }} 通过
+                  </el-tag>
+                  <span v-if="msg.toolResult.report?.note" class="test-note">{{ msg.toolResult.report.note }}</span>
+                </div>
+                <div class="cov-row">
+                  <span>行覆盖 {{ pct(msg.toolResult.report?.coverage?.line_coverage) }}</span>
+                  <span>分支 {{ pct(msg.toolResult.report?.coverage?.branch_coverage) }}</span>
+                  <span>函数 {{ pct(msg.toolResult.report?.coverage?.function_coverage) }}</span>
+                </div>
+                <div v-if="(msg.toolResult.report?.failed_tests || []).length" class="issue-list">
+                  <div v-for="(f, i) in (msg.toolResult.report?.failed_tests || []).slice(0, 8)" :key="i" class="issue-item">
+                    <code>{{ f.test_name }}</code>
+                    <span v-if="f.suggestion" class="fail-sug"> — {{ f.suggestion }}</span>
+                  </div>
+                </div>
+              </div>
+
               <div v-else-if="msg.toolResult?.content" class="tool-content">
                 <pre><code>{{ msg.toolResult.content.slice(0, 2000) }}</code></pre>
                 <span v-if="msg.toolResult.content.length > 2000" class="truncated">… 内容已截断</span>
@@ -241,11 +314,13 @@ import { ref, reactive, watch, nextTick } from 'vue'
 import { Delete, VideoPause, Promotion, EditPen, Check } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
+import { useProjectGraphStore } from '@/stores/projectGraph'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
 const sidebar = useSidebarStore()
 const chat = useChatStore()
+const projectGraph = useProjectGraphStore()
 
 const inputText = ref('')
 const inputRef = ref(null)
@@ -268,6 +343,33 @@ function approveApproval() {
 }
 function rejectApproval() {
   chat.resolveApproval({ approved: false })
+}
+
+// ---- 阶段4: 委派工具结果卡辅助 + 实体联动 ----
+function pct(v) { return v == null ? '—' : (v * 100).toFixed(0) + '%' }
+function pctNum(v) { return v == null ? 0 : Math.round(v * 100) }
+function dimName(k) {
+  return { logic_correctness: '逻辑正确性', security: '安全性', code_quality: '代码规范', domain_compliance: '领域合规' }[k] || k
+}
+function dimColor(score) {
+  const n = pctNum(score)
+  return n >= 85 ? '#52c41a' : n >= 60 ? '#faad14' : '#f56c6c'
+}
+function highIssues(review) {
+  const dims = review?.dimensions || {}
+  return Object.values(dims).flatMap((d) => d.issues || []).filter((i) => i.severity === 'high')
+}
+function testPass(report) {
+  const s = report?.summary
+  return s && s.total > 0 && s.failed === 0 && s.error === 0
+}
+function kindLabel(kind) {
+  return { module: 'M', class: 'C', function: 'F', method: 'm' }[kind] || '?'
+}
+function revealEntity(e) {
+  if (e.line_start == null) return
+  projectGraph.requestReveal(e.line_start, e.line_end, e.qualified_name || e.name)
+  sidebar.setView('code')
 }
 
 // Think 折叠状态: { [msgId]: boolean }
@@ -746,4 +848,68 @@ function cleanToolCalls(content) {
   display: flex; justify-content: flex-end; gap: 8px;
   margin-top: 10px;
 }
+
+/* ---- 阶段4: 委派工具结果卡 ---- */
+.delegate-card {
+  margin-top: 6px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.delegate-stats {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  font-size: 11.5px; color: var(--km-gray-600);
+}
+.entity-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 220px; overflow-y: auto;
+  background: var(--km-bg-layer-2);
+  border-radius: var(--km-radius-sm);
+  padding: 4px;
+}
+.entity-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s var(--km-ease);
+}
+.entity-item:hover { background: var(--km-primary-light); }
+.entity-item.active {
+  background: var(--km-primary);
+  color: var(--km-primary-text);
+}
+.entity-item.active .entity-line { color: var(--km-primary-text); opacity: 0.8; }
+.entity-kind {
+  flex-shrink: 0; width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  border-radius: 3px;
+  background: var(--km-gray-300); color: var(--km-gray-700);
+}
+.entity-kind.class { background: #e6f4ff; color: #1890ff; }
+.entity-kind.function { background: #f6ffed; color: #52c41a; }
+.entity-kind.method { background: #fff7e6; color: #fa8c16; }
+.entity-kind.module { background: #f9f0ff; color: #722ed1; }
+.entity-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--km-font-mono, monospace); }
+.entity-line { flex-shrink: 0; color: var(--km-gray-400); font-size: 10px; }
+
+/* code_review */
+.review-verdict { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.review-score { font-weight: 600; color: var(--km-gray-700); }
+.review-thresh { font-size: 11px; color: var(--km-gray-400); }
+.dim-list { display: flex; flex-direction: column; gap: 4px; }
+.dim-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+.dim-name { width: 80px; flex-shrink: 0; color: var(--km-gray-600); }
+.dim-row :deep(.el-progress) { flex: 1; }
+.issue-list { display: flex; flex-direction: column; gap: 3px; }
+.issue-item { font-size: 11.5px; color: var(--km-gray-600); line-height: 1.5; }
+.issue-item.high { color: var(--km-danger); }
+.issue-item code { background: var(--km-gray-200); padding: 0 4px; border-radius: 3px; font-size: 11px; }
+.fail-sug { color: var(--km-gray-500); }
+.review-hint { font-size: 11.5px; color: var(--km-gray-500); }
+
+/* code_test */
+.test-summary { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.test-note { font-size: 11px; color: var(--km-warning, #e6a23c); }
+.cov-row { display: flex; gap: 10px; font-size: 11px; color: var(--km-gray-600); }
 </style>

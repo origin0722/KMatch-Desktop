@@ -69,7 +69,8 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [frontend/src/stores/workspace.js](frontend/src/stores/workspace.js) — 工作区/文件状态
 - [frontend/src/stores/theme.js](frontend/src/stores/theme.js) — 亮暗主题
 - [frontend/src/stores/assessment.js](frontend/src/stores/assessment.js) — 学情测评状态 (含 interactive 三阶段 + learningReport)
-- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + write_file 审批门 + 多厂商)
+- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + write_file 审批门 + 图谱委派工具 + 多厂商)
+- [frontend/src/stores/projectGraph.js](frontend/src/stores/projectGraph.js) — 项目代码图谱 + Monaco 符号联动状态 (阶段4b)
 - [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models + /safety-check)
 - [backend/app/agents/code_safety.py](backend/app/agents/code_safety.py) — 纯 Python AST 安全检查 (hard_check_code_safety, 供 chat 审批门复用)
 
@@ -126,8 +127,17 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
     · 新增 `POST /api/chat/safety-check` 端点 (.py 才真检, high 阻断 / medium 提示)
     · 前端 chat.js: write_file 工具 + pendingApproval 审批门 (safety 预检 → 用户可编辑内容 → 批准/拒绝 → 写后刷新文件树+打开文件)
     · AssistantPanel.vue: 审批卡 UI (安全预检结果 + 可编辑内容 + 批准/拒绝)
-**阶段4** (待做): 图谱委派工具 (code_review/code_test/generate_project_graph) + Monaco 符号联动 ← **下一步**
-**阶段5** (待做): 沙箱强化 (DockerSandboxExecutor) + PyInstaller 打包 backend sidecar
+**阶段4** (6/21): 图谱委派工具 + Monaco 符号联动 ✅
+  - 阶段4a: 三项委派工具 (generate_project_graph/code_review/code_test) 接入 chat tool 循环
+    · 前端驱动, 复用 /api/project/parse|review|test 路由, 零后端改动
+    · http:request 加 opts.timeoutMs (code_test 放宽 180s, 默认 60s 不变)
+    · AssistantPanel 按类型渲染结果卡 (图谱实体列表/四维度评分/通过率+覆盖率)
+  - 阶段4b: Monaco 符号联动 (项目代码图谱 ↔ 编辑器)
+    · 新建 stores/projectGraph.js (graph/revealTarget/activeLine/activeEntityId)
+    · MonacoEditor: revealTarget watch → 跳转+行高亮装饰; 光标移动 → activeLine 回传
+    · chat 实体列表点击 → 切 code 视图 + 打开文件 + Monaco 滚动高亮; 光标反查高亮实体
+  · 对题: code_review/code_test 要求 Neo4j 在线 (图谱事实底座), generate_project_graph 轻量入口可离线
+**阶段5** (待做): 沙箱强化 (DockerSandboxExecutor) + PyInstaller 打包 backend sidecar ← **下一步**
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): SSE 打包后断流 (chat/diagnostics 需改走 window.api.http.stream)、渲染层打包加载路径 + backend sidecar 打包 (阶段5)、chat.py SSE 阻塞事件循环 (改 AsyncOpenAI)、沙箱泄露环境密钥 (env 白名单)、切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 
 ### 原 KMatch 后端已交付项
