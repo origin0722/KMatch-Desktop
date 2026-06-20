@@ -2163,3 +2163,37 @@ CLAUDE.md (阶段4 进度 + 文件索引)。
 前端 vite build 通过; 后端 test_project_api + test_code_reviewer_unit + test_code_tester_unit + test_chat_safety_api 共 82 测试全过 (零后端改动, 无回归)。
 4a: AI 调 generate_project_graph/code_review/code_test → 工具卡按类型渲染; Neo4j 离线时 503 由 AI 转告。
 4b: generate_project_graph 后点实体 → 切 code 视图 + 打开文件 + Monaco 滚动高亮行区间; Monaco 移动光标 → chat 实体列表对应项高亮。
+
+---
+
+## 阶段5: PyInstaller 打包 backend sidecar + Windows 安装包 (2026-06-21)
+
+| 字段 | 值 |
+|:---|:---|
+| **日期** | 2026-06-21 |
+| **阶段** | IDE 化 阶段5 (S3) |
+| **类型** | feat/build (打包打通) |
+| **决策人** | A |
+
+### 决策与踩坑
+
+1. **spec 修复**: 上会话留的 KMatchBackend.spec 用了 `cipher=block_cipher` 参数, PyInstaller 6.x 已废弃 → 构建直接报错 (上次没跑通的真因)。移除 cipher; 加 `scripts.validate_data` hiddenimport (kb.py 模块级 `from scripts.validate_data import ...`, scripts 无 __init__, 不显式收集则打包后启动崩); 改用 `collect_all` 收 langchain/langgraph/neo4j/pydantic/jedi/uvicorn/openai 等重依赖的子模块+二进制+数据。
+2. **数据目录**: config.py DATA_DIR 原硬编码 `Path(__file__).parent.parent.parent/data`, 打包后 __file__ 在 exe 内部 → 数据找不到。改为支持 `KMATCH_DATA_DIR` 环境变量 (run_server.py 打包时指向 resources/data), 开发期 fallback 原相对路径。
+3. **运行时验证**: 打包 exe 启动 → `/api/health` 200, Neo4j/LLM 未配置时优雅降级 (warning 不崩)。scripts 导入 + 数据目录解析均正常。
+4. **NSIS 安装包两个坑**:
+   - **winCodeSign 符号链接权限**: winCodeSign.7z 含 macOS `.dyml` 符号链接, Windows 普通账号无权创建 → 开 Windows 开发者模式解决 (非管理员也能建符号链接)。
+   - **GitHub 下载超时**: electron / winCodeSign / nsis 从 github.com 下载在国内频繁超时 (dial tcp 20.205.243.166:443 failed)。设 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/` 走 npmmirror 镜像 (nsis 565ms 下完 vs GitHub 超时)。
+5. **产物**: `release/KMatch·知链-0.1.0-x64.exe` (239M NSIS 安装包, 833M unpacked)。backend sidecar + data 已正确打入 resources/。
+
+### 已知优化 (非阻塞)
+
+- langchain_community 拖入 torch → unpacked 833M 偏臃肿。可在 spec `excludes` 加 torch 减肥 (code_test 沙箱打包后本就不可用, torch 无运行时依赖)。
+- 打包后 code_test 沙箱 (`sys.executable -m pytest`) 不可用 (exe 非 python 解释器), 属已知限制, 真沙箱强化待 DockerSandboxExecutor。
+
+### 执行
+
+backend/KMatchBackend.spec (重写), backend/app/config.py (KMATCH_DATA_DIR), .gitignore (backend-dist/ + spec 例外), electron-builder.yml (启用 backend-dist→backend 映射), CLAUDE.md (阶段5 进度 + 打包命令小节)。
+
+### 验证
+
+pyinstaller EXIT=0; exe 启动 /api/health 200; electron-builder EXIT=0 → release/KMatch·知链-0.1.0-x64.exe (239M) 生成。

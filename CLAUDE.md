@@ -22,6 +22,26 @@ docker-compose up -d
 cd backend  && pip install -r requirements.txt && uvicorn app.main:app --reload
 ```
 
+## 打包 (出 Windows 安装包)
+
+```bash
+# 1. 后端 PyInstaller 打包 sidecar (仅后端 Python 改动时需重跑, 产物 backend-dist/)
+cd backend && pyinstaller KMatchBackend.spec --noconfirm --distpath ../backend-dist --workpath ../build/pyinstaller
+
+# 2. 前端 + Electron 打 NSIS 安装包 (产物 release/*.exe)
+#    国内网络必须配镜像, 否则 GitHub 下 electron / winCodeSign / nsis 会超时
+#    一次性设永久环境变量 (Windows: 系统→环境变量; 或当前 shell export):
+#      ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+#      ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ \
+  npm run build:win
+```
+
+- 首次打包需开 **Windows 开发者模式** (设置→系统→开发者选项), 否则 winCodeSign 解压 macOS 符号链接报"客户端没有所需特权"。
+- `backend-dist/`、`build/`、`release/`、`out/` 均已 gitignore, 不进仓库。
+- 改前端 UI 用 `npm run dev` (HMR 热更新), 不要靠重打安装包迭代; 仅后端 Python 变动才需重跑步骤 1。
+- 安装包 `release/KMatch·知链-0.1.0-x64.exe` 可直接分发, 装后 sidecar (KMatchBackend.exe) 自启; Neo4j 仍需用户 Docker 起。
+
 ## 架构速览
 
 ```
@@ -137,8 +157,16 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
     · MonacoEditor: revealTarget watch → 跳转+行高亮装饰; 光标移动 → activeLine 回传
     · chat 实体列表点击 → 切 code 视图 + 打开文件 + Monaco 滚动高亮; 光标反查高亮实体
   · 对题: code_review/code_test 要求 Neo4j 在线 (图谱事实底座), generate_project_graph 轻量入口可离线
-**阶段5** (待做): 沙箱强化 (DockerSandboxExecutor) + PyInstaller 打包 backend sidecar ← **下一步**
-**已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): SSE 打包后断流 (chat/diagnostics 需改走 window.api.http.stream)、渲染层打包加载路径 + backend sidecar 打包 (阶段5)、chat.py SSE 阻塞事件循环 (改 AsyncOpenAI)、沙箱泄露环境密钥 (env 白名单)、切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
+**阶段5** (6/21): PyInstaller 打包 backend sidecar + Windows 安装包 ✅
+  - S3: backend PyInstaller 打包通 (KMatchBackend.spec: 修上会话 cipher 废弃参数 + scripts.validate_data hiddenimport + collect_all 收 langchain/langgraph/neo4j 等重依赖)
+  - config.py 支持 KMATCH_DATA_DIR 环境变量 (打包后指向 resources/data)
+  - 运行时验证: 启动 exe → /api/health 200, 优雅降级无报错
+  - electron-builder.yml: backend-dist→resources/backend + data→resources/data 映射
+  - 第一版 NSIS 安装包: `release/KMatch·知链-0.1.0-x64.exe` (239M, 833M unpacked)
+  · 打包命令见下方"打包(出安装包)"小节 (国内网络必须配镜像)
+  · 已知优化: langchain_community 拖入 torch → unpacked 833M 偏臃肿, 可在 spec excludes 排除 torch 减肥 (非阻塞)
+  · 沙箱强化 (DockerSandboxExecutor) 仍待做; 打包后 code_test 沙箱 (sys.executable -m pytest) 不可用属已知限制
+**已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留); 切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 
 ### 原 KMatch 后端已交付项
 - ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证
