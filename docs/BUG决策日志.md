@@ -2012,3 +2012,91 @@ W3 KnowledgeGraph 主图组件开发时，store 补 `knowledge_graph` 字段映�
 
 ### 验证
 ```
+
+---
+
+## BUG-074: Learning 视图收编进 IDE 时漏挂载 (赛题断点 S7)
+
+| 字段 | 值 |
+|:---|:---|
+| **发现日期** | 2026-06-20 |
+| **发现阶段** | IDE 化 (阶段1.5 收编) |
+| **严重程度** | 🔴高 |
+| **影响范围** | 赛题"个性化资源≥3形态"在 IDE 内不可见 |
+| **决策人** | A |
+
+### 问题描述
+Learning.vue (讲义/实操指南/分阶测试题三形态 + 溯源) 在收编学习功能进 IDE 侧栏时遗漏挂载, grep 全 frontend/src 零引用。赛题硬性要求"≥3形态个性化资源"在 IDE 内无法查看。
+
+### 根因
+收编时 ACTIVITY_ITEMS 只加了 code/graph/assessment/agents/dashboard, 漏了 learning; MainArea 的视图装载分支也无 learning。
+
+### 决策
+sidebar.js ACTIVITY_ITEMS 加 learning 入口; MainArea.vue 加 `<Learning v-else-if="sidebar.activeView==='learning'" />`。
+
+### 执行
+stores/sidebar.js + ide/MainArea.vue 各加一行。
+
+### 验证
+build 通过; 活动栏出现学习资源图标, 点击进主区显示三形态资源 (demo 测评后 generatedContent.resources 有数据时)。
+
+---
+
+## BUG-075: Dashboard M5 指标造假恒绿 (赛题断点 S8)
+
+| 字段 | 值 |
+|:---|:---|
+| **发现日期** | 2026-06-20 |
+| **发现阶段** | IDE 化 (Dashboard 收编) |
+| **严重程度** | 🔴高 |
+| **影响范围** | 赛题 M5 指标可信度, 评委一眼可识破 |
+| **决策人** | A |
+
+### 问题描述
+Dashboard qualityMetrics 客户端自行派生, 幻觉率写死 `review.passed ? 0 : 0.02` 恒绿; 而后端 assess/assess_stream 已用 compute_quality_metrics 算出真实 learning_report (含真实三项指标), 但前端 store 的 _applyResult 根本没存 learning_report 字段, 真实数据被丢弃。
+
+### 根因
+IDE 化重写 Dashboard 时未对接后端 learning_report 数据契约; store 也缺 learningReport 状态。
+
+### 决策
+1. assessment store 加 learningReport 状态, _applyResult 存 data.learning_report, startDemoStream/reset 清理;
+2. Dashboard qualityMetrics 优先用 store.learningReport.quality_metrics (hallucination/adaptation/coverage 各含 rate), fallback 才客户端派生;
+3. 达标/未达标按真实阈值 (<5%/≥85%/≥90%) 着色, 加达标徽章 + 数据来源标识 (后端真实计算/客户端估算), 不再恒绿。
+
+### 执行
+stores/assessment.js (learningReport + _resetResult), views/Dashboard.vue (qualityMetrics 重写 + 模板着色)。
+
+### 验证
+build + 42 测试通过 (含新 learningReport 映射测试); demo 测评后 Dashboard 显示"后端真实计算"标识 + 真实指标值, 未达标项显红。
+
+---
+
+## BUG-076: interactive 测评一点就报错, 动态反馈前端没接 (赛题断点 S9)
+
+| 字段 | 值 |
+|:---|:---|
+| **发现日期** | 2026-06-20 |
+| **发现阶段** | IDE 化 (Assessment 收编) |
+| **严重程度** | 🔴高 |
+| **影响范围** | 赛题"动态反馈(进阶/降维/补前置)"在 IDE 内不可演示 |
+| **决策人** | A |
+
+### 问题描述
+Assessment.vue "开始测评" 调 startAssessment(mode=interactive) → 后端 interactive 只返回题目 (profile 空) → store _applyResult 触发 BUG-028 空画像分支报错"学情检测未产出有效画像"。而真正的 interactive 三步闭环 (assess 出题 → 用户答题 → submit 判分 → feedback 动态反馈) 后端路由齐全, 前端完全没接: submitAnswers/requestFeedback 无组件调用, Assessment.vue 无答题 UI。
+
+### 根因
+store 把 interactive 出题阶段的空 profile 当 demo 模式的降级错误处理 (BUG-028 逻辑误伤); interactive 闭环 UI 从未实现。
+
+### 决策
+1. store 加 interactive 三阶段状态: phase(idle/answering/feedback) + pendingQuestions/userAnswers/feedbackStrategy/feedbackContent;
+2. startAssessment 改为出题阶段: 拿到 questions 进 answering, 不再调 _applyResult (避免空 profile 误报); 空题目才报"出题失败";
+3. 新增 submitAssessmentAnswers (调 /submit 判分+画像+strategy → feedback 阶段) + fetchFeedback (调 /feedback 按策略再生) + backToInput;
+4. Assessment.vue 加答题阶段 (选择题 radio/填空/一键填演示答案) + 反馈阶段 (画像雷达+策略标签+再生资源 MarkdownViewer);
+5. 更新 assessment-store.test.js 适配新契约 (interactive 出题/submit/feedback/demo learningReport)。
+
+### 执行
+stores/assessment.js (三阶段状态 + 3 个 action), views/Assessment.vue (答题+反馈模板 + 辅助函数 + 样式), __tests__/assessment-store.test.js (重写)。
+
+### 验证
+build 通过; 42 测试全过 (含 interactive 出题/submit 判分/feedback 再生/demo learningReport 4 组新测试)。interactive: 选方向→开始测评→答题→提交→画像+策略→获取针对性反馈, 全链路通。
+BUG 清单: 76 条 (76 已解决, 含 IDE 化 S7-S9 三断点)。

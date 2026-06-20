@@ -58,18 +58,19 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [electron/main/ipc/http-proxy.js](electron/main/ipc/http-proxy.js) — HTTP 代理 IPC (渲染进程→主进程→backend)
 - [electron/preload/index.js](electron/preload/index.js) — Preload 脚本，暴露 window.api
 - [frontend/src/views/Workspace.vue](frontend/src/views/Workspace.vue) — IDE 壳布局
-- [frontend/src/ide/ActivityBar.vue](frontend/src/ide/ActivityBar.vue) — 活动栏 (视图切换 + 工具开关)
-- [frontend/src/ide/SidePanel.vue](frontend/src/ide/SidePanel.vue) — 侧栏容器
-- [frontend/src/ide/FileExplorer.vue](frontend/src/ide/FileExplorer.vue) — 文件资源管理器
-- [frontend/src/ide/MainArea.vue](frontend/src/ide/MainArea.vue) — 主区视图装载
+- [frontend/src/ide/ActivityBar.vue](frontend/src/ide/ActivityBar.vue) — 活动栏 (视图切换 + 工具开关, 单一指示模型)
+- [frontend/src/ide/FileExplorer.vue](frontend/src/ide/FileExplorer.vue) — 文件资源管理器 (code 视图内)
+- [frontend/src/ide/MainArea.vue](frontend/src/ide/MainArea.vue) — 主区视图装载 (code/graph/assessment/learning/agents/dashboard)
 - [frontend/src/ide/EditorTabs.vue](frontend/src/ide/EditorTabs.vue) — 多标签页
 - [frontend/src/ide/MonacoEditor.vue](frontend/src/ide/MonacoEditor.vue) — Monaco 编辑器
 - [frontend/src/ide/AssistantPanel.vue](frontend/src/ide/AssistantPanel.vue) — AI 助手面板
 - [frontend/src/ide/StatusBar.vue](frontend/src/ide/StatusBar.vue) — 底部状态栏
-- [frontend/src/stores/sidebar.js](frontend/src/stores/sidebar.js) — IDE 布局状态
+- [frontend/src/stores/sidebar.js](frontend/src/stores/sidebar.js) — IDE 布局状态 (单一指示模型)
 - [frontend/src/stores/workspace.js](frontend/src/stores/workspace.js) — 工作区/文件状态
 - [frontend/src/stores/theme.js](frontend/src/stores/theme.js) — 亮暗主题
-- [frontend/src/stores/assessment.js](frontend/src/stores/assessment.js) — 学情测评状态
+- [frontend/src/stores/assessment.js](frontend/src/stores/assessment.js) — 学情测评状态 (含 interactive 三阶段 + learningReport)
+- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + 多厂商)
+- [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models)
 
 ### 后端核心 (原 KMatch)
 - [backend/app/main.py](backend/app/main.py) — FastAPI 入口
@@ -112,7 +113,16 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   - 阶段1.5: 收编学习功能进 IDE 侧栏 ✅
   - 阶段1.6: 三栏布局重构 — 主区多视图 + 右侧 AI 面板 ✅
   - 阶段1.7: 去顶部 Tab + 修活动栏重复指示 + 空白/黑屏修复 ✅
-**阶段2** (6/20→): AI 助手面板 — 多模型对话 + 工具调用 + 图谱委派 ← **当前**
+  - 阶段1.8: 设计系统重构 (--km-* token + Apix 风格暖 Indigo 主题) ✅
+**阶段2** (6/20): AI 助手 — 多模型对话 SSE + 工具调用循环 (read_file/list_directory) + 工作区上下文注入 ✅
+**阶段2.1** (6/20): 修赛题 3 断点 ✅
+  - S7: Learning 视图(≥3形态资源)挂载进主区
+  - S8: Dashboard M5 指标改用后端真实 learning_report (不再伪造恒绿)
+  - S9: interactive 测评三阶段闭环 (出题→答题→动态反馈), 接通 submit/feedback
+**阶段3** (待做): write_file 工具 + 权限审批门 (复用 hard_check_code_safety) ← **下一步**
+**阶段4** (待做): 图谱委派工具 (code_review/code_test/generate_project_graph) + Monaco 符号联动
+**阶段5** (待做): 沙箱强化 (DockerSandboxExecutor) + PyInstaller 打包 backend sidecar
+**已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): SSE 打包后断流 (chat/diagnostics 需改走 window.api.http.stream)、渲染层打包加载路径 + backend sidecar 打包 (阶段5)、chat.py SSE 阻塞事件循环 (改 AsyncOpenAI)、沙箱泄露环境密钥 (env 白名单)、切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 
 ### 原 KMatch 后端已交付项
 - ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证
@@ -125,7 +135,7 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - ✅ 知识库管理 CRUD API
 - ✅ SSE 流式测评
 
-BUG 清单: 73 条 (73 已解决)
+BUG 清单: 76 条 (76 已解决, 含 IDE 化 S7-S9 三断点)
 
 ## 开发约定
 
