@@ -128,65 +128,43 @@ export function requestFeedback({ sessionId, strategy, profile }, signal) {
  * @returns {Promise<void>}
  */
 export async function startAssessmentStream(payload, { onProgress, onDone, onError }) {
-  let resp
-  try {
-    resp = await fetch('/api/diagnostics/assess/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_direction: payload.targetDirection,
-        mode: 'demo',
-        scene: payload.scene || 'no_project',
-        max_retries: payload.maxRetries ?? 3,
-      }),
-    })
-  } catch (e) {
-    onError(e.message || '网络请求失败')
-    return
+  // S1: 走 IPC SSE 代理 (window.api.http.stream), 桌面应用无需浏览器 fetch。
+  // http-proxy.js 转发后端 SSE, 逐块推 'http:stream:chunk' 事件。
+  const body = {
+    target_direction: payload.targetDirection,
+    mode: 'demo',
+    scene: payload.scene || 'no_project',
+    max_retries: payload.maxRetries ?? 3,
   }
 
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '')
-    onError(text || `HTTP ${resp.status}`)
-    return
-  }
-
-  const reader = resp.body.getReader()
-  const decoder = new TextDecoder()
   let buffer = ''
+  const offChunk = window.api.http.onChunk((_reqId, block) => {
+    buffer += block
+    const parts = buffer.split('\n\n')
+    buffer = parts.pop() // 最后一块可能不完整, 留待下次拼接
+    for (const b of parts) {
+      if (!b.trim()) continue
+      const event = b.match(/^event:\s*(.+)$/m)?.[1]
+      const dataStr = b.match(/^data:\s*(.+)$/m)?.[1]
+      if (!event || !dataStr) continue
+      let data
+      try { data = JSON.parse(dataStr) } catch { continue }
+      if (event === 'progress') onProgress?.(data)
+      else if (event === 'done') onDone?.(data)
+      else if (event === 'error') onError?.(data.detail || '测评流程失败')
+      // start 事件可忽略
+    }
+  })
+  const offDone = window.api.http.onDone(() => { offChunk(); offDone(); offError() })
+  const offError = window.api.http.onError((_reqId, err) => {
+    offChunk(); offDone(); offError()
+    onError?.(err || 'SSE 流失败')
+  })
 
   try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-
-      // SSE 事件以 \n\n 分隔
-      const blocks = buffer.split('\n\n')
-      buffer = blocks.pop() // 最后一块可能不完整，留待下次拼接
-
-      for (const block of blocks) {
-        if (!block.trim()) continue
-        const event = block.match(/^event:\s*(.+)$/m)?.[1]
-        const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
-        if (!event || !dataStr) continue
-
-        let data
-        try { data = JSON.parse(dataStr) } catch { continue }
-
-        if (event === 'progress') {
-          onProgress?.(data)
-        } else if (event === 'done') {
-          onDone?.(data)
-        } else if (event === 'error') {
-          onError?.(data.detail || '测评流程失败')
-        }
-        // start 事件可忽略
-      }
-    }
+    await window.api.http.stream('/api/diagnostics/assess/stream', body)
   } catch (e) {
-    onError?.(e.message || 'SSE 流读取中断')
-  } finally {
-    reader.cancel().catch(() => {})
+    offChunk(); offDone(); offError()
+    onError?.(e.message || '网络请求失败')
   }
 }

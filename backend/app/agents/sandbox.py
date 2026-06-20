@@ -85,18 +85,30 @@ class SandboxExecutor(ABC):
         raise NotImplementedError
 
 
-# 网络代理相关 env 变量 (subprocess 无法真正禁网，仅剔除代理作微缓解)
-_PROXY_ENV_KEYS = (
-    "HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
-    "ALL_PROXY", "all_proxy", "NO_PROXY", "no_proxy",
+# S5: 沙箱环境变量白名单 — 只保留运行 pytest 必需的 env, 剔除所有密钥
+# (LLM_API_KEY / EMBEDDING_API_KEY / NEO4J_PASSWORD 等), 防用户代码经
+# os.environ 读取并外传。subprocess 仍无法真正禁网/限内存 (诚实限制,
+# 真隔离靠 DockerSandboxExecutor), 但至少堵住密钥泄露这一直接风险。
+_SANDBOX_ENV_ALLOWLIST = (
+    "PATH", "PYTHONPATH", "PYTHONHOME",
+    "HOME", "USERPROFILE",            # Windows 用户目录
+    "SYSTEMROOT", "TEMP", "TMP",      # Windows 运行必需
+    "LANG", "LC_ALL",                 # 区域
+    "PYTEST_ADDOPTS",                 # 允许空
 )
 
 
 def _sandbox_env() -> dict:
-    """构造沙箱环境变量: 复制当前 env 但剔除代理 (诚实声明: 无法真正禁网)。"""
-    env = os.environ.copy()
-    for k in _PROXY_ENV_KEYS:
-        env.pop(k, None)
+    """构造沙箱环境变量: 白名单制, 仅保留运行必需项 (S5)。
+
+    旧实现 os.environ.copy() 仅删代理, 会把 LLM_API_KEY 等密钥泄露给被测代码。
+    现改为只拷贝白名单内的 env, 其余 (含所有 *_API_KEY / *PASSWORD) 一律不传。
+    """
+    env = {}
+    for k in _SANDBOX_ENV_ALLOWLIST:
+        v = os.environ.get(k)
+        if v is not None:
+            env[k] = v
     return env
 
 

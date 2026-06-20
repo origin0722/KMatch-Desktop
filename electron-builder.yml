@@ -3,18 +3,18 @@ productName: KMatch·知链
 directories:
   output: release
   buildResources: build
+# S2: 渲染层留 asar 内 (out/renderer), window.js 用 __dirname 相对路径 loadFile 即可。
+# 不再用 extraResources (会落到 resources/, loadFile 找不到)。
 files:
   - out/**/*
-  - "!out/renderer/**/*"
-# 渲染层资源(打包后 file:// 加载)
+# backend PyInstaller 产物 + data: 打入 extraResources (S3, 待 PyInstaller 落地)
 extraResources:
-  - from: out/renderer
-    to: renderer
-  # 阶段5: backend PyInstaller 产物 + data 一并打入
+  - from: data
+    to: data
   # - from: backend-dist
   #   to: backend
-  # - from: data
-  #   to: data
+asarUnpack:
+  - "**/*.{node,dll}"
 win:
   target:
     - nsis
