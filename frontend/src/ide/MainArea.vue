@@ -9,17 +9,19 @@
     </template>
 
     <!-- 其他视图: 全宽装载 (导航由左侧活动栏统一, 无顶部 Tab)
-         套浅色卡片 wrapper: 赛题视图原为浅色设计, 不强行套暗色避免样式冲突/看不见 -->
+         套浅色卡片: 赛题视图原为浅色设计, 暗色主题下作为嵌入式浅色面板 -->
     <div v-else class="view-host">
       <div class="view-card">
-        <component :is="viewComponent" v-if="viewComponent" :key="sidebar.activeView" />
+        <KnowledgeGraph v-if="sidebar.activeView === 'graph'" />
+        <Assessment v-else-if="sidebar.activeView === 'assessment'" />
+        <AgentView v-else-if="sidebar.activeView === 'agents'" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, watch } from 'vue'
+import { nextTick, watch } from 'vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
@@ -29,18 +31,11 @@ import AgentView from '@/views/AgentView.vue'
 
 const sidebar = useSidebarStore()
 
-const VIEW_MAP = {
-  graph: KnowledgeGraph,
-  assessment: Assessment,
-  agents: AgentView,
-}
-
-const viewComponent = computed(() => VIEW_MAP[sidebar.activeView] || null)
-
 // 视图切换后, 触发 resize 让 G6/雷达图等依赖容器尺寸的组件重算
 watch(() => sidebar.activeView, async () => {
   await nextTick()
-  window.dispatchEvent(new Event('resize'))
+  // 延迟一帧, 确保 DOM 已挂载 + 尺寸就绪
+  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')))
 })
 </script>
 
@@ -66,22 +61,21 @@ watch(() => sidebar.activeView, async () => {
   overflow-y: auto;
   background: var(--kbg);
   padding: 12px;
+  display: flex;
 }
-/* 浅色卡片: 包裹赛题视图 (它们按浅色页面设计), 暗色主题下作为嵌入式浅色面板 */
+/* 浅色卡片: 包裹赛题视图 (浅色页面设计), 暗色主题下作嵌入式浅色面板 */
 .view-card {
   background: #ffffff;
   color: #303133;
   border-radius: 8px;
-  min-height: calc(100% - 0px);
+  flex: 1;
+  min-width: 0;
   padding: 20px 24px;
   box-shadow: var(--kshadow);
 }
 .view-card :deep(.el-card) {
   --el-card-bg-color: #ffffff;
   --el-text-color-primary: #303133;
-}
-/* 让被装载的视图根撑满 */
-.view-card > :deep(*) {
-  width: 100%;
+  --el-fill-color-blank: #ffffff;
 }
 </style>

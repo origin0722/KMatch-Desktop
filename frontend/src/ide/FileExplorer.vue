@@ -5,6 +5,7 @@
       <div class="explorer-actions">
         <el-icon class="icon-btn" title="刷新" @click="ws.refreshTree()"><Refresh /></el-icon>
         <el-icon class="icon-btn" title="打开项目" @click="ws.openProject()"><FolderOpened /></el-icon>
+        <el-icon class="icon-btn" title="收起侧栏" @click="sidebar.toggleSidebar()"><Fold /></el-icon>
       </div>
     </div>
 
@@ -56,9 +57,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { Fold } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useSidebarStore } from '@/stores/sidebar'
 
 const ws = useWorkspaceStore()
+const sidebar = useSidebarStore()
 
 function basename(p) {
   const parts = p.replace(/\\/g, '/').split('/')
