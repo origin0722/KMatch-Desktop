@@ -18,7 +18,7 @@
       description="完成学情测评后，可在此查看多 Agent 协同调度全过程"
       :image-size="120"
     >
-      <el-button type="primary" @click="$router.push('/assessment')">
+      <el-button type="primary" @click="sidebar.setView('assessment')">
         前往学情测评
       </el-button>
     </el-empty>
@@ -202,9 +202,11 @@
  */
 import { ref, computed, watch, nextTick } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useSidebarStore } from '@/stores/sidebar'
 import { useAgentStatus } from '@/composables/useAgentStatus'
 
 const store = useAssessmentStore()
+const sidebar = useSidebarStore()
 const status = useAgentStatus()
 
 // ---------------------------------------------------------------

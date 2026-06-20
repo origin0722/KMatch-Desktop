@@ -18,7 +18,7 @@
       description="尚未生成学习资源"
       :image-size="120"
     >
-      <el-button type="primary" @click="$router.push('/assessment')">
+      <el-button type="primary" @click="sidebar.setView('assessment')">
         前往学情测评
       </el-button>
     </el-empty>
@@ -214,13 +214,13 @@
  * 渲染：MarkdownViewer 组件（marked）
  */
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useSidebarStore } from '@/stores/sidebar'
 import { extractTitle, difficultyTagType, contentTypeLabel } from '@/utils/format'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
-const router = useRouter()
 const store = useAssessmentStore()
+const sidebar = useSidebarStore()
 
 // ---------------------------------------------------------------
 // 资源类型定义
@@ -280,7 +280,8 @@ function startQuiz(res) {
 // 溯源节点跳转
 // ---------------------------------------------------------------
 function goToNode(nodeId) {
-  router.push({ path: '/graph', query: { node: nodeId } })
+  // IDE 内切换至图谱视图 (query 暂不传递, 阶段2 起可增强)
+  sidebar.setView('graph')
 }
 </script>
 
