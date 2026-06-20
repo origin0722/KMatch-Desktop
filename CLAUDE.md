@@ -69,8 +69,9 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [frontend/src/stores/workspace.js](frontend/src/stores/workspace.js) — 工作区/文件状态
 - [frontend/src/stores/theme.js](frontend/src/stores/theme.js) — 亮暗主题
 - [frontend/src/stores/assessment.js](frontend/src/stores/assessment.js) — 学情测评状态 (含 interactive 三阶段 + learningReport)
-- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + 多厂商)
-- [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models)
+- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + write_file 审批门 + 多厂商)
+- [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models + /safety-check)
+- [backend/app/agents/code_safety.py](backend/app/agents/code_safety.py) — 纯 Python AST 安全检查 (hard_check_code_safety, 供 chat 审批门复用)
 
 ### 后端核心 (原 KMatch)
 - [backend/app/main.py](backend/app/main.py) — FastAPI 入口
@@ -119,8 +120,13 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   - S7: Learning 视图(≥3形态资源)挂载进主区
   - S8: Dashboard M5 指标改用后端真实 learning_report (不再伪造恒绿)
   - S9: interactive 测评三阶段闭环 (出题→答题→动态反馈), 接通 submit/feedback
-**阶段3** (待做): write_file 工具 + 权限审批门 (复用 hard_check_code_safety) ← **下一步**
-**阶段4** (待做): 图谱委派工具 (code_review/code_test/generate_project_graph) + Monaco 符号联动
+**阶段3** (6/21): write_file 工具 + 权限审批门 ✅
+  - 阶段3.1: write_file 工具 + 权限审批门 (复用 hard_check_code_safety)
+    · 后端抽 `app/agents/code_safety.py` (纯 Python AST 安全检查, 无 langchain/neo4j 依赖), code_reviewer re-export 保持向后兼容
+    · 新增 `POST /api/chat/safety-check` 端点 (.py 才真检, high 阻断 / medium 提示)
+    · 前端 chat.js: write_file 工具 + pendingApproval 审批门 (safety 预检 → 用户可编辑内容 → 批准/拒绝 → 写后刷新文件树+打开文件)
+    · AssistantPanel.vue: 审批卡 UI (安全预检结果 + 可编辑内容 + 批准/拒绝)
+**阶段4** (待做): 图谱委派工具 (code_review/code_test/generate_project_graph) + Monaco 符号联动 ← **下一步**
 **阶段5** (待做): 沙箱强化 (DockerSandboxExecutor) + PyInstaller 打包 backend sidecar
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): SSE 打包后断流 (chat/diagnostics 需改走 window.api.http.stream)、渲染层打包加载路径 + backend sidecar 打包 (阶段5)、chat.py SSE 阻塞事件循环 (改 AsyncOpenAI)、沙箱泄露环境密钥 (env 白名单)、切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 

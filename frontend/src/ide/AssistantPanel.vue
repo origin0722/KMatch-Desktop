@@ -115,6 +115,61 @@
       </template>
     </div>
 
+    <!-- write_file 权限审批门 (阶段3.1) -->
+    <div v-if="chat.pendingApproval" class="approval-card">
+      <div class="approval-header">
+        <el-icon :size="15"><EditPen /></el-icon>
+        <span class="approval-title">写入审批</span>
+        <el-tag size="small" type="warning">write_file</el-tag>
+        <code class="approval-path">{{ chat.pendingApproval.call.path }}</code>
+      </div>
+
+      <!-- 安全预检结果 -->
+      <div class="safety-block">
+        <template v-if="!chat.pendingApproval.checked">
+          <div class="safety-line skipped">安全预检已跳过（非 Python 文件或预检失败）</div>
+          <div v-if="chat.pendingApproval.safetyError" class="safety-line warn">
+            预检请求: {{ chat.pendingApproval.safetyError }}
+          </div>
+        </template>
+        <template v-else-if="chat.pendingApproval.safe && chat.pendingApproval.safetyIssues.length === 0">
+          <div class="safety-line ok">✓ AST 安全预检通过，未发现高危调用</div>
+        </template>
+        <template v-else>
+          <div class="safety-line" :class="chat.pendingApproval.safe ? 'warn' : 'danger'">
+            {{ chat.pendingApproval.safe ? '⚠ 预检发现提示项' : '✗ 预检发现高危项，请谨慎审批' }}
+          </div>
+          <div
+            v-for="(iss, i) in chat.pendingApproval.safetyIssues"
+            :key="i"
+            class="safety-issue"
+            :class="iss.severity"
+          >
+            <el-tag size="small" :type="iss.severity === 'high' ? 'danger' : 'warning'">
+              {{ iss.severity }}
+            </el-tag>
+            <span class="iss-dim">{{ iss.dimension }}</span>
+            <span class="iss-problem">{{ iss.problem }}</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- 可编辑内容预览 -->
+      <div class="approval-content-label">文件内容 (可编辑):</div>
+      <textarea
+        v-model="approvalContent"
+        class="approval-content"
+        spellcheck="false"
+      ></textarea>
+
+      <div class="approval-actions">
+        <el-button size="small" @click="rejectApproval">拒绝</el-button>
+        <el-button size="small" type="primary" @click="approveApproval">
+          <el-icon :size="14"><Check /></el-icon>&nbsp;批准写入
+        </el-button>
+      </div>
+    </div>
+
     <!-- 输入区 -->
     <div class="assistant-input">
       <el-input
@@ -122,7 +177,7 @@
         v-model="inputText"
         type="textarea"
         :rows="2"
-        :disabled="chat.streaming"
+        :disabled="chat.streaming || !!chat.pendingApproval"
         placeholder="输入消息… (Enter 发送, Shift+Enter 换行)"
         resize="none"
         @keydown="onKeydown"
@@ -171,7 +226,7 @@
           v-else
           type="primary"
           size="small"
-          :disabled="!inputText.trim()"
+          :disabled="!inputText.trim() || !!chat.pendingApproval"
           @click="handleSend"
         >
           <el-icon :size="14"><Promotion /></el-icon>&nbsp;发送
@@ -183,7 +238,7 @@
 
 <script setup>
 import { ref, reactive, watch, nextTick } from 'vue'
-import { Delete, VideoPause, Promotion } from '@element-plus/icons-vue'
+import { Delete, VideoPause, Promotion, EditPen, Check } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
 import { ElMessage } from 'element-plus'
@@ -195,6 +250,25 @@ const chat = useChatStore()
 const inputText = ref('')
 const inputRef = ref(null)
 const msgContainer = ref(null)
+
+// ---- write_file 审批门: 可编辑内容 (随 pendingApproval 出现而初始化) ----
+const approvalContent = ref('')
+watch(
+  () => chat.pendingApproval?.id,
+  (id) => {
+    if (id && chat.pendingApproval) {
+      approvalContent.value = chat.pendingApproval.content || ''
+    }
+  },
+  { immediate: true },
+)
+
+function approveApproval() {
+  chat.resolveApproval({ approved: true, content: approvalContent.value })
+}
+function rejectApproval() {
+  chat.resolveApproval({ approved: false })
+}
 
 // Think 折叠状态: { [msgId]: boolean }
 const thinkExpanded = reactive({})
@@ -588,5 +662,88 @@ function cleanToolCalls(content) {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 120px;
+}
+
+/* ---- write_file 审批门 ---- */
+.approval-card {
+  flex-shrink: 0;
+  margin: 0 10px 8px;
+  padding: 12px;
+  border: 1px solid var(--km-warning, #e6a23c);
+  border-radius: var(--km-radius);
+  background: var(--km-bg-layer-1, var(--km-bg-layer-0));
+  box-shadow: var(--km-shadow-sm);
+  animation: msgIn 0.25s var(--km-ease-out);
+}
+.approval-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px;
+  color: var(--km-gray-700);
+  font-size: 12px; font-weight: 600;
+}
+.approval-title { margin-right: 2px; }
+.approval-path {
+  font-size: 11px;
+  color: var(--km-gray-600);
+  background: var(--km-gray-200);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+  max-width: 140px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.safety-block {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--km-bg-layer-2);
+  border-radius: var(--km-radius-sm);
+  font-size: 11.5px;
+}
+.safety-line { line-height: 1.6; }
+.safety-line.ok { color: var(--km-success, #67c23a); }
+.safety-line.warn { color: var(--km-warning, #e6a23c); }
+.safety-line.danger { color: var(--km-danger, #f56c6c); font-weight: 600; }
+.safety-line.skipped { color: var(--km-gray-500); }
+.safety-issue {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.safety-issue .iss-dim {
+  color: var(--km-gray-500);
+  font-size: 10px;
+}
+.safety-issue .iss-problem {
+  color: var(--km-gray-700);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.approval-content-label {
+  font-size: 11px;
+  color: var(--km-gray-500);
+  margin-bottom: 4px;
+}
+.approval-content {
+  width: 100%;
+  min-height: 120px;
+  max-height: 200px;
+  resize: vertical;
+  font-family: var(--km-font-mono, 'Consolas', monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-2);
+  color: var(--km-gray-700);
+  box-sizing: border-box;
+}
+.approval-content:focus {
+  outline: none;
+  border-color: var(--km-border-focus, var(--km-primary));
+}
+.approval-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 10px;
 }
 </style>

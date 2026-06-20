@@ -2100,3 +2100,30 @@ stores/assessment.js (三阶段状态 + 3 个 action), views/Assessment.vue (答
 ### 验证
 build 通过; 42 测试全过 (含 interactive 出题/submit 判分/feedback 再生/demo learningReport 4 组新测试)。interactive: 选方向→开始测评→答题→提交→画像+策略→获取针对性反馈, 全链路通。
 BUG 清单: 76 条 (76 已解决, 含 IDE 化 S7-S9 三断点)。
+
+---
+
+## BUG-077 / 决策: write_file 工具直接落盘缺安全门 (阶段3.1)
+
+| 字段 | 值 |
+|:---|:---|
+| **发现日期** | 2026-06-21 |
+| **发现阶段** | IDE 化 阶段3 (AI 助手工具调用) |
+| **严重程度** | 🟡中 (设计决策, 非运行时 Bug) |
+| **影响范围** | AI 助手 write_file 工具的安全性 |
+| **决策人** | A |
+
+### 问题描述
+阶段2 已实现 read_file/list_directory 工具循环。阶段3 要加 write_file, 但 AI 生成代码直接落盘有两个风险: (1) 高危代码 (eval/exec/os.system/pickle 等) 被写入项目; (2) 用户对 AI 改文件无控制权。原 code_reviewer.hard_check_code_safety 已实现 AST 危险调用+无限循环预检, 但它埋在 code_reviewer.py 里, import 会连带拉入 langchain/neo4j, 不适合 chat 等轻量路径复用。
+
+### 决策
+1. 抽 `app/agents/code_safety.py` — 纯 Python (仅 ast 标准库), 含 _DANGEROUS_CALLS/_DANGEROUS_BUILTINS/hard_check_code_safety/_has_break 等; code_reviewer.py 改为 re-export (`from app.agents.code_safety import ...`), 保持 tests/外部引用向后兼容;
+2. 后端新增 `POST /api/chat/safety-check` — 接 {code, filename}; 仅 .py 真做 AST 检查, 非 .py 跳过; 返回 {issues, safe, checked}; safe = 无 high severity (medium 无限循环仅提示不阻断);
+3. 前端 chat.js write_file 走审批门: 调 safety-check → pendingApproval 弹卡 (用户可编辑 content) → 批准则 window.api.fs.writeFile + 刷新文件树 + 打开文件; 拒绝则把"用户拒绝写入"回传 AI 让其调整; 审批期间禁用输入/发送 (防并发 sendMessage);
+4. AssistantPanel.vue 审批卡: 安全预检结果 (ok/warn/danger 着色 + 逐条 issue) + 可编辑内容 textarea + 批准/拒绝按钮。
+
+### 执行
+backend/app/agents/code_safety.py (新), backend/app/agents/code_reviewer.py (改 re-export, 删 import ast), backend/app/api/chat.py (+SafetyCheckRequest +/safety-check), frontend/src/stores/chat.js (write_file 工具 + pendingApproval 审批门), frontend/src/ide/AssistantPanel.vue (审批卡 UI), backend/tests/test_chat_safety_api.py (新, 端点+模块+re-export 共 11 测试)。
+
+### 验证
+前端 vite build 通过; 后端 test_chat_safety_api + test_code_reviewer_unit + test_code_tester_unit + test_sandbox_unit 共 74 测试全过 (re-export 身份断言 + 高危/安全/非py/语法错误分支)。safety-check 端点对 exec/os.system 返回 safe=False, 安全代码 safe=True, .js 跳过 checked=False。

@@ -3,11 +3,15 @@
  *
  * 阶段2: SSE 流式对话
  * 阶段3: 代码上下文注入 + 工具调用 (读文件/列目录)
+ * 阶段3.1: write_file 工具 + 权限审批门 (复用后端 hard_check_code_safety)
  *
  * 工具调用流程:
  *   1. 发送消息 (含当前文件上下文 + 工具定义)
- *   2. AI 回复: 纯文本 → 直接展示; 含 <|tool_call|> → 执行工具 → 回传结果 → 继续
+ *   2. AI 回复: 纯文本 → 直接展示; 含 tool_call → 执行工具 → 回传结果 → 继续
  *   3. 最多 3 轮工具循环，防止无限循环
+ *
+ * write_file 审批门: 命中 write_file 时先调后端 /api/chat/safety-check 做 AST 预检,
+ *   再弹审批卡 (用户可编辑内容/批准/拒绝); 拒绝则把"用户拒绝写入"回传 AI。
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
@@ -26,6 +30,14 @@ const TOOLS = [
     name: 'list_directory',
     description: '列出目录内容。参数: path (相对路径，默认根目录)。',
     parameters: { path: 'string (可选，默认为项目根目录)' },
+  },
+  {
+    name: 'write_file',
+    description: '写入/创建项目文件 (需用户审批)。参数: path (相对路径), content (文件内容)。',
+    parameters: {
+      path: 'string (相对项目根目录的文件路径)',
+      content: 'string (完整文件内容)',
+    },
   },
 ]
 
@@ -56,14 +68,20 @@ function buildSystemPrompt(context) {
 
   const toolBlock = `
 ## 可用工具
-你可以通过以下格式调用工具来读取项目文件:
+你可以通过以下格式调用工具来读写项目文件:
 \`\`\`tool_call
 {"tool": "read_file", "path": "相对路径"}
 \`\`\`
 \`\`\`tool_call
 {"tool": "list_directory", "path": "相对路径(可选)"}
 \`\`\`
-工具调用后会返回文件内容，然后你再继续回答。`
+\`\`\`tool_call
+{"tool": "write_file", "path": "相对路径", "content": "完整文件内容"}
+\`\`\`
+- read_file/list_directory 调用后返回结果, 你再继续回答。
+- write_file 会触发用户审批门 (Python 文件先经 AST 安全预检), 用户可能批准或拒绝;
+  批准后返回写入成功, 拒绝则返回"用户拒绝写入", 你应据此调整后续回答。
+- write_file 的 content 必须是完整可用的文件内容, 不要写占位符。`
 
   return {
     role: 'system',
@@ -107,6 +125,12 @@ export const useChatStore = defineStore('chat', () => {
   const currentStreamId = ref(null)
   const error = ref(null)
   const abortController = ref(null)
+
+  // ---- write_file 权限审批门 (阶段3.1) ----
+  // pendingApproval 非空时, UI 渲染审批卡; resolveApproval 由按钮触发。
+  // { id, call, content, safetyIssues, safe, checked, resolve }
+  const pendingApproval = ref(null)
+  let _approvalId = 0
 
   // ---- 厂商 & API Key ----
   const PROVIDERS = [
@@ -155,12 +179,10 @@ export const useChatStore = defineStore('chat', () => {
       return
     }
     try {
-      const resp = await fetch('/api/chat/models', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base_url: base, api_key: key }),
-      })
-      const data = await resp.json()
+      // S1: 走 IPC 代理 (window.api.http), 桌面应用无需浏览器 fetch
+      const res = await window.api.http.request('POST', '/api/chat/models', { base_url: base, api_key: key })
+      const data = res.body
+      if (!res.ok) throw new Error(typeof data === 'string' ? data : (data?.error || `HTTP ${res.status}`))
       if (data.models?.length) {
         models.value = data.models.sort()
         // 自动选第一个，或保留当前有效模型
@@ -222,48 +244,110 @@ export const useChatStore = defineStore('chat', () => {
     return msg
   }
 
+  /** 解析单个 SSE block, 更新 assistantMsg; 返回 'error' 表示遇到错误应中止 */
+  function _applySseBlock(block, assistantMsg) {
+    if (!block.trim()) return null
+    const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
+    if (!dataStr || dataStr === '[DONE]') return null
+    try {
+      const data = JSON.parse(dataStr)
+      if (data.error) { error.value = data.error; assistantMsg.content = `❌ ${data.error}`; return 'error' }
+      if (data.reasoning) assistantMsg.think = (assistantMsg.think || '') + data.reasoning
+      if (data.delta) assistantMsg.content += data.delta
+    } catch { /* skip */ }
+    return null
+  }
+
+  // S1: 走 IPC SSE 代理 (window.api.http.stream), 桌面应用无需浏览器 fetch fallback。
+  // preload 暴露 stream/onChunk/onDone/onError, http-proxy.js 转发后端 SSE。
   async function _streamResponse(apiMessages, assistantMsg) {
-    const resp = await fetch('/api/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: apiMessages,
-        stream: true,
-        max_tokens: 4096,
-        model: model.value,
-        api_key: apiKey.value || undefined,
-        base_url: getBaseUrl() || undefined,
-      }),
-      signal: abortController.value.signal,
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '')
-      throw new Error(text || `HTTP ${resp.status}`)
+    const body = {
+      messages: apiMessages,
+      stream: true,
+      max_tokens: 4096,
+      model: model.value,
+      api_key: apiKey.value || undefined,
+      base_url: getBaseUrl() || undefined,
     }
 
-    const reader = resp.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const blocks = buffer.split('\n\n')
-      buffer = blocks.pop()
-      for (const block of blocks) {
-        if (!block.trim()) continue
-        const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
-        if (!dataStr || dataStr === '[DONE]') continue
-        try {
-          const data = JSON.parse(dataStr)
-          if (data.error) { error.value = data.error; assistantMsg.content = `❌ ${data.error}`; return }
-          if (data.reasoning) assistantMsg.think = (assistantMsg.think || '') + data.reasoning
-          if (data.delta) assistantMsg.content += data.delta
-        } catch { /* skip */ }
+    return new Promise((resolve, reject) => {
+      let buffer = ''
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        offChunk(); offDone(); offError()
+        resolve()
       }
+      const offChunk = window.api.http.onChunk((_reqId, block) => {
+        if (settled) return
+        buffer += block
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop()
+        for (const b of parts) {
+          if (_applySseBlock(b, assistantMsg) === 'error') { finish(); return }
+        }
+      })
+      const offDone = window.api.http.onDone(() => finish())
+      const offError = window.api.http.onError((_reqId, err) => {
+        if (settled) return
+        settled = true
+        offChunk(); offDone(); offError()
+        reject(new Error(err || 'SSE 流失败'))
+      })
+      // 用户点停止: abort 时结束等待 (IPC 流无法真正中断, 后端流自然结束)
+      abortController.value.signal.addEventListener('abort', () => finish())
+
+      window.api.http.stream('/api/chat/completions', body).catch((e) => {
+        if (settled) return
+        settled = true
+        offChunk(); offDone(); offError()
+        reject(e)
+      })
+    })
+  }
+
+  /** 调后端 /api/chat/safety-check 做 AST 安全预检 (仅 .py 真正检查) */
+  async function _safetyCheck(code, filename) {
+    try {
+      const res = await window.api.http.request('POST', '/api/chat/safety-check', {
+        code, filename: filename || null,
+      })
+      const data = res.body
+      if (!res.ok) return { checked: false, safe: true, issues: [], error: data?.error || `HTTP ${res.status}` }
+      return {
+        checked: !!data.checked,
+        safe: data.safe !== false,
+        issues: data.issues || [],
+      }
+    } catch (e) {
+      // 预检失败不阻断审批 (降级: 让用户自行判断), 仅提示
+      return { checked: false, safe: true, issues: [], error: e.message || '安全预检请求失败' }
     }
+  }
+
+  /** 弹审批卡, 等待用户决定; 返回 { approved, content } */
+  function _requestApproval(call, safety) {
+    return new Promise((resolve) => {
+      pendingApproval.value = {
+        id: `appr_${++_approvalId}`,
+        call,
+        content: call.content ?? '',
+        safetyIssues: safety.issues || [],
+        safe: safety.safe,
+        checked: safety.checked,
+        safetyError: safety.error || null,
+        resolve,
+      }
+    })
+  }
+
+  /** UI 触发: 批准/拒绝 write_file. decision = { approved, content? } */
+  function resolveApproval(decision) {
+    const p = pendingApproval.value
+    if (!p) return
+    pendingApproval.value = null
+    p.resolve(decision || { approved: false })
   }
 
   /** 执行单个工具调用 */
@@ -281,6 +365,34 @@ export const useChatStore = defineStore('chat', () => {
         if (!hasIpc()) return { error: '目录列表仅在 Electron 桌面应用中可用（请打开项目后使用）' }
         const files = await window.api.fs.listDirectory(relPath, { deep: false })
         return { path: relPath || '(root)', files: (files || []).map((f) => f.path || f) }
+      }
+      if (call.tool === 'write_file') {
+        const relPath = call.path
+        if (!relPath) return { error: '缺少 path 参数' }
+        if (call.content === undefined || call.content === null) return { error: '缺少 content 参数' }
+        if (!hasIpc()) return { error: '文件写入仅在 Electron 桌面应用中可用（请打开项目后使用）' }
+
+        // 1) 后端 AST 安全预检 (Python 文件; 复用 hard_check_code_safety)
+        const safety = await _safetyCheck(call.content, relPath)
+
+        // 2) 审批门: 等待用户决定 (用户可编辑内容)
+        const decision = await _requestApproval(call, safety)
+        if (!decision.approved) {
+          return { path: relPath, rejected: true, error: '用户拒绝写入' }
+        }
+
+        // 3) 执行写入 (用可能被用户编辑后的 content)
+        const finalContent = decision.content ?? call.content
+        await window.api.fs.writeFile(relPath, finalContent)
+
+        // 4) 刷新文件树 + 在编辑器打开该文件
+        try {
+          const ws = useWorkspaceStore()
+          await ws.refreshTree?.()
+          await ws.openFile?.(relPath)
+        } catch { /* 刷新/打开失败不影响写入结果上报 */ }
+
+        return { path: relPath, written: true, bytes: finalContent.length }
       }
       return { error: `未知工具: ${call.tool}` }
     } catch (e) {
@@ -380,9 +492,14 @@ export const useChatStore = defineStore('chat', () => {
 
       // 添加工具消息
       for (const tr of toolResults) {
-        const toolContent = tr.result.error
-          ? `❌ ${tr.call.tool}(${tr.call.path || ''}) 失败: ${tr.result.error}`
-          : `📖 ${tr.call.tool}(${tr.result.path || ''})`
+        let toolContent
+        if (tr.result.error) {
+          toolContent = `❌ ${tr.call.tool}(${tr.call.path || ''}) 失败: ${tr.result.error}`
+        } else if (tr.call.tool === 'write_file') {
+          toolContent = `📝 write_file(${tr.result.path}) 已写入 ${tr.result.bytes ?? 0} 字节`
+        } else {
+          toolContent = `📖 ${tr.call.tool}(${tr.result.path || ''})`
+        }
         _addMessage('tool', toolContent, {
           toolCall: tr.call,
           toolResult: tr.result,
@@ -392,6 +509,7 @@ export const useChatStore = defineStore('chat', () => {
       // 将工具结果注入到消息中，作为新的 user 消息
       const toolResultSummary = toolResults.map((tr) => {
         if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
+        if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
         if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
         if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
         return ''
@@ -411,6 +529,12 @@ export const useChatStore = defineStore('chat', () => {
 
   function clearMessages() {
     abortController.value?.abort()
+    // 取消未决的 write_file 审批 (按拒绝处理, 解开 await)
+    if (pendingApproval.value) {
+      const p = pendingApproval.value
+      pendingApproval.value = null
+      p.resolve({ approved: false })
+    }
     messages.value = []
     streaming.value = false
     currentStreamId.value = null
@@ -423,6 +547,8 @@ export const useChatStore = defineStore('chat', () => {
   return {
     messages, streaming, currentStreamId, error,
     hasMessages,
+    // write_file 审批门 (阶段3.1)
+    pendingApproval, resolveApproval,
     // 厂商 & 模型
     provider, apiKey, model, models, PROVIDERS,
     setProvider, setApiKey, fetchModels,

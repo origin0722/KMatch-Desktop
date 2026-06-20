@@ -1,5 +1,5 @@
 """
-AI 助手聊天 API — SSE 流式对话 (阶段3)
+AI 助手聊天 API — SSE 流式对话 (S4: AsyncOpenAI + async for, 不阻塞事件循环)
 
 POST /api/chat/completions
   请求: { messages, stream?, max_tokens?, model?, api_key?, base_url? }
@@ -8,6 +8,10 @@ POST /api/chat/completions
 POST /api/chat/models
   请求: { base_url, api_key }
   响应: { models: [...] }  — 从厂商 /models 端点拉取
+
+注意: 本模块用 AsyncOpenAI (自给自足), 不依赖 lifespan 的同步 openai_client
+(后者供 diagnostics 等同步路径用)。避免 async def 路由内迭代同步阻塞迭代器
+导致事件循环冻结 (S4 修复)。
 """
 
 import json
@@ -15,7 +19,7 @@ from functools import lru_cache
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from app.config import settings
@@ -41,31 +45,43 @@ class ModelsRequest(BaseModel):
     api_key: str = Field(..., description="API Key")
 
 
+class SafetyCheckRequest(BaseModel):
+    code: str = Field(..., description="待检查的代码内容")
+    filename: str | None = Field(
+        None, description="文件名 (用于判断语言; 非 .py 直接判 safe, 跳过 AST)"
+    )
+
+
 # ----------------------------------------------------------------
-# OpenAI client 缓存 (按 base_url + api_key)
+# AsyncOpenAI client 缓存 (按 base_url + api_key)
 # ----------------------------------------------------------------
 @lru_cache(maxsize=16)
-def _get_client(base_url: str, api_key: str) -> OpenAI:
-    """缓存 OpenAI client, 相同 (base_url, api_key) 复用"""
-    return OpenAI(base_url=base_url, api_key=api_key)
+def _get_async_client(base_url: str, api_key: str) -> AsyncOpenAI:
+    """缓存 AsyncOpenAI client, 相同 (base_url, api_key) 复用"""
+    return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
 
-def _resolve_client(req: ChatRequest) -> OpenAI | None:
-    """优先用请求中的 api_key/base_url, 否则回退到服务端默认"""
+def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
+    """
+    优先用请求中的 api_key/base_url 建 AsyncOpenAI;
+    否则用服务端默认 LLM_API_KEY/LLM_BASE_URL (需非 placeholder)。
+    """
     if req.api_key:
         base = req.base_url or settings.LLM_BASE_URL
-        return _get_client(base, req.api_key)
-    # fallback 到 lifespan 创建的单例
-    return None  # caller 自行处理
+        return _get_async_client(base, req.api_key)
+    # fallback: 服务端默认 key (非 placeholder 才可用)
+    if settings.LLM_API_KEY and settings.LLM_API_KEY != "sk-placeholder":
+        return _get_async_client(settings.LLM_BASE_URL, settings.LLM_API_KEY)
+    return None
 
 
 # ----------------------------------------------------------------
-# 流式生成器 — SSE 格式
+# 流式生成器 — SSE 格式 (async for, 不阻塞事件循环)
 # ----------------------------------------------------------------
-async def _stream_chat(client: OpenAI, messages: list[dict], max_tokens: int, model: str):
-    """逐 token 推送 SSE 事件"""
+async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str):
+    """逐 token 推送 SSE 事件 (async for, 释放事件循环)"""
     try:
-        stream = client.chat.completions.create(
+        stream = await client.chat.completions.create(
             model=model,
             messages=messages,
             stream=True,
@@ -73,7 +89,7 @@ async def _stream_chat(client: OpenAI, messages: list[dict], max_tokens: int, mo
             temperature=0.7,
         )
 
-        for chunk in stream:
+        async for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
             if delta:
                 data = {}
@@ -96,12 +112,10 @@ async def _stream_chat(client: OpenAI, messages: list[dict], max_tokens: int, mo
 # ----------------------------------------------------------------
 @router.post("/completions")
 async def chat_completions(req: ChatRequest, request: Request):
-    """AI 助手对话 (SSE 流式, OpenAI 兼容)"""
+    """AI 助手对话 (SSE 流式, OpenAI 兼容, async 不阻塞)"""
     model = req.model or settings.LLM_MODEL
 
-    # 优先用户提供的 client, 否则用服务端默认
-    dynamic_client = _resolve_client(req)
-    client = dynamic_client or getattr(request.app.state, "openai_client", None)
+    client = _resolve_client(req)
 
     if client is None:
         detail = "LLM 未配置（请设置 API Key）"
@@ -124,9 +138,9 @@ async def chat_completions(req: ChatRequest, request: Request):
             },
         )
 
-    # 非流式 fallback
+    # 非流式 fallback (await, 不阻塞)
     try:
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=model,
             messages=req.messages,
             stream=False,
@@ -141,11 +155,28 @@ async def chat_completions(req: ChatRequest, request: Request):
 
 @router.post("/models")
 async def list_models(req: ModelsRequest):
-    """拉取厂商模型列表 (OpenAI 兼容 /models 端点)"""
+    """拉取厂商模型列表 (OpenAI 兼容 /models 端点, async)"""
     try:
-        client = _get_client(req.base_url, req.api_key)
-        resp = client.models.list()
+        client = _get_async_client(req.base_url, req.api_key)
+        resp = await client.models.list()
         ids = [m.id for m in resp.data] if hasattr(resp, 'data') else []
         return {"models": ids}
     except Exception as exc:
         return {"error": str(exc)}
+
+
+@router.post("/safety-check")
+async def safety_check(req: SafetyCheckRequest):
+    """write_file 审批门: 复用 hard_check_code_safety 做 AST 安全预检 (阶段3)。
+
+    纯 AST 静态分析, 不执行代码。仅对 .py 文件检查; 非_python直接返回 safe。
+    safe = 无 high severity 问题 (medium 如无限循环仅提示, 不阻断)。
+    """
+    from app.agents.code_safety import hard_check_code_safety
+
+    if req.filename and not req.filename.lower().endswith(".py"):
+        return {"language": "non-python", "issues": [], "safe": True, "checked": False}
+
+    issues = hard_check_code_safety(req.code or "")
+    safe = not any(i.get("severity") == "high" for i in issues)
+    return {"language": "python", "issues": issues, "safe": safe, "checked": True}
