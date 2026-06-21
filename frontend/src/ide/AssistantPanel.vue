@@ -37,137 +37,130 @@
           class="message"
           :class="msg.role"
         >
-          <!-- 助手消息: Think 折叠 + Markdown 渲染 -->
+          <!-- 助手消息: chunks 判别联合 (think / content / tool_call) -->
           <div v-if="msg.role === 'assistant'" class="msg-body assistant-msg">
             <div class="msg-avatar">
               <el-icon :size="18"><Cpu /></el-icon>
             </div>
             <div class="msg-content">
-              <!-- 思考过程 (可折叠) -->
-              <div v-if="msg.think || (chat.streaming && chat.currentStreamId === msg.id)" class="think-block">
-                <button
-                  class="think-toggle"
-                  @click="toggleThink(msg.id)"
-                >
-                  <svg class="think-icon" :class="{ expanded: isThinkExpanded(msg.id) }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M9 18l6-6-6-6"/>
-                  </svg>
-                  <span class="think-label" :class="{ breathing: chat.streaming && chat.currentStreamId === msg.id && !msg.content }">
-                    {{ chat.streaming && chat.currentStreamId === msg.id
-                       ? (msg.content ? '已思考' : '思考中…')
-                       : '已思考' }}
-                  </span>
-                </button>
-                <div v-show="isThinkExpanded(msg.id)" class="think-content">
-                  <pre>{{ msg.think }}</pre>
+              <template v-for="(chunk, ci) in msg.chunks" :key="ci">
+                <!-- 思考过程 (可折叠) -->
+                <div v-if="chunk.type === 'think'" class="think-block">
+                  <button class="think-toggle" @click="toggleThink(msg.id)">
+                    <svg class="think-icon" :class="{ expanded: isThinkExpanded(msg.id) }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                    <span class="think-label" :class="{ breathing: isThinking(msg) }">
+                      {{ isThinking(msg) ? '思考中…' : '已思考' }}
+                    </span>
+                  </button>
+                  <div v-show="isThinkExpanded(msg.id)" class="think-content">
+                    <pre>{{ chunk.content }}</pre>
+                  </div>
                 </div>
-              </div>
-              <!-- 正文 -->
-              <MarkdownViewer v-if="msg.content" :content="cleanToolCalls(msg.content)" />
-              <span v-else-if="chat.streaming && chat.currentStreamId === msg.id && !msg.think" class="typing">
+                <!-- 正文 -->
+                <MarkdownViewer v-else-if="chunk.type === 'content'" :content="chunk.content" />
+                <!-- 工具调用: 内联卡 (状态机 pending→in_progress→completed→error) -->
+                <div v-else-if="chunk.type === 'tool_call'" class="tool-call-card">
+                  <div class="tool-header">
+                    <el-tag size="small" :type="chunk.result?.error ? 'danger' : ''">{{ chunk.tool }}</el-tag>
+                    <code class="tool-path">{{ chunk.args?.path || chunk.result?.sourcePath || chunk.args?.filename || '' }}</code>
+                    <span class="tool-status" :class="chunk.status">● {{ statusLabel(chunk.status) }}</span>
+                  </div>
+                  <template v-if="chunk.result">
+                    <div v-if="chunk.result.error" class="tool-error">{{ chunk.result.error }}</div>
+                    <div v-else-if="chunk.tool === 'write_file' && chunk.result.written" class="tool-ok">
+                      📝 已写入 {{ chunk.result.bytes ?? 0 }} 字节
+                    </div>
+                    <!-- generate_project_graph: 实体列表 (可点击跳转 Monaco) -->
+                    <div v-else-if="chunk.result.tool === 'generate_project_graph'" class="delegate-card">
+                      <div class="delegate-stats">
+                        <span>模块 {{ chunk.result.stats?.module || 0 }}</span>
+                        <span>类 {{ chunk.result.stats?.class || 0 }}</span>
+                        <span>函数 {{ chunk.result.stats?.function || 0 }}</span>
+                        <span>方法 {{ chunk.result.stats?.method || 0 }}</span>
+                        <el-tag v-if="chunk.result.written" size="small" type="success">已落库</el-tag>
+                      </div>
+                      <div class="entity-list">
+                        <div
+                          v-for="e in (chunk.result.entities || []).slice(0, 30)"
+                          :key="e.id"
+                          class="entity-item"
+                          :class="{ active: projectGraph.activeEntityId === e.id }"
+                          :title="`${e.kind} · 行 ${e.line_start}-${e.line_end}`"
+                          @click="revealEntity(e)"
+                        >
+                          <span class="entity-kind" :class="e.kind">{{ kindLabel(e.kind) }}</span>
+                          <span class="entity-name">{{ e.qualified_name || e.name }}</span>
+                          <span class="entity-line">:{{ e.line_start || '?' }}</span>
+                        </div>
+                        <span v-if="(chunk.result.entities?.length || 0) > 30" class="truncated">
+                          … 共 {{ chunk.result.entities.length }} 个实体
+                        </span>
+                      </div>
+                    </div>
+                    <!-- code_review: 四维度评分 -->
+                    <div v-else-if="chunk.result.tool === 'code_review'" class="delegate-card">
+                      <div class="review-verdict">
+                        <el-tag size="small" :type="chunk.result.review?.verdict === 'pass' ? 'success' : 'danger'">
+                          {{ chunk.result.review?.verdict === 'pass' ? '通过' : '打回' }}
+                        </el-tag>
+                        <span class="review-score">总分 {{ pct(chunk.result.review?.overall_score) }}</span>
+                        <span class="review-thresh">(阈值 85%)</span>
+                      </div>
+                      <div class="dim-list">
+                        <div v-for="(v, k) in (chunk.result.review?.dimensions || {})" :key="k" class="dim-row">
+                          <span class="dim-name">{{ dimName(k) }}</span>
+                          <el-progress :percentage="pctNum(v.score)" :stroke-width="6" :color="dimColor(v.score)" />
+                        </div>
+                      </div>
+                      <div v-if="highIssues(chunk.result.review).length" class="issue-list">
+                        <div v-for="(iss, i) in highIssues(chunk.result.review)" :key="i" class="issue-item high">
+                          ⚠ {{ iss.problem }}
+                        </div>
+                      </div>
+                      <div v-if="chunk.result.review?.retry_hint" class="review-hint">💡 {{ chunk.result.review.retry_hint }}</div>
+                    </div>
+                    <!-- code_test: 通过率 + 覆盖率 + 失败用例 -->
+                    <div v-else-if="chunk.result.tool === 'code_test'" class="delegate-card">
+                      <div class="test-summary">
+                        <el-tag size="small" :type="testPass(chunk.result.report) ? 'success' : 'warning'">
+                          {{ chunk.result.report?.summary?.passed || 0 }}/{{ chunk.result.report?.summary?.total || 0 }} 通过
+                        </el-tag>
+                        <span v-if="chunk.result.report?.note" class="test-note">{{ chunk.result.report.note }}</span>
+                      </div>
+                      <div class="cov-row">
+                        <span>行覆盖 {{ pct(chunk.result.report?.coverage?.line_coverage) }}</span>
+                        <span>分支 {{ pct(chunk.result.report?.coverage?.branch_coverage) }}</span>
+                        <span>函数 {{ pct(chunk.result.report?.coverage?.function_coverage) }}</span>
+                      </div>
+                      <div v-if="(chunk.result.report?.failed_tests || []).length" class="issue-list">
+                        <div v-for="(f, i) in (chunk.result.report?.failed_tests || []).slice(0, 8)" :key="i" class="issue-item">
+                          <code>{{ f.test_name }}</code>
+                          <span v-if="f.suggestion" class="fail-sug"> — {{ f.suggestion }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else-if="chunk.result.content" class="tool-content">
+                      <pre><code>{{ chunk.result.content.slice(0, 2000) }}</code></pre>
+                      <span v-if="chunk.result.content.length > 2000" class="truncated">… 内容已截断</span>
+                    </div>
+                    <div v-else-if="chunk.result.files" class="tool-files">
+                      <div v-for="f in chunk.result.files.slice(0, 20)" :key="f" class="tool-file">
+                        {{ f }}
+                      </div>
+                    </div>
+                  </template>
+                  <div v-else-if="chunk.status === 'in_progress'" class="tool-running">执行中…</div>
+                </div>
+              </template>
+              <!-- 流式占位 (空 chunks) -->
+              <span v-if="chat.streaming && chat.currentStreamId === msg.id && !hasContent(msg) && !hasThink(msg)" class="typing">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </span>
-              <span v-else-if="!msg.content" class="empty-msg">—</span>
-              <div class="msg-actions" v-if="msg.content && !chat.streaming">
-                <el-button size="small" text @click="copyText(msg.content)">复制</el-button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 工具消息: 文件读取/目录列表/委派工具 -->
-          <div v-else-if="msg.role === 'tool'" class="msg-body tool-msg">
-            <div class="msg-avatar tool-avatar">
-              <el-icon :size="16"><FolderOpened /></el-icon>
-            </div>
-            <div class="msg-content">
-              <div class="tool-header">
-                <el-tag size="small" :type="msg.toolResult?.error ? 'danger' : ''">
-                  {{ msg.toolCall?.tool || 'tool' }}
-                </el-tag>
-                <code class="tool-path">{{ msg.toolCall?.path || msg.toolResult?.sourcePath || '' }}</code>
-              </div>
-              <div v-if="msg.toolResult?.error" class="tool-error">{{ msg.toolResult.error }}</div>
-
-              <!-- generate_project_graph: 实体列表 (可点击跳转 Monaco) -->
-              <div v-else-if="msg.toolResult?.tool === 'generate_project_graph'" class="delegate-card">
-                <div class="delegate-stats">
-                  <span>模块 {{ msg.toolResult.stats?.module || 0 }}</span>
-                  <span>类 {{ msg.toolResult.stats?.class || 0 }}</span>
-                  <span>函数 {{ msg.toolResult.stats?.function || 0 }}</span>
-                  <span>方法 {{ msg.toolResult.stats?.method || 0 }}</span>
-                  <el-tag v-if="msg.toolResult.written" size="small" type="success">已落库</el-tag>
-                </div>
-                <div class="entity-list">
-                  <div
-                    v-for="e in (msg.toolResult.entities || []).slice(0, 30)"
-                    :key="e.id"
-                    class="entity-item"
-                    :class="{ active: projectGraph.activeEntityId === e.id }"
-                    :title="`${e.kind} · 行 ${e.line_start}-${e.line_end}`"
-                    @click="revealEntity(e)"
-                  >
-                    <span class="entity-kind" :class="e.kind">{{ kindLabel(e.kind) }}</span>
-                    <span class="entity-name">{{ e.qualified_name || e.name }}</span>
-                    <span class="entity-line">:{{ e.line_start || '?' }}</span>
-                  </div>
-                  <span v-if="(msg.toolResult.entities?.length || 0) > 30" class="truncated">
-                    … 共 {{ msg.toolResult.entities.length }} 个实体
-                  </span>
-                </div>
-              </div>
-
-              <!-- code_review: 四维度评分 -->
-              <div v-else-if="msg.toolResult?.tool === 'code_review'" class="delegate-card">
-                <div class="review-verdict">
-                  <el-tag size="small" :type="msg.toolResult.review?.verdict === 'pass' ? 'success' : 'danger'">
-                    {{ msg.toolResult.review?.verdict === 'pass' ? '通过' : '打回' }}
-                  </el-tag>
-                  <span class="review-score">总分 {{ pct(msg.toolResult.review?.overall_score) }}</span>
-                  <span class="review-thresh">(阈值 85%)</span>
-                </div>
-                <div class="dim-list">
-                  <div v-for="(v, k) in (msg.toolResult.review?.dimensions || {})" :key="k" class="dim-row">
-                    <span class="dim-name">{{ dimName(k) }}</span>
-                    <el-progress :percentage="pctNum(v.score)" :stroke-width="6" :color="dimColor(v.score)" />
-                  </div>
-                </div>
-                <div v-if="highIssues(msg.toolResult.review).length" class="issue-list">
-                  <div v-for="(iss, i) in highIssues(msg.toolResult.review)" :key="i" class="issue-item high">
-                    ⚠ {{ iss.problem }}
-                  </div>
-                </div>
-                <div v-if="msg.toolResult.review?.retry_hint" class="review-hint">💡 {{ msg.toolResult.review.retry_hint }}</div>
-              </div>
-
-              <!-- code_test: 通过率 + 覆盖率 + 失败用例 -->
-              <div v-else-if="msg.toolResult?.tool === 'code_test'" class="delegate-card">
-                <div class="test-summary">
-                  <el-tag size="small" :type="testPass(msg.toolResult.report) ? 'success' : 'warning'">
-                    {{ msg.toolResult.report?.summary?.passed || 0 }}/{{ msg.toolResult.report?.summary?.total || 0 }} 通过
-                  </el-tag>
-                  <span v-if="msg.toolResult.report?.note" class="test-note">{{ msg.toolResult.report.note }}</span>
-                </div>
-                <div class="cov-row">
-                  <span>行覆盖 {{ pct(msg.toolResult.report?.coverage?.line_coverage) }}</span>
-                  <span>分支 {{ pct(msg.toolResult.report?.coverage?.branch_coverage) }}</span>
-                  <span>函数 {{ pct(msg.toolResult.report?.coverage?.function_coverage) }}</span>
-                </div>
-                <div v-if="(msg.toolResult.report?.failed_tests || []).length" class="issue-list">
-                  <div v-for="(f, i) in (msg.toolResult.report?.failed_tests || []).slice(0, 8)" :key="i" class="issue-item">
-                    <code>{{ f.test_name }}</code>
-                    <span v-if="f.suggestion" class="fail-sug"> — {{ f.suggestion }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else-if="msg.toolResult?.content" class="tool-content">
-                <pre><code>{{ msg.toolResult.content.slice(0, 2000) }}</code></pre>
-                <span v-if="msg.toolResult.content.length > 2000" class="truncated">… 内容已截断</span>
-              </div>
-              <div v-else-if="msg.toolResult?.files" class="tool-files">
-                <div v-for="f in msg.toolResult.files.slice(0, 20)" :key="f" class="tool-file">
-                  {{ f }}
-                </div>
+              <span v-else-if="!hasContent(msg) && !hasThink(msg)" class="empty-msg">—</span>
+              <div class="msg-actions" v-if="hasContent(msg) && !chat.streaming">
+                <el-button size="small" text @click="copyText(contentText(msg))">复制</el-button>
               </div>
             </div>
           </div>
@@ -175,7 +168,7 @@
           <!-- 用户消息: 纯文本气泡 -->
           <div v-else class="msg-body user-msg">
             <div class="msg-content">
-              <pre class="user-text">{{ msg.content }}</pre>
+              <pre class="user-text">{{ contentText(msg) }}</pre>
             </div>
           </div>
         </div>
@@ -365,7 +358,7 @@
 import { ref, reactive, watch, nextTick } from 'vue'
 import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
-import { useChatStore } from '@/stores/chat'
+import { useChatStore, contentTextOf } from '@/stores/chat'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
@@ -424,6 +417,23 @@ function revealEntity(e) {
   sidebar.setView('code')
 }
 
+// ---- chunks 模型辅助 (借鉴 Apix MessageChunk) ----
+function hasContent(msg) {
+  return (msg.chunks || []).some((c) => c.type === 'content' && c.content)
+}
+function hasThink(msg) {
+  return (msg.chunks || []).some((c) => c.type === 'think' && c.content)
+}
+function contentText(msg) {
+  return contentTextOf(msg)
+}
+/** 当前正在思考: 流式中且尚无正文 */
+function isThinking(msg) {
+  return chat.streaming && chat.currentStreamId === msg.id && !hasContent(msg)
+}
+const STATUS_LABEL = { pending: '待执行', in_progress: '执行中', completed: '完成', error: '失败' }
+function statusLabel(s) { return STATUS_LABEL[s] || s }
+
 // Think 折叠状态: { [msgId]: boolean }
 const thinkExpanded = reactive({})
 function isThinkExpanded(msgId) {
@@ -449,7 +459,7 @@ watch(() => chat.messages.length, () => nextTick(scrollToBottom))
 // 流式内容更新时滚动
 watch(() => {
   const msgs = chat.messages
-  if (msgs.length > 0) return msgs[msgs.length - 1].content
+  if (msgs.length > 0) return contentTextOf(msgs[msgs.length - 1])
   return ''
 }, () => nextTick(scrollToBottom))
 
@@ -505,12 +515,6 @@ async function copyText(text) {
   } catch {
     ElMessage.warning('复制失败')
   }
-}
-
-/** 从助手消息中移除 tool_call 代码块 (展示用) */
-function cleanToolCalls(content) {
-  if (!content) return ''
-  return content.replace(/```tool_call\n[\s\S]*?```/g, '')
 }
 </script>
 
@@ -762,6 +766,32 @@ function cleanToolCalls(content) {
   font-size: 11px; color: var(--km-gray-400);
   display: block; margin-top: 4px;
 }
+
+/* 内联工具调用卡 (chunks 模型, 取代原 tool 消息) */
+.tool-call-card {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--km-bg-layer-1, var(--km-gray-100));
+  border: 1px solid var(--km-border-light);
+  border-radius: var(--km-radius-sm);
+  font-size: 12px;
+}
+.tool-call-card .tool-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.tool-status {
+  margin-left: auto;
+  font-size: 11px;
+  display: inline-flex; align-items: center; gap: 3px;
+  white-space: nowrap;
+}
+.tool-status.pending    { color: var(--km-gray-400); }
+.tool-status.in_progress { color: var(--km-info); animation: thinkPulse 1.2s ease-in-out infinite; }
+.tool-status.completed  { color: var(--km-success, #67c23a); }
+.tool-status.error      { color: var(--km-danger, #f56c6c); font-weight: 600; }
+.tool-ok { color: var(--km-success, #67c23a); }
+.tool-running { color: var(--km-gray-500); font-size: 11px; }
 
 /* 错误栏 */
 .error-bar {

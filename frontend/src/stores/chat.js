@@ -237,6 +237,67 @@ export function stripToolCalls(text) {
   return text.replace(/```tool_call\n[\s\S]*?```/g, '').trim()
 }
 
+// ============================================================
+// Chunk 模型 (借鉴 Apix MessageChunk 判别联合)
+//   { type: 'think',    content: string }
+//   { type: 'content',  content: string }
+//   { type: 'tool_call', id, tool, args, status: 'pending'|'in_progress'|'completed'|'error', result? }
+// 相邻同类型 think/content 合并; tool_call 带状态机。
+// ============================================================
+let _tcCounter = 0
+
+/** 向 chunks 末尾追加文本 chunk, 末尾同类型 (think/content) 合并 (Apix 相邻合并) */
+export function appendTextChunk(chunks, type, text) {
+  if (!text) return
+  const last = chunks[chunks.length - 1]
+  if (last && last.type === type && (type === 'think' || type === 'content')) {
+    last.content += text
+  } else {
+    chunks.push({ type, content: text })
+  }
+}
+
+/** 拼接消息中所有 content chunk 文本 (供 API 历史 + MarkdownViewer) */
+export function contentTextOf(msg) {
+  if (!msg || !Array.isArray(msg.chunks)) return ''
+  return msg.chunks.filter((c) => c.type === 'content').map((c) => c.content).join('')
+}
+
+/** 拼接消息中所有 think chunk 文本 */
+export function thinkTextOf(msg) {
+  if (!msg || !Array.isArray(msg.chunks)) return ''
+  return msg.chunks.filter((c) => c.type === 'think').map((c) => c.content).join('')
+}
+
+/**
+ * 把一段 content 文本按 ```tool_call 块切成 [content?, tool_call{status:'pending'}, content?, ...] 段。
+ * 复用 parseToolCalls 的正则, 但保留位置信息以便分段。
+ */
+export function splitToolCallChunks(contentText) {
+  if (!contentText) return []
+  const chunks = []
+  const re = /```tool_call\n([\s\S]*?)```/g
+  let last = 0
+  let m
+  while ((m = re.exec(contentText)) !== null) {
+    const before = contentText.slice(last, m.index)
+    if (before.trim()) chunks.push({ type: 'content', content: before })
+    let call
+    try { call = JSON.parse(m[1].trim()) } catch { call = { tool: 'unknown', _raw: m[1].trim() } }
+    chunks.push({
+      type: 'tool_call',
+      id: `tc_${++_tcCounter}`,
+      tool: call.tool || 'unknown',
+      args: call,
+      status: 'pending',
+    })
+    last = re.lastIndex
+  }
+  const tail = contentText.slice(last)
+  if (tail.trim()) chunks.push({ type: 'content', content: tail })
+  return chunks
+}
+
 /** 检测是否在 Electron 环境 */
 function hasIpc() {
   return typeof window !== 'undefined' && !!window.api?.fs
@@ -386,22 +447,29 @@ export const useChatStore = defineStore('chat', () => {
   let _idCounter = 0
   function _nextId() { return `msg_${Date.now()}_${++_idCounter}` }
 
-  function _addMessage(role, content, extra = {}) {
-    const msg = { id: _nextId(), role, content, timestamp: new Date().toISOString(), think: '', ...extra }
+  function _addMessage(role, payload, extra = {}) {
+    const chunks = typeof payload === 'string'
+      ? [{ type: 'content', content: payload }]
+      : Array.isArray(payload) ? payload : []
+    const msg = { id: _nextId(), role, chunks, timestamp: new Date().toISOString(), ...extra }
     messages.value.push(msg)
     return msg
   }
 
-  /** 解析单个 SSE block, 更新 assistantMsg; 返回 'error' 表示遇到错误应中止 */
+  /** 解析单个 SSE block, 累积进 assistantMsg.chunks; 返回 'error' 表示遇到错误应中止 */
   function _applySseBlock(block, assistantMsg) {
     if (!block.trim()) return null
     const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
     if (!dataStr || dataStr === '[DONE]') return null
     try {
       const data = JSON.parse(dataStr)
-      if (data.error) { error.value = data.error; assistantMsg.content = `❌ ${data.error}`; return 'error' }
-      if (data.reasoning) assistantMsg.think = (assistantMsg.think || '') + data.reasoning
-      if (data.delta) assistantMsg.content += data.delta
+      if (data.error) {
+        error.value = data.error
+        appendTextChunk(assistantMsg.chunks, 'content', `❌ ${data.error}`)
+        return 'error'
+      }
+      if (data.reasoning) appendTextChunk(assistantMsg.chunks, 'think', data.reasoning)
+      if (data.delta) appendTextChunk(assistantMsg.chunks, 'content', data.delta)
     } catch { /* skip malformed block */ }
     return null
   }
@@ -746,18 +814,16 @@ export const useChatStore = defineStore('chat', () => {
     while (toolRound < MAX_TOOL_ROUNDS) {
       toolRound++
 
-      // 构建 API 消息列表 (strip tool_call blocks from assistant messages)
+      // 构建 API 消息列表 (assistant content 去掉 tool_call 块; chunks 模型无 tool 角色)
       const systemMsg = buildSystemPrompt(context)
-      const historyMsgs = messages.value
-        .filter((m) => m.role !== 'tool')
-        .map((m) => ({
-          role: m.role,
-          content: m.role === 'assistant' ? stripToolCalls(m.content) : m.content,
-        }))
+      const historyMsgs = messages.value.map((m) => ({
+        role: m.role,
+        content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
+      }))
       const apiMessages = [systemMsg, ...historyMsgs]
 
-      // 添加助手占位消息
-      const assistantMsg = _addMessage('assistant', '')
+      // 添加助手占位消息 (空 chunks)
+      const assistantMsg = _addMessage('assistant', [])
       currentStreamId.value = assistantMsg.id
       streaming.value = true
 
@@ -765,59 +831,41 @@ export const useChatStore = defineStore('chat', () => {
         await _streamResponse(apiMessages, assistantMsg)
       } catch (e) {
         if (e.name === 'AbortError') {
-          if (assistantMsg.content === '') assistantMsg.content = '(已停止)'
+          if (contentTextOf(assistantMsg) === '') appendTextChunk(assistantMsg.chunks, 'content', '(已停止)')
           streaming.value = false; currentStreamId.value = null; return
         }
         error.value = e.message || '对话请求失败'
-        if (assistantMsg.content === '') assistantMsg.content = `❌ ${error.value}`
+        if (contentTextOf(assistantMsg) === '') appendTextChunk(assistantMsg.chunks, 'content', `❌ ${error.value}`)
         streaming.value = false; currentStreamId.value = null; return
       }
 
       streaming.value = false
       currentStreamId.value = null
 
-      // 检查是否有 tool_call
-      const toolCalls = parseToolCalls(assistantMsg.content)
-      if (toolCalls.length === 0) {
-        // 纯文本回复，完成
+      // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
+      const segs = splitToolCallChunks(contentTextOf(assistantMsg))
+      const hasToolCall = segs.some((c) => c.type === 'tool_call')
+      if (!hasToolCall) {
+        // 纯文本回复，完成 (content chunks 已就位, 无需重建)
         break
       }
+      const thinkChunks = assistantMsg.chunks.filter((c) => c.type === 'think')
+      assistantMsg.chunks = [...thinkChunks, ...segs]
 
-      // 执行工具调用
+      // 逐个执行 tool_call chunk: 状态机 pending → in_progress → completed/error
       const toolResults = []
-      for (const call of toolCalls) {
-        const result = await _executeTool(call)
-        toolResults.push({ call, result })
+      for (const chunk of assistantMsg.chunks) {
+        if (chunk.type !== 'tool_call') continue
+        chunk.status = 'in_progress'
+        const result = await _executeTool(chunk.args)
+        chunk.status = result.error ? 'error' : 'completed'
+        chunk.result = result
+        toolResults.push({ call: chunk.args, result })
       }
 
       if (toolResults.length === 0) break
 
-      // 添加工具消息
-      for (const tr of toolResults) {
-        let toolContent
-        if (tr.result.error) {
-          toolContent = `❌ ${tr.call.tool}(${tr.call.path || tr.call.filename || ''}) 失败: ${tr.result.error}`
-        } else if (tr.call.tool === 'write_file') {
-          toolContent = `📝 write_file(${tr.result.path}) 已写入 ${tr.result.bytes ?? 0} 字节`
-        } else if (tr.call.tool === 'generate_project_graph') {
-          const s = tr.result.stats || {}
-          toolContent = `📊 generate_project_graph(${tr.result.sourcePath}) — 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}`
-        } else if (tr.call.tool === 'code_review') {
-          const rv = tr.result.review || {}
-          toolContent = `🔎 code_review(${tr.result.sourcePath}) — ${rv.verdict || '?'} (${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'})`
-        } else if (tr.call.tool === 'code_test') {
-          const sm = (tr.result.report && tr.result.report.summary) || {}
-          toolContent = `🧪 code_test(${tr.result.sourcePath}) — ${sm.passed || 0}/${sm.total || 0} 通过`
-        } else {
-          toolContent = `📖 ${tr.call.tool}(${tr.result.path || ''})`
-        }
-        _addMessage('tool', toolContent, {
-          toolCall: tr.call,
-          toolResult: tr.result,
-        })
-      }
-
-      // 将工具结果注入到消息中，作为新的 user 消息
+      // 将工具结果摘要作为新 user 消息塞入历史 (供下一轮 API 上下文)
       const toolResultSummary = toolResults.map((tr) => {
         if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
         if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
