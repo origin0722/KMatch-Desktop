@@ -17,6 +17,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
+import { TOOL_PERMISSION, useAiSettingsStore } from '@/stores/aiSettings'
 
 const MAX_TOOL_ROUNDS = 3
 
@@ -74,7 +75,74 @@ const TOOLS = [
   },
 ]
 
-function buildSystemPrompt(context) {
+function toolCallExample(tool) {
+  const examples = {
+    read_file: '{"tool": "read_file", "path": "相对路径"}',
+    list_directory: '{"tool": "list_directory", "path": "相对路径(可选)"}',
+    write_file: '{"tool": "write_file", "path": "相对路径", "content": "完整文件内容"}',
+    generate_project_graph: '{"tool": "generate_project_graph", "path": "相对路径", "write_to_neo4j": false}',
+    code_review: '{"tool": "code_review", "path": "相对路径", "target_direction": "开发目标方向"}',
+    code_test: '{"tool": "code_test", "path": "相对路径", "target_direction": "开发目标方向", "mode": "generate"}',
+  }
+  return examples[tool]
+}
+
+export function shouldAdvertiseTool(tool, permission) {
+  return permission === TOOL_PERMISSION.ALLOW || (tool === 'write_file' && permission === TOOL_PERMISSION.ASK)
+}
+
+export function buildAdvertisedToolNames(permissionFor) {
+  return TOOLS
+    .map((t) => t.name)
+    .filter((name) => shouldAdvertiseTool(name, permissionFor?.(name) || TOOL_PERMISSION.DENY))
+}
+
+export function toolPermissionError(tool, permission) {
+  if (permission === TOOL_PERMISSION.DENY) return `工具 ${tool} 已在 AI 设置中禁用`
+  if (permission === TOOL_PERMISSION.ASK && tool !== 'write_file') {
+    return `工具 ${tool} 需要用户确认，请先在 AI 设置中改为允许，或等待工具审批功能启用`
+  }
+  return null
+}
+
+function buildToolBlock(allowedTools) {
+  const allow = new Set(Array.isArray(allowedTools) ? allowedTools : [])
+  const examples = TOOLS
+    .filter((t) => allow.has(t.name))
+    .map((t) => `\`\`\`tool_call\n${toolCallExample(t.name)}\n\`\`\``)
+    .join('\n')
+  const notes = []
+  const readTools = ['read_file', 'list_directory'].filter((name) => allow.has(name))
+  if (readTools.length) notes.push(`- ${readTools.join('/')} 调用后返回结果, 你再继续回答。`)
+  if (allow.has('write_file')) {
+    notes.push(`- write_file 会触发用户审批门 (Python 文件先经 AST 安全预检), 用户可能批准或拒绝;
+  批准后返回写入成功, 拒绝则返回"用户拒绝写入", 你应据此调整后续回答。
+  write_file 的 content 必须是完整可用的文件内容, 不要写占位符。`)
+  }
+  if (allow.has('generate_project_graph')) {
+    notes.push(`- generate_project_graph: 解析 Python 代码生成项目代码图谱 (函数/类/方法/调用关系),
+  返回实体清单与统计; 不依赖 Neo4j (离线可用)。审查/测试工作区文件前可先调它了解结构。`)
+  }
+  if (allow.has('code_review')) {
+    notes.push(`- code_review: 四维度代码审查 (逻辑/安全/规范/领域合规), 需 Neo4j+LLM 在线;
+  target_direction 必填 (开发目标方向, 从用户上下文推断, 缺失时先问用户)。`)
+  }
+  if (allow.has('code_test')) {
+    notes.push('- code_test: LLM 生成 pytest 用例并沙箱执行, 返回通过率/覆盖率/失败用例; 需 Neo4j+LLM 在线。')
+  }
+  if (allow.has('generate_project_graph') || allow.has('code_review') || allow.has('code_test')) {
+    notes.push('- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。')
+  }
+  notes.push('- 后端返回 503 时表示 Neo4j 图谱引擎未就绪, 你应转告用户启动 Neo4j。')
+
+  return `
+## 可用工具
+你可以通过以下格式调用工具来读写项目文件、委派后端多 Agent 能力:
+${examples || '(当前没有可用工具)'}
+${notes.join('\n')}`
+}
+
+export function buildSystemPrompt(context) {
   let ctxBlock = ''
   if (context) {
     const parts = []
@@ -99,38 +167,11 @@ function buildSystemPrompt(context) {
     }
   }
 
-  const toolBlock = `
-## 可用工具
-你可以通过以下格式调用工具来读写项目文件、委派后端多 Agent 能力:
-\`\`\`tool_call
-{"tool": "read_file", "path": "相对路径"}
-\`\`\`
-\`\`\`tool_call
-{"tool": "list_directory", "path": "相对路径(可选)"}
-\`\`\`
-\`\`\`tool_call
-{"tool": "write_file", "path": "相对路径", "content": "完整文件内容"}
-\`\`\`
-\`\`\`tool_call
-{"tool": "generate_project_graph", "path": "相对路径", "write_to_neo4j": false}
-\`\`\`
-\`\`\`tool_call
-{"tool": "code_review", "path": "相对路径", "target_direction": "开发目标方向"}
-\`\`\`
-\`\`\`tool_call
-{"tool": "code_test", "path": "相对路径", "target_direction": "开发目标方向", "mode": "generate"}
-\`\`\`
-- read_file/list_directory 调用后返回结果, 你再继续回答。
-- write_file 会触发用户审批门 (Python 文件先经 AST 安全预检), 用户可能批准或拒绝;
-  批准后返回写入成功, 拒绝则返回"用户拒绝写入", 你应据此调整后续回答。
-  write_file 的 content 必须是完整可用的文件内容, 不要写占位符。
-- generate_project_graph: 解析 Python 代码生成项目代码图谱 (函数/类/方法/调用关系),
-  返回实体清单与统计; 不依赖 Neo4j (离线可用)。审查/测试工作区文件前可先调它了解结构。
-- code_review: 四维度代码审查 (逻辑/安全/规范/领域合规), 需 Neo4j+LLM 在线;
-  target_direction 必填 (开发目标方向, 从用户上下文推断, 缺失时先问用户)。
-- code_test: LLM 生成 pytest 用例并沙箱执行, 返回通过率/覆盖率/失败用例; 需 Neo4j+LLM 在线。
-- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。
-- 后端返回 503 时表示 Neo4j 图谱引擎未就绪, 你应转告用户启动 Neo4j。`
+  const toolBlock = buildToolBlock(context?.allowedTools)
+  const memoriesBlock = context?.memoriesBlock || ''
+  const reasoningBlock = context?.reasoningInstruction
+    ? `\n\n## 思考模式\n${context.reasoningInstruction}`
+    : ''
 
   // ---- 阶段4③ 启发式交互导学模式 (赛题(4)②) ----
   if (context && context.tutorMode) {
@@ -159,6 +200,8 @@ function buildSystemPrompt(context) {
         + '\n4. 事实底座抗幻觉: 涉及项目代码时先用 read_file/generate_project_graph 等工具查证真实代码与结构, 严禁凭记忆臆造项目细节; 解释通用概念时也只讲你确信的内容。'
         + '\n5. 简洁: 每轮回复聚焦一个引导点 + 一个追问, 不要长篇大论。'
         + profileBlock
+        + memoriesBlock
+        + reasoningBlock
         + ctxBlock
         + toolBlock,
     }
@@ -170,12 +213,14 @@ function buildSystemPrompt(context) {
       '你是 KMatch IDE 的 AI 编程助手。你可以阅读项目文件、解释代码、提供改进建议、帮助调试。\n'
       + '回答用中文，代码块标注语言。保持回答简洁实用。\n'
       + '如果你需要查看某个文件来更好地回答问题，使用 tool_call 格式请求读取。'
+      + memoriesBlock
+      + reasoningBlock
       + ctxBlock
       + toolBlock,
   }
 }
 
-function parseToolCalls(text) {
+export function parseToolCalls(text) {
   const re = /```tool_call\n([\s\S]*?)```/g
   const calls = []
   let m
@@ -187,7 +232,7 @@ function parseToolCalls(text) {
   return calls
 }
 
-function stripToolCalls(text) {
+export function stripToolCalls(text) {
   if (!text) return ''
   return text.replace(/```tool_call\n[\s\S]*?```/g, '').trim()
 }
@@ -479,6 +524,10 @@ export const useChatStore = defineStore('chat', () => {
   /** 执行单个工具调用 */
   async function _executeTool(call) {
     try {
+      const aiSettings = useAiSettingsStore()
+      const permissionError = toolPermissionError(call.tool, aiSettings.permissionFor(call.tool))
+      if (permissionError) return { error: permissionError }
+
       if (call.tool === 'read_file') {
         const relPath = call.path
         if (!relPath) return { error: '缺少 path 参数' }
@@ -607,6 +656,13 @@ export const useChatStore = defineStore('chat', () => {
       const { useAssessmentStore } = await import('@/stores/assessment')
       ctx.profile = useAssessmentStore().profile
     } catch { /* assessment store 未就绪, 忽略 */ }
+
+    try {
+      const aiSettings = useAiSettingsStore()
+      ctx.allowedTools = buildAdvertisedToolNames(aiSettings.permissionFor)
+      ctx.memoriesBlock = aiSettings.formatEnabledMemories()
+      ctx.reasoningInstruction = aiSettings.reasoningInstruction(provider.value, model.value)
+    } catch { /* aiSettings store 未就绪, 忽略 */ }
 
     if (!ws.hasProject) return ctx
 
