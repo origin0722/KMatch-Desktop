@@ -2,7 +2,7 @@
  * Electron 主进程入口
  * 阶段1: 窗口生命周期 + backend sidecar + IPC 注册(fs/workspace/http-proxy)
  */
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -11,6 +11,7 @@ import { startBackend, stopBackend, getBackendHealth } from './backend-sidecar.j
 import { registerFsIpc } from './ipc/fs.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
 import { registerHttpProxyIpc } from './ipc/http-proxy.js'
+import { registerWindowIpc } from './ipc/window.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -21,9 +22,11 @@ function registerAllIpc() {
   registerFsIpc()
   registerWorkspaceIpc()
   registerHttpProxyIpc()
+  registerWindowIpc({ getMainWindow: () => mainWindow })
 }
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null)
   registerAllIpc()
 
   // 拉起后端 sidecar(开发期: 探测已运行则 attach, 否则尝试 spawn)

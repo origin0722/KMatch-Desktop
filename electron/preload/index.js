@@ -42,4 +42,7 @@ contextBridge.exposeInMainWorld('api', {
       return () => ipcRenderer.removeListener('http:stream:error', h)
     },
   },
+  window: {
+    openDevTools: () => ipcRenderer.invoke('window:openDevTools'),
+  },
 })
