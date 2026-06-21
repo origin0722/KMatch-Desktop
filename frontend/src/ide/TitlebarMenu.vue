@@ -1,20 +1,18 @@
 <template>
   <div class="titlebar-menu">
-    <div class="brand-block">
-      <span class="brand-mark">知</span>
-      <span class="brand-text">KMatch·知链</span>
-    </div>
-
     <el-dropdown
       v-for="group in menuGroups"
       :key="group.id"
       class="menu-dropdown"
-      trigger="click"
+      trigger="hover"
+      popper-class="km-titlebar-menu"
       @command="runCommand"
     >
       <button class="menu-trigger">
-        {{ group.label }}
-        <span class="chevron">⌄</span>
+        <span class="menu-label">{{ group.label }}</span>
+        <svg class="menu-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </button>
       <template #dropdown>
         <el-dropdown-menu>
@@ -130,32 +128,8 @@ async function runCommand(command) {
 .titlebar-menu {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-}
-.brand-block {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 8px;
-}
-.brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--km-primary);
-  color: var(--km-primary-text);
-  font-size: 12px;
-  font-weight: 700;
-}
-.brand-text {
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--km-gray-800);
-  letter-spacing: 0.1px;
 }
 .menu-dropdown,
 .menu-trigger {
@@ -163,22 +137,36 @@ async function runCommand(command) {
 }
 .menu-trigger {
   height: 26px;
-  padding: 0 9px;
+  padding: 0 10px;
   border: none;
-  border-radius: var(--km-radius-sm);
+  border-radius: 7px;
   background: transparent;
   color: var(--km-gray-600);
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 550;
   cursor: pointer;
-  transition: all 0.18s var(--km-ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.16s var(--km-ease), color 0.16s var(--km-ease), transform 0.12s var(--km-ease);
 }
 .menu-trigger:hover {
   background: var(--km-gray-200);
   color: var(--km-gray-800);
 }
-.chevron {
-  margin-left: 3px;
+.menu-trigger:active {
+  transform: scale(0.97);
+}
+.menu-label {
+  letter-spacing: 0.2px;
+}
+.menu-chevron {
   color: var(--km-gray-500);
+  transition: transform 0.18s var(--km-ease), color 0.16s var(--km-ease);
+}
+.menu-trigger:hover .menu-chevron {
+  color: var(--km-primary-active);
+  transform: translateY(1px);
 }
 .item-label {
   min-width: 96px;
@@ -191,5 +179,38 @@ async function runCommand(command) {
   white-space: nowrap;
   color: var(--km-gray-500);
   font-size: 11px;
+}
+</style>
+
+<!-- 非 scoped: el-dropdown 面板 teleport 到 body, 需全局样式 -->
+<style>
+.km-titlebar-menu.el-dropdown-menu {
+  padding: 5px;
+  border-radius: 11px !important;
+  border: 1px solid var(--km-border-light);
+  background: var(--km-bg-layer-3);
+  box-shadow: var(--km-shadow-lg);
+  animation: kmMenuIn 0.18s var(--km-ease-out);
+}
+@keyframes kmMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.km-titlebar-menu .el-dropdown-menu__item {
+  border-radius: 7px;
+  margin: 1px 0;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--km-gray-700);
+  transition: background-color 0.14s var(--km-ease), color 0.14s var(--km-ease);
+}
+.km-titlebar-menu .el-dropdown-menu__item:hover,
+.km-titlebar-menu .el-dropdown-menu__item:focus {
+  background: var(--km-primary-light);
+  color: var(--km-primary-active);
+}
+.km-titlebar-menu .el-dropdown-menu__item.is-divided::before {
+  background-color: var(--km-border-light);
+  margin: 4px 6px;
 }
 </style>

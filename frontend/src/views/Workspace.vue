@@ -1,15 +1,18 @@
 <template>
   <div class="ide-shell">
-    <!-- 顶部标题栏 -->
+    <!-- 顶部标题栏: 左菜单 | 居中品牌 | 右工作区+控制 -->
     <div class="ide-titlebar">
       <div class="title-left">
         <TitlebarMenu />
       </div>
-      <div class="title-center" v-if="ws.hasProject">
-        <el-icon :size="13"><FolderOpened /></el-icon>
-        <span>{{ ws.rootName }}</span>
-      </div>
+
+      <div class="title-brand">KMatch·知链</div>
+
       <div class="title-right">
+        <span v-if="ws.hasProject" class="title-workspace">
+          <el-icon :size="12"><FolderOpened /></el-icon>
+          <span>{{ ws.rootName }}</span>
+        </span>
         <button
           class="title-icon-button"
           :class="{ active: sidebar.aiPanelVisible }"
@@ -17,7 +20,7 @@
           data-test="ai-toggle-button"
           @click="sidebar.toggleAiPanel()"
         >
-          AI
+          <el-icon :size="15"><ChatDotRound /></el-icon>
         </button>
         <button
           class="title-icon-button"
@@ -25,7 +28,7 @@
           data-test="ai-settings-gear"
           @click="openAiSettingsEntry"
         >
-          ⚙
+          <el-icon :size="16"><Setting /></el-icon>
         </button>
       </div>
     </div>
@@ -43,6 +46,7 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import { FolderOpened, ChatDotRound, Setting } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
 import ActivityBar from '@/ide/ActivityBar.vue'
@@ -71,45 +75,77 @@ onMounted(() => ws.loadRecent())
   font-family: var(--kfont-ui);
 }
 .ide-titlebar {
-  height: 36px;
+  height: 38px;
   background: var(--kbg-elevated);
   border-bottom: 1px solid var(--kborder);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 12px;
   flex-shrink: 0;
   -webkit-app-region: drag;
 }
-.title-left { display: flex; align-items: center; min-width: 0; }
-.title-center {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 12px; color: var(--ktext-secondary);
-  -webkit-app-region: no-drag;
+.title-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.title-brand {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  color: var(--km-gray-800);
+  white-space: nowrap;
+  /* 居中品牌保持可拖拽, 不阻断拖动区域 */
 }
 .title-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 8px;
   -webkit-app-region: no-drag;
 }
-.title-icon-button {
+.title-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 0 8px;
   height: 24px;
-  min-width: 28px;
-  border: 1px solid transparent;
   border-radius: 7px;
+  font-size: 11.5px;
+  color: var(--km-gray-600);
+  background: var(--km-gray-200);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.title-workspace span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title-icon-button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   color: var(--km-gray-600);
-  font-size: 11px;
-  font-weight: 650;
   cursor: pointer;
-  transition: all 0.16s var(--km-ease);
+  transition: background-color 0.16s var(--km-ease), color 0.16s var(--km-ease), transform 0.12s var(--km-ease), border-color 0.16s var(--km-ease);
 }
 .title-icon-button:hover,
 .title-icon-button.active {
   background: var(--km-primary-light);
   color: var(--km-primary-active);
   border-color: var(--km-border-light);
+}
+.title-icon-button:active {
+  transform: scale(0.94);
 }
 
 .ide-body {

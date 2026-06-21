@@ -393,8 +393,8 @@ export const useChatStore = defineStore('chat', () => {
     return null
   }
 
-  // S1: 走 IPC SSE 代理 (window.api.http.stream), 桌面应用无需浏览器 fetch fallback。
-  // preload 暴露 stream/onChunk/onDone/onError, http-proxy.js 转发后端 SSE。
+  // SSE 流式: Electron 走 IPC 代理 (window.api.http.stream), 浏览器 dev 走 fetch 回退。
+  // 两路共用 _applySseBlock 解析, 保证渲染层行为一致。
   async function _streamResponse(apiMessages, assistantMsg) {
     const body = {
       messages: apiMessages,
@@ -405,6 +405,35 @@ export const useChatStore = defineStore('chat', () => {
       base_url: getBaseUrl() || undefined,
     }
 
+    // ---- 浏览器 dev 回退: fetch + ReadableStream 直连 /api (经 Vite proxy → 8000) ----
+    if (!hasIpc()) {
+      const resp = await fetch('/api/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: abortController.value.signal,
+      })
+      if (!resp.ok || !resp.body) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `HTTP ${resp.status}`)
+      }
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop()
+        for (const b of parts) {
+          if (_applySseBlock(b, assistantMsg) === 'error') return
+        }
+      }
+      return
+    }
+
+    // ---- Electron: IPC SSE 代理 ----
     return new Promise((resolve, reject) => {
       let buffer = ''
       let settled = false

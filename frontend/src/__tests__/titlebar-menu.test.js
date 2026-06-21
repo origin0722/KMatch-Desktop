@@ -74,12 +74,13 @@ describe('TitlebarMenu', () => {
     const wrapper = mountMenu()
 
     expect(wrapper.classes()).toContain('titlebar-menu')
-    expect(wrapper.find('.brand-block').exists()).toBe(true)
     const dropdowns = wrapper.findAll('.menu-dropdown')
     const triggers = wrapper.findAll('.menu-trigger')
 
     expect(dropdowns.length).toBeGreaterThan(0)
     expect(triggers.length).toBeGreaterThan(0)
     expect(dropdowns.every((dropdown) => dropdown.find('.menu-trigger').exists())).toBe(true)
+    // 品牌已移至 Workspace 居中, 标题栏菜单组件不再承载品牌块
+    expect(wrapper.find('.brand-block').exists()).toBe(false)
   })
 })
