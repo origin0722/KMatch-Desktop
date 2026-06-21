@@ -70,7 +70,7 @@ function onViewClick(id) {
   align-items: center;
   padding: 8px 0;
   flex-shrink: 0;
-  border-right: 1px solid rgba(255,255,255,0.04);
+  border-right: 1px solid var(--km-border-light);
 }
 .activity-item {
   width: 40px;
@@ -83,15 +83,18 @@ function onViewClick(id) {
   color: var(--km-activity-text);
   cursor: pointer;
   position: relative;
-  opacity: 0.55;
+  opacity: 1;
   transition: all 0.2s var(--km-ease);
 }
-.activity-item:hover { opacity: 0.85; background: rgba(255,255,255,0.06); }
+.activity-item:hover {
+  color: var(--km-activity-active-text);
+  background: var(--km-activity-hover);
+}
 .activity-item:active { transform: scale(0.95); }
 /* 主区视图激活 */
 .activity-item.active {
-  opacity: 1;
-  background: rgba(255,255,255,0.08);
+  color: var(--km-activity-active-text);
+  background: var(--km-activity-active-bg);
 }
 .activity-item.active::before {
   content: '';
@@ -102,6 +105,9 @@ function onViewClick(id) {
   background: var(--km-activity-active);
 }
 /* 工具按钮开启态 */
-.activity-item.on { opacity: 0.8; }
+.activity-item.on {
+  color: var(--km-activity-active-text);
+  background: var(--km-activity-active-bg);
+}
 .activity-spacer { flex: 1; }
 </style>

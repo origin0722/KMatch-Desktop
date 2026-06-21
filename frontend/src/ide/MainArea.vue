@@ -84,19 +84,20 @@ watch(() => sidebar.activeView, async () => {
   padding: 12px;
   display: flex;
 }
-/* 浅色卡片: 包裹赛题视图 (浅色页面设计), 暗色主题下作嵌入式浅色面板 */
+/* 赛题视图容器: 使用 KMatch 语义 token, 保持亮暗主题一致 */
 .view-card {
-  background: #ffffff;
-  color: #303133;
-  border-radius: 8px;
+  background: var(--km-bg-layer-1);
+  color: var(--km-gray-700);
+  border: 1px solid var(--km-border-light);
+  border-radius: var(--km-radius-lg);
   flex: 1;
   min-width: 0;
   padding: 20px 24px;
-  box-shadow: var(--kshadow);
+  box-shadow: var(--km-shadow-sm);
 }
 .view-card :deep(.el-card) {
-  --el-card-bg-color: #ffffff;
-  --el-text-color-primary: #303133;
-  --el-fill-color-blank: #ffffff;
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-text-color-primary: var(--km-gray-800);
+  --el-fill-color-blank: var(--km-bg-layer-2);
 }
 </style>

@@ -65,10 +65,13 @@
   --km-bg-layer-2: #fafaf9;    /* 输入框、编辑区 */
   --km-bg-layer-3: #ffffff;    /* 浮层、弹窗 */
 
-  /* ---- 活动栏 (恒深) ---- */
-  --km-activity-bg: #27262b;
-  --km-activity-text: #bebcc4;
-  --km-activity-active: #8b9cf0;
+  /* ---- 活动栏 ---- */
+  --km-activity-bg: #f7f6f5;
+  --km-activity-text: #77736f;
+  --km-activity-hover: #eeece9;
+  --km-activity-active-bg: #eef0fc;
+  --km-activity-active-text: #5b6bd0;
+  --km-activity-active: #6c7ce0;
 
   /* ---- 状态栏 ---- */
   --km-statusbar-bg: #27262b;
@@ -159,8 +162,11 @@ html.dark {
   --km-bg-layer-3: #2d2926;    /* 浮层 */
 
   /* ---- 活动栏 ---- */
-  --km-activity-bg: #100f0e;
-  --km-activity-text: #959290;
+  --km-activity-bg: #141311;
+  --km-activity-text: #969390;
+  --km-activity-hover: #211f1c;
+  --km-activity-active-bg: #1e2240;
+  --km-activity-active-text: #a0aef4;
   --km-activity-active: #8b9cf0;
 
   /* ---- 状态栏 ---- */
