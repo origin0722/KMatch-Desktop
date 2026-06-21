@@ -8,6 +8,8 @@
  *   graph — hasResults (阶段④图谱摘要)
  *
  * splitView: null | 'graph' | 'learning' | 'dashboard' (主从分屏右半视图)
+ *
+ * 优先级 (高→低): graph > agent > quiz > goal
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
