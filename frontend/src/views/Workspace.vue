@@ -3,16 +3,30 @@
     <!-- 顶部标题栏 -->
     <div class="ide-titlebar">
       <div class="title-left">
-        <span class="title-brand">KMatch·知链</span>
-        <span class="title-sep">—</span>
-        <span class="title-scene">工作区</span>
+        <TitlebarMenu />
       </div>
       <div class="title-center" v-if="ws.hasProject">
         <el-icon :size="13"><FolderOpened /></el-icon>
         <span>{{ ws.rootName }}</span>
       </div>
       <div class="title-right">
-        <span class="title-hint">IDE · 二次开发 + 个性化学习</span>
+        <button
+          class="title-icon-button"
+          :class="{ active: sidebar.aiPanelVisible }"
+          title="显示或隐藏 AI 助手"
+          data-test="ai-toggle-button"
+          @click="sidebar.toggleAiPanel()"
+        >
+          AI
+        </button>
+        <button
+          class="title-icon-button"
+          title="AI 设置"
+          data-test="ai-settings-gear"
+          @click="openAiSettingsEntry"
+        >
+          ⚙
+        </button>
       </div>
     </div>
 
@@ -35,9 +49,15 @@ import ActivityBar from '@/ide/ActivityBar.vue'
 import MainArea from '@/ide/MainArea.vue'
 import AssistantPanel from '@/ide/AssistantPanel.vue'
 import StatusBar from '@/ide/StatusBar.vue'
+import TitlebarMenu from '@/ide/TitlebarMenu.vue'
 
 const ws = useWorkspaceStore()
 const sidebar = useSidebarStore()
+
+function openAiSettingsEntry() {
+  if (!sidebar.aiPanelVisible) sidebar.toggleAiPanel()
+}
+
 onMounted(() => ws.loadRecent())
 </script>
 
@@ -61,17 +81,36 @@ onMounted(() => ws.loadRecent())
   flex-shrink: 0;
   -webkit-app-region: drag;
 }
-.title-left { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.title-brand { font-weight: 600; color: var(--ktext); }
-.title-sep { color: var(--ktext-muted); }
-.title-scene { color: var(--ktext-secondary); font-size: 12px; }
+.title-left { display: flex; align-items: center; min-width: 0; }
 .title-center {
   display: flex; align-items: center; gap: 5px;
   font-size: 12px; color: var(--ktext-secondary);
   -webkit-app-region: no-drag;
 }
-.title-right { -webkit-app-region: no-drag; }
-.title-hint { font-size: 11px; color: var(--ktext-muted); }
+.title-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+.title-icon-button {
+  height: 24px;
+  min-width: 28px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--km-gray-600);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.16s var(--km-ease);
+}
+.title-icon-button:hover,
+.title-icon-button.active {
+  background: var(--km-primary-light);
+  color: var(--km-primary-active);
+  border-color: var(--km-border-light);
+}
 
 .ide-body {
   flex: 1;
