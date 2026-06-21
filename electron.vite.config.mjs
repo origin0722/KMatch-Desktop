@@ -9,9 +9,18 @@ export default defineConfig({
   main: {
     build: {
       outDir: 'out/main',
-      lib: { entry: 'electron/main/index.js' },
       rollupOptions: {
-        external: ['electron', 'path', 'url', 'child_process', 'fs', 'fs/promises'],
+        external: ['electron', 'path', 'url', 'child_process', 'fs', 'fs/promises', 'worker_threads'],
+        // watcher-worker.cjs 作为额外入口, 与 index.js 一起 build 到 out/main/。
+        // Node worker_threads 直接 require 该路径运行 (chokidar v4 支持 CJS)。
+        input: {
+          index: path.resolve(__dirname, 'electron/main/index.js'),
+          'watcher-worker': path.resolve(__dirname, 'electron/main/watcher-worker.cjs'),
+        },
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js',
+        },
       },
     },
   },

@@ -7,6 +7,17 @@
       <p class="empty-hint">从左侧资源管理器打开文件, 或点击活动栏 📁 打开项目</p>
       <p class="empty-hint dim">阶段1: 文件浏览 + Monaco 编辑 (Ctrl+S 保存) · 阶段2 起: AI 助手 + 图谱委派</p>
     </div>
+    <!-- 阶段8: 外部改动冲突确认 (已打开且脏的文件被外部修改) -->
+    <div v-if="conflictPath" class="conflict-banner">
+      <span class="conflict-text">
+        <el-icon><WarningFilled /></el-icon>
+        {{ conflictPath }} 已被外部修改
+      </span>
+      <div class="conflict-actions">
+        <el-button size="small" @click="keepLocal">保留我的编辑</el-button>
+        <el-button size="small" type="primary" @click="loadDisk">加载磁盘版本</el-button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -14,6 +25,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import { WarningFilled, DocumentCopy } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useThemeStore } from '@/stores/theme'
 import { useProjectGraphStore } from '@/stores/projectGraph'
@@ -29,6 +41,9 @@ const containerRef = ref(null)
 let editor = null
 const models = new Map() // relPath -> ITextModel
 let decorations = []     // 符号高亮装饰 (阶段4b)
+
+// 阶段8: 外部改动冲突 — 已打开且脏的文件被外部修改时, 弹 banner 让用户选保留/加载
+const conflictPath = ref(null)
 
 const LANG_BY_EXT = {
   '.py': 'python', '.js': 'javascript', '.ts': 'typescript', '.jsx': 'javascript',
@@ -129,6 +144,60 @@ async function switchTo(relPath) {
 
 watch(() => theme.mode, applyTheme)
 
+// ---- 阶段8: 外部文件变动响应 ----
+// watch externalChanges: 对已打开的非脏文件失效 model (下次 getOrCreateModel 重读磁盘);
+//                       对脏文件设 conflictPath 弹 banner。
+watch(() => ws.externalChanges, (changes) => {
+  if (!changes || changes.size === 0) return
+  for (const [relPath, info] of changes) {
+    if (!models.has(relPath)) continue // 未打开的文件不关心 (refreshTree 已刷树)
+    if (info.kind === 'unlink') {
+      // 文件被删除: 失效 model (不论脏否, 文件没了)
+      disposeModel(relPath)
+      ws.clearExternalChange(relPath)
+      continue
+    }
+    if (ws.dirtyFiles.has(relPath)) {
+      // 脏文件被外部改: 弹冲突 (不自动覆盖用户编辑)
+      if (!conflictPath.value) conflictPath.value = relPath
+    } else {
+      // 非脏文件: 失效 model, 若当前激活则立即重读
+      disposeModel(relPath)
+      if (ws.activeFile === relPath) {
+        switchTo(relPath).catch(() => { /* ignore */ })
+      }
+      ws.clearExternalChange(relPath)
+    }
+  }
+}, { deep: true })
+
+/** dispose 单个 model 并从缓存移除 (下次 getOrCreateModel 重读磁盘) */
+function disposeModel(relPath) {
+  const m = models.get(relPath)
+  if (m) {
+    try { m.dispose() } catch { /* ignore */ }
+    models.delete(relPath)
+  }
+}
+
+/** 冲突: 用户选保留编辑 — 清标记, 不动 model */
+function keepLocal() {
+  if (conflictPath.value) ws.clearExternalChange(conflictPath.value)
+  conflictPath.value = null
+}
+
+/** 冲突: 用户选加载磁盘 — 失效 model 重读 */
+async function loadDisk() {
+  const p = conflictPath.value
+  if (!p) return
+  disposeModel(p)
+  ws.clearExternalChange(p)
+  conflictPath.value = null
+  if (ws.activeFile === p) {
+    await switchTo(p)
+  }
+}
+
 onBeforeUnmount(() => {
   models.forEach((m) => m.dispose())
   models.clear()
@@ -147,6 +216,21 @@ onBeforeUnmount(() => {
 .empty-title { font-size: 20px; font-weight: 600; color: var(--ktext); margin-top: 8px; }
 .empty-hint { font-size: 13px; }
 .empty-hint.dim { font-size: 11px; color: var(--ktext-muted); }
+
+/* 阶段8: 外部改动冲突 banner */
+.conflict-banner {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 10;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px;
+  background: var(--km-warning-light);
+  border: 1px solid var(--km-warning);
+  border-radius: var(--km-radius-sm);
+  box-shadow: var(--km-shadow-md);
+  font-size: 13px; color: var(--km-gray-800);
+}
+.conflict-text { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.conflict-actions { display: flex; gap: 6px; }
 </style>
 
 <!-- 阶段4b: 符号高亮装饰 (全局, Monaco decoration className 不受 scoped 控制) -->

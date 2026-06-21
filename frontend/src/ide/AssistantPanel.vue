@@ -81,13 +81,23 @@
                         <span>方法 {{ chunk.result.stats?.method || 0 }}</span>
                         <el-tag v-if="chunk.result.written" size="small" type="success">已落库</el-tag>
                       </div>
-                      <div class="entity-list">
+                      <!-- 阶段8: 源文件被外部改动 → 图谱过期, 禁用跳转避免指错行 -->
+                      <el-alert
+                        v-if="projectGraph.stale"
+                        type="warning"
+                        :closable="false"
+                        show-icon
+                        class="graph-stale-alert"
+                      >
+                        图谱已过期（源文件已变动），重新生成以刷新行号
+                      </el-alert>
+                      <div class="entity-list" :class="{ disabled: projectGraph.stale }">
                         <div
                           v-for="e in (chunk.result.entities || []).slice(0, 30)"
                           :key="e.id"
                           class="entity-item"
                           :class="{ active: projectGraph.activeEntityId === e.id }"
-                          :title="`${e.kind} · 行 ${e.line_start}-${e.line_end}`"
+                          :title="projectGraph.stale ? '图谱已过期, 重新生成后再跳转' : `${e.kind} · 行 ${e.line_start}-${e.line_end}`"
                           @click="revealEntity(e)"
                         >
                           <span class="entity-kind" :class="e.kind">{{ kindLabel(e.kind) }}</span>
@@ -413,6 +423,8 @@ function kindLabel(kind) {
 }
 function revealEntity(e) {
   if (e.line_start == null) return
+  // 阶段8: 图谱过期时禁用跳转 (行号可能已漂移, 跳转会指错)
+  if (projectGraph.stale) return
   projectGraph.requestReveal(e.line_start, e.line_end, e.qualified_name || e.name)
   sidebar.setView('code')
 }
@@ -963,6 +975,13 @@ async function copyText(text) {
 .delegate-card {
   margin-top: 6px;
   display: flex; flex-direction: column; gap: 8px;
+}
+.graph-stale-alert {
+  margin: 2px 0;
+}
+.entity-list.disabled .entity-item {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .delegate-stats {
   display: flex; flex-wrap: wrap; gap: 8px;

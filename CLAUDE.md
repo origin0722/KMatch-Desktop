@@ -190,7 +190,17 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   · Redesign-Preserve: 只动视觉层 (Levers 1-4), 业务逻辑/computed/ECharts/G6/搜索筛选/答题闭环一字未改; 赛题(3)①可视化 + M5质量指标 + 四层图谱契约全保
   · 设计纪律: Color/Shape Lock + 零 em-dash + 去 emoji-as-icon + 不引新依赖; 暗色模式经 --el-card-bg-color 覆盖
   · 80 测试全过 + vite build 通过
-**已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留); 切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
+**阶段8** (6/22): 文件监听 Worker (worker_threads) + S6 治理 + 项目图谱失效 ✅
+  - Apix 借鉴最高价值项。worker_threads 跑 chokidar v4 监听项目目录, 主线程仅转发事件到渲染层
+  · 选 worker_threads: 赛题泛化到其他 AI 垂直领域时, 监听含数据/模型文件大目录不卡 UI
+  · chokidar v4 非 v5 (v5 ESM-only 与 main CJS 输出冲突); worker .cjs + rollup 多入口 build 到 out/main/watcher-worker.js
+  · createWatcherController 纯工厂 (依赖注入 Worker+getMainWindow) 便于单测, 对齐 window-ipc.test.js 模式
+  - 接线: fs.js 导出 IGNORE_NAMES; workspace openProject/setRoot 后 start watcher, setRoot(null) stop; index before-quit stop; preload api.fs.onChange
+  - S6 治愈: MainArea code 视图 v-if→v-show 常驻 (切视图不销毁 Monaco, models/未保存编辑保留); MonacoEditor externalChanges watcher 非脏文件失效 model 重读, 脏文件弹冲突 banner (保留/加载)
+  - 项目图谱失效 (赛题场景二正确性): projectGraph stale 标志 + markStale; workspace onFileChange 调 markStale; AssistantPanel stale 时 alert 提示 + 禁用实体跳转 (避免行号漂移后跳错行)
+  · 93 测试全过 (新增 13: watcher-factory 7 + workspace-watcher 6, 含仓库首个 window.api mock 模式) + vite build 通过
+  · 手动 e2e 待跑 (非图谱项); 图谱失效链路待前后端调好补验
+**已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5/S6~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留)。
 
 ### 原 KMatch 后端已交付项
 - ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证

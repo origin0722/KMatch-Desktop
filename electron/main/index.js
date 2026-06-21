@@ -12,6 +12,7 @@ import { registerFsIpc } from './ipc/fs.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
 import { registerHttpProxyIpc } from './ipc/http-proxy.js'
 import { registerWindowIpc } from './ipc/window.js'
+import { registerWatcherIpc, getWatcherController } from './ipc/watcher.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -20,9 +21,11 @@ let mainWindow = null
 
 function registerAllIpc() {
   registerFsIpc()
-  registerWorkspaceIpc()
+  // workspace 启停文件监听, 需 getMainWindow 推送事件到渲染层
+  registerWorkspaceIpc({ getMainWindow: () => mainWindow })
   registerHttpProxyIpc()
   registerWindowIpc({ getMainWindow: () => mainWindow })
+  registerWatcherIpc({ getMainWindow: () => mainWindow })
 }
 
 app.whenReady().then(async () => {
@@ -46,6 +49,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', async () => {
+  // 停文件监听 worker, 避免退出时未关闭的 watcher 句柄阻塞退出
+  try { await getWatcherController(() => mainWindow).stop() } catch { /* ignore */ }
   await stopBackend()
 })
 

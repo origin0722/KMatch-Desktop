@@ -14,6 +14,9 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   // { projectId, stats, entities, relations, sourcePath, written }
   const graph = ref(null)
 
+  // 阶段8: 图谱是否已过期 (源文件被外部改动, 行号可能漂移, 跳转会指错行)
+  const stale = ref(false)
+
   // Monaco 跳转目标 (chat → Monaco): { path, lineStart, lineEnd, name }
   const revealTarget = ref(null)
 
@@ -42,12 +45,27 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     }
     activeLine.value = null
     revealTarget.value = null
+    stale.value = false // 新图谱生成, 清过期标记
+  }
+
+  /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转) */
+  function markStale(path) {
+    const g = graph.value
+    if (!g || !path) return
+    if (g.sourcePath === path) {
+      stale.value = true
+    }
+  }
+
+  function clearStale() {
+    stale.value = false
   }
 
   function clear() {
     graph.value = null
     activeLine.value = null
     revealTarget.value = null
+    stale.value = false
   }
 
   /** chat 实体点击 → 触发 Monaco 跳转 */
@@ -73,7 +91,8 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   }
 
   return {
-    graph, revealTarget, activeLine, activeEntityId,
-    setGraph, clear, requestReveal, setActiveLine, consumeReveal,
+    graph, stale, revealTarget, activeLine, activeEntityId,
+    setGraph, clear, clearStale, markStale,
+    requestReveal, setActiveLine, consumeReveal,
   }
 })

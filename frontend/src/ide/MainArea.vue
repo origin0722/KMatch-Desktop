@@ -1,21 +1,20 @@
 <template>
   <div class="main-area">
-    <!-- 代码视图: 文件树 + 编辑器标签 + Monaco -->
-    <template v-if="sidebar.activeView === 'code'">
-      <div class="code-layout">
-        <FileExplorer v-show="sidebar.sidebarVisible" />
-        <div class="editor-area">
-          <EditorTabs />
-          <div class="editor-host">
-            <MonacoEditor />
-          </div>
+    <!-- 代码视图: 文件树 + 编辑器标签 + Monaco
+         阶段8: v-show 常驻 (治 S6 — 切视图不销毁 Monaco, models/未保存编辑保留) -->
+    <div class="code-layout" v-show="sidebar.activeView === 'code'">
+      <FileExplorer v-show="sidebar.sidebarVisible" />
+      <div class="editor-area">
+        <EditorTabs />
+        <div class="editor-host">
+          <MonacoEditor />
         </div>
       </div>
-    </template>
+    </div>
 
     <!-- 其他视图: 全宽装载 (导航由左侧活动栏统一, 无顶部 Tab)
          套浅色卡片: 赛题视图原为浅色设计, 暗色主题下作为嵌入式浅色面板 -->
-    <div v-else class="view-host">
+    <div v-if="sidebar.activeView !== 'code'" class="view-host">
       <div class="view-card">
         <KnowledgeGraph v-if="sidebar.activeView === 'graph'" />
         <Assessment v-else-if="sidebar.activeView === 'assessment'" />

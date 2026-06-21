@@ -20,6 +20,14 @@ export function getWorkspaceRoot() {
   return workspaceRoot
 }
 
+/** 文件监听与目录列举共用: 排除这些目录名 (阶段8 watcher 复用) */
+const IGNORE_NAMES = new Set([
+  'node_modules', '.git', '__pycache__', '.pytest_cache', 'dist', 'out',
+  '.venv', 'venv', '.idea', '.vscode', 'build',
+])
+
+export { IGNORE_NAMES }
+
 /** 规范化并校验路径在 workspace 内, 防越界 */
 function resolveSafe(relPath) {
   if (!workspaceRoot) throw new Error('未打开工作区')
@@ -90,11 +98,6 @@ export function registerFsIpc() {
     return { ok: true }
   })
 }
-
-const IGNORE_NAMES = new Set([
-  'node_modules', '.git', '__pycache__', '.pytest_cache', 'dist', 'out',
-  '.venv', 'venv', '.idea', '.vscode', 'build',
-])
 
 async function listOne(absDir) {
   const entries = await fs.readdir(absDir, { withFileTypes: true })

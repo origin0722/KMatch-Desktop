@@ -20,6 +20,18 @@ contextBridge.exposeInMainWorld('api', {
     createFile: (p) => ipcRenderer.invoke('fs:createFile', p),
     deleteFile: (p) => ipcRenderer.invoke('fs:deleteFile', p),
     rename: (a, b) => ipcRenderer.invoke('fs:rename', a, b),
+    // 文件监听 (阶段8): 订阅外部文件变动事件, 返回 unsubscribe。
+    // 事件 { kind:'add'|'change'|'unlink', path, absPath }。仿 http.onChunk 模式。
+    onChange: (cb) => {
+      const h = (_e, event) => cb(event)
+      ipcRenderer.on('fs:watch:change', h)
+      return () => ipcRenderer.removeListener('fs:watch:change', h)
+    },
+  },
+  watcher: {
+    // 兜底: 渲染层可主动启停 (主要靠 openProject 自动 start)
+    start: (root) => ipcRenderer.invoke('fs:watch:start', root),
+    stop: () => ipcRenderer.invoke('fs:watch:stop'),
   },
   http: {
     request: (method, urlPath, body, params, opts) =>
