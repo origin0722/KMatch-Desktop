@@ -43,3 +43,6 @@ backend-dist/
 *.spec
 # spec 是手维护的打包源码, 需提交 (覆盖上面的 *.spec)
 !backend/KMatchBackend.spec
+
+# brainstorming 可视化伴侣
+.superpowers/
