@@ -1,204 +1,121 @@
 <template>
-  <div class="agent-page">
+  <div class="agent-page km-workbench agent-cockpit">
     <!-- ============================================================ -->
     <!-- 页面标题栏 -->
     <!-- ============================================================ -->
-    <div class="page-header">
-      <h3>Agent 协同可视化</h3>
-      <p class="page-desc">
-        多智能体协同调度过程可视化，展示"辩论与交叉验证"的审核博弈闭环
-      </p>
+    <div class="km-workbench-header">
+      <div>
+        <p class="km-workbench-kicker">multi-agent orchestration</p>
+        <h3 class="km-workbench-title">Agent 协同 cockpit</h3>
+        <p class="km-workbench-desc">
+          把调度链路、Agent 状态和协作证据放在同一张工作台里。这里展示每个 Agent 为什么行动、正在处理什么、交付了什么。
+        </p>
+      </div>
+      <el-tag
+        :type="status.pipelineRunning.value ? 'warning' : 'success'"
+        size="small"
+      >
+        {{ status.pipelineRunning.value ? '运行中' : '已完成' }}
+      </el-tag>
     </div>
 
     <!-- ============================================================ -->
     <!-- 空状态 -->
     <!-- ============================================================ -->
-    <el-empty
-      v-if="!hasLogs"
-      description="完成学情测评后，可在此查看多 Agent 协同调度全过程"
-      :image-size="120"
-    >
-      <el-button type="primary" @click="sidebar.setView('assessment')">
-        前往学情测评
-      </el-button>
-    </el-empty>
-
-    <!-- ============================================================ -->
-    <!-- 有日志时 -->
-    <!-- ============================================================ -->
-    <template v-else>
-      <!-- Agent 流转管道图 -->
-      <el-card shadow="never" class="pipeline-card">
-        <template #header>
-          <span>🔄 调度流程</span>
-          <el-tag
-            :type="status.pipelineRunning.value ? 'warning' : 'success'"
-            size="small"
-            class="pipeline-status"
-          >
-            {{ status.pipelineRunning.value ? '运行中' : '已完成' }}
-          </el-tag>
-        </template>
-
-        <div class="agent-pipeline">
-          <template v-for="(agent, idx) in status.agentNodes.value" :key="agent.key">
-            <!-- Agent 节点卡片 -->
-            <div
-              class="agent-node"
-              :class="[`status-${agent.status}`, { active: agent.status === 'running' }]"
-              @click="selectedAgent = agent"
-            >
-              <div class="agent-icon">{{ agent.icon }}</div>
-              <div class="agent-name">{{ agent.label }}</div>
-              <div class="agent-status-tag">
-                <el-tag :type="statusTagType(agent.status)" size="small" disable-transitions>
-                  {{ statusLabel(agent.status) }}
-                </el-tag>
-              </div>
-              <div v-if="agent.retryCount > 0" class="retry-badge">
-                🔄{{ agent.retryCount }}
-              </div>
-            </div>
-
-            <!-- 流转箭头（最后一个不渲染） -->
-            <div v-if="idx < status.agentNodes.value.length - 1" class="agent-arrow">
-              <span class="arrow-line">→</span>
-              <!-- reviewer → content_generator 打回路径 -->
-              <span v-if="agent.key === 'reviewer' && agent.retryCount > 0" class="reject-path">
-                ← 打回
-              </span>
-            </div>
-          </template>
-        </div>
-      </el-card>
-
-      <!-- 下半区：详情面板 + 日志 -->
-      <div class="bottom-area">
-        <!-- Agent 详情面板 -->
-        <el-card shadow="never" class="detail-card" v-if="selectedAgent">
-          <template #header>
-            <span>{{ selectedAgent.icon }} {{ selectedAgent.label }} — 详情</span>
-          </template>
-          <div class="agent-detail">
-            <div class="detail-row">
-              <span class="detail-label">状态</span>
-              <el-tag :type="statusTagType(selectedAgent.status)" size="small">
-                {{ statusLabel(selectedAgent.status) }}
-              </el-tag>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">职责</span>
-              <span class="detail-value">{{ selectedAgent.role }}</span>
-            </div>
-            <div class="detail-row" v-if="selectedAgent.retryCount > 0">
-              <span class="detail-label">打回次数</span>
-              <span class="detail-value">{{ selectedAgent.retryCount }} 次</span>
-            </div>
-
-            <!-- 各 Agent 专属数据 -->
-            <template v-if="selectedAgent.key === 'diagnostics' && store.assessment">
-              <el-divider />
-              <div class="detail-row">
-                <span class="detail-label">答题正确率</span>
-                <span class="detail-value">{{ (store.accuracy * 100).toFixed(0) }}%</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">总题数</span>
-                <span class="detail-value">{{ store.assessment.total_count ?? '--' }}</span>
-              </div>
-            </template>
-
-            <template v-if="selectedAgent.key === 'reviewer' && store.reviewResults">
-              <el-divider />
-              <div class="detail-row">
-                <span class="detail-label">审核总分</span>
-                <span class="detail-value">{{ ((store.reviewResults.overall_score ?? 0) * 100).toFixed(0) }}%</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">阈值</span>
-                <span class="detail-value">{{ ((store.reviewResults.threshold ?? 0) * 100).toFixed(0) }}%</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">判定</span>
-                <el-tag
-                  :type="store.reviewResults.passed ? 'success' : 'danger'"
-                  size="small"
-                >
-                  {{ store.reviewResults.passed ? '通过' : '打回' }}
-                </el-tag>
-              </div>
-              <div v-if="store.reviewResults.retry_hint" class="retry-hint">
-                {{ store.reviewResults.retry_hint }}
-              </div>
-            </template>
-
-            <template v-if="selectedAgent.key === 'graph_controller' && store.knowledgeGraph">
-              <el-divider />
-              <div class="detail-row">
-                <span class="detail-label">路径节点</span>
-                <span class="detail-value">{{ store.knowledgeGraph.learning_path?.length ?? 0 }} 个</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">预计学时</span>
-                <span class="detail-value">{{ store.knowledgeGraph.estimated_total_hours ?? '--' }}h</span>
-              </div>
-            </template>
-
-            <template v-if="selectedAgent.key === 'content_generator' && store.generatedContent">
-              <el-divider />
-              <div class="detail-row">
-                <span class="detail-label">生成资源</span>
-                <span class="detail-value">{{ store.generatedContent.resources?.length ?? 0 }} 段</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">覆盖节点</span>
-                <span class="detail-value">{{ store.generatedContent.node_count ?? 0 }} 个</span>
-              </div>
-            </template>
-          </div>
-        </el-card>
-
-        <el-card v-else shadow="never" class="detail-card">
-          <template #header>
-            <span>📋 Agent 详情</span>
-          </template>
-          <el-empty description="点击上方 Agent 节点查看详情" :image-size="50" />
-        </el-card>
-
-        <!-- 运行日志面板 -->
-        <el-card shadow="never" class="log-card">
-          <template #header>
-            <div class="log-header">
-              <span>📜 运行日志</span>
-              <el-button size="small" text @click="logAutoScroll = !logAutoScroll">
-                {{ logAutoScroll ? '自动滚动' : '手动' }}
-              </el-button>
-            </div>
-          </template>
-          <div ref="logContainer" class="log-body">
-            <div
-              v-for="(entry, idx) in parsedLogs"
-              :key="idx"
-              class="log-entry"
-              :class="{ 'log-reject': entry.isReject }"
-            >
-              <span class="log-time">{{ entry.time }}</span>
-              <span class="log-msg">{{ entry.msg }}</span>
-            </div>
-          </div>
-        </el-card>
+    <div v-if="!hasLogs" class="km-empty-state agent-empty">
+      <div>
+        <h4>还没有协同记录</h4>
+        <p>完成一次学情测评后，这里会显示主控调度和子 Agent 的协作过程。</p>
+        <el-button type="primary" @click="sidebar.setView('assessment')">
+          前往学情诊断
+        </el-button>
       </div>
-    </template>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 三区 Agent cockpit -->
+    <!-- ============================================================ -->
+    <div v-else class="cockpit-grid">
+      <!-- 左：Agent 花名册 -->
+      <aside class="agent-roster km-surface-quiet">
+        <button
+          v-for="agent in status.agentNodes.value"
+          :key="agent.key"
+          class="agent-roster-item"
+          :class="{ active: selectedAgent?.key === agent.key }"
+          @click="selectedAgent = agent"
+        >
+          <span class="status-dot" :class="`status-${agent.status}`" />
+          <span class="agent-copy">
+            <strong>{{ agent.label }}</strong>
+            <small>{{ agent.role }}</small>
+            <span class="sr-only">状态：{{ statusLabel(agent.status) }}</span>
+          </span>
+        </button>
+      </aside>
+
+      <!-- 中：Agent 协作对话流 -->
+      <section class="agent-thread km-surface">
+        <div class="thread-header">
+          <span>协同对话流</span>
+          <button class="thread-mode" @click="logAutoScroll = !logAutoScroll">
+            {{ logAutoScroll ? '自动滚动' : '手动浏览' }}
+          </button>
+        </div>
+        <div ref="logContainer" class="thread-body">
+          <article
+            v-for="(entry, idx) in parsedLogs"
+            :key="idx"
+            class="thread-message"
+            :class="{ reject: entry.isReject }"
+          >
+            <span class="thread-time">{{ entry.time || '--:--' }}</span>
+            <p>{{ entry.msg }}</p>
+          </article>
+        </div>
+        <div class="agent-question-bar">
+          <input
+            ref="questionInput"
+            v-model="question"
+            data-test="agent-question-input"
+            aria-label="追问 Agent"
+            placeholder="追问 Agent：为什么这样规划？"
+            @keyup.enter="onAsk"
+          />
+          <button data-test="agent-question-button" @click="onAsk">追问</button>
+        </div>
+      </section>
+
+      <!-- 右：选中 Agent 协作证据 -->
+      <aside class="agent-evidence km-surface-quiet">
+        <h4>{{ selectedAgent ? selectedAgent.label : '协作证据' }}</h4>
+        <p class="evidence-desc">
+          {{ selectedAgent ? selectedAgent.role : '点击左侧 Agent 查看职责和产出摘要。' }}
+        </p>
+        <div class="km-evidence-list">
+          <div class="km-evidence-row">
+            <span>状态</span>
+            <strong>{{ selectedAgent ? statusLabel(selectedAgent.status) : '待选择' }}</strong>
+          </div>
+          <div class="km-evidence-row" v-if="selectedAgent?.retryCount > 0">
+            <span>打回次数</span>
+            <strong>{{ selectedAgent.retryCount }} 次</strong>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
 <script setup>
 /**
- * KMatch Agent 协同可视化页 — 第4周日志驱动
+ * KMatch Agent 协同可视化页 — Agent cockpit 布局
  *
  * 数据源：assessment store → orchestrationLog[]
  * 状态推导：useAgentStatus composable
- * 详情面板：展示各 Agent 对应的 store 数据
+ * 三区结构：Agent 花名册 / 协作对话流 / 协作证据
+ *
+ * 注：追问输入框为本地交互入口，本阶段不接后端，点击/回车仅聚焦输入框。
  */
 import { ref, computed, watch, nextTick } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
@@ -215,6 +132,8 @@ const status = useAgentStatus()
 const selectedAgent = ref(null)
 const logAutoScroll = ref(true)
 const logContainer = ref(null)
+const question = ref('')
+const questionInput = ref(null)
 
 // ---------------------------------------------------------------
 // 日志
@@ -235,7 +154,7 @@ const parsedLogs = computed(() => {
     result.push({
       time,
       msg,
-      isReject: entry.includes('❌') || entry.includes('打回'),
+      isReject: entry?.includes('❌') || entry?.includes('打回'),
     })
   }
   return result
@@ -249,116 +168,154 @@ watch(parsedLogs, async () => {
 })
 
 // ---------------------------------------------------------------
+// 追问入口（本地 affordance，不接后端）
+// ---------------------------------------------------------------
+function onAsk() {
+  // 本阶段仅保留输入焦点，不触发后端调用
+  questionInput.value?.focus()
+}
+
+// ---------------------------------------------------------------
 // 状态映射
 // ---------------------------------------------------------------
 function statusLabel(s) {
   return { idle: '待命', running: '执行中', done: '完成', failed: '失败' }[s] || s
-}
-function statusTagType(s) {
-  return { idle: 'info', running: 'warning', done: 'success', failed: 'danger' }[s] || 'info'
 }
 </script>
 
 <style scoped>
 .agent-page { padding: 0; }
 
-/* ---- 页面标题 ---- */
-.page-header { margin-bottom: 16px; }
-.page-header h3 { margin: 0 0 4px; font-size: 20px; }
-.page-desc { margin: 0; color: #909399; font-size: 13px; }
-
-/* ---- 管道图 ---- */
-.pipeline-card { margin-bottom: 16px; }
-.pipeline-card :deep(.el-card__header) {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px; font-weight: 600;
-}
-.pipeline-status { margin-left: auto; }
-
-.agent-pipeline {
-  display: flex; align-items: flex-start; gap: 0;
-  padding: 16px 8px; overflow-x: auto;
+/* 视觉隐藏，仅供屏幕阅读器读取（如 Agent 状态文本） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-/* Agent 节点卡片 */
-.agent-node {
-  flex-shrink: 0; width: 110px; padding: 12px 8px;
-  border-radius: 8px; border: 2px solid #e4e7ed;
-  background: #fff; text-align: center; cursor: pointer;
-  transition: all 0.2s;
-}
-.agent-node:hover {
-  border-color: #409eff; box-shadow: 0 2px 8px rgba(64,158,255,0.15);
-}
-.agent-node.active {
-  border-color: #409eff; animation: pulse 1.2s ease-in-out infinite;
-}
-.agent-node.status-done   { border-color: #67c23a; background: #f0f9eb; }
-.agent-node.status-failed { border-color: #f56c6c; background: #fef0f0; }
-.agent-node.status-running { border-color: #e6a23c; background: #fdf6ec; }
-.agent-icon   { font-size: 24px; margin-bottom: 6px; }
-.agent-name   { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-.agent-status-tag { margin-bottom: 4px; }
-.retry-badge  { font-size: 11px; color: #e6a23c; font-weight: 600; }
-
-/* 流转箭头 */
-.agent-arrow {
-  flex-shrink: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 0 6px; min-width: 40px; position: relative;
-}
-.arrow-line  { font-size: 20px; color: #c0c4cc; font-weight: 300; line-height: 1; }
-.reject-path {
-  font-size: 10px; color: #f56c6c; background: #fef0f0;
-  padding: 1px 4px; border-radius: 3px; margin-top: 2px; white-space: nowrap;
+.cockpit-grid {
+  display: grid;
+  grid-template-columns: 220px minmax(360px, 1fr) 280px;
+  gap: 14px;
+  min-height: 560px;
 }
 
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(64,158,255,0.3); }
-  50%      { box-shadow: 0 0 0 6px rgba(64,158,255,0); }
+/* ---- 左：Agent 花名册 ---- */
+.agent-roster,
+.agent-evidence { padding: 12px; }
+.agent-roster-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--km-radius-sm);
+  padding: 10px;
+  text-align: left;
+  color: var(--km-gray-700);
+  cursor: pointer;
+  transition: background 0.16s var(--km-ease), transform 0.16s var(--km-ease);
+}
+.agent-roster-item:hover,
+.agent-roster-item.active {
+  background: var(--km-primary-light);
+  color: var(--km-primary-active);
+}
+.agent-roster-item:active { transform: translateY(1px); }
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--km-gray-400);
+  flex-shrink: 0;
+}
+.status-dot.status-running { background: var(--km-warning); }
+.status-dot.status-done { background: var(--km-success); }
+.status-dot.status-failed { background: var(--km-danger); }
+.agent-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agent-copy strong { font-size: 13px; }
+.agent-copy small { font-size: 11px; color: var(--km-gray-500); }
+
+/* ---- 中：协作对话流 ---- */
+.agent-thread { display: flex; flex-direction: column; min-width: 0; }
+.thread-header {
+  height: 42px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--km-border-light);
+  font-weight: 650;
+}
+.thread-mode {
+  border: 0;
+  background: transparent;
+  color: var(--km-gray-500);
+  cursor: pointer;
+}
+.thread-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.thread-message {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-3);
+  border: 1px solid var(--km-border-light);
+}
+.thread-message.reject { border-color: var(--km-danger); }
+.thread-time { font-family: var(--km-font-mono); font-size: 11px; color: var(--km-gray-500); }
+.thread-message p { margin: 0; font-size: 13px; line-height: 1.55; }
+
+/* ---- 追问输入条 ---- */
+.agent-question-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--km-border-light);
+}
+.agent-question-bar input {
+  flex: 1;
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-3);
+  color: var(--km-gray-700);
+  padding: 8px 10px;
+}
+.agent-question-bar button {
+  border: 0;
+  border-radius: var(--km-radius-sm);
+  background: var(--km-primary);
+  color: var(--km-primary-text);
+  padding: 0 14px;
+  cursor: pointer;
 }
 
-/* ---- 下半区 ---- */
-.bottom-area { display: flex; gap: 16px; min-height: 300px; }
+/* ---- 右：协作证据 ---- */
+.agent-evidence h4 { margin: 0 0 6px; font-size: 14px; font-weight: 700; }
+.evidence-desc { color: var(--km-gray-500); font-size: 12px; line-height: 1.6; margin: 0 0 12px; }
 
-/* 详情面板 */
-.detail-card { width: 340px; flex-shrink: 0; }
-.detail-card :deep(.el-card__header) {
-  padding: 10px 16px; font-weight: 600; font-size: 14px;
-}
-.detail-card :deep(.el-card__body) { padding: 12px 16px; }
-.agent-detail { display: flex; flex-direction: column; gap: 10px; }
-.detail-row {
-  display: flex; align-items: center; gap: 8px; font-size: 13px;
-}
-.detail-label { color: #909399; width: 64px; flex-shrink: 0; }
-.detail-value { color: #303133; }
-.retry-hint {
-  font-size: 12px; color: #f56c6c; background: #fef0f0;
-  padding: 6px 8px; border-radius: 4px; line-height: 1.5;
-}
+/* ---- 空状态 ---- */
+.agent-empty { text-align: center; }
+.agent-empty h4 { margin: 0 0 6px; font-size: 15px; }
+.agent-empty p { margin: 0 0 12px; color: var(--km-gray-500); font-size: 13px; }
 
-/* 日志面板 */
-.log-card { flex: 1; min-width: 0; }
-.log-card :deep(.el-card__header) { padding: 10px 16px; }
-.log-card :deep(.el-card__body) { padding: 0; }
-.log-header {
-  display: flex; align-items: center; font-weight: 600; font-size: 14px;
+@media (max-width: 1100px) {
+  .cockpit-grid { grid-template-columns: 180px 1fr; }
+  .agent-evidence { grid-column: 1 / -1; }
 }
-.log-header .el-button { margin-left: auto; }
-.log-body {
-  height: 260px; overflow-y: auto; padding: 10px 16px;
-  font-family: 'Cascadia Code','Fira Code','Consolas',monospace;
-  font-size: 12px; line-height: 1.8; background: #fafafa;
-}
-.log-entry {
-  display: flex; gap: 10px; padding: 2px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-.log-entry.log-reject {
-  background: #fef0f0; margin: 0 -16px;
-  padding-left: 16px; padding-right: 16px;
-}
-.log-time { color: #909399; flex-shrink: 0; }
-.log-msg  { color: #303133; word-break: break-all; }
 </style>

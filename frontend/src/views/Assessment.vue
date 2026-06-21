@@ -1,12 +1,25 @@
 <template>
-  <div class="assessment-page">
-    <h3>学情测评</h3>
+  <div class="assessment-page km-workbench diagnostic-console">
+    <div class="km-workbench-header diagnostic-header">
+      <div>
+        <p class="km-workbench-kicker">learning diagnosis</p>
+        <h3 class="km-workbench-title">学情诊断控制台</h3>
+        <p class="km-workbench-desc">先确认目标，再用交互题目定位薄弱点。测评结果会驱动知识图谱、学习资源和 Agent 协同。</p>
+      </div>
+      <div class="phase-chip">诊断阶段：{{ phaseLabel }}</div>
+    </div>
 
     <!-- ============================================================ -->
     <!-- 状态A: 测评输入区 -->
     <!-- ============================================================ -->
     <template v-if="!store.hasResults && !store.loading">
-      <el-card class="input-card">
+      <div class="diagnostic-setup km-surface">
+        <aside class="diagnostic-rail">
+          <span class="rail-step" :class="{ active: activeStepIndex === 1 }">01 目标方向</span>
+          <span class="rail-step" :class="{ active: activeStepIndex === 2 }">02 交互答题</span>
+          <span class="rail-step" :class="{ active: activeStepIndex === 3 }">03 动态反馈</span>
+        </aside>
+        <section class="diagnostic-form">
         <el-form
           :model="form"
           label-width="120px"
@@ -65,7 +78,8 @@
             <span v-if="!canStart" class="hint-text">请选择或输入学习目标方向</span>
           </el-form-item>
         </el-form>
-      </el-card>
+        </section>
+      </div>
     </template>
 
     <!-- ============================================================ -->
@@ -121,14 +135,21 @@
     <!-- ============================================================ -->
     <!-- 状态A2: 答题阶段 (interactive 第二步, S9) -->
     <!-- ============================================================ -->
-    <template v-if="store.phase === 'answering' && !store.loading">
-      <el-card class="quiz-card">
-        <template #header>
-          <div class="quiz-header">
-            <span>📝 学情答题（共 {{ store.pendingQuestions.length }} 题）</span>
-            <el-button size="small" @click="store.backToInput()">← 返回</el-button>
-          </div>
-        </template>
+    <div v-if="store.phase === 'answering' && !store.loading" class="quiz-console km-surface">
+      <aside class="question-index">
+        <span
+          v-for="(_, idx) in store.pendingQuestions"
+          :key="idx"
+          :class="{ answered: !!store.userAnswers[idx] }"
+        >
+          {{ idx + 1 }}
+        </span>
+      </aside>
+      <section class="question-stack">
+        <div class="quiz-header">
+          <span>📝 学情答题（共 {{ store.pendingQuestions.length }} 题）</span>
+          <el-button size="small" @click="store.backToInput()">← 返回</el-button>
+        </div>
 
         <div
           v-for="(q, idx) in store.pendingQuestions"
@@ -185,8 +206,8 @@
           </el-button>
           <el-button size="large" @click="autoFillDemo">一键填演示答案</el-button>
         </div>
-      </el-card>
-    </template>
+      </section>
+    </div>
 
     <!-- ============================================================ -->
     <!-- 状态A3: 反馈阶段 (interactive 第三步, S9) — 画像 + 动态反馈策略 -->
@@ -449,6 +470,23 @@ const presetDirections = [
 
 const canStart = computed(() => form.targetDirection.trim().length > 0)
 
+/** 诊断阶段标签 (驱动 header 右侧 phase-chip) */
+const phaseLabel = computed(() => {
+  if (store.loading) return 'Agent 协作中'
+  if (store.phase === 'answering') return '答题中'
+  if (store.phase === 'feedback') return '反馈生成'
+  if (store.hasResults) return '报告完成'
+  return '目标设定'
+})
+
+/** 诊断侧栏激活步骤 (1=目标方向, 2=交互答题, 3=动态反馈, 0=无) */
+const activeStepIndex = computed(() => {
+  if (store.loading || store.hasResults) return 0
+  if (store.phase === 'answering') return 2
+  if (store.phase === 'feedback') return 3
+  return 1
+})
+
 // ---------------------------------------------------------------
 // SSE 流式进度步骤定义
 // ---------------------------------------------------------------
@@ -609,15 +647,7 @@ function logType(entry) {
 .assessment-page {
   max-width: 1200px;
   margin: 0 auto;
-}
-
-.assessment-page h3 {
-  margin: 0 0 16px 0;
-  color: #303133;
-}
-
-.input-card {
-  max-width: 700px;
+  padding: 0;
 }
 
 /* ---- 预设方向按钮 ---- */
@@ -725,7 +755,6 @@ function logType(entry) {
 }
 
 /* ---- 答题阶段 (S9) ---- */
-.quiz-card { margin-bottom: 16px; }
 .quiz-header { display: flex; justify-content: space-between; align-items: center; }
 .quiz-item {
   padding: 14px 0;
@@ -762,4 +791,76 @@ function logType(entry) {
 .feedback-header { display: flex; justify-content: space-between; align-items: center; }
 .feedback-resources { display: flex; flex-direction: column; gap: 12px; }
 .resource-item { background: #fafafa; }
+
+/* ---- 诊断控制台 shell ---- */
+.phase-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--km-border-light);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--km-primary-active);
+  background: var(--km-primary-light);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.diagnostic-setup,
+.quiz-console {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  overflow: hidden;
+}
+.diagnostic-rail,
+.question-index {
+  padding: 18px;
+  border-right: 1px solid var(--km-border-light);
+  background: var(--km-bg-layer-1);
+}
+.rail-step {
+  display: block;
+  padding: 9px 10px;
+  border-radius: var(--km-radius-sm);
+  color: var(--km-gray-500);
+  font-size: 12px;
+  font-family: var(--km-font-mono);
+}
+.rail-step + .rail-step { margin-top: 4px; }
+.rail-step.active {
+  background: var(--km-primary-light);
+  color: var(--km-primary-active);
+}
+.diagnostic-form,
+.question-stack { padding: 18px; }
+.question-stack { min-width: 0; }
+.question-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+}
+.question-index span {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--km-bg-layer-3);
+  border: 1px solid var(--km-border-light);
+  font-family: var(--km-font-mono);
+  font-size: 12px;
+  color: var(--km-gray-600);
+}
+.question-index span.answered {
+  background: var(--km-primary-light);
+  color: var(--km-primary-active);
+  border-color: var(--km-primary-light);
+}
+@media (max-width: 900px) {
+  .diagnostic-setup,
+  .quiz-console { grid-template-columns: 1fr; }
+  .diagnostic-rail,
+  .question-index { border-right: 0; border-bottom: 1px solid var(--km-border-light); }
+}
 </style>
