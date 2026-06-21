@@ -156,7 +156,10 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
     · 新建 stores/projectGraph.js (graph/revealTarget/activeLine/activeEntityId)
     · MonacoEditor: revealTarget watch → 跳转+行高亮装饰; 光标移动 → activeLine 回传
     · chat 实体列表点击 → 切 code 视图 + 打开文件 + Monaco 滚动高亮; 光标反查高亮实体
-  · 对题: code_review/code_test 要求 Neo4j 在线 (图谱事实底座), generate_project_graph 轻量入口可离线
+  - 阶段4c: 启发式交互导学模式 (赛题(4)② 动态追问与启发式导学)
+    · chat.js: tutorMode 持久化状态 + setTutorMode; buildSystemPrompt 导学分支 (Socratic 引导式回答替代直接答案 + 每轮动态追问 + 注入学情画像 theory_level/weak_topics 因材施教 + 事实底座抗幻觉复用工具)
+    · AssistantPanel.vue: 导学模式开关 (MagicStick) + 动态 placeholder
+  · 对题: code_review/code_test 要求 Neo4j 在线 (图谱事实底座), generate_project_graph 轻量入口可离线; 导学模式补齐赛题(4)②"待开发"项
 **阶段5** (6/21): PyInstaller 打包 backend sidecar + Windows 安装包 ✅
   - S3: backend PyInstaller 打包通 (KMatchBackend.spec: 修上会话 cipher 废弃参数 + scripts.validate_data hiddenimport + collect_all 收 langchain/langgraph/neo4j 等重依赖)
   - config.py 支持 KMATCH_DATA_DIR 环境变量 (打包后指向 resources/data)

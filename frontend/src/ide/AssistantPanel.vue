@@ -251,7 +251,7 @@
         type="textarea"
         :rows="2"
         :disabled="chat.streaming || !!chat.pendingApproval"
-        placeholder="输入消息… (Enter 发送, Shift+Enter 换行)"
+        :placeholder="chat.tutorMode ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)' : '输入消息… (Enter 发送, Shift+Enter 换行)'"
         resize="none"
         @keydown="onKeydown"
       />
@@ -282,6 +282,22 @@
         >
           🔑
         </el-button>
+        <!-- 启发式导学模式 (赛题(4)②) -->
+        <el-tooltip
+          :content="chat.tutorMode ? '导学模式开启: AI 以引导式回答+追问, 不直接给答案。点击关闭' : '开启启发式导学: AI 不直接给答案, 用提问和提示引导你思考'"
+          placement="top"
+        >
+          <el-button
+            size="small"
+            class="tutor-btn"
+            :class="{ on: chat.tutorMode }"
+            :disabled="chat.streaming"
+            @click="chat.setTutorMode(!chat.tutorMode)"
+          >
+            <el-icon :size="14"><MagicStick /></el-icon>
+            <span v-if="chat.tutorMode" class="tutor-label">导学</span>
+          </el-button>
+        </el-tooltip>
         <!-- 模型 (自动) -->
         <span class="model-hint" :title="'当前模型: ' + (chat.model || '未选择')">
           {{ chat.model || '—' }}
@@ -311,7 +327,7 @@
 
 <script setup>
 import { ref, reactive, watch, nextTick } from 'vue'
-import { Delete, VideoPause, Promotion, EditPen, Check } from '@element-plus/icons-vue'
+import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
 import { useProjectGraphStore } from '@/stores/projectGraph'
@@ -757,6 +773,23 @@ function cleanToolCalls(content) {
   background: var(--km-primary-light);
   border-color: var(--km-primary);
 }
+/* 启发式导学模式按钮 */
+.tutor-btn {
+  height: 30px;
+  padding: 0 8px;
+  display: flex; align-items: center; gap: 3px;
+  font-size: 12px;
+  border-radius: var(--km-radius-sm);
+  opacity: 0.55;
+  transition: all 0.2s var(--km-ease);
+}
+.tutor-btn.on {
+  opacity: 1;
+  background: var(--km-primary-light);
+  border-color: var(--km-primary);
+  color: var(--km-primary);
+}
+.tutor-label { font-size: 11px; font-weight: 600; }
 .model-hint {
   font-size: 11px;
   color: var(--km-gray-500);

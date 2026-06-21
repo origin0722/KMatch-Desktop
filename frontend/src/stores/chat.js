@@ -132,6 +132,38 @@ function buildSystemPrompt(context) {
 - 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。
 - 后端返回 503 时表示 Neo4j 图谱引擎未就绪, 你应转告用户启动 Neo4j。`
 
+  // ---- 阶段4③ 启发式交互导学模式 (赛题(4)②) ----
+  if (context && context.tutorMode) {
+    // 注入学情画像 (来自 assessment store), 做个性化引导
+    let profileBlock = ''
+    const p = context.profile
+    if (p && typeof p === 'object') {
+      const lines = []
+      if (p.theory_level != null) lines.push(`- 理论水平: ${p.theory_level}/5`)
+      if (p.practice_level != null) lines.push(`- 实操水平: ${p.practice_level}/5`)
+      const weak = Array.isArray(p.weak_topics) ? p.weak_topics : []
+      if (weak.length) {
+        lines.push('- 薄弱知识点: ' + weak.slice(0, 5).map((t) => t.name || t.node_id || t).join('、'))
+      }
+      if (lines.length) profileBlock = '\n\n## 学习者学情画像 (个性化引导依据)\n' + lines.join('\n')
+    }
+
+    return {
+      role: 'system',
+      content:
+        '你是 KMatch IDE 的启发式导学助手。核心原则: 【以引导式回答替代直接给出答案】, 像苏格拉底式导师那样通过提问和提示让学习者自己得出结论, 而非直接抛出代码或答案。\n'
+        + '\n## 启发式导学规则 (赛题(4)② 动态追问与启发式交互导学)'
+        + '\n1. 不直接给完整答案/完整代码。先给思路、提示、方向, 让学习者尝试; 仅当其反复卡住(≥2轮)或明确要求时才逐步揭示, 且优先给带空白的框架而非完整解。'
+        + '\n2. 动态追问: 每次回复末尾提一个针对当前问题的追问, 探测学习者理解深度、引导下一步思考 (如"你觉得这里为什么会报错?"/"如果输入是空列表会怎样?"), 推动多轮交互。'
+        + '\n3. 因材施教: 依据下方学情画像调整引导粒度——薄弱者多铺垫类比, 进阶者直指原理与权衡。'
+        + '\n4. 事实底座抗幻觉: 涉及项目代码时先用 read_file/generate_project_graph 等工具查证真实代码与结构, 严禁凭记忆臆造项目细节; 解释通用概念时也只讲你确信的内容。'
+        + '\n5. 简洁: 每轮回复聚焦一个引导点 + 一个追问, 不要长篇大论。'
+        + profileBlock
+        + ctxBlock
+        + toolBlock,
+    }
+  }
+
   return {
     role: 'system',
     content:
@@ -191,6 +223,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const STORAGE_KEY_PROVIDER = 'kmatch-chat-provider'
   const STORAGE_KEY_APIKEY = 'kmatch-chat-apikey'
+  const STORAGE_KEY_TUTOR = 'kmatch-chat-tutor'
 
   function _loadStr(key, fallback = '') {
     try { return localStorage.getItem(key) || fallback } catch { return fallback }
@@ -203,6 +236,9 @@ export const useChatStore = defineStore('chat', () => {
   const apiKey = ref(_loadStr(STORAGE_KEY_APIKEY, ''))
   const model = ref('deepseek-v4-pro')  // 自动从厂商拉取后设置
   const models = ref([])                // 厂商返回的模型列表
+
+  // ---- 阶段4③ 启发式导学模式 (赛题(4)②, 持久化) ----
+  const tutorMode = ref(_loadStr(STORAGE_KEY_TUTOR, 'false') === 'true')
 
   const hasMessages = computed(() => messages.value.length > 0)
 
@@ -279,6 +315,11 @@ export const useChatStore = defineStore('chat', () => {
   function getBaseUrl() {
     const meta = providerMeta()
     return meta.baseUrl || ''
+  }
+
+  function setTutorMode(on) {
+    tutorMode.value = !!on
+    _saveStr(STORAGE_KEY_TUTOR, tutorMode.value ? 'true' : 'false')
   }
 
   // ============================================================
@@ -556,12 +597,20 @@ export const useChatStore = defineStore('chat', () => {
   // Actions
   // ============================================================
 
-  /** 收集工作区上下文 */
+  /** 收集工作区上下文 (含导学模式 + 学情画像, 供 buildSystemPrompt 分支) */
   async function _collectContext() {
     const ws = useWorkspaceStore()
-    if (!ws.hasProject) return null
 
-    const ctx = { projectRoot: ws.rootName || ws.root }
+    // 导学模式 + 学情画像即使无项目也要带上 (支持纯概念问答式导学)
+    const ctx = { tutorMode: tutorMode.value }
+    try {
+      const { useAssessmentStore } = await import('@/stores/assessment')
+      ctx.profile = useAssessmentStore().profile
+    } catch { /* assessment store 未就绪, 忽略 */ }
+
+    if (!ws.hasProject) return ctx
+
+    ctx.projectRoot = ws.rootName || ws.root
     if (ws.activeFile) {
       ctx.activeFile = ws.activeFile
       try {
@@ -736,6 +785,8 @@ export const useChatStore = defineStore('chat', () => {
     // 厂商 & 模型
     provider, apiKey, model, models, PROVIDERS,
     setProvider, setApiKey, fetchModels,
+    // 启发式导学模式 (阶段4③)
+    tutorMode, setTutorMode,
     // 对话
     sendMessage, stopStreaming, clearMessages,
   }
