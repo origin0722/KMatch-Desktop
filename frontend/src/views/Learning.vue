@@ -1,13 +1,16 @@
 <template>
-  <div class="learning-page">
+  <div class="learning-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题栏 -->
+    <!-- 页面标题栏 (km-workbench-header) -->
     <!-- ============================================================ -->
-    <div class="page-header">
-      <h3>学习资源</h3>
-      <p class="page-desc">
-        基于知识图谱与学情画像生成的个性化学习资源，每项内容可溯源至图谱节点
-      </p>
+    <div class="km-workbench-header">
+      <div>
+        <p class="km-workbench-kicker">learning resources</p>
+        <h3 class="km-workbench-title">学习资源</h3>
+        <p class="km-workbench-desc">
+          基于知识图谱与学情画像生成的个性化学习资源，每项内容可溯源至图谱节点
+        </p>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -44,7 +47,7 @@
       <!-- 资源类型 Tab -->
       <el-tabs v-model="activeTab" class="resource-tabs">
         <!-- 讲义 -->
-        <el-tab-pane label="📖 分层讲义" name="lecture">
+        <el-tab-pane label="分层讲义" name="lecture">
           <div v-if="lectureList.length === 0" class="empty-tab">
             <el-empty description="暂无讲义" :image-size="80" />
           </div>
@@ -52,7 +55,7 @@
             <el-card
               v-for="(res, idx) in lectureList"
               :key="idx"
-              shadow="hover"
+              shadow="never"
               class="resource-card"
             >
               <template #header>
@@ -71,7 +74,7 @@
                 <MarkdownViewer :content="res.content || ''" />
               </div>
               <div v-if="res.source_nodes?.length" class="source-nodes">
-                <span class="source-label">📎 溯源：</span>
+                <span class="source-label">溯源：</span>
                 <el-tag
                   v-for="nodeId in res.source_nodes"
                   :key="nodeId"
@@ -87,7 +90,7 @@
         </el-tab-pane>
 
         <!-- 实操指南 -->
-        <el-tab-pane label="🛠 实操指南" name="practice_guide">
+        <el-tab-pane label="实操指南" name="practice_guide">
           <div v-if="guideList.length === 0" class="empty-tab">
             <el-empty description="暂无实操指南" :image-size="80" />
           </div>
@@ -95,7 +98,7 @@
             <el-card
               v-for="(res, idx) in guideList"
               :key="idx"
-              shadow="hover"
+              shadow="never"
               class="resource-card"
             >
               <template #header>
@@ -114,7 +117,7 @@
                 <MarkdownViewer :content="res.content || ''" />
               </div>
               <div v-if="res.source_nodes?.length" class="source-nodes">
-                <span class="source-label">📎 溯源：</span>
+                <span class="source-label">溯源：</span>
                 <el-tag
                   v-for="nodeId in res.source_nodes"
                   :key="nodeId"
@@ -130,7 +133,7 @@
         </el-tab-pane>
 
         <!-- 分阶测试题 -->
-        <el-tab-pane label="📝 分阶测试题" name="test">
+        <el-tab-pane label="分阶测试题" name="test">
           <div v-if="testList.length === 0" class="empty-tab">
             <el-empty description="暂无测试题" :image-size="80" />
           </div>
@@ -138,7 +141,7 @@
             <el-card
               v-for="(res, idx) in testList"
               :key="idx"
-              shadow="hover"
+              shadow="never"
               class="resource-card"
             >
               <template #header>
@@ -163,7 +166,7 @@
                 </el-button>
               </div>
               <div v-if="res.source_nodes?.length" class="source-nodes">
-                <span class="source-label">📎 溯源：</span>
+                <span class="source-label">溯源：</span>
                 <el-tag
                   v-for="nodeId in res.source_nodes"
                   :key="nodeId"
@@ -288,18 +291,16 @@ function goToNode(nodeId) {
 <style scoped>
 .learning-page { padding: 0; }
 
-/* ---- 页面标题 ---- */
-.page-header { margin-bottom: 16px; }
-.page-header h3 { margin: 0 0 4px; font-size: 20px; }
-.page-desc { margin: 0; color: #909399; font-size: 13px; }
-
 /* ---- 摘要条 ---- */
 .summary-bar {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 16px; flex-wrap: wrap;
 }
 .summary-tag { font-size: 13px; }
-.node-count { margin-left: auto; color: #909399; font-size: 13px; }
+.node-count {
+  margin-left: auto; color: var(--km-gray-500); font-size: 13px;
+  font-family: var(--km-font-mono);
+}
 
 /* ---- 资源 Tab ---- */
 .empty-tab { padding: 40px 0; }
@@ -308,12 +309,22 @@ function goToNode(nodeId) {
 .resource-list {
   display: flex; flex-direction: column; gap: 12px;
 }
-.resource-card :deep(.el-card__header) { padding: 10px 16px; }
+.resource-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
+.resource-card :deep(.el-card__header) {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--km-border-light);
+}
 .resource-card :deep(.el-card__body) { padding: 12px 16px; }
 .resource-card-header {
   display: flex; align-items: center; gap: 10px;
 }
-.resource-title { font-weight: 600; font-size: 14px; flex: 1; }
+.resource-title {
+  font-weight: 600; font-size: 14px; flex: 1;
+  color: var(--km-gray-800);
+}
 
 /* ---- 资源正文 ---- */
 .resource-body { min-height: 40px; }
@@ -321,23 +332,27 @@ function goToNode(nodeId) {
 /* ---- 答题入口 ---- */
 .quiz-action {
   margin-top: 10px; padding-top: 10px;
-  border-top: 1px dashed #e4e7ed;
+  border-top: 1px dashed var(--km-border);
 }
 
 /* ---- 溯源节点 ---- */
 .source-nodes {
   margin-top: 10px; padding-top: 10px;
-  border-top: 1px dashed #e4e7ed;
+  border-top: 1px dashed var(--km-border);
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
-.source-label { font-size: 12px; color: #909399; flex-shrink: 0; }
+.source-label {
+  font-size: 12px; color: var(--km-gray-500); flex-shrink: 0;
+}
 .source-tag { cursor: pointer; font-size: 11px; }
 .source-tag:hover { opacity: 0.8; }
 
 /* ---- 答题占位 ---- */
 .quiz-placeholder {
-  background: #f5f7fa; border-radius: 6px;
-  padding: 24px; text-align: center; color: #909399; font-size: 13px;
+  background: var(--km-bg-layer-1);
+  border-radius: var(--km-radius-sm);
+  padding: 24px; text-align: center;
+  color: var(--km-gray-500); font-size: 13px;
 }
 .quiz-placeholder ul {
   text-align: left; margin: 10px 0 0;

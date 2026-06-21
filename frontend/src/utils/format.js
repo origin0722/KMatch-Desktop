@@ -26,14 +26,15 @@ export function truncate(text, maxLen) {
 
 /**
  * 掌握程度 → 颜色（四段制，对齐 prompt ≥0.8 known）
+ * hex 值镜像 styles/theme.css 的 --km-* token (canvas/G6 不能读 CSS 变量)
  * @param {number} mastery 0..1
  * @returns {string} hex 颜色
  */
 export function masteryColor(mastery) {
-  if (mastery >= 0.8) return '#52c41a'  // 已掌握 — 绿色
-  if (mastery >= 0.5) return '#faad14'  // 学习中 — 橙色
-  if (mastery > 0) return '#ff7a45'     // 未掌握 — 红色
-  return '#d9d9d9'                       // 未学习 — 灰色
+  if (mastery >= 0.8) return '#34b37e'  // 已掌握 — km-success
+  if (mastery >= 0.5) return '#f0a040'  // 学习中 — km-warning
+  if (mastery > 0) return '#e05555'     // 未掌握 — km-danger
+  return '#c8c6c4'                       // 未学习 — km-gray-400
 }
 
 /**

@@ -180,6 +180,16 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
     · chat.js: appendTextChunk(相邻同类型合并)/contentTextOf/thinkTextOf/splitToolCallChunks; SSE 累积改 chunks; 工具调用变内联 chunk + 状态机 pending→in_progress→completed→error; 删 role:'tool' 双重表示
     · AssistantPanel.vue: v-for chunks 渲染 + tool_call 内联卡 + 状态徽标; 委派工具结果卡搬进 chunk; 删 cleanToolCalls
     · 后端契约不变 (chunks→stripToolCalls(contentTextOf) 序列化); 赛题功能行为不变; 80 测试全过 + vite build 通过
+**阶段7** (6/22): 学习视图主题收编 (Dashboard/KnowledgeGraph/Learning/Assessment 补刀) ✅
+  - 阶段1.8 建了 --km-* token 体系, 但只 AgentView/Assessment 顶栏收编; Dashboard/KnowledgeGraph/Learning 仍用阶段0 迁移的原 KMatch Web 模板色 (Element 默认色), 是 UI 重设计计划点名的 "AI-web-template feeling" 残留
+  - Dashboard.vue: 硬编码 Element 默认色 → --km-* token + THEME 镜像常量 (ECharts canvas 不能读 CSS 变量); page-header → km-workbench-header; stat-card → km-surface + km-mono-number; 去 📊 emoji; 路径节点 current 蓝光 → primary 系
+  - KnowledgeGraph.vue: G6 节点 #5b8ff9 → THEME.primary, hover shadow → primary, 边 → gray-300; 图例 dot → token; el-card 暗色覆盖; 去 📖🔍 emoji; 画布 → bg-layer-3
+  - Learning.vue: page-header → km-workbench-header; 去 📖🛠📝📎 emoji; 资源卡 shadow never + token; 摘要/溯源/答题占位全 token 化
+  - Assessment.vue 补刀: loading+结果区残留硬编码色 → token; 去 ⚡📝🎯 emoji; 本地 masteryColor 对齐 token
+  - utils/format.js: 共享 masteryColor hex 镜像 --km-success/warning/danger/gray-400 (三视图共用, 一次性统一)
+  · Redesign-Preserve: 只动视觉层 (Levers 1-4), 业务逻辑/computed/ECharts/G6/搜索筛选/答题闭环一字未改; 赛题(3)①可视化 + M5质量指标 + 四层图谱契约全保
+  · 设计纪律: Color/Shape Lock + 零 em-dash + 去 emoji-as-icon + 不引新依赖; 暗色模式经 --el-card-bg-color 覆盖
+  · 80 测试全过 + vite build 通过
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留); 切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 
 ### 原 KMatch 后端已交付项

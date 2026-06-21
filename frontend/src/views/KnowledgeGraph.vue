@@ -1,13 +1,16 @@
 <template>
-  <div class="graph-page">
+  <div class="graph-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题栏 -->
+    <!-- 页面标题栏 (km-workbench-header) -->
     <!-- ============================================================ -->
-    <div class="page-header">
-      <h3>知识图谱可视化</h3>
-      <p class="page-desc">
-        四层知识图谱交互式浏览：领域元知识 → 项目框架 → 代码实体 → 演化扩展
-      </p>
+    <div class="km-workbench-header">
+      <div>
+        <p class="km-workbench-kicker">knowledge graph</p>
+        <h3 class="km-workbench-title">知识图谱可视化</h3>
+        <p class="km-workbench-desc">
+          四层知识图谱交互式浏览：领域元知识、项目框架、代码实体、演化扩展
+        </p>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -85,7 +88,7 @@
             <div class="legend-popover">
               <div class="legend-item"><span class="dot mastered"></span> 已掌握 (≥80%)</div>
               <div class="legend-item"><span class="dot learning"></span> 学习中 (50-80%)</div>
-              <div class="legend-item"><span class="dot weak"></span> 未掌握 (<50%)</div>
+              <div class="legend-item"><span class="dot weak"></span> 未掌握 (&lt;50%)</div>
               <div class="legend-item"><span class="dot untouched"></span> 未学习</div>
             </div>
           </el-popover>
@@ -119,7 +122,7 @@
           <!-- 学习路径摘要 -->
           <el-card shadow="never" class="panel-card">
             <template #header>
-              <span>📖 学习路径摘要</span>
+              <span>学习路径摘要</span>
             </template>
             <div class="path-summary">
               <div class="summary-row">
@@ -145,7 +148,7 @@
           <!-- 节点详情 -->
           <el-card shadow="never" class="panel-card" v-if="selectedNode">
             <template #header>
-              <span>🔍 节点详情</span>
+              <span>节点详情</span>
             </template>
             <div class="node-detail">
               <h4>{{ selectedNode.name || selectedNode.node_id }}</h4>
@@ -192,7 +195,7 @@
           <!-- 未选中节点 -->
           <el-card v-else shadow="never" class="panel-card">
             <template #header>
-              <span>🔍 节点详情</span>
+              <span>节点详情</span>
             </template>
             <el-empty description="点击图谱节点查看详情" :image-size="60" />
           </el-card>
@@ -213,6 +216,8 @@
  *   BUG-048: handleSearch 竞态控制（searchSeq）
  *   BUG-049: G6 initGraph + render 异常保护
  *   BUG-052: handleFilterChange 双 API 均失败时清除 highlightIds
+ *
+ * 配色: THEME 常量镜像 --km-* token (G6 canvas 不能读 CSS 变量, 故用 hex)。
  */
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Search, Switch, RefreshRight, Loading } from '@element-plus/icons-vue'
@@ -227,6 +232,16 @@ import { useSidebarStore } from '@/stores/sidebar'
 const store = useAssessmentStore()
 const data = useGraphData()
 const sidebar = useSidebarStore()
+
+// 主题色常量 (镜像 styles/theme.css 的 --km-* token, 供 G6 canvas 使用)
+const THEME = {
+  primary: '#6c7ce0',
+  success: '#34b37e',
+  warning: '#f0a040',
+  danger: '#e05555',
+  gray300: '#e4e3e1',
+  gray400: '#c8c6c4',
+}
 
 // 前往学情测评 (IDE 内切主区视图, 非路由跳转)
 const goAssessment = () => sidebar.setView('assessment')
@@ -341,7 +356,7 @@ function buildG6Data() {
         ...n.data,
         nodeColor: highlightIds.value.has(n.id)
           ? n.data.nodeColor
-          : '#d9d9d9',
+          : THEME.gray400,
         nodeSize: highlightIds.value.has(n.id) ? 35 : 22,
         dimmed: !highlightIds.value.has(n.id),
       },
@@ -389,7 +404,7 @@ function initGraph(layoutType = 'force') {
       layout: layoutConfig,
       node: {
         style: {
-          fill: (d) => d.data?.nodeColor || '#5b8ff9',
+          fill: (d) => d.data?.nodeColor || THEME.primary,
           size: (d) => [d.data?.nodeSize || 30],
           labelText: (d) => d.data?.label || d.id,
           labelPlacement: 'bottom',
@@ -398,11 +413,11 @@ function initGraph(layoutType = 'force') {
           labelFontSize: 11,
           opacity: (d) => d.data?.dimmed ? 0.35 : 1,
         },
-        state: { hover: { lineWidth: 3, shadowBlur: 10, shadowColor: '#1890ff' } },
+        state: { hover: { lineWidth: 3, shadowBlur: 10, shadowColor: THEME.primary } },
       },
       edge: {
         style: {
-          stroke: '#c2c8d5',
+          stroke: THEME.gray300,
           lineWidth: 1.5,
           endArrow: true,
           opacity: (d) => d.data?.dimmed ? 0.2 : 1,
@@ -505,7 +520,7 @@ async function handleSearch() {
           data: {
             label: n.name || n.node_id,
             mastery: 0,
-            nodeColor: '#a0a0a0',
+            nodeColor: THEME.gray400,
             nodeSize: 28,
             category: n.category || '',
             difficulty: n.difficulty || 1,
@@ -637,13 +652,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .graph-page { padding: 0; }
 
-/* ---- 页面标题 ---- */
-.page-header { margin-bottom: 16px; }
-.page-header h3 { margin: 0 0 4px; font-size: 20px; }
-.page-desc { margin: 0; color: #909399; font-size: 13px; }
-
 /* ---- 工具栏 ---- */
 .toolbar-card { margin-bottom: 16px; }
+.toolbar-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
 .toolbar-card :deep(.el-card__body) { padding: 12px 16px; }
 .toolbar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -651,7 +665,10 @@ onBeforeUnmount(() => {
 .search-input { width: 260px; }
 .filter-select { width: 150px; }
 .legend-btn { margin-left: auto; }
-.graph-stats { color: #909399; font-size: 13px; white-space: nowrap; }
+.graph-stats {
+  color: var(--km-gray-500); font-size: 13px; white-space: nowrap;
+  font-family: var(--km-font-mono);
+}
 
 /* ---- 图例弹窗 ---- */
 .legend-popover {
@@ -661,10 +678,10 @@ onBeforeUnmount(() => {
 .dot {
   width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
 }
-.dot.mastered  { background: #52c41a; }
-.dot.learning  { background: #faad14; }
-.dot.weak      { background: #ff7a45; }
-.dot.untouched { background: #d9d9d9; }
+.dot.mastered  { background: var(--km-success); }
+.dot.learning  { background: var(--km-warning); }
+.dot.weak      { background: var(--km-danger); }
+.dot.untouched { background: var(--km-gray-400, var(--km-gray-500)); }
 
 /* ---- 搜索无结果 ---- */
 .search-alert { margin-bottom: 16px; }
@@ -676,7 +693,9 @@ onBeforeUnmount(() => {
 .canvas-area { flex: 1; min-width: 0; }
 .g6-container {
   width: 100%; height: 480px;
-  border: 1px solid #e4e7ed; border-radius: 4px; background: #fff;
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-3);
 }
 
 /* ---- 侧边面板 ---- */
@@ -684,8 +703,14 @@ onBeforeUnmount(() => {
   width: 300px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 12px;
 }
+.panel-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
 .panel-card :deep(.el-card__header) {
   padding: 10px 16px; font-weight: 600; font-size: 14px;
+  color: var(--km-gray-800);
+  border-bottom: 1px solid var(--km-border-light);
 }
 .panel-card :deep(.el-card__body) { padding: 12px 16px; }
 
@@ -696,29 +721,41 @@ onBeforeUnmount(() => {
 .summary-row {
   display: flex; justify-content: space-between; align-items: center;
 }
-.summary-row .label { color: #909399; font-size: 13px; }
-.summary-row .value { font-weight: 600; font-size: 14px; }
+.summary-row .label { color: var(--km-gray-500); font-size: 13px; }
+.summary-row .value {
+  font-weight: 600; font-size: 14px;
+  color: var(--km-gray-800);
+  font-family: var(--km-font-mono);
+}
 .prereq-loading {
   display: flex; align-items: center; gap: 6px;
-  font-size: 12px; color: #909399; padding-top: 4px;
+  font-size: 12px; color: var(--km-gray-500); padding-top: 4px;
 }
 
 /* ---- 节点详情 ---- */
-.node-detail h4 { margin: 0 0 10px; font-size: 15px; }
+.node-detail h4 {
+  margin: 0 0 10px; font-size: 15px;
+  color: var(--km-gray-800);
+}
 .detail-row {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 8px; font-size: 13px;
+  color: var(--km-gray-700);
 }
-.detail-row .label { color: #909399; width: 56px; flex-shrink: 0; }
+.detail-row .label { color: var(--km-gray-500); width: 56px; flex-shrink: 0; }
 .detail-row code {
-  background: #f5f7fa; padding: 1px 6px; border-radius: 3px; font-size: 12px;
+  background: var(--km-bg-layer-1); padding: 1px 6px;
+  border-radius: 3px; font-size: 12px;
+  color: var(--km-gray-800);
 }
 .detail-summary {
-  margin: 10px 0 0; color: #606266; font-size: 13px; line-height: 1.6;
+  margin: 10px 0 0; color: var(--km-gray-600);
+  font-size: 13px; line-height: 1.6;
 }
 .prereq-section { margin-top: 12px; }
 .prereq-section > .label {
-  display: block; color: #909399; font-size: 13px; margin-bottom: 6px;
+  display: block; color: var(--km-gray-500);
+  font-size: 13px; margin-bottom: 6px;
 }
 .prereq-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .prereq-tag { cursor: pointer; }

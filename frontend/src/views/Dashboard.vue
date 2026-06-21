@@ -1,13 +1,16 @@
 <template>
-  <div class="dashboard-page">
+  <div class="dashboard-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题 -->
+    <!-- 页面标题 (km-workbench-header, 与 AgentView/Assessment 同节奏) -->
     <!-- ============================================================ -->
-    <div class="page-header">
-      <h3>数据看板</h3>
-      <p class="page-desc">
-        个人学情与资源匹配度报告：知识盲区定位 · 难度匹配曲线 · 学习路径规划
-      </p>
+    <div class="km-workbench-header">
+      <div>
+        <p class="km-workbench-kicker">learning analytics</p>
+        <h3 class="km-workbench-title">数据看板</h3>
+        <p class="km-workbench-desc">
+          个人学情与资源匹配度报告：知识盲区定位、难度匹配曲线、学习路径规划
+        </p>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -29,24 +32,24 @@
     <template v-else>
       <!-- 概览卡片行 -->
       <div class="overview-row">
-        <div class="stat-card">
-          <div class="stat-value">{{ (blindSpots.summary.overall_mastery * 100).toFixed(0) }}%</div>
+        <div class="stat-card km-surface">
+          <div class="stat-value km-mono-number">{{ (blindSpots.summary.overall_mastery * 100).toFixed(0) }}%</div>
           <div class="stat-label">综合掌握度</div>
           <div class="stat-sub">{{ blindSpots.summary.total }} 个节点</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ (accuracy * 100).toFixed(0) }}%</div>
+        <div class="stat-card km-surface">
+          <div class="stat-value km-mono-number">{{ (accuracy * 100).toFixed(0) }}%</div>
           <div class="stat-label">答题正确率</div>
           <div class="stat-sub">{{ assessment?.total_count || 0 }} 题</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" :class="diffMatch.summary.avg_gap > 1 ? 'warn' : 'ok'">
+        <div class="stat-card km-surface">
+          <div class="stat-value km-mono-number" :class="diffMatch.summary.avg_gap > 1 ? 'warn' : 'ok'">
             {{ diffMatch.summary.avg_gap > 0 ? '+' : '' }}{{ diffMatch.summary.avg_gap.toFixed(1) }}
           </div>
           <div class="stat-label">平均难度偏差</div>
           <div class="stat-sub">{{ diffMatch.summary.matched }}/{{ diffMatch.summary.total_resources }} 匹配</div>
         </div>
-        <div class="stat-card" v-if="reviewResults">
+        <div class="stat-card km-surface" v-if="reviewResults">
           <div class="stat-value" :class="reviewResults.passed ? 'ok' : 'warn'">
             {{ reviewResults.passed ? '通过' : '打回' }}
           </div>
@@ -96,7 +99,7 @@
               <div
                 class="path-node"
                 :class="[`status-${node.status}`, { current: node.is_current }]"
-                :title="`${node.name} (Lv${node.difficulty}) — ${statusLabel(node.status)}`"
+                :title="`${node.name} (Lv${node.difficulty}) - ${statusLabel(node.status)}`"
               >
                 <div class="pn-index">{{ idx + 1 }}</div>
                 <div class="pn-name">{{ node.name }}</div>
@@ -119,7 +122,7 @@
       <!-- 第三行: 质量指标 -->
       <el-card class="quality-card" shadow="never" v-if="qualityMetrics">
         <template #header>
-          <span>📊 赛题 M5 质量检测指标</span>
+          <span>赛题 M5 质量检测指标</span>
           <el-tag
             :type="qualityMetrics.all_passed ? 'success' : 'danger'"
             size="small"
@@ -137,21 +140,21 @@
         </template>
         <div class="quality-row">
           <div class="quality-item">
-            <div class="q-value" :class="qualityMetrics.hallucination_rate < 0.05 ? 'ok' : 'fail'">
+            <div class="q-value km-mono-number" :class="qualityMetrics.hallucination_rate < 0.05 ? 'ok' : 'fail'">
               {{ (qualityMetrics.hallucination_rate * 100).toFixed(1) }}%
             </div>
             <div class="q-label">幻觉率</div>
             <div class="q-target">目标 &lt;5%</div>
           </div>
           <div class="quality-item">
-            <div class="q-value" :class="qualityMetrics.adaptation_rate >= 0.85 ? 'ok' : 'fail'">
+            <div class="q-value km-mono-number" :class="qualityMetrics.adaptation_rate >= 0.85 ? 'ok' : 'fail'">
               {{ (qualityMetrics.adaptation_rate * 100).toFixed(1) }}%
             </div>
             <div class="q-label">适配率</div>
             <div class="q-target">目标 ≥85%</div>
           </div>
           <div class="quality-item">
-            <div class="q-value" :class="qualityMetrics.coverage_rate >= 0.9 ? 'ok' : 'fail'">
+            <div class="q-value km-mono-number" :class="qualityMetrics.coverage_rate >= 0.9 ? 'ok' : 'fail'">
               {{ (qualityMetrics.coverage_rate * 100).toFixed(1) }}%
             </div>
             <div class="q-label">覆盖率</div>
@@ -173,6 +176,8 @@
  *   ③ 学习路径规划图 — 横向流程节点
  *
  * 可复用后端 report_builder.py 的等价 JS 逻辑，纯函数不调 API。
+ *
+ * 配色: THEME 常量镜像 --km-* token (ECharts canvas 不能读 CSS 变量, 故用 hex)。
  */
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import * as echarts from 'echarts'
@@ -181,6 +186,20 @@ import { useSidebarStore } from '@/stores/sidebar'
 
 const store = useAssessmentStore()
 const sidebar = useSidebarStore()
+
+// ============================================================
+// 主题色常量 (镜像 styles/theme.css 的 --km-* token, 供 ECharts canvas 使用)
+// ============================================================
+const THEME = {
+  primary: '#6c7ce0',
+  success: '#34b37e',
+  warning: '#f0a040',
+  danger: '#e05555',
+  info: '#5b9bd5',
+  splitLine: '#f0efed',
+  gray300: '#e4e3e1',
+  gray500: '#9a9895',
+}
 
 // ============================================================
 // Chart refs
@@ -443,9 +462,9 @@ function statusLabel(s) {
 }
 
 function masteryColor(m) {
-  if (m >= 0.8) return '#67c23a'
-  if (m >= 0.5) return '#e6a23c'
-  return '#f56c6c'
+  if (m >= 0.8) return THEME.success
+  if (m >= 0.5) return THEME.warning
+  return THEME.danger
 }
 
 // ============================================================
@@ -479,11 +498,11 @@ function renderBlindChart() {
       },
     },
     grid: { left: 8, right: 20, top: 8, bottom: 0, containLabel: true },
-    xAxis: { max: 100, axisLabel: { fontSize: 11 }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
+    xAxis: { max: 100, axisLabel: { fontSize: 11, color: THEME.gray500 }, splitLine: { lineStyle: { color: THEME.splitLine } } },
     yAxis: {
       type: 'category',
       data: names.reverse(),
-      axisLabel: { fontSize: 11, width: 80, overflow: 'truncate' },
+      axisLabel: { fontSize: 11, width: 80, overflow: 'truncate', color: THEME.gray500 },
       inverse: true,
     },
     series: [{
@@ -519,9 +538,9 @@ function renderMatchChart() {
   const tooEasy = mapped.filter((p) => p[3] === 'too_easy')
 
   const seriesDef = [
-    { name: '匹配', data: matched, color: '#67c23a' },
-    { name: '偏难', data: tooHard, color: '#f56c6c' },
-    { name: '偏易', data: tooEasy, color: '#e6a23c' },
+    { name: '匹配', data: matched, color: THEME.success },
+    { name: '偏难', data: tooHard, color: THEME.danger },
+    { name: '偏易', data: tooEasy, color: THEME.warning },
   ].filter((s) => s.data.length > 0)
 
   matchChart.setOption({
@@ -532,8 +551,8 @@ function renderMatchChart() {
       },
     },
     grid: { left: 8, right: 20, top: 8, bottom: 0, containLabel: true },
-    xAxis: { name: '节点难度', min: 0, max: 6, axisLabel: { fontSize: 11 }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
-    yAxis: { name: '资源难度', min: 0, max: 6, axisLabel: { fontSize: 11 } },
+    xAxis: { name: '节点难度', min: 0, max: 6, axisLabel: { fontSize: 11, color: THEME.gray500 }, splitLine: { lineStyle: { color: THEME.splitLine } } },
+    yAxis: { name: '资源难度', min: 0, max: 6, axisLabel: { fontSize: 11, color: THEME.gray500 } },
     series: seriesDef.map((s) => ({
       name: s.name,
       type: 'scatter',
@@ -571,11 +590,6 @@ onMounted(() => {
 <style scoped>
 .dashboard-page { padding: 0; }
 
-/* ---- 页面标题 ---- */
-.page-header { margin-bottom: 16px; }
-.page-header h3 { margin: 0 0 4px; font-size: 20px; }
-.page-desc { margin: 0; color: #909399; font-size: 13px; }
-
 /* ---- 概览卡片 ---- */
 .overview-row {
   display: flex; gap: 12px; margin-bottom: 16px;
@@ -583,83 +597,121 @@ onMounted(() => {
 }
 .stat-card {
   flex: 1; min-width: 120px;
-  background: #f5f7fa; border-radius: 8px;
   padding: 14px 16px; text-align: center;
 }
 .stat-value {
-  font-size: 28px; font-weight: 700; color: #303133;
+  font-size: 28px; font-weight: 700;
+  color: var(--km-gray-800);
   line-height: 1.2;
 }
-.stat-value.ok { color: #67c23a; }
-.stat-value.warn { color: #e6a23c; }
-.stat-label { font-size: 12px; color: #909399; margin-top: 4px; }
-.stat-sub { font-size: 11px; color: #c0c4cc; margin-top: 2px; }
+.stat-value.ok { color: var(--km-success); }
+.stat-value.warn { color: var(--km-warning); }
+.stat-label { font-size: 12px; color: var(--km-gray-500); margin-top: 4px; }
+.stat-sub { font-size: 11px; color: var(--km-gray-400, var(--km-gray-500)); margin-top: 2px; }
 
 /* ---- 图表行 ---- */
 .charts-row {
   display: flex; gap: 16px; margin-bottom: 16px;
 }
 .chart-card { flex: 1; min-width: 0; }
+.chart-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
 .chart-card :deep(.el-card__header) {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 16px; font-weight: 600; font-size: 14px;
+  color: var(--km-gray-800);
+  border-bottom: 1px solid var(--km-border-light);
 }
 .chart-card :deep(.el-card__header) .el-tag { margin-left: auto; }
 .chart-box { height: 260px; }
 
 /* ---- 学习路径 ---- */
 .path-card { margin-bottom: 16px; }
+.path-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
 .path-card :deep(.el-card__header) {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 16px; font-weight: 600; font-size: 14px;
+  color: var(--km-gray-800);
+  border-bottom: 1px solid var(--km-border-light);
 }
-.path-meta { margin-left: auto; font-size: 12px; color: #909399; font-weight: 400; }
+.path-meta {
+  margin-left: auto; font-size: 12px;
+  color: var(--km-gray-500); font-weight: 400;
+  font-family: var(--km-font-mono);
+}
 
 .path-graph { overflow-x: auto; padding: 8px 0; }
 .path-flow { display: flex; align-items: flex-start; gap: 0; min-width: max-content; }
 
 .path-node {
   flex-shrink: 0; width: 120px; padding: 10px 8px;
-  border-radius: 8px; border: 2px solid #e4e7ed;
-  background: #fff; text-align: center;
-  transition: all 0.2s;
+  border-radius: var(--km-radius-sm); border: 2px solid var(--km-border);
+  background: var(--km-bg-layer-3); text-align: center;
+  transition: all 0.2s var(--km-ease);
 }
-.path-node.status-mastered { border-color: #67c23a; background: #f0f9eb; }
-.path-node.status-learning  { border-color: #e6a23c; background: #fdf6ec; }
-.path-node.status-weak      { border-color: #f56c6c; background: #fef0f0; }
-.path-node.status-unlearned { border-color: #e4e7ed; background: #fafafa; }
-.path-node.current { box-shadow: 0 0 0 3px rgba(64,158,255,0.3); }
+.path-node.status-mastered {
+  border-color: var(--km-success);
+  background: var(--km-success-light);
+}
+.path-node.status-learning {
+  border-color: var(--km-warning);
+  background: var(--km-warning-light);
+}
+.path-node.status-weak {
+  border-color: var(--km-danger);
+  background: var(--km-danger-light);
+}
+.path-node.status-unlearned {
+  border-color: var(--km-border);
+  background: var(--km-bg-layer-2);
+}
+.path-node.current { box-shadow: 0 0 0 3px rgba(108, 124, 224, 0.3); }
 
 .pn-index {
   width: 24px; height: 24px; border-radius: 50%;
-  background: #409eff; color: #fff; font-size: 12px;
+  background: var(--km-primary); color: var(--km-primary-text);
+  font-size: 12px;
   display: inline-flex; align-items: center; justify-content: center;
   margin-bottom: 4px; font-weight: 600;
 }
 .pn-name {
-  font-size: 13px; font-weight: 600; color: #303133;
+  font-size: 13px; font-weight: 600; color: var(--km-gray-800);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   margin-bottom: 4px;
 }
-.pn-meta { font-size: 11px; color: #909399; margin-bottom: 6px; }
+.pn-meta {
+  font-size: 11px; color: var(--km-gray-500); margin-bottom: 6px;
+  font-family: var(--km-font-mono);
+}
 .pn-mastery { padding: 0 4px; }
 
 .path-arrow {
   flex-shrink: 0; display: flex; align-items: center;
-  padding: 0 6px; font-size: 18px; color: #c0c4cc;
+  padding: 0 6px; font-size: 18px; color: var(--km-gray-400, var(--km-gray-500));
   padding-top: 16px;
 }
 
 /* ---- 质量指标 ---- */
 .quality-card { margin-bottom: 16px; }
+.quality-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
 .quality-card :deep(.el-card__header) {
   padding: 10px 16px; font-weight: 600; font-size: 14px;
+  color: var(--km-gray-800);
+  border-bottom: 1px solid var(--km-border-light);
 }
 .quality-row { display: flex; gap: 24px; justify-content: center; padding: 8px 0; }
 .quality-item { text-align: center; }
 .q-value { font-size: 24px; font-weight: 700; }
-.q-value.ok { color: #67c23a; }
-.q-value.fail { color: #f56c6c; }
-.q-label { font-size: 13px; color: #303133; margin-top: 4px; }
-.q-target { font-size: 11px; color: #909399; }
+.q-value.ok { color: var(--km-success); }
+.q-value.fail { color: var(--km-danger); }
+.q-label { font-size: 13px; color: var(--km-gray-800); margin-top: 4px; }
+.q-target { font-size: 11px; color: var(--km-gray-500); }
 </style>

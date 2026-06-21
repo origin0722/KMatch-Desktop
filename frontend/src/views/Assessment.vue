@@ -73,7 +73,7 @@
               @click="handleQuickDemo"
               :loading="store.loading"
             >
-              ⚡ 快速体验（自动作答）
+              快速体验（自动作答）
             </el-button>
             <span v-if="!canStart" class="hint-text">请选择或输入学习目标方向</span>
           </el-form-item>
@@ -147,7 +147,7 @@
       </aside>
       <section class="question-stack">
         <div class="quiz-header">
-          <span>📝 学情答题（共 {{ store.pendingQuestions.length }} 题）</span>
+          <span>学情答题（共 {{ store.pendingQuestions.length }} 题）</span>
           <el-button size="small" @click="store.backToInput()">← 返回</el-button>
         </div>
 
@@ -216,7 +216,7 @@
       <el-card class="feedback-card">
         <template #header>
           <div class="feedback-header">
-            <span>🎯 测评结果 + 动态反馈</span>
+            <span>测评结果 + 动态反馈</span>
             <div>
               <el-button
                 v-if="store.feedbackStrategy && !store.feedbackContent"
@@ -621,9 +621,9 @@ function paceLabel(pace) {
 }
 
 function masteryColor(mastery) {
-  if (mastery >= 0.8) return '#52c41a'
-  if (mastery >= 0.5) return '#faad14'
-  return '#f56c6c'
+  if (mastery >= 0.8) return '#34b37e'  // km-success
+  if (mastery >= 0.5) return '#f0a040'  // km-warning
+  return '#e05555'                       // km-danger
 }
 
 function parseLogTimestamp(entry) {
@@ -671,7 +671,7 @@ function logType(entry) {
 
 .hint-text {
   margin-left: 12px;
-  color: #c0c4cc;
+  color: var(--km-gray-500);
   font-size: 13px;
 }
 
@@ -686,7 +686,7 @@ function logType(entry) {
 .stream-progress h4 {
   margin: 0 0 20px;
   font-size: 16px;
-  color: #303133;
+  color: var(--km-gray-800);
 }
 .step-list {
   display: flex;
@@ -700,15 +700,15 @@ function logType(entry) {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--km-gray-400, var(--km-gray-500));
   min-width: 64px;
 }
 .step-item.active {
-  color: #409eff;
+  color: var(--km-primary);
   font-weight: 600;
 }
 .step-item.done {
-  color: #67c23a;
+  color: var(--km-success);
 }
 .step-icon {
   font-size: 18px;
@@ -717,7 +717,7 @@ function logType(entry) {
   white-space: nowrap;
 }
 .step-message {
-  color: #909399;
+  color: var(--km-gray-500);
   font-size: 14px;
   margin: 0;
 }
@@ -728,11 +728,11 @@ function logType(entry) {
   padding: 40px 0;
 }
 .loading-hint p {
-  color: #909399;
+  color: var(--km-gray-500);
 }
 .loading-hint .sub-hint {
   font-size: 13px;
-  color: #c0c4cc;
+  color: var(--km-gray-400, var(--km-gray-500));
   margin-top: 8px;
 }
 
@@ -744,7 +744,7 @@ function logType(entry) {
 
 .weakness-list {
   padding-left: 20px;
-  color: #606266;
+  color: var(--km-gray-700);
   line-height: 2;
 }
 
@@ -758,7 +758,7 @@ function logType(entry) {
 .quiz-header { display: flex; justify-content: space-between; align-items: center; }
 .quiz-item {
   padding: 14px 0;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--km-border-light);
 }
 .quiz-item:last-of-type { border-bottom: none; }
 .quiz-question {
@@ -790,7 +790,7 @@ function logType(entry) {
 .feedback-card { margin-bottom: 16px; }
 .feedback-header { display: flex; justify-content: space-between; align-items: center; }
 .feedback-resources { display: flex; flex-direction: column; gap: 12px; }
-.resource-item { background: #fafafa; }
+.resource-item { background: var(--km-bg-layer-1); }
 
 /* ---- 诊断控制台 shell ---- */
 .phase-chip {
