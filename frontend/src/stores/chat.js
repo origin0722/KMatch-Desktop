@@ -223,6 +223,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const STORAGE_KEY_PROVIDER = 'kmatch-chat-provider'
   const STORAGE_KEY_APIKEY = 'kmatch-chat-apikey'
+  const STORAGE_KEY_BASEURL = 'kmatch-chat-baseurl'
   const STORAGE_KEY_TUTOR = 'kmatch-chat-tutor'
 
   function _loadStr(key, fallback = '') {
@@ -234,6 +235,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const provider = ref(_loadStr(STORAGE_KEY_PROVIDER, 'deepseek'))
   const apiKey = ref(_loadStr(STORAGE_KEY_APIKEY, ''))
+  const customBaseUrl = ref(_loadStr(STORAGE_KEY_BASEURL, ''))  // 自定义厂商 Base URL
   const model = ref('deepseek-v4-pro')  // 自动从厂商拉取后设置
   const models = ref([])                // 厂商返回的模型列表
 
@@ -258,7 +260,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       return
     }
-    const base = meta.baseUrl || promptBaseUrl()
+    const base = getBaseUrl()
     if (!base) {
       models.value = _fallbackModels(provider.value)
       return
@@ -280,14 +282,6 @@ export const useChatStore = defineStore('chat', () => {
     } catch {
       models.value = _fallbackModels(provider.value)
     }
-  }
-
-  function promptBaseUrl() {
-    if (typeof window !== 'undefined') {
-      const url = window.prompt('请输入自定义 API Base URL (如 https://api.example.com/v1):')
-      return url?.trim() || ''
-    }
-    return ''
   }
 
   function _fallbackModels(pid) {
@@ -312,9 +306,15 @@ export const useChatStore = defineStore('chat', () => {
     fetchModels()
   }
 
+  function setCustomBaseUrl(url) {
+    customBaseUrl.value = (url || '').trim()
+    _saveStr(STORAGE_KEY_BASEURL, customBaseUrl.value)
+    if (provider.value === 'custom') fetchModels()
+  }
+
   function getBaseUrl() {
     const meta = providerMeta()
-    return meta.baseUrl || ''
+    return meta.baseUrl || customBaseUrl.value || ''
   }
 
   function setTutorMode(on) {
@@ -783,8 +783,8 @@ export const useChatStore = defineStore('chat', () => {
     // write_file 审批门 (阶段3.1)
     pendingApproval, resolveApproval,
     // 厂商 & 模型
-    provider, apiKey, model, models, PROVIDERS,
-    setProvider, setApiKey, fetchModels,
+    provider, apiKey, customBaseUrl, model, models, PROVIDERS,
+    setProvider, setApiKey, setCustomBaseUrl, fetchModels,
     // 启发式导学模式 (阶段4③)
     tutorMode, setTutorMode,
     // 对话

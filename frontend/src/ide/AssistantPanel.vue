@@ -278,7 +278,7 @@
           :class="{ set: !!chat.apiKey }"
           :title="chat.apiKey ? '已设置 API Key' : '设置 API Key'"
           :disabled="chat.streaming"
-          @click="onSetApiKey"
+          @click="openApiKeyDialog"
         >
           🔑
         </el-button>
@@ -322,6 +322,42 @@
         </el-button>
       </div>
     </div>
+
+    <!-- API Key 设置对话框 (Electron 不支持 window.prompt) -->
+    <el-dialog
+      v-model="apiKeyDialogVisible"
+      title="API 设置"
+      width="420px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-position="top">
+        <el-form-item label="API Key">
+          <el-input
+            v-model="apiKeyInput"
+            type="password"
+            show-password
+            placeholder="sk-..."
+            clearable
+          />
+        </el-form-item>
+        <el-form-item v-if="chat.provider === 'custom'" label="API Base URL">
+          <el-input
+            v-model="baseUrlInput"
+            placeholder="https://api.example.com/v1"
+            clearable
+          />
+        </el-form-item>
+        <div class="apikey-tip">
+          当前厂商: {{ chat.PROVIDERS.find((p) => p.id === chat.provider)?.label || chat.provider }}
+          <span v-if="chat.provider !== 'custom'">· Base URL 已预置</span>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="apiKeyDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveApiKey">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -431,14 +467,24 @@ function onProviderChange(val) {
   chat.setProvider(val)
 }
 
-async function onSetApiKey() {
-  const current = chat.apiKey || ''
-  // 使用 prompt 简单获取 (后续可改为 Dialog)
-  // eslint-disable-next-line no-alert
-  const key = window.prompt('请输入 API Key', current)
-  if (key !== null) {
-    chat.setApiKey(key.trim())
+// ---- API Key 设置对话框 (Electron 不支持 window.prompt, 用 el-dialog) ----
+const apiKeyDialogVisible = ref(false)
+const apiKeyInput = ref('')
+const baseUrlInput = ref('')
+
+function openApiKeyDialog() {
+  apiKeyInput.value = chat.apiKey || ''
+  baseUrlInput.value = chat.customBaseUrl || ''
+  apiKeyDialogVisible.value = true
+}
+
+function saveApiKey() {
+  chat.setApiKey(apiKeyInput.value.trim())
+  if (chat.provider === 'custom') {
+    chat.setCustomBaseUrl(baseUrlInput.value.trim())
   }
+  apiKeyDialogVisible.value = false
+  ElMessage.success(chat.apiKey ? 'API 设置已保存' : '已清除 API Key')
 }
 
 function onKeydown(e) {
@@ -790,6 +836,7 @@ function cleanToolCalls(content) {
   color: var(--km-primary);
 }
 .tutor-label { font-size: 11px; font-weight: 600; }
+.apikey-tip { font-size: 12px; color: var(--km-gray-500); margin-top: -4px; }
 .model-hint {
   font-size: 11px;
   color: var(--km-gray-500);
