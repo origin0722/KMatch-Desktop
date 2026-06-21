@@ -170,6 +170,16 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   · 瘦身: spec 只收集 langchain_core/langchain_openai/langgraph (app 不用 langchain_community),
     excludes 排 torch/pandas/matplotlib/sympy/sqlalchemy/PIL/lxml → backend-dist 548M→141M
   · 沙箱强化 (DockerSandboxExecutor) 仍待做; 打包后 code_test 沙箱 (sys.executable -m pytest) 不可用属已知限制
+**阶段6** (6/22): chat 深度思考收尾 + 消息 chunks 判别联合重构 (借鉴 Apix) ✅
+  - 6a: DeepSeek 深度思考收尾 (commit 9ccb4e8)
+    · 删上会话遗留未接线的 deepThinking 孤儿状态, 统一由 aiSettings.reasoningMode (AUTO/FAST/DEEP) 驱动后端 `reasoning` 字段 → extra_body.thinking
+    · aiSettings.modelReasoningSupport 把 deepseek-v4* 记为 native, 与后端 _is_deepseek_thinking_model 一致
+    · http-proxy 保留非 200 错误回传 (修旧静默丢 body), 移除 SSE 调试日志
+  - 6b: 消息模型重构为 chunks 判别联合 (commit 2b69416, 借鉴 Apix MessageChunk)
+    · Chunk = {type:'think'|'content',content} | {type:'tool_call',id,tool,args,status,result?}
+    · chat.js: appendTextChunk(相邻同类型合并)/contentTextOf/thinkTextOf/splitToolCallChunks; SSE 累积改 chunks; 工具调用变内联 chunk + 状态机 pending→in_progress→completed→error; 删 role:'tool' 双重表示
+    · AssistantPanel.vue: v-for chunks 渲染 + tool_call 内联卡 + 状态徽标; 委派工具结果卡搬进 chunk; 删 cleanToolCalls
+    · 后端契约不变 (chunks→stripToolCalls(contentTextOf) 序列化); 赛题功能行为不变; 80 测试全过 + vite build 通过
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留); 切视图丢 Monaco 未保存内容 (改 v-show 常驻)。
 
 ### 原 KMatch 后端已交付项
