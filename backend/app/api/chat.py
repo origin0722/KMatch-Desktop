@@ -38,6 +38,11 @@ class ChatRequest(BaseModel):
     model: str | None = Field(None, description="模型名称, 不传则使用默认")
     api_key: str | None = Field(None, description="用户 API Key, 不传则用服务端默认")
     base_url: str | None = Field(None, description="API Base URL, 不传则用服务端默认")
+    reasoning: bool | None = Field(
+        None,
+        description="思考模式开关 (auto/None=模型默认, True=开启思考, False=关闭思考)。"
+        "DeepSeek-V4 系列 (deepseek-v4-pro/v4) 需经 extra_body thinking 控制。",
+    )
 
 
 class ModelsRequest(BaseModel):
@@ -61,6 +66,27 @@ def _get_async_client(base_url: str, api_key: str) -> AsyncOpenAI:
     return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
 
+def _is_deepseek_thinking_model(model: str) -> bool:
+    """DeepSeek-V4 系列是 thinking 模型, 需经 extra_body thinking 控制开/关。
+    借鉴 Apix llm_adapter: reasoning=False -> thinking disabled; True -> enabled。
+    deepseek-reasoner 走原生 reasoning_content, 不在此列。"""
+    m = (model or "").lower()
+    return m.startswith("deepseek-v4") or m == "deepseek-reasoner-pro"
+
+
+def _build_extra_body(model: str, reasoning: bool | None) -> dict:
+    """构建厂商特定的 extra_body。
+    - DeepSeek-V4 系列: thinking {enabled|disabled} (None 时默认 enabled, 保留模型能力)
+    - 其他模型: 不传 extra_body
+    """
+    if not _is_deepseek_thinking_model(model):
+        return {}
+    # reasoning=None (auto): 保持 thinking enabled, 体现 reasoner 能力
+    # reasoning=False: 关闭思考, 直接出 content (日常对话推荐)
+    thinking_type = "disabled" if reasoning is False else "enabled"
+    return {"thinking": {"type": thinking_type}}
+
+
 def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
     """
     优先用请求中的 api_key/base_url 建 AsyncOpenAI;
@@ -78,16 +104,20 @@ def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
 # ----------------------------------------------------------------
 # 流式生成器 — SSE 格式 (async for, 不阻塞事件循环)
 # ----------------------------------------------------------------
-async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str):
+async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extra_body: dict | None = None):
     """逐 token 推送 SSE 事件 (async for, 释放事件循环)"""
     try:
-        stream = await client.chat.completions.create(
+        kwargs = dict(
             model=model,
             messages=messages,
             stream=True,
             max_tokens=max_tokens,
             temperature=0.7,
         )
+        # DeepSeek-V4 等需要 extra_body.thinking 控制 (借鉴 Apix llm_adapter)
+        if extra_body:
+            kwargs["extra_body"] = extra_body
+        stream = await client.chat.completions.create(**kwargs)
 
         async for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
@@ -127,9 +157,11 @@ async def chat_completions(req: ChatRequest, request: Request):
             )
         return {"error": detail}
 
+    extra_body = _build_extra_body(model, req.reasoning)
+
     if req.stream:
         return StreamingResponse(
-            _stream_chat(client, req.messages, req.max_tokens, model),
+            _stream_chat(client, req.messages, req.max_tokens, model, extra_body),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -140,13 +172,16 @@ async def chat_completions(req: ChatRequest, request: Request):
 
     # 非流式 fallback (await, 不阻塞)
     try:
-        completion = await client.chat.completions.create(
+        kwargs = dict(
             model=model,
             messages=req.messages,
             stream=False,
             max_tokens=req.max_tokens,
             temperature=0.7,
         )
+        if extra_body:
+            kwargs["extra_body"] = extra_body
+        completion = await client.chat.completions.create(**kwargs)
         content = completion.choices[0].message.content if completion.choices else ""
         return {"content": content}
     except Exception as exc:

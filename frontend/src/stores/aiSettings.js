@@ -151,7 +151,8 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
 
   function modelReasoningSupport(provider, model) {
     const id = String(model || '').toLowerCase()
-    if (provider === 'deepseek' && id === 'deepseek-reasoner') return 'native'
+    // DeepSeek-V4 系列 + deepseek-reasoner 走 extra_body.thinking (后端 _is_deepseek_thinking_model)
+    if (provider === 'deepseek' && (id.startsWith('deepseek-v4') || id === 'deepseek-reasoner')) return 'native'
     if (id.includes('claude-opus-4') || id.includes('claude-fable-5') || id.includes('claude-mythos-5')) {
       return 'native-when-supported-by-backend'
     }

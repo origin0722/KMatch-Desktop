@@ -86,11 +86,12 @@ describe('aiSettings store', () => {
     const settings = useAiSettingsStore()
 
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-reasoner')).toBe('native')
-    expect(settings.modelReasoningSupport('deepseek', 'deepseek-v4-pro')).toBe('prompt-only')
+    expect(settings.modelReasoningSupport('deepseek', 'deepseek-v4-pro')).toBe('native')
+    expect(settings.modelReasoningSupport('deepseek', 'deepseek-v3')).toBe('prompt-only')
     expect(settings.modelReasoningSupport('custom', 'claude-opus-4-8')).toBe('native-when-supported-by-backend')
 
     settings.setReasoningMode('deep')
-    expect(settings.reasoningInstruction('deepseek', 'deepseek-v4-pro')).toContain('当前模型未确认支持原生 thinking 参数')
+    expect(settings.reasoningInstruction('deepseek', 'deepseek-v4-pro')).toContain('当前模型支持 reasoning')
 
     settings.setReasoningMode('fast')
     expect(settings.reasoningInstruction('deepseek', 'deepseek-reasoner')).toContain('思考模式: 快速')

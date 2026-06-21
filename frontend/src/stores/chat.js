@@ -289,6 +289,19 @@ export const useChatStore = defineStore('chat', () => {
 
   const hasMessages = computed(() => messages.value.length > 0)
 
+  /** 由 aiSettings.reasoningMode 推导后端 reasoning 字段 (借鉴 Apix llm_adapter):
+   *  AUTO → 不传 (模型默认; DeepSeek-V4 默认 thinking enabled)
+   *  FAST → false (关闭思考, 秒回)
+   *  DEEP → true  (开启思考) */
+  function _reasoningForRequest() {
+    try {
+      const mode = useAiSettingsStore().reasoningMode
+      if (mode === 'fast') return false
+      if (mode === 'deep') return true
+    } catch { /* aiSettings 未就绪, 走默认 */ }
+    return undefined
+  }
+
   function providerMeta() {
     return PROVIDERS.find((p) => p.id === provider.value) || PROVIDERS[0]
   }
@@ -389,7 +402,7 @@ export const useChatStore = defineStore('chat', () => {
       if (data.error) { error.value = data.error; assistantMsg.content = `❌ ${data.error}`; return 'error' }
       if (data.reasoning) assistantMsg.think = (assistantMsg.think || '') + data.reasoning
       if (data.delta) assistantMsg.content += data.delta
-    } catch { /* skip */ }
+    } catch { /* skip malformed block */ }
     return null
   }
 
@@ -399,11 +412,14 @@ export const useChatStore = defineStore('chat', () => {
     const body = {
       messages: apiMessages,
       stream: true,
-      max_tokens: 4096,
+      max_tokens: 8192,
       model: model.value,
       api_key: apiKey.value || undefined,
       base_url: getBaseUrl() || undefined,
     }
+    // DeepSeek-V4 等思考模型经 extra_body.thinking 控制 (后端 _build_extra_body)
+    const reasoning = _reasoningForRequest()
+    if (reasoning !== undefined) body.reasoning = reasoning
 
     // ---- 浏览器 dev 回退: fetch + ReadableStream 直连 /api (经 Vite proxy → 8000) ----
     if (!hasIpc()) {

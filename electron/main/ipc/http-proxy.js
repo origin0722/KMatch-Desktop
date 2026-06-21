@@ -49,6 +49,13 @@ export function registerHttpProxyIpc() {
       body: JSON.stringify(body || {}),
     })
       .then(async (resp) => {
+        // 后端非 200 (如 422/500/503): 旧实现只静默不读 body, 渲染层永远等不到 done/error。
+        // 现读 body 文本经 'http:stream:error' 回传, 让 chat 能提示真实原因。
+        if (!resp.ok || !resp.body) {
+          const text = await resp.text().catch(() => '')
+          if (win && !win.isDestroyed()) win.webContents.send('http:stream:error', reqId, `HTTP ${resp.status}: ${text.slice(0, 200)}`)
+          return
+        }
         const reader = resp.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
