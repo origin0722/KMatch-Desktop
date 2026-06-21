@@ -15,11 +15,10 @@
     <!-- 其他视图: 全宽装载 (导航由左侧活动栏统一, 无顶部 Tab)
          套浅色卡片: 赛题视图原为浅色设计, 暗色主题下作为嵌入式浅色面板 -->
     <div v-if="sidebar.activeView !== 'code'" class="view-host">
-      <div class="view-card">
-        <KnowledgeGraph v-if="sidebar.activeView === 'graph'" />
-        <Assessment v-else-if="sidebar.activeView === 'assessment'" />
+      <div class="view-card" :class="{ 'no-pad': sidebar.activeView === 'learning-session' }">
+        <LearningSession v-if="sidebar.activeView === 'learning-session'" />
+        <KnowledgeGraph v-else-if="sidebar.activeView === 'graph'" />
         <Learning v-else-if="sidebar.activeView === 'learning'" />
-        <AgentView v-else-if="sidebar.activeView === 'agents'" />
         <Dashboard v-else-if="sidebar.activeView === 'dashboard'" />
       </div>
     </div>
@@ -33,9 +32,8 @@ import FileExplorer from './FileExplorer.vue'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
 import KnowledgeGraph from '@/views/KnowledgeGraph.vue'
-import Assessment from '@/views/Assessment.vue'
+import LearningSession from '@/views/LearningSession.vue'
 import Learning from '@/views/Learning.vue'
-import AgentView from '@/views/AgentView.vue'
 import Dashboard from '@/views/Dashboard.vue'
 
 const sidebar = useSidebarStore()
@@ -99,4 +97,6 @@ watch(() => sidebar.activeView, async () => {
   --el-text-color-primary: var(--km-gray-800);
   --el-fill-color-blank: var(--km-bg-layer-2);
 }
+/* learning-session 自带内边距与滚动, view-card 不再二次包裹 */
+.view-card.no-pad { padding: 16px 0 0 0; background: transparent; border: 0; box-shadow: none; }
 </style>

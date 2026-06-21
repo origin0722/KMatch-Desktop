@@ -64,9 +64,8 @@ describe('TitlebarMenu', () => {
     const text = wrapper.text()
 
     expect(text).not.toContain('知识图谱')
-    expect(text).not.toContain('答题测评')
+    expect(text).not.toContain('学习会话')
     expect(text).not.toContain('学习资源')
-    expect(text).not.toContain('Agent 协同')
     expect(text).not.toContain('数据看板')
   })
 
