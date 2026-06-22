@@ -518,7 +518,7 @@ export const useChatStore = defineStore('chat', () => {
     return msg
   }
 
-  /** 解析单个 SSE block, 累积进 assistantMsg.chunks; 返回 'error' 表示遇到错误应中止 */
+  /** 解析单个 SSE block, 累积进 assistantMsg 当前 version 的 chunks; 返回 'error' 表示遇到错误应中止 */
   function _applySseBlock(block, assistantMsg) {
     if (!block.trim()) return null
     const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
@@ -527,11 +527,11 @@ export const useChatStore = defineStore('chat', () => {
       const data = JSON.parse(dataStr)
       if (data.error) {
         error.value = data.error
-        appendTextChunk(assistantMsg.chunks, 'content', `❌ ${data.error}`)
+        appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${data.error}`)
         return 'error'
       }
-      if (data.reasoning) appendTextChunk(assistantMsg.chunks, 'think', data.reasoning)
-      if (data.delta) appendTextChunk(assistantMsg.chunks, 'content', data.delta)
+      if (data.reasoning) appendTextChunk(activeChunksOf(assistantMsg), 'think', data.reasoning)
+      if (data.delta) appendTextChunk(activeChunksOf(assistantMsg), 'content', data.delta)
     } catch { /* skip malformed block */ }
     return null
   }
@@ -879,8 +879,9 @@ export const useChatStore = defineStore('chat', () => {
       toolRound++
 
       // 构建 API 消息列表 (assistant content 去掉 tool_call 块; chunks 模型无 tool 角色)
+      // 用 visibleMessages: regen 隐藏的尾随消息不应进 API 历史 (见 regenMessage)
       const systemMsg = buildSystemPrompt(context)
-      const historyMsgs = messages.value.map((m) => ({
+      const historyMsgs = visibleMessages.value.map((m) => ({
         role: m.role,
         content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
       }))
@@ -895,11 +896,11 @@ export const useChatStore = defineStore('chat', () => {
         await _streamResponse(apiMessages, assistantMsg)
       } catch (e) {
         if (e.name === 'AbortError') {
-          if (contentTextOf(assistantMsg) === '') appendTextChunk(assistantMsg.chunks, 'content', '(已停止)')
+          if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
           streaming.value = false; currentStreamId.value = null; return
         }
         error.value = e.message || '对话请求失败'
-        if (contentTextOf(assistantMsg) === '') appendTextChunk(assistantMsg.chunks, 'content', `❌ ${error.value}`)
+        if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${error.value}`)
         streaming.value = false; currentStreamId.value = null; return
       }
 
@@ -907,18 +908,19 @@ export const useChatStore = defineStore('chat', () => {
       currentStreamId.value = null
 
       // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
+      // 读写都走当前 version 的 chunks (助手消息无顶层 chunks, 见 _addMessage)
       const segs = splitToolCallChunks(contentTextOf(assistantMsg))
       const hasToolCall = segs.some((c) => c.type === 'tool_call')
       if (!hasToolCall) {
         // 纯文本回复，完成 (content chunks 已就位, 无需重建)
         break
       }
-      const thinkChunks = assistantMsg.chunks.filter((c) => c.type === 'think')
-      assistantMsg.chunks = [...thinkChunks, ...segs]
+      const thinkChunks = activeChunksOf(assistantMsg).filter((c) => c.type === 'think')
+      assistantMsg.versions[assistantMsg.activeVersion].chunks = [...thinkChunks, ...segs]
 
       // 逐个执行 tool_call chunk: 状态机 pending → in_progress → completed/error
       const toolResults = []
-      for (const chunk of assistantMsg.chunks) {
+      for (const chunk of activeChunksOf(assistantMsg)) {
         if (chunk.type !== 'tool_call') continue
         chunk.status = 'in_progress'
         const result = await _executeTool(chunk.args)
