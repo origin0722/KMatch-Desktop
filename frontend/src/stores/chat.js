@@ -272,16 +272,24 @@ export function appendTextChunk(chunks, type, text) {
   }
 }
 
-/** 拼接消息中所有 content chunk 文本 (供 API 历史 + MarkdownViewer) */
-export function contentTextOf(msg) {
-  if (!msg || !Array.isArray(msg.chunks)) return ''
-  return msg.chunks.filter((c) => c.type === 'content').map((c) => c.content).join('')
+/** 取消息当前生效的 chunks (助手消息读 versions[activeVersion], 旧消息/用户消息读 chunks) */
+export function activeChunksOf(msg) {
+  if (!msg) return []
+  if (msg.role === 'assistant' && Array.isArray(msg.versions)) {
+    const v = msg.versions[msg.activeVersion ?? 0]
+    return v?.chunks ?? []
+  }
+  return Array.isArray(msg.chunks) ? msg.chunks : []
 }
 
-/** 拼接消息中所有 think chunk 文本 */
+/** 拼接消息当前 version 的 content chunk 文本 (供 API 历史 + MarkdownViewer) */
+export function contentTextOf(msg) {
+  return activeChunksOf(msg).filter((c) => c.type === 'content').map((c) => c.content).join('')
+}
+
+/** 拼接消息当前 version 的 think chunk 文本 */
 export function thinkTextOf(msg) {
-  if (!msg || !Array.isArray(msg.chunks)) return ''
-  return msg.chunks.filter((c) => c.type === 'think').map((c) => c.content).join('')
+  return activeChunksOf(msg).filter((c) => c.type === 'think').map((c) => c.content).join('')
 }
 
 /**

@@ -72,3 +72,45 @@ describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
     expect(contentOnly.trim()).toBe(stripToolCalls(text))
   })
 })
+
+describe('contentTextOf 适配 versions', () => {
+  it('旧消息 (无 versions) 仍读 chunks', () => {
+    const msg = { role: 'assistant', chunks: [{ type: 'content', content: 'old' }] }
+    expect(contentTextOf(msg)).toBe('old')
+  })
+
+  it('新版助手消息读 activeVersion 的 chunks', () => {
+    const msg = {
+      role: 'assistant',
+      versions: [
+        { id: 'v1', chunks: [{ type: 'content', content: 'first' }] },
+        { id: 'v2', chunks: [{ type: 'content', content: 'second' }] },
+      ],
+      activeVersion: 1,
+    }
+    expect(contentTextOf(msg)).toBe('second')
+  })
+
+  it('activeVersion=0 读第一版', () => {
+    const msg = {
+      role: 'assistant',
+      versions: [
+        { id: 'v1', chunks: [{ type: 'content', content: 'first' }] },
+        { id: 'v2', chunks: [{ type: 'content', content: 'second' }] },
+      ],
+      activeVersion: 0,
+    }
+    expect(contentTextOf(msg)).toBe('first')
+  })
+
+  it('thinkTextOf 同理读 activeVersion', () => {
+    const msg = {
+      role: 'assistant',
+      versions: [
+        { id: 'v1', chunks: [{ type: 'think', content: 'think1' }] },
+      ],
+      activeVersion: 0,
+    }
+    expect(thinkTextOf(msg)).toBe('think1')
+  })
+})
