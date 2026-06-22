@@ -1,13 +1,11 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
+
+// 重新导出 TOOL_PERMISSION 以保持 @/stores/aiSettings 既有契约 (chat.js 等仍从此导入)
+export { TOOL_PERMISSION }
 
 const STORAGE_KEY = 'kmatch-ai-settings'
-
-export const TOOL_PERMISSION = Object.freeze({
-  ALLOW: 'allow',
-  ASK: 'ask',
-  DENY: 'deny',
-})
 
 export const REASONING_MODE = Object.freeze({
   AUTO: 'auto',
@@ -20,15 +18,6 @@ const DEFAULT_PROXY = Object.freeze({
   type: 'http',
   url: '',
   scope: 'all',
-})
-
-const DEFAULT_TOOL_PERMISSIONS = Object.freeze({
-  read_file: TOOL_PERMISSION.ALLOW,
-  list_directory: TOOL_PERMISSION.ALLOW,
-  write_file: TOOL_PERMISSION.ASK,
-  generate_project_graph: TOOL_PERMISSION.ALLOW,
-  code_review: TOOL_PERMISSION.ALLOW,
-  code_test: TOOL_PERMISSION.ALLOW,
 })
 
 // ---- 厂商 & 模型 (C1.1: 从 chat.js 迁入, 统一 AI 配置单一源) ----

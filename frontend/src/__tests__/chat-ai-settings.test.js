@@ -9,7 +9,8 @@
  *  - toolPermissionError：权限门决策（write_file 默认 ask）。
  */
 import { describe, expect, it } from 'vitest'
-import { buildAdvertisedToolNames, buildSystemPrompt, parseToolCalls, stripToolCalls, toolPermissionError } from '@/stores/chat'
+import { buildSystemPrompt, parseToolCalls, stripToolCalls } from '@/stores/chat'
+import { buildAdvertisedToolNames, toolPermissionError } from '@/ide/tools/registry'
 
 describe('chat AI settings integration helpers', () => {
   it('injects enabled memory and reasoning instruction into normal prompt', () => {
