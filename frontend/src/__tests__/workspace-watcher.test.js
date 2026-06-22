@@ -113,4 +113,25 @@ describe('workspace store 文件监听', () => {
     expect(ws.externalChanges.has('a.py')).toBe(false)
     expect(fsMock.writeFile).toHaveBeenCalledWith('a.py', 'new content')
   })
+
+  it('C2: projectGraph 经 workspace.onExternalChange 订阅自行 markStale (workspace 不再硬调 projectGraph)', async () => {
+    const { useWorkspaceStore } = await import('@/stores/workspace')
+    const { useProjectGraphStore } = await import('@/stores/projectGraph')
+    const ws = useWorkspaceStore()
+    const pg = useProjectGraphStore()
+    await ws.openProject()
+
+    // 装一个图谱, sourcePath = 'src/a.py'; setGraph 内部订阅 workspace 文件变动
+    pg.setGraph({ projectId: 'p1', stats: {}, entities: [], relations: [], sourcePath: 'src/a.py', written: false }, 'src/a.py')
+    expect(pg.stale).toBe(false)
+
+    // 触发外部改动 (源文件) → projectGraph 经订阅自行 markStale
+    _onChangeCb({ kind: 'change', path: 'src/a.py', absPath: '/proj/src/a.py' })
+    expect(pg.stale).toBe(true)
+
+    // 非源文件改动不标 stale
+    pg.clearStale()
+    _onChangeCb({ kind: 'change', path: 'src/other.py', absPath: '/proj/src/other.py' })
+    expect(pg.stale).toBe(false)
+  })
 })

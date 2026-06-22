@@ -8,6 +8,7 @@
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 export const useProjectGraphStore = defineStore('projectGraph', () => {
   // 最近一次 generate_project_graph 产出
@@ -46,7 +47,16 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     activeLine.value = null
     revealTarget.value = null
     stale.value = false // 新图谱生成, 清过期标记
+    // C2: 订阅 workspace 文件变动, 源文件被改时自行 markStale (workspace 不再硬调 projectGraph)。
+    // 只订阅一次; 失败忽略 (workspace 未就绪则无失效通知, 非致命)。
+    if (!_unsubscribeWsChange) {
+      try {
+        _unsubscribeWsChange = useWorkspaceStore().onExternalChange((event) => markStale(event.path))
+      } catch { /* workspace 未就绪, 忽略 */ }
+    }
   }
+
+  let _unsubscribeWsChange = null
 
   /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转) */
   function markStale(path) {

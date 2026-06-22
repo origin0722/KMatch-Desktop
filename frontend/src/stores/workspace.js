@@ -17,10 +17,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   // 阶段8: 外部文件变动 (主进程 watcher 推送)。
   // externalChanges: Map<relPath, { kind, ts }> — MonacoEditor watch 此表, 对打开的非脏文件失效 model,
-  //                  对脏文件标 conflict 弹确认。projectGraph 也据此标 stale。
+  //                  对脏文件标 conflict 弹确认。
   const externalChanges = ref(new Map())
   let _unsubscribeWatch = null
   let _refreshTimer = null
+
+  // 文件变动订阅者 (C2 解耦: workspace 不再硬调 projectGraph.markStale, 改由订阅者自行响应)。
+  // projectGraph 在 setGraph 时订阅, markStale 逻辑收回 projectGraph 自己。
+  const _changeListeners = new Set()
+  function onExternalChange(cb) {
+    _changeListeners.add(cb)
+    return () => _changeListeners.delete(cb)
+  }
 
   const hasProject = computed(() => !!root.value)
   const openCount = computed(() => openFiles.value.length)
@@ -65,16 +73,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (typeof window === 'undefined' || !window.api?.fs?.onChange) return
     _unsubscribeWatch = window.api.fs.onChange(async (event) => {
       if (!event || !event.path) return
-      // 记录外部改动 (MonacoEditor / projectGraph 据此响应)
+      // 记录外部改动 (MonacoEditor 据此响应; projectGraph 经 onExternalChange 订阅响应)
       externalChanges.value.set(event.path, { kind: event.kind, ts: Date.now() })
       // 触发响应式 (Map mutation 需手动触发)
       externalChanges.value = new Map(externalChanges.value)
 
-      // 阶段8: 若变动文件是项目图谱源文件, 标记图谱过期 (行号可能漂移, 跳转会指错)
-      try {
-        const { useProjectGraphStore } = await import('@/stores/projectGraph')
-        useProjectGraphStore().markStale(event.path)
-      } catch { /* projectGraph store 未就绪, 忽略 */ }
+      // 通知文件变动订阅者 (C2: projectGraph 自行订阅并 markStale, workspace 不再 import projectGraph)
+      for (const cb of _changeListeners) {
+        try { cb(event) } catch { /* 单个订阅者异常不影响其他 */ }
+      }
 
       // 去抖刷新文件树 (150ms 内多次变动合并一次)
       if (_refreshTimer) clearTimeout(_refreshTimer)
@@ -148,6 +155,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     hasProject, openCount,
     openProject, setRoot, refreshTree, loadRecent,
     openFile, closeFile, setActive, markDirty, saveFile,
-    startWatching, stopWatching, clearExternalChange,
+    startWatching, stopWatching, clearExternalChange, onExternalChange,
   }
 })
