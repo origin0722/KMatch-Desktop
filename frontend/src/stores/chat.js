@@ -373,6 +373,9 @@ export const useChatStore = defineStore('chat', () => {
 
   const hasMessages = computed(() => messages.value.length > 0)
 
+  /** 当前可见消息 (Task 3 加 trailingAfter 过滤; 此处先透传保证不崩) */
+  const visibleMessages = computed(() => messages.value)
+
   /** 由 aiSettings.reasoningMode 推导后端 reasoning 字段 (借鉴 Apix llm_adapter):
    *  AUTO → 不传 (模型默认; DeepSeek-V4 默认 thinking enabled)
    *  FAST → false (关闭思考, 秒回)
@@ -474,7 +477,22 @@ export const useChatStore = defineStore('chat', () => {
     const chunks = typeof payload === 'string'
       ? [{ type: 'content', content: payload }]
       : Array.isArray(payload) ? payload : []
-    const msg = { id: _nextId(), role, chunks, timestamp: new Date().toISOString(), ...extra }
+    const ts = new Date().toISOString()
+    let msg
+    if (role === 'assistant') {
+      // 助手消息: versions 结构 (支持重生成分支)
+      // spanEnd = 本消息将处的索引 (push 前 length), 即"该版本无尾部消息"
+      const versionId = _nextId().replace('msg_', 'ver_')
+      msg = {
+        id: _nextId(), role,
+        versions: [{ id: versionId, chunks, timestamp: ts, spanEnd: messages.value.length }],
+        activeVersion: 0,
+        timestamp: ts,
+        ...extra,
+      }
+    } else {
+      msg = { id: _nextId(), role, chunks, timestamp: ts, ...extra }
+    }
     messages.value.push(msg)
     return msg
   }
@@ -952,7 +970,7 @@ export const useChatStore = defineStore('chat', () => {
   fetchModels()
 
   return {
-    messages, streaming, currentStreamId, error,
+    messages, visibleMessages, streaming, currentStreamId, error,
     hasMessages,
     // write_file 审批门 (阶段3.1)
     pendingApproval, resolveApproval,
