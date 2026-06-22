@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题 (km-workbench-header, 与 AgentView/Assessment 同节奏) -->
+    <!-- 页面标题 (km-workbench-header, 与 LearningSession 同节奏) -->
     <!-- ============================================================ -->
     <div class="km-workbench-header">
       <div>

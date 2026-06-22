@@ -41,9 +41,15 @@
             <el-tag :type="strategyTagType(store.feedbackStrategy)" size="small">{{ strategyLabel(store.feedbackStrategy) }}</el-tag>
           </el-descriptions-item>
         </el-descriptions>
-        <el-button v-if="store.feedbackStrategy && !store.feedbackContent" size="small" type="primary" :loading="store.loading" @click="store.fetchFeedback()">
-          获取针对性反馈 →
-        </el-button>
+        <div style="margin-bottom: 12px;">
+          <ProfileRadar :profile="store.profile" />
+        </div>
+        <div class="feedback-actions">
+          <el-button v-if="store.feedbackStrategy && !store.feedbackContent" size="small" type="primary" :loading="store.loading" @click="store.fetchFeedback()">
+            获取针对性反馈 →
+          </el-button>
+          <el-button size="small" @click="store.reset()">重新测评</el-button>
+        </div>
         <div v-if="store.feedbackContent" class="feedback-resources">
           <el-card v-for="(r, i) in (store.feedbackContent.resources || [])" :key="i" shadow="never" class="resource-item">
             <template #header>
@@ -66,6 +72,7 @@ import { computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import ProfileRadar from '@/components/ProfileRadar.vue'
 
 const store = useAssessmentStore()
 const session = useSessionStore()
@@ -74,7 +81,7 @@ const isActive = computed(() => session.activeStage === 'quiz')
 function typeLabel(t) { return { choice: '选择题', fill: '填空题', code: '代码题', judge: '判断题' }[t] || t || '题' }
 function optLabel(opt) { const m = String(opt).match(/^([A-Z])[.、．]/); return m ? m[1] : String(opt) }
 function levelLabel(l) { return { 1: '零基础', 2: '入门', 3: '进阶', 4: '高级', 5: '专家' }[l] ?? `Lv.${l}` }
-const STRATEGY = { advance: '进阶挑战', remediate: '降维解释', scaffold: '补前置基础' }
+const STRATEGY = { advance: '进阶挑战（正确率高，提升难度）', remediate: '降维解释（正确率中等，换角度讲解）', scaffold: '补前置基础（正确率低，巩固基础）' }
 function strategyLabel(s) { return STRATEGY[s] || s || '-' }
 function strategyTagType(s) { return { advance: 'success', remediate: 'warning', scaffold: 'danger' }[s] || 'info' }
 const CT = { lecture: '讲义', practice: '实操指南', quiz: '测试题', explanation: '讲解', exercise: '练习' }
@@ -109,6 +116,7 @@ function autoFillDemo() {
 .quiz-option { margin-right: 0 !important; }
 .quiz-fill { max-width: 360px; }
 .quiz-submit { display: flex; gap: 12px; margin-top: 16px; }
+.feedback-actions { display: flex; gap: 8px; margin-bottom: 12px; }
 .feedback-resources { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .resource-item { background: var(--km-bg-layer-1); }
 .quiz-loading { min-height: 80px; }

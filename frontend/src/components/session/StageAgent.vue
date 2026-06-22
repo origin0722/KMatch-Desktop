@@ -30,6 +30,10 @@
           <aside class="agent-evidence">
             <h5>{{ selectedAgent ? selectedAgent.label : '协作证据' }}</h5>
             <p class="evidence-desc">{{ selectedAgent ? selectedAgent.role : '点击左侧 Agent 查看。' }}</p>
+            <div class="evidence-meta">
+              <div><span class="label">状态</span> <strong>{{ selectedAgent ? statusLabel(selectedAgent.status) : '待选择' }}</strong></div>
+              <div v-if="selectedAgent?.retryCount > 0"><span class="label">打回次数</span> <strong>{{ selectedAgent.retryCount }} 次</strong></div>
+            </div>
           </aside>
         </div>
       </div>
@@ -71,6 +75,7 @@ const parsedLogs = computed(() => {
 })
 
 function toggleExpand() { expanded.value = !expanded.value }
+function statusLabel(s) { return { idle: '待命', running: '执行中', done: '完成', failed: '失败' }[s] || s }
 
 // activeStage 进入 agent 时自动展开
 watch(() => session.activeStage, (s) => {
@@ -117,6 +122,8 @@ watch(parsedLogs, async () => {
 .agent-evidence { padding: 8px; }
 .agent-evidence h5 { margin: 0 0 6px; font-size: 13px; color: var(--km-gray-800); }
 .evidence-desc { color: var(--km-gray-500); font-size: 11px; line-height: 1.5; margin: 0; }
+.evidence-meta { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: 11px; }
+.evidence-meta .label { color: var(--km-gray-500); font-size: 11px; margin-right: 4px; }
 
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
