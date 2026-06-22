@@ -374,23 +374,28 @@ export const useChatStore = defineStore('chat', () => {
   const hasMessages = computed(() => messages.value.length > 0)
 
   /**
-   * 当前可见消息: 每个助手消息"管辖"它到其 activeVersion.spanEnd 之间的消息。
-   * 切 version 改 spanEnd 边界 → 后续显隐。
-   * 用户消息无 versions, 总是可见 (除非被前面某助手消息的 spanEnd 截断)。
+   * 当前可见消息: 每个助手消息"管辖"它之后的消息——由其 activeVersion.trailingAfter
+   * (一组消息 ID) 决定哪些后续消息可见。切 version 换 trailingAfter → 后续显隐。
+   *
+   * trailingAfter 模型 (替代 spanEnd): 单一下标断点无法区分"旧 version 的尾随 (重生成
+   * 时应隐藏)"与"重生成后新追加的消息 (应可见)", 会导致 regen 后追问静默丢消息。
+   * trailingAfter 显式记录每个 version 自己的尾随 ID; 新版本从 [] 起, 新消息经
+   * _addMessage 钩子归入当前活跃版本的 trailingAfter。
+   *
+   * 走法: 维护 visibleTrailing (null=尚未遇到助手, 对话顶部全可见; 否则为最近一个
+   * 【可见】助手 active 版本 trailingAfter 的 Set)。每条消息 (含助手) 必须在
+   * visibleTrailing 内才可见; 可见的助手消息会把 visibleTrailing 换成自己的。
    */
   const visibleMessages = computed(() => {
     const all = messages.value
     const out = []
-    let spanEnd = Infinity // 当前段终点 (最近一个助手消息 activeVersion 的 spanEnd)
-    for (let i = 0; i < all.length; i++) {
-      if (i >= spanEnd) break // 超出当前段, 后续都隐藏 (属于被覆盖的新 version 产生)
-      const m = all[i]
+    let visibleTrailing = null // null = 还没遇到助手 (对话顶部, 全可见)
+    for (const m of all) {
+      if (visibleTrailing !== null && !visibleTrailing.has(m.id)) continue // 属于非活跃分支, 隐藏
       out.push(m)
       if (m.role === 'assistant' && Array.isArray(m.versions)) {
         const v = m.versions[m.activeVersion ?? 0]
-        if (v && typeof v.spanEnd === 'number') {
-          spanEnd = v.spanEnd // 更新段终点
-        }
+        visibleTrailing = new Set(Array.isArray(v?.trailingAfter) ? v.trailingAfter : [])
       }
     }
     return out
@@ -501,12 +506,12 @@ export const useChatStore = defineStore('chat', () => {
     let msg
     if (role === 'assistant') {
       // 助手消息: versions 结构 (支持重生成分支)
-      // spanEnd = Infinity (开放段): 线性追加的后续消息都归此版本, 直到被新 version 截断。
-      // 重生成时 (regenMessage) 旧版 spanEnd 锁定为具体值, 新版 spanEnd=Infinity。
+      // trailingAfter = [] (开放): 线性追加的后续消息经下方钩子归入当前活跃版本,
+      // 直到重生成追加新 version (新版本 trailingAfter=[], 旧版本冻结)。
       const versionId = _nextId().replace('msg_', 'ver_')
       msg = {
         id: _nextId(), role,
-        versions: [{ id: versionId, chunks, timestamp: ts, spanEnd: Infinity }],
+        versions: [{ id: versionId, chunks, timestamp: ts, trailingAfter: [] }],
         activeVersion: 0,
         timestamp: ts,
         ...extra,
@@ -514,7 +519,19 @@ export const useChatStore = defineStore('chat', () => {
     } else {
       msg = { id: _nextId(), role, chunks, timestamp: ts, ...extra }
     }
+    // trailingAfter 维护: 新消息归入"此前最后一个助手消息"的当前活跃版本分支。
+    // 线性对话 → 每条新消息追加到上一助手的 trailingAfter → 可见;
+    // regen 后新版本活跃 → 新消息归新版本 (旧版本冻结不收) → 新消息在新分支可见 (Critical: 不再静默丢)。
+    let prevAssistant = null
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+      const m = messages.value[i]
+      if (m.role === 'assistant' && Array.isArray(m.versions)) { prevAssistant = m; break }
+    }
     messages.value.push(msg)
+    if (prevAssistant && prevAssistant.id !== msg.id) {
+      const v = prevAssistant.versions[prevAssistant.activeVersion ?? 0]
+      if (v && Array.isArray(v.trailingAfter)) v.trailingAfter.push(msg.id)
+    }
     return msg
   }
 
@@ -981,12 +998,10 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
     abortController.value = new AbortController()
 
-    // 1. 锁定旧版 spanEnd (保留其 trailing 区间)
-    target.versions[target.activeVersion].spanEnd = messages.value.length
-
-    // 2. 追加新 version (无 trailing → spanEnd = targetIdx+1), activeVersion 指向它
+    // 1. 旧版 trailingAfter 冻结 (保留其旧 trailing IDs, 无需改动)
+    // 2. 追加新 version (trailingAfter=[], 无 trailing), activeVersion 指向它
     const newVerId = _nextId().replace('msg_', 'ver_')
-    target.versions.push({ id: newVerId, chunks: [], timestamp: new Date().toISOString(), spanEnd: targetIdx + 1 })
+    target.versions.push({ id: newVerId, chunks: [], timestamp: new Date().toISOString(), trailingAfter: [] })
     target.activeVersion = target.versions.length - 1
 
     // 3. 收集上下文
@@ -1040,7 +1055,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       if (toolResults.length === 0) break
 
-      // 工具结果摘要作 user 消息, 扩展新 version spanEnd 含它
+      // 工具结果摘要作 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护)
       const toolResultSummary = toolResults.map((tr) => {
         if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
         if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
@@ -1061,8 +1076,8 @@ export const useChatStore = defineStore('chat', () => {
         return ''
       }).filter(Boolean).join('\n\n')
       if (toolResultSummary) {
+        // trailingAfter 由 _addMessage 钩子自动维护 (target 为最后一个助手时, 归入新版本)
         _addMessage('user', `[工具返回]\n${toolResultSummary}`)
-        target.versions[target.activeVersion].spanEnd = messages.value.length
       }
     }
   }
