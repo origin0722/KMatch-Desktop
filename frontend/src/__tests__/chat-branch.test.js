@@ -86,3 +86,42 @@ describe('chat 分支 — visibleMessages + setVersion', () => {
     expect(a.activeVersion).toBe(0)
   })
 })
+
+describe('chat 分支 — regenMessage', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('regenMessage 追加新 version + activeVersion 指向新 + 旧版 spanEnd 锁定', async () => {
+    const chat = useChatStore()
+    pushUser(chat, 'q1')                          // 0
+    const a = pushAssistant(chat, { versions: [{ chunks: [{ type: 'content', content: 'old' }], spanEnd: Infinity }] }) // 1
+    pushUser(chat, 'q2')                          // 2 — trailing under old version
+    // mock _streamResponse 不实际请求: regenMessage 应建 version 但 SSE 会抛 (无 window.api.http mock)
+    try {
+      await chat.regenMessage(a.id)
+    } catch { /* SSE mock 缺失会抛, 忽略 — 只验结构 */ }
+    const updated = chat.messages.find((m) => m.id === a.id)
+    expect(updated.versions.length).toBe(2)
+    expect(updated.activeVersion).toBe(1) // 指向新
+    // 新版无 trailing → spanEnd = targetIdx+1 (=2), 隐藏 q2 (index2 >= 2)
+    expect(updated.versions[1].spanEnd).toBe(2)
+    // 旧版 spanEnd 锁定为 regen 时的 messages 长度 (=3: q1, a, q2)
+    expect(updated.versions[0].spanEnd).toBe(3)
+  })
+
+  it('regenMessage 后切回旧版, 旧版 trailing (q2) 可见', async () => {
+    const chat = useChatStore()
+    pushUser(chat, 'q1')                          // 0
+    const a = pushAssistant(chat, { versions: [{ chunks: [{ type: 'content', content: 'old' }], spanEnd: Infinity }] }) // 1
+    pushUser(chat, 'q2')                          // 2
+    try { await chat.regenMessage(a.id) } catch { /* ignore */ }
+    // spanEnd 语义: 新版 (无 trailing) = targetIdx+1 (=2); 旧版 (有 trailing q2) = messages.length (=3)
+    const updated = chat.messages.find((m) => m.id === a.id)
+    expect(updated.versions[1].spanEnd).toBe(2) // 新版无 trailing → 自己 index+1
+    expect(updated.versions[0].spanEnd).toBe(3) // 旧版 trailing 到 q2 → length
+    // 新版视角: q2 index2 >= 新版 spanEnd 2 → 隐藏
+    chat.setVersion(a.id, 1) // 确保新版
+    expect(chat.visibleMessages.length).toBe(2) // q1 + a新版 (q2 隐藏)
+    chat.setVersion(a.id, 0) // 切旧版
+    expect(chat.visibleMessages.length).toBe(3) // q1 + a旧版 + q2
+  })
+})

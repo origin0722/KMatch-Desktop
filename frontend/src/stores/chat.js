@@ -969,6 +969,102 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /** 重生成指定助手消息 (追加新 version, 不覆盖原) */
+  async function regenMessage(msgId) {
+    if (streaming.value) return // 流中禁止重生成
+    const target = messages.value.find((m) => m.id === msgId)
+    if (!target || target.role !== 'assistant' || !Array.isArray(target.versions)) return
+    const targetIdx = messages.value.indexOf(target)
+
+    error.value = null
+    abortController.value = new AbortController()
+
+    // 1. 锁定旧版 spanEnd (保留其 trailing 区间)
+    target.versions[target.activeVersion].spanEnd = messages.value.length
+
+    // 2. 追加新 version (无 trailing → spanEnd = targetIdx+1), activeVersion 指向它
+    const newVerId = _nextId().replace('msg_', 'ver_')
+    target.versions.push({ id: newVerId, chunks: [], timestamp: new Date().toISOString(), spanEnd: targetIdx + 1 })
+    target.activeVersion = target.versions.length - 1
+
+    // 3. 收集上下文
+    const context = await _collectContext()
+
+    // 4. 工具循环 (复用 sendMessage 逻辑, 历史只取 target 之前的 visible 消息)
+    let toolRound = 0
+    while (toolRound < MAX_TOOL_ROUNDS) {
+      toolRound++
+      const systemMsg = buildSystemPrompt(context)
+      const visibleSoFar = visibleMessages.value.filter((m) => messages.value.indexOf(m) < targetIdx)
+      const historyMsgs = visibleSoFar.map((m) => ({
+        role: m.role,
+        content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
+      }))
+      const apiMessages = [systemMsg, ...historyMsgs]
+
+      streaming.value = true
+      currentStreamId.value = target.id
+      try {
+        await _streamResponse(apiMessages, target)
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          if (contentTextOf(target) === '') appendTextChunk(activeChunksOf(target), 'content', '(已停止)')
+          streaming.value = false; currentStreamId.value = null; return
+        }
+        error.value = e.message || '重生成失败'
+        if (contentTextOf(target) === '') appendTextChunk(activeChunksOf(target), 'content', `❌ ${error.value}`)
+        streaming.value = false; currentStreamId.value = null; return
+      }
+      streaming.value = false
+      currentStreamId.value = null
+
+      // 流式后切 chunks (think 保留 + segs)
+      const segs = splitToolCallChunks(contentTextOf(target))
+      const hasToolCall = segs.some((c) => c.type === 'tool_call')
+      if (!hasToolCall) break
+
+      const thinkChunks = activeChunksOf(target).filter((c) => c.type === 'think')
+      target.versions[target.activeVersion].chunks = [...thinkChunks, ...segs]
+
+      // 执行 tool_call
+      const toolResults = []
+      for (const chunk of target.versions[target.activeVersion].chunks) {
+        if (chunk.type !== 'tool_call') continue
+        chunk.status = 'in_progress'
+        const result = await _executeTool(chunk.args)
+        chunk.status = result.error ? 'error' : 'completed'
+        chunk.result = result
+        toolResults.push({ call: chunk.args, result })
+      }
+      if (toolResults.length === 0) break
+
+      // 工具结果摘要作 user 消息, 扩展新 version spanEnd 含它
+      const toolResultSummary = toolResults.map((tr) => {
+        if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
+        if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
+        if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
+        if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
+        if (tr.result.tool === 'generate_project_graph') {
+          const s = tr.result.stats || {}
+          return `项目图谱已生成 (${tr.result.sourcePath}). 统计: 模块${s.module||0}/类${s.class||0}/函数${s.function||0}/方法${s.method||0}.`
+        }
+        if (tr.result.tool === 'code_review') {
+          const rv = tr.result.review || {}
+          return `代码审查 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score!=null?(rv.overall_score*100).toFixed(0)+'%':'?'}.`
+        }
+        if (tr.result.tool === 'code_test') {
+          const rp = tr.result.report || {}; const sm = rp.summary || {}
+          return `代码测试 (${tr.result.sourcePath}): ${sm.passed||0}/${sm.total||0} 通过.`
+        }
+        return ''
+      }).filter(Boolean).join('\n\n')
+      if (toolResultSummary) {
+        _addMessage('user', `[工具返回]\n${toolResultSummary}`)
+        target.versions[target.activeVersion].spanEnd = messages.value.length
+      }
+    }
+  }
+
   function stopStreaming() {
     abortController.value?.abort()
   }
@@ -1010,6 +1106,6 @@ export const useChatStore = defineStore('chat', () => {
     tutorMode, setTutorMode,
     // 对话
     sendMessage, stopStreaming, clearMessages,
-    setVersion,
+    setVersion, regenMessage,
   }
 })
