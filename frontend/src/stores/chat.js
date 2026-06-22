@@ -501,11 +501,12 @@ export const useChatStore = defineStore('chat', () => {
     let msg
     if (role === 'assistant') {
       // 助手消息: versions 结构 (支持重生成分支)
-      // spanEnd = 本消息将处的索引 (push 前 length), 即"该版本无尾部消息"
+      // spanEnd = Infinity (开放段): 线性追加的后续消息都归此版本, 直到被新 version 截断。
+      // 重生成时 (regenMessage) 旧版 spanEnd 锁定为具体值, 新版 spanEnd=Infinity。
       const versionId = _nextId().replace('msg_', 'ver_')
       msg = {
         id: _nextId(), role,
-        versions: [{ id: versionId, chunks, timestamp: ts, spanEnd: messages.value.length }],
+        versions: [{ id: versionId, chunks, timestamp: ts, spanEnd: Infinity }],
         activeVersion: 0,
         timestamp: ts,
         ...extra,
