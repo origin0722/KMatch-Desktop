@@ -373,8 +373,28 @@ export const useChatStore = defineStore('chat', () => {
 
   const hasMessages = computed(() => messages.value.length > 0)
 
-  /** 当前可见消息 (Task 3 加 trailingAfter 过滤; 此处先透传保证不崩) */
-  const visibleMessages = computed(() => messages.value)
+  /**
+   * 当前可见消息: 每个助手消息"管辖"它到其 activeVersion.spanEnd 之间的消息。
+   * 切 version 改 spanEnd 边界 → 后续显隐。
+   * 用户消息无 versions, 总是可见 (除非被前面某助手消息的 spanEnd 截断)。
+   */
+  const visibleMessages = computed(() => {
+    const all = messages.value
+    const out = []
+    let spanEnd = Infinity // 当前段终点 (最近一个助手消息 activeVersion 的 spanEnd)
+    for (let i = 0; i < all.length; i++) {
+      if (i >= spanEnd) break // 超出当前段, 后续都隐藏 (属于被覆盖的新 version 产生)
+      const m = all[i]
+      out.push(m)
+      if (m.role === 'assistant' && Array.isArray(m.versions)) {
+        const v = m.versions[m.activeVersion ?? 0]
+        if (v && typeof v.spanEnd === 'number') {
+          spanEnd = v.spanEnd // 更新段终点
+        }
+      }
+    }
+    return out
+  })
 
   /** 由 aiSettings.reasoningMode 推导后端 reasoning 字段 (借鉴 Apix llm_adapter):
    *  AUTO → 不传 (模型默认; DeepSeek-V4 默认 thinking enabled)
@@ -952,6 +972,14 @@ export const useChatStore = defineStore('chat', () => {
     abortController.value?.abort()
   }
 
+  /** 切助手消息的版本 (prev/next 导航) */
+  function setVersion(msgId, idx) {
+    const m = messages.value.find((x) => x.id === msgId)
+    if (!m || !Array.isArray(m.versions)) return
+    if (idx < 0 || idx >= m.versions.length) return
+    m.activeVersion = idx
+  }
+
   function clearMessages() {
     abortController.value?.abort()
     // 取消未决的 write_file 审批 (按拒绝处理, 解开 await)
@@ -981,5 +1009,6 @@ export const useChatStore = defineStore('chat', () => {
     tutorMode, setTutorMode,
     // 对话
     sendMessage, stopStreaming, clearMessages,
+    setVersion,
   }
 })
