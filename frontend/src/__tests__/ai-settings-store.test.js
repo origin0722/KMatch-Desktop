@@ -183,9 +183,10 @@ describe('aiSettings store', () => {
 
   it('persists provider/apiKey/customBaseUrl and restores them', async () => {
     const settings = useAiSettingsStore()
-    settings.setApiKey('sk-test-123')
-    settings.setCustomBaseUrl('https://my.proxy/v1')
-    settings.setProvider('custom')
+    // setters 现为 async (fetchModels 校正 model 后再 persist), 需 await
+    await settings.setApiKey('sk-test-123')
+    await settings.setCustomBaseUrl('https://my.proxy/v1')
+    await settings.setProvider('custom')
 
     setActivePinia(createPinia())
     const restored = useAiSettingsStore()
@@ -195,6 +196,18 @@ describe('aiSettings store', () => {
     expect(restored.provider).toBe('custom')
     // custom 厂商 getBaseUrl 取 customBaseUrl
     expect(restored.getBaseUrl()).toBe('https://my.proxy/v1')
+  })
+
+  it('fetchModels 失败/离线时仍校正 model 到当前厂商 fallback (不残留跨厂商 model)', async () => {
+    // window.api 未 mock → fetchModels 走 catch; custom 无 base → !base 分支
+    const settings = useAiSettingsStore()
+    settings.setProvider('openai') // 不 await: provider 已同步设
+    // 模拟残留跨厂商 model
+    settings.model = 'deepseek-v4-pro'
+    await settings.fetchModels()
+    // openai fallback 含 gpt-4o; model 应被校正为 openai 系, 不再是 deepseek-*
+    expect(settings.models).toContain('gpt-4o')
+    expect(settings.model).not.toMatch(/^deepseek/)
   })
 
   it('migrates provider config from legacy chat localStorage keys', () => {

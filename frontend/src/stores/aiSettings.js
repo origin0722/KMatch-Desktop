@@ -193,6 +193,10 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     const base = getBaseUrl()
     if (!base) {
       models.value = fallbackModels(provider.value)
+      // 无 base (custom 未填 URL): 仍校正 model 到 fallback, 避免残留跨厂商旧值
+      if (!model.value || !models.value.find((m) => m === model.value)) {
+        model.value = models.value[0] || ''
+      }
       return
     }
     try {
@@ -207,28 +211,36 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
         }
       } else {
         models.value = fallbackModels(provider.value)
+        if (!model.value || !models.value.find((m) => m === model.value)) {
+          model.value = models.value[0] || ''
+        }
       }
     } catch {
+      // 离线/失败: 回退并校正 model, 避免向当前厂商发送跨厂商残留 model id
       models.value = fallbackModels(provider.value)
+      if (!model.value || !models.value.find((m) => m === model.value)) {
+        model.value = models.value[0] || ''
+      }
     }
   }
 
-  function setProvider(pid) {
+  // setters: 先 fetchModels 校正 model, 再 persist —— 避免把 fetch 前的旧/跨厂商 model 写进 blob
+  async function setProvider(pid) {
     provider.value = pid
+    await fetchModels()
     persist()
-    fetchModels()
   }
 
-  function setApiKey(key) {
+  async function setApiKey(key) {
     apiKey.value = key
+    await fetchModels()
     persist()
-    fetchModels()
   }
 
-  function setCustomBaseUrl(url) {
+  async function setCustomBaseUrl(url) {
     customBaseUrl.value = (url || '').trim()
+    if (provider.value === 'custom') await fetchModels()
     persist()
-    if (provider.value === 'custom') fetchModels()
   }
 
   function setProxy(next) {
