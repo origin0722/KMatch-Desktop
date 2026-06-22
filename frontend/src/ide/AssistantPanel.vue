@@ -170,11 +170,11 @@
                 <span class="ver-count">{{ msg.activeVersion + 1 }}/{{ msg.versions.length }}</span>
                 <button class="ver-btn" :disabled="msg.activeVersion === msg.versions.length - 1" title="下一版" @click="chat.setVersion(msg.id, msg.activeVersion + 1)">›</button>
               </div>
-              <!-- 重生成钮: hover 浮现, streaming 禁用 -->
+              <!-- 重生成钮: hover 浮现, streaming/审批门/工具循环中禁用 -->
               <button
                 class="regen-btn"
-                :disabled="chat.streaming"
-                :title="chat.streaming ? '生成中…' : '重新生成'"
+                :disabled="chat.streaming || chat.pendingApproval"
+                :title="(chat.streaming || chat.pendingApproval) ? '生成中…' : '重新生成'"
                 @click="chat.regenMessage(msg.id)"
               >
                 <el-icon :size="14"><RefreshRight /></el-icon>
