@@ -1,6 +1,17 @@
 # KMatch·知链 — 项目依赖清单
 
-> 最后更新：2026-06-16 | 基于 `backend/requirements.txt` + 本地实测版本
+> 最后更新：2026-06-23 | 基于 `package.json` + `backend/requirements.txt` + 本地实测版本
+
+## 0. Desktop 壳栈（Electron + Monaco）
+
+| 依赖 | 版本 | 说明 |
+|:---|:---|:---|
+| `electron` | `^33.4.11` | 桌面壳主进程 |
+| `electron-vite` | `^2.3.0` | Electron + Vite 集成 |
+| `electron-builder` | `^25.1.0` | NSIS 安装包打包 |
+| `monaco-editor` | `^0.52.0` | 代码编辑器（frontend 依赖） |
+| `chokidar` | `^4.0.3` | 文件监听（v4 非 v5，ESM/CJS 兼容，见 [ADR-0004](adr/0004-file-watcher-worker-threads.md)） |
+| `rollup` | (electron-vite 拉取) | watcher-worker 多入口 build |
 
 ## 1. 运行环境
 
@@ -10,6 +21,7 @@
 | Node.js | `>=18` | — |
 | Docker Desktop | 最新稳定版 | Neo4j + 容器化部署 |
 | Git | `>=2.30` | — |
+| Windows 开发者模式 | — | 首次打包 winCodeSign 符号链接需要 |
 
 ## 2. 多智能体框架（核心）
 
@@ -81,12 +93,18 @@ KMatch 使用 **OpenAI 兼容接口**，可接入以下模型（择一即可）�
 
 ## 9. 前端
 
-| 框架/库 | 版本要求 | 说明 |
+| 框架/库 | 版本 | 说明 |
 |:---|:---|:---|
-| Vue 3 | `^3.4` | 渐进式前端框架 |
-| Element Plus | `^2.8` | UI 组件库 |
-| AntV G6 | `^5.0` | 知识图谱可视化 |
-| Vite | `^5` | 构建工具 |
+| Vue 3 | `^3.4.0` | 渐进式前端框架 |
+| Element Plus | `^2.8.0` | UI 组件库 |
+| AntV G6 | `^5.0.0` | 知识图谱可视化 |
+| Pinia | `^2.2.0` | 状态管理（8 stores） |
+| Vue Router | `^4.3.0` | 路由 |
+| Vite | `^5.4.0` | 构建工具 |
+| `marked` | `^18.0.5` | Markdown 渲染（AI 消息） |
+| Vitest | `^2.1.9` | 单元测试 |
+| `@vue/test-utils` | `^2.4.11` | Vue 组件测试 |
+| `jsdom` | `^29.1.1` | Vitest DOM 环境 |
 
 ## 10. 示例/演示项目依赖
 
