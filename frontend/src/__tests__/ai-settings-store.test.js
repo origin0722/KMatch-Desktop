@@ -166,4 +166,46 @@ describe('aiSettings store', () => {
     expect(block).toContain('xxxxxxxxxxxxxxxxxxxx…')
     expect(block).not.toContain('记忆10')
   })
+
+  // ---- C1.1: 厂商 & 模型配置 (从 chat.js 迁入, 统一 AI 配置单一源) ----
+  it('loads provider/model defaults and exposes provider helpers', () => {
+    const settings = useAiSettingsStore()
+
+    expect(settings.provider).toBe('deepseek')
+    expect(settings.model).toBe('deepseek-v4-pro')
+    expect(settings.apiKey).toBe('')
+    expect(settings.customBaseUrl).toBe('')
+    // DeepSeek 预置 Base URL
+    expect(settings.getBaseUrl()).toBe('https://api.deepseek.com/v1')
+    // 无 apiKey 时 fetchModels 走 fallback, 不触网
+    expect(settings.models).toContain('deepseek-v4-pro')
+  })
+
+  it('persists provider/apiKey/customBaseUrl and restores them', async () => {
+    const settings = useAiSettingsStore()
+    settings.setApiKey('sk-test-123')
+    settings.setCustomBaseUrl('https://my.proxy/v1')
+    settings.setProvider('custom')
+
+    setActivePinia(createPinia())
+    const restored = useAiSettingsStore()
+
+    expect(restored.apiKey).toBe('sk-test-123')
+    expect(restored.customBaseUrl).toBe('https://my.proxy/v1')
+    expect(restored.provider).toBe('custom')
+    // custom 厂商 getBaseUrl 取 customBaseUrl
+    expect(restored.getBaseUrl()).toBe('https://my.proxy/v1')
+  })
+
+  it('migrates provider config from legacy chat localStorage keys', () => {
+    localStorage.setItem('kmatch-chat-provider', 'openai')
+    localStorage.setItem('kmatch-chat-apikey', 'sk-legacy')
+    localStorage.setItem('kmatch-chat-baseurl', 'https://legacy/v1')
+
+    const settings = useAiSettingsStore()
+
+    expect(settings.provider).toBe('openai')
+    expect(settings.apiKey).toBe('sk-legacy')
+    expect(settings.customBaseUrl).toBe('https://legacy/v1')
+  })
 })

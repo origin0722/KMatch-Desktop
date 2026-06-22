@@ -276,14 +276,14 @@
       <div class="input-bar-row">
         <!-- 厂商选择 -->
         <el-select
-          :model-value="chat.provider"
+          :model-value="aiSettings.provider"
           size="small"
           class="provider-select"
           :disabled="chat.streaming"
           @change="onProviderChange"
         >
           <el-option
-            v-for="p in chat.PROVIDERS"
+            v-for="p in PROVIDERS"
             :key="p.id"
             :label="p.label"
             :value="p.id"
@@ -293,8 +293,8 @@
         <el-button
           size="small"
           class="apikey-btn"
-          :class="{ set: !!chat.apiKey }"
-          :title="chat.apiKey ? '已设置 API Key' : '设置 API Key'"
+          :class="{ set: !!aiSettings.apiKey }"
+          :title="aiSettings.apiKey ? '已设置 API Key' : '设置 API Key'"
           :disabled="chat.streaming"
           @click="openApiKeyDialog"
         >
@@ -317,8 +317,8 @@
           </el-button>
         </el-tooltip>
         <!-- 模型 (自动) -->
-        <span class="model-hint" :title="'当前模型: ' + (chat.model || '未选择')">
-          {{ chat.model || '—' }}
+        <span class="model-hint" :title="'当前模型: ' + (aiSettings.model || '未选择')">
+          {{ aiSettings.model || '—' }}
         </span>
         <el-button
           v-if="chat.streaming"
@@ -359,7 +359,7 @@
             clearable
           />
         </el-form-item>
-        <el-form-item v-if="chat.provider === 'custom'" label="API Base URL">
+        <el-form-item v-if="aiSettings.provider === 'custom'" label="API Base URL">
           <el-input
             v-model="baseUrlInput"
             placeholder="https://api.example.com/v1"
@@ -367,8 +367,8 @@
           />
         </el-form-item>
         <div class="apikey-tip">
-          当前厂商: {{ chat.PROVIDERS.find((p) => p.id === chat.provider)?.label || chat.provider }}
-          <span v-if="chat.provider !== 'custom'">· Base URL 已预置</span>
+          当前厂商: {{ PROVIDERS.find((p) => p.id === aiSettings.provider)?.label || aiSettings.provider }}
+          <span v-if="aiSettings.provider !== 'custom'">· Base URL 已预置</span>
         </div>
       </el-form>
       <template #footer>
@@ -384,12 +384,14 @@ import { ref, reactive, watch, nextTick } from 'vue'
 import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
+import { useAiSettingsStore, PROVIDERS } from '@/stores/aiSettings'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
 const sidebar = useSidebarStore()
 const chat = useChatStore()
+const aiSettings = useAiSettingsStore()
 const projectGraph = useProjectGraphStore()
 
 const inputText = ref('')
@@ -502,7 +504,7 @@ function handleSend() {
 }
 
 function onProviderChange(val) {
-  chat.setProvider(val)
+  aiSettings.setProvider(val)
 }
 
 // ---- API Key 设置对话框 (Electron 不支持 window.prompt, 用 el-dialog) ----
@@ -511,18 +513,18 @@ const apiKeyInput = ref('')
 const baseUrlInput = ref('')
 
 function openApiKeyDialog() {
-  apiKeyInput.value = chat.apiKey || ''
-  baseUrlInput.value = chat.customBaseUrl || ''
+  apiKeyInput.value = aiSettings.apiKey || ''
+  baseUrlInput.value = aiSettings.customBaseUrl || ''
   apiKeyDialogVisible.value = true
 }
 
 function saveApiKey() {
-  chat.setApiKey(apiKeyInput.value.trim())
-  if (chat.provider === 'custom') {
-    chat.setCustomBaseUrl(baseUrlInput.value.trim())
+  aiSettings.setApiKey(apiKeyInput.value.trim())
+  if (aiSettings.provider === 'custom') {
+    aiSettings.setCustomBaseUrl(baseUrlInput.value.trim())
   }
   apiKeyDialogVisible.value = false
-  ElMessage.success(chat.apiKey ? 'API 设置已保存' : '已清除 API Key')
+  ElMessage.success(aiSettings.apiKey ? 'API 设置已保存' : '已清除 API Key')
 }
 
 function onKeydown(e) {

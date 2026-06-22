@@ -342,17 +342,9 @@ export const useChatStore = defineStore('chat', () => {
   const pendingApproval = ref(null)
   let _approvalId = 0
 
-  // ---- 厂商 & API Key ----
-  const PROVIDERS = [
-    { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
-    { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-    { id: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1' },
-    { id: 'custom', label: '自定义', baseUrl: '' },
-  ]
+  // 厂商 & 模型配置已迁至 aiSettings store (C1.1, 统一 AI 配置单一源);
+  // chat 经 useAiSettingsStore() 读取 provider/model/apiKey/getBaseUrl。
 
-  const STORAGE_KEY_PROVIDER = 'kmatch-chat-provider'
-  const STORAGE_KEY_APIKEY = 'kmatch-chat-apikey'
-  const STORAGE_KEY_BASEURL = 'kmatch-chat-baseurl'
   const STORAGE_KEY_TUTOR = 'kmatch-chat-tutor'
 
   function _loadStr(key, fallback = '') {
@@ -361,12 +353,6 @@ export const useChatStore = defineStore('chat', () => {
   function _saveStr(key, val) {
     try { localStorage.setItem(key, val) } catch { /* noop */ }
   }
-
-  const provider = ref(_loadStr(STORAGE_KEY_PROVIDER, 'deepseek'))
-  const apiKey = ref(_loadStr(STORAGE_KEY_APIKEY, ''))
-  const customBaseUrl = ref(_loadStr(STORAGE_KEY_BASEURL, ''))  // 自定义厂商 Base URL
-  const model = ref('deepseek-v4-pro')  // 自动从厂商拉取后设置
-  const models = ref([])                // 厂商返回的模型列表
 
   // ---- 阶段4③ 启发式导学模式 (赛题(4)②, 持久化) ----
   const tutorMode = ref(_loadStr(STORAGE_KEY_TUTOR, 'false') === 'true')
@@ -412,79 +398,6 @@ export const useChatStore = defineStore('chat', () => {
       if (mode === 'deep') return true
     } catch { /* aiSettings 未就绪, 走默认 */ }
     return undefined
-  }
-
-  function providerMeta() {
-    return PROVIDERS.find((p) => p.id === provider.value) || PROVIDERS[0]
-  }
-
-  // ---- 自动拉取模型列表 ----
-  async function fetchModels() {
-    const meta = providerMeta()
-    const key = apiKey.value.trim()
-    if (!key) {
-      // 无 key 时用默认模型列表
-      models.value = _fallbackModels(provider.value)
-      if (!model.value || !models.value.find((m) => m === model.value)) {
-        model.value = models.value[0] || ''
-      }
-      return
-    }
-    const base = getBaseUrl()
-    if (!base) {
-      models.value = _fallbackModels(provider.value)
-      return
-    }
-    try {
-      // S1: 走 IPC 代理 (window.api.http), 桌面应用无需浏览器 fetch
-      const res = await window.api.http.request('POST', '/api/chat/models', { base_url: base, api_key: key })
-      const data = res.body
-      if (!res.ok) throw new Error(typeof data === 'string' ? data : (data?.error || `HTTP ${res.status}`))
-      if (data.models?.length) {
-        models.value = data.models.sort()
-        // 自动选第一个，或保留当前有效模型
-        if (!model.value || !data.models.includes(model.value)) {
-          model.value = data.models[0]
-        }
-      } else {
-        models.value = _fallbackModels(provider.value)
-      }
-    } catch {
-      models.value = _fallbackModels(provider.value)
-    }
-  }
-
-  function _fallbackModels(pid) {
-    const map = {
-      deepseek: ['deepseek-v4-pro', 'deepseek-v3', 'deepseek-reasoner'],
-      openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-      ollama: ['llama3', 'qwen2.5', 'codellama'],
-      custom: [],
-    }
-    return map[pid] || []
-  }
-
-  function setProvider(pid) {
-    provider.value = pid
-    _saveStr(STORAGE_KEY_PROVIDER, pid)
-    fetchModels()
-  }
-
-  function setApiKey(key) {
-    apiKey.value = key
-    _saveStr(STORAGE_KEY_APIKEY, key)
-    fetchModels()
-  }
-
-  function setCustomBaseUrl(url) {
-    customBaseUrl.value = (url || '').trim()
-    _saveStr(STORAGE_KEY_BASEURL, customBaseUrl.value)
-    if (provider.value === 'custom') fetchModels()
-  }
-
-  function getBaseUrl() {
-    const meta = providerMeta()
-    return meta.baseUrl || customBaseUrl.value || ''
   }
 
   function setTutorMode(on) {
@@ -556,13 +469,14 @@ export const useChatStore = defineStore('chat', () => {
   // SSE 流式: Electron 走 IPC 代理 (window.api.http.stream), 浏览器 dev 走 fetch 回退。
   // 两路共用 _applySseBlock 解析, 保证渲染层行为一致。
   async function _streamResponse(apiMessages, assistantMsg) {
+    const ai = useAiSettingsStore()
     const body = {
       messages: apiMessages,
       stream: true,
       max_tokens: 8192,
-      model: model.value,
-      api_key: apiKey.value || undefined,
-      base_url: getBaseUrl() || undefined,
+      model: ai.model,
+      api_key: ai.apiKey || undefined,
+      base_url: ai.getBaseUrl() || undefined,
     }
     // DeepSeek-V4 等思考模型经 extra_body.thinking 控制 (后端 _build_extra_body)
     const reasoning = _reasoningForRequest()
@@ -855,7 +769,7 @@ export const useChatStore = defineStore('chat', () => {
       const aiSettings = useAiSettingsStore()
       ctx.allowedTools = buildAdvertisedToolNames(aiSettings.permissionFor)
       ctx.memoriesBlock = aiSettings.formatEnabledMemories()
-      ctx.reasoningInstruction = aiSettings.reasoningInstruction(provider.value, model.value)
+      ctx.reasoningInstruction = aiSettings.reasoningInstruction(aiSettings.provider, aiSettings.model)
     } catch { /* aiSettings store 未就绪, 忽略 */ }
 
     if (!ws.hasProject) return ctx
@@ -1108,17 +1022,11 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
   }
 
-  // 初始化
-  fetchModels()
-
   return {
     messages, visibleMessages, streaming, currentStreamId, error,
     hasMessages,
     // write_file 审批门 (阶段3.1)
     pendingApproval, resolveApproval,
-    // 厂商 & 模型
-    provider, apiKey, customBaseUrl, model, models, PROVIDERS,
-    setProvider, setApiKey, setCustomBaseUrl, fetchModels,
     // 启发式导学模式 (阶段4③)
     tutorMode, setTutorMode,
     // 对话
