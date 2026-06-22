@@ -32,11 +32,8 @@
           <span class="hint-text">选择学习场景类型</span>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" :disabled="!canStart" @click="handleStart">
+          <el-button type="primary" size="large" :disabled="!canStart" :loading="store.loading" @click="handleStart">
             开始测评 →
-          </el-button>
-          <el-button size="large" :loading="store.loading" @click="handleQuickDemo">
-            快速体验（自动作答）
           </el-button>
           <span v-if="!canStart" class="hint-text">请选择或输入学习目标方向</span>
         </el-form-item>
@@ -61,10 +58,6 @@ const canStart = computed(() => form.targetDirection.trim().length > 0)
 async function handleStart() {
   if (!canStart.value) return
   await store.startAssessment({ targetDirection: form.targetDirection.trim(), scene: form.scene })
-}
-async function handleQuickDemo() {
-  if (!canStart.value) return
-  await store.startDemoStream({ targetDirection: form.targetDirection.trim(), scene: form.scene })
 }
 </script>
 
