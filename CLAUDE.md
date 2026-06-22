@@ -200,6 +200,16 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   - 项目图谱失效 (赛题场景二正确性): projectGraph stale 标志 + markStale; workspace onFileChange 调 markStale; AssistantPanel stale 时 alert 提示 + 禁用实体跳转 (避免行号漂移后跳错行)
   · 93 测试全过 (新增 13: watcher-factory 7 + workspace-watcher 6, 含仓库首个 window.api mock 模式) + vite build 通过
   · 手动 e2e 待跑 (非图谱项); 图谱失效链路待前后端调好补验
+**阶段9** (6/22): 学习会话三合一 (答题 + Agent 协同 + 专属图谱) ✅
+  - 把 Assessment + AgentView + 知识图谱三合一成 LearningSession 纵向会话流, Agent 推动 4 阶段产出卡 (目标→答题→协同→图谱)
+  - 新增: stores/session.js (activeStage computed 派生自 assessment, graph>agent>quiz>goal 优先级; splitView 白名单); 4 阶段卡 (StageGoal/StageQuiz/StageAgent/StageGraph); SplitPane 主从分屏; LearningSession 主视图 + 进度连线
+  - 双向联动: chat.js buildSystemPrompt 非导学模式也注入学情画像 (profile+knowledgeGraph), 助手可回答"为什么这样规划"
+  - 主从分屏 (非 VSCode 平等容器, YAGNI): 会话流主体 + 至多 1 右侧分屏视图; v-show 常驻不复制组件, 与 S6 一致; 不引布局库
+  - 接线: 活动栏 assessment/agents → learning-session; Dashboard/Learning/KnowledgeGraph "去测评"按钮改指 learning-session
+  - 删除: Assessment.vue/AgentView.vue (逻辑搬进 session 组件) + 孤儿 AssessmentReport.vue/ReviewReport.vue + 4 测试
+  · 82 测试全过 (新增 session-store 10 + learning-session 2; 删 4 孤儿测试 -20) + vite build 通过
+  · subagent-driven 执行, 12 commits, 最终整分支 code review Approved (修了孤儿/雷达图/reset/策略/retryCount 回归)
+  · 手动 e2e 待跑; 后续 polish (M-3~M-8 minor)
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5/S6~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留)。
 
 ### 原 KMatch 后端已交付项
