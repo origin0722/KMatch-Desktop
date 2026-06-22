@@ -256,8 +256,24 @@ BUG 清单: 76 条 (76 已解决, 含 IDE 化 S7-S9 三断点)
 
 ### 文档维护
 - 每完成一个功能模块，同步更新 `docs/devlogs/`
-- 遇到 Bug 记录到 `docs/BUG决策日志.md`
-- 重大架构变更更新本文件
+- 新 Bug 开 GitHub Issue（见下方 Agent skills），`docs/BUG决策日志.md` 为历史存档不再新增
+- 重大架构变更更新本文件 + 记 ADR (`docs/adr/`)
+
+## Agent skills
+
+> 配套 Matt Pocock 中文版 skills（装在 `.claude/skills/`）。engineering skills 读取下列三份配置文件。
+
+### Issue tracker
+
+GitHub Issues（`gh` CLI）。新 bug/任务一律开 issue。见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+5 个 canonical role（`needs-triage`/`needs-info`/`ready-for-agent`/`ready-for-human`/`wontfix`）+ 分类 label（`bug`/`refactor`/`documentation`/`competition`）。见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+Single-context：根 `CONTEXT.md` + `docs/adr/`。见 `docs/agents/domain.md`。
 
 ## 首次使用
 
