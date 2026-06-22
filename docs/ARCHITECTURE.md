@@ -156,4 +156,4 @@ assessment, projectGraph, sidebar, aiSettings, theme → 叶
 
 ## 4. 已知脆弱点
 
-F1–F15 脆弱点清单与"是否纳入重构"决策见 [重构方案_解藕.md](./重构方案_解藕.md)，已全部转为 GitHub Issues。
+F1–F15 脆弱点清单与"是否纳入重构"决策见 [重构方案_解耦.md](./重构方案_解耦.md)，已全部转为 GitHub Issues。

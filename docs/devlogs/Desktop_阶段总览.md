@@ -63,14 +63,14 @@
 ## 已知待修
 - S1–S6 均已修（见各阶段）
 - 沙箱强化 DockerSandboxExecutor（阶段5 残留）
-- F1–F15 脆弱点 + 解藕 candidates → GitHub Issues 跟踪（见 [../重构方案_解藕.md](../重构方案_解藕.md)）
+- F1–F15 脆弱点 + 解耦 candidates → GitHub Issues 跟踪（见 [../重构方案_解耦.md](../重构方案_解耦.md)）
 
 ## 规范化（2026-06-23，feature/regularization 分支）
 
 文档/流程规范化，不改业务代码：
 - 领域文档：`CONTEXT.md` + `docs/adr/0001..0005`
-- 架构梳理：`docs/ARCHITECTURE.md`（进程拓扑/6 数据流/状态更新流）+ `docs/重构方案_解藕.md`（C1–C4 + F1–F15 决策表）
+- 架构梳理：`docs/ARCHITECTURE.md`（进程拓扑/6 数据流/状态更新流）+ `docs/重构方案_解耦.md`（C1–C4 + F1–F15 决策表）
 - 文档重构：README 重写为 Desktop 版、旧 Web 文档归档 `docs/legacy/`、CLAUDE.md 瘦身、devlog 索引补全
 - 用例注释：6 裸 + 4 部分前端测试补场景注释（94 测试全过）
 - Skills：装 Matt Pocock 中文版 skills 到 `.claude/skills/`；建 GitHub triage + 分类 label
-- **bug/任务转 GitHub Issues**（24 条）：#1 赛题锚点 / #2 总览 / #3–#6 C1–C4 解藕 / #7–#22 F1–F15 bug+refactor / #23–#24 docs。后续按 issue 优先级 TDD 推进。
+- **bug/任务转 GitHub Issues**（24 条）：#1 赛题锚点 / #2 总览 / #3–#6 C1–C4 解耦 / #7–#22 F1–F15 bug+refactor / #23–#24 docs。后续按 issue 优先级 TDD 推进。

@@ -132,7 +132,7 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 
 **最新：阶段10** (6/23) 消息分支（重生成分支）— Apix 借鉴三大项收官 ✅。完整阶段0–10 日志见 [docs/devlogs/Desktop_阶段总览.md](docs/devlogs/Desktop_阶段总览.md)。
 
-**已知待修**：沙箱强化 DockerSandboxExecutor（阶段5 残留）；F1–F15 脆弱点 + 解藕 candidates 已转 GitHub Issues（见 [docs/重构方案_解藕.md](docs/重构方案_解藕.md)）。
+**已知待修**：沙箱强化 DockerSandboxExecutor（阶段5 残留）；F1–F15 脆弱点 + 解耦 candidates 已转 GitHub Issues（见 [docs/重构方案_解耦.md](docs/重构方案_解耦.md)）。
 
 ### 原 KMatch 后端已交付项
 - ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证

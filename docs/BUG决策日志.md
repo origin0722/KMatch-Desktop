@@ -3,7 +3,7 @@
 > 记录开发过程中遇到的所有技术问题、根因分析和解决决策。
 > 每个问题标注影响范围、决策人和解决状态。
 >
-> **⚠️ 历史存档**（2026-06-23 起）：新 BUG 一律开 GitHub Issue（见 [docs/agents/issue-tracker.md](agents/issue-tracker.md)），本文件不再新增。下方为既有 76 条记录。新发现的 F1–F15 脆弱点与解藕 candidates 已全部转 Issue，见 [重构方案_解藕.md](重构方案_解藕.md)。
+> **⚠️ 历史存档**（2026-06-23 起）：新 BUG 一律开 GitHub Issue（见 [docs/agents/issue-tracker.md](agents/issue-tracker.md)），本文件不再新增。下方为既有 76 条记录。新发现的 F1–F15 脆弱点与解耦 candidates 已全部转 Issue，见 [重构方案_解耦.md](重构方案_解耦.md)。
 
 ---
 

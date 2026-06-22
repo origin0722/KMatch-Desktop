@@ -17,7 +17,7 @@
 | Label | 含义 |
 |---|---|
 | `bug` | Something isn't working（GitHub 默认） |
-| `refactor` | 代码重构/解藕，不改外部行为 |
+| `refactor` | 代码重构/解耦，不改外部行为 |
 | `documentation` | 文档改进（GitHub 默认） |
 | `competition` | 赛题功能锚点——重构不可破坏的约束 |
 | `enhancement` | 新功能/增强（GitHub 默认） |
