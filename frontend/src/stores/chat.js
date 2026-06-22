@@ -17,6 +17,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
+import { streamChat } from '@/ide/chat/useChatStream'
 import { useAiSettingsStore } from '@/stores/aiSettings'
 import {
   buildToolBlock,
@@ -355,8 +356,7 @@ export const useChatStore = defineStore('chat', () => {
     return null
   }
 
-  // SSE 流式: Electron 走 IPC 代理 (window.api.http.stream), 浏览器 dev 走 fetch 回退。
-  // 两路共用 _applySseBlock 解析, 保证渲染层行为一致。
+  // SSE 流式: 传输层抽至 useChatStream (C1.3); 这里只构建 body + 解析 block。
   async function _streamResponse(apiMessages, assistantMsg) {
     const ai = useAiSettingsStore()
     const body = {
@@ -371,69 +371,10 @@ export const useChatStore = defineStore('chat', () => {
     const reasoning = _reasoningForRequest()
     if (reasoning !== undefined) body.reasoning = reasoning
 
-    // ---- 浏览器 dev 回退: fetch + ReadableStream 直连 /api (经 Vite proxy → 8000) ----
-    if (!hasIpc()) {
-      const resp = await fetch('/api/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: abortController.value.signal,
-      })
-      if (!resp.ok || !resp.body) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `HTTP ${resp.status}`)
-      }
-      const reader = resp.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop()
-        for (const b of parts) {
-          if (_applySseBlock(b, assistantMsg) === 'error') return
-        }
-      }
-      return
-    }
-
-    // ---- Electron: IPC SSE 代理 ----
-    return new Promise((resolve, reject) => {
-      let buffer = ''
-      let settled = false
-      const finish = () => {
-        if (settled) return
-        settled = true
-        offChunk(); offDone(); offError()
-        resolve()
-      }
-      const offChunk = window.api.http.onChunk((_reqId, block) => {
-        if (settled) return
-        buffer += block
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop()
-        for (const b of parts) {
-          if (_applySseBlock(b, assistantMsg) === 'error') { finish(); return }
-        }
-      })
-      const offDone = window.api.http.onDone(() => finish())
-      const offError = window.api.http.onError((_reqId, err) => {
-        if (settled) return
-        settled = true
-        offChunk(); offDone(); offError()
-        reject(new Error(err || 'SSE 流失败'))
-      })
-      // 用户点停止: abort 时结束等待 (IPC 流无法真正中断, 后端流自然结束)
-      abortController.value.signal.addEventListener('abort', () => finish())
-
-      window.api.http.stream('/api/chat/completions', body).catch((e) => {
-        if (settled) return
-        settled = true
-        offChunk(); offDone(); offError()
-        reject(e)
-      })
+    await streamChat({
+      body,
+      signal: abortController.value.signal,
+      onBlock: (block) => _applySseBlock(block, assistantMsg),
     })
   }
 
