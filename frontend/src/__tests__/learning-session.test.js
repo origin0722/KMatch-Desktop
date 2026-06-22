@@ -9,14 +9,14 @@ vi.mock('@/stores/assessment', () => ({
   }),
 }))
 
-// MarkdownViewer 经由 monaco-editor, 在 jsdom 下无法解析包入口 (与 assessment-redesign 测试同处理)
+// MarkdownViewer 经由 monaco-editor, 在 jsdom 下无法解析包入口, 故 stub
 vi.mock('@/components/MarkdownViewer.vue', () => ({ default: { props: ['content'], template: '<div>{{ content }}</div>' } }))
 
 const LearningSession = (await import('@/views/LearningSession.vue')).default
 
 // SplitPane 是右半分屏 (非本视图测试重点), 经 KnowledgeGraph/Dashboard 拉 @antv/g6 + echarts, stub 掉隔离
 const STUBS = ['el-button','el-form','el-form-item','el-input','el-select','el-option','el-tag','el-descriptions','el-descriptions-item','el-card','el-radio-group','el-radio','el-divider','SplitPane']
-// StageQuiz 用 v-loading 指令, jsdom 下需注册空指令 (与 assessment-redesign 测试同处理)
+// StageQuiz 用 v-loading 指令, jsdom 下需注册空指令
 const GLOBAL = { stubs: STUBS, directives: { loading: {} } }
 
 describe('LearningSession', () => {

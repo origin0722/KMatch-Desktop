@@ -21,8 +21,8 @@
       description="尚未完成学情测评，无报告数据"
       :image-size="120"
     >
-      <el-button type="primary" @click="sidebar.setView('assessment')">
-        前往学情测评
+      <el-button type="primary" @click="sidebar.setView('learning-session')">
+        前往学习会话
       </el-button>
     </el-empty>
 
