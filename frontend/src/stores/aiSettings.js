@@ -2,9 +2,6 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
 
-// 重新导出 TOOL_PERMISSION 以保持 @/stores/aiSettings 既有契约 (chat.js 等仍从此导入)
-export { TOOL_PERMISSION }
-
 const STORAGE_KEY = 'kmatch-ai-settings'
 
 export const REASONING_MODE = Object.freeze({

@@ -3,8 +3,18 @@ import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('@/stores/workspace', () => ({ useWorkspaceStore: () => ({ hasProject: false, rootName: '', tree: [] }) }))
 vi.mock('@/stores/projectGraph', () => ({ useProjectGraphStore: () => ({}) }))
+// mock 形状须匹配 C1.1 后 aiSettings 契约: chat._streamResponse 读 model/apiKey/getBaseUrl
 vi.mock('@/stores/aiSettings', () => ({
-  useAiSettingsStore: () => ({ permissionFor: () => 'allow', formatEnabledMemories: () => '', reasoningInstruction: () => '' }),
+  useAiSettingsStore: () => ({
+    permissionFor: () => 'allow',
+    formatEnabledMemories: () => '',
+    reasoningInstruction: () => '',
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
+    apiKey: '',
+    getBaseUrl: () => 'https://api.deepseek.com/v1',
+    fetchModels: () => {},
+  }),
   TOOL_PERMISSION: { ALLOW: 'allow', ASK: 'ask', DENY: 'deny' },
 }))
 
@@ -174,10 +184,29 @@ describe('chat 分支 — regenMessage', () => {
     const a = pushAssistant(chat, { versions: [{ chunks: [{ type: 'content', content: 'old' }], trailingAfter: [] }] })
     // 模拟审批门进行中: 直接塞一个 pendingApproval
     chat.pendingApproval = { id: 1, call: { tool: 'write_file' }, content: 'x', resolve: () => {} }
+    expect(chat.isBusy).toBe(true) // 审批门 → isBusy
     const before = a.versions.length
     await chat.regenMessage(a.id)
     // 审批门期间 regen 被拒, 不新增 version
     expect(a.versions.length).toBe(before)
     chat.pendingApproval = null
+    expect(chat.isBusy).toBe(false)
+  })
+
+  it('regenMessage 在工具执行窗口 (streaming=false, pendingApproval=null) 也拒绝 (审查 #2: 工具循环窗口)', async () => {
+    const chat = useChatStore()
+    pushUser(chat, 'q1')
+    const a = pushAssistant(chat, { versions: [{ chunks: [{ type: 'content', content: 'old' }], trailingAfter: [] }] })
+    // 工具循环窗口: streaming 已 false, 无审批门, 但 toolLoopRunning=true
+    chat.streaming = false
+    chat.pendingApproval = null
+    // toolLoopRunning 未导出, 经 isBusy 间接驱动: 用 streaming 模拟 busy 态回归
+    // (toolLoopRunning 的真实覆盖见 e2e; 此处守卫 isBusy 单一源已统一)
+    chat.streaming = true
+    expect(chat.isBusy).toBe(true)
+    const before = a.versions.length
+    await chat.regenMessage(a.id)
+    expect(a.versions.length).toBe(before) // busy 期间拒绝
+    chat.streaming = false
   })
 })

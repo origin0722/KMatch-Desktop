@@ -89,7 +89,9 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [frontend/src/stores/workspace.js](frontend/src/stores/workspace.js) — 工作区/文件状态
 - [frontend/src/stores/theme.js](frontend/src/stores/theme.js) — 亮暗主题
 - [frontend/src/stores/assessment.js](frontend/src/stores/assessment.js) — 学情测评状态 (含 interactive 三阶段 + learningReport)
-- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + write_file 审批门 + 图谱委派工具 + 多厂商)
+- [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + write_file 审批门 + 图谱委派工具 + 消息分支; isBusy 统一禁用源)
+- [frontend/src/stores/aiSettings.js](frontend/src/stores/aiSettings.js) — AI 配置单一源 (provider/apiKey/model/PROVIDERS + 工具权限 + 记忆 + 推理模式; C1.1/C1.2 后收编)
+- [frontend/src/ide/tools/registry.js](frontend/src/ide/tools/registry.js) — 工具定义 + 权限默认 + 广告/审批/提示词块 helper 单一源 (C1.2)
 - [frontend/src/stores/projectGraph.js](frontend/src/stores/projectGraph.js) — 项目代码图谱 + Monaco 符号联动状态 (阶段4b)
 - [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models + /safety-check)
 - [backend/app/agents/code_safety.py](backend/app/agents/code_safety.py) — 纯 Python AST 安全检查 (hard_check_code_safety, 供 chat 审批门复用)

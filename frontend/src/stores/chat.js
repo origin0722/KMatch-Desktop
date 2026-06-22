@@ -17,7 +17,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
-import { TOOL_PERMISSION, useAiSettingsStore } from '@/stores/aiSettings'
+import { useAiSettingsStore } from '@/stores/aiSettings'
 import {
   buildToolBlock,
   buildAdvertisedToolNames,
@@ -225,6 +225,11 @@ export const useChatStore = defineStore('chat', () => {
   // { id, call, content, safetyIssues, safe, checked, resolve }
   const pendingApproval = ref(null)
   let _approvalId = 0
+
+  // ---- 工具执行窗口锁 (审查 #2: streaming 只覆盖 SSE 相位, 工具循环在 streaming=false
+  // 后跑; code_review/code_test 可能 ~10s。toolLoopRunning 覆盖此窗口, isBusy 统一禁用源) ----
+  const toolLoopRunning = ref(false)
+  const isBusy = computed(() => streaming.value || !!pendingApproval.value || toolLoopRunning.value)
 
   // 厂商 & 模型配置已迁至 aiSettings store (C1.1, 统一 AI 配置单一源);
   // chat 经 useAiSettingsStore() 读取 provider/model/apiKey/getBaseUrl。
@@ -735,13 +740,18 @@ export const useChatStore = defineStore('chat', () => {
 
       // 逐个执行 tool_call chunk: 状态机 pending → in_progress → completed/error
       const toolResults = []
-      for (const chunk of activeChunksOf(assistantMsg)) {
-        if (chunk.type !== 'tool_call') continue
-        chunk.status = 'in_progress'
-        const result = await _executeTool(chunk.args)
-        chunk.status = result.error ? 'error' : 'completed'
-        chunk.result = result
-        toolResults.push({ call: chunk.args, result })
+      toolLoopRunning.value = true
+      try {
+        for (const chunk of activeChunksOf(assistantMsg)) {
+          if (chunk.type !== 'tool_call') continue
+          chunk.status = 'in_progress'
+          const result = await _executeTool(chunk.args)
+          chunk.status = result.error ? 'error' : 'completed'
+          chunk.result = result
+          toolResults.push({ call: chunk.args, result })
+        }
+      } finally {
+        toolLoopRunning.value = false
       }
 
       if (toolResults.length === 0) break
@@ -788,8 +798,8 @@ export const useChatStore = defineStore('chat', () => {
 
   /** 重生成指定助手消息 (追加新 version, 不覆盖原) */
   async function regenMessage(msgId) {
-    // 流中或 write_file 审批门进行中禁止重生成 (与 UI 钮禁用一致, F10)
-    if (streaming.value || pendingApproval.value) return
+    // 流中 / 审批门 / 工具执行窗口 禁止重生成 (统一 isBusy, 审查 #2 修 F10 工具循环窗口)
+    if (isBusy.value) return
     const target = messages.value.find((m) => m.id === msgId)
     if (!target || target.role !== 'assistant' || !Array.isArray(target.versions)) return
     const targetIdx = messages.value.indexOf(target)
@@ -844,13 +854,18 @@ export const useChatStore = defineStore('chat', () => {
 
       // 执行 tool_call
       const toolResults = []
-      for (const chunk of target.versions[target.activeVersion].chunks) {
-        if (chunk.type !== 'tool_call') continue
-        chunk.status = 'in_progress'
-        const result = await _executeTool(chunk.args)
-        chunk.status = result.error ? 'error' : 'completed'
-        chunk.result = result
-        toolResults.push({ call: chunk.args, result })
+      toolLoopRunning.value = true
+      try {
+        for (const chunk of target.versions[target.activeVersion].chunks) {
+          if (chunk.type !== 'tool_call') continue
+          chunk.status = 'in_progress'
+          const result = await _executeTool(chunk.args)
+          chunk.status = result.error ? 'error' : 'completed'
+          chunk.result = result
+          toolResults.push({ call: chunk.args, result })
+        }
+      } finally {
+        toolLoopRunning.value = false
       }
       if (toolResults.length === 0) break
 
@@ -910,6 +925,7 @@ export const useChatStore = defineStore('chat', () => {
   return {
     messages, visibleMessages, streaming, currentStreamId, error,
     hasMessages,
+    isBusy,
     // write_file 审批门 (阶段3.1)
     pendingApproval, resolveApproval,
     // 启发式导学模式 (阶段4③)

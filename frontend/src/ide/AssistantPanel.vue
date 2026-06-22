@@ -170,11 +170,11 @@
                 <span class="ver-count">{{ msg.activeVersion + 1 }}/{{ msg.versions.length }}</span>
                 <button class="ver-btn" :disabled="msg.activeVersion === msg.versions.length - 1" title="下一版" @click="chat.setVersion(msg.id, msg.activeVersion + 1)">›</button>
               </div>
-              <!-- 重生成钮: hover 浮现, streaming/审批门/工具循环中禁用 -->
+              <!-- 重生成钮: hover 浮现, isBusy (streaming/审批门/工具循环) 中禁用 -->
               <button
                 class="regen-btn"
-                :disabled="chat.streaming || chat.pendingApproval"
-                :title="(chat.streaming || chat.pendingApproval) ? '生成中…' : '重新生成'"
+                :disabled="chat.isBusy"
+                :title="chat.isBusy ? '生成中…' : '重新生成'"
                 @click="chat.regenMessage(msg.id)"
               >
                 <el-icon :size="14"><RefreshRight /></el-icon>
@@ -268,7 +268,7 @@
         v-model="inputText"
         type="textarea"
         :rows="2"
-        :disabled="chat.streaming || !!chat.pendingApproval"
+        :disabled="chat.isBusy"
         :placeholder="chat.tutorMode ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)' : '输入消息… (Enter 发送, Shift+Enter 换行)'"
         resize="none"
         @keydown="onKeydown"
