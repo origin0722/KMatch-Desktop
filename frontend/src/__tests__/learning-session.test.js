@@ -1,3 +1,10 @@
+/**
+ * 场景：LearningSession 视图——三合一学习会话流挂载（阶段9）。
+ *
+ * LearningSession 把 Assessment + AgentView + 知识图谱合并成纵向会话流，Agent 推动 4 阶段卡
+ * （目标→答题→协同→图谱）。这里 mock assessment store，验视图能挂载并按 activeStage 渲染对应阶段。
+ * MarkdownViewer 经由 monaco-editor，jsdom 下无法解析包入口，故 stub。
+ */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'

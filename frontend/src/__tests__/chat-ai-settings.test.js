@@ -1,3 +1,13 @@
+/**
+ * 场景：chat 与 aiSettings 的集成点——系统提示词与工具集成（阶段2/4c/6a）。
+ *
+ * 测 chat.js 暴露的纯 helper：
+ *  - buildSystemPrompt：注入用户记忆、推理指令（reasoningMode auto/fast/deep → thinking 字段），
+ *    导学模式下走 Socratic 分支（赛题(4)②）；
+ *  - buildAdvertisedToolNames：按权限（allow/ask）对外广告工具名，deny 不暴露；
+ *  - parseToolCalls / stripToolCalls：工具调用 fence 解析与后端序列化剥离；
+ *  - toolPermissionError：权限门决策（write_file 默认 ask）。
+ */
 import { describe, expect, it } from 'vitest'
 import { buildAdvertisedToolNames, buildSystemPrompt, parseToolCalls, stripToolCalls, toolPermissionError } from '@/stores/chat'
 

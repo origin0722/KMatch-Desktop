@@ -1,3 +1,13 @@
+/**
+ * 场景：chat 消息 chunk 模型纯函数（阶段6b，借鉴 Apix MessageChunk）。
+ *
+ * 由 Chunk 判别联合驱动：{type:'think'|'content',content} | {type:'tool_call',...}。
+ * 这里测纯 helper，不挂 store：
+ *  - appendTextChunk：相邻同类型 think/content 合并，不同类型分块；
+ *  - contentTextOf / thinkTextOf：从 chunks 抽出可读文本；
+ *  - splitToolCallChunks：把 content 中 ```tool_call fence 拆成内联 tool_call chunk；
+ *  - stripToolCalls：序列化给后端时剥离工具调用（后端契约不变）。
+ */
 import { describe, expect, it } from 'vitest'
 import {
   appendTextChunk,

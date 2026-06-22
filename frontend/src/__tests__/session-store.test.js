@@ -1,3 +1,10 @@
+/**
+ * 场景：session store——学习会话阶段派生与分屏白名单（阶段9）。
+ *
+ * session 只拥 splitView；activeStage 是 assessment 的纯 computed（优先级 graph>agent>quiz>goal），
+ * 不另存以避免双源真相。这里 mock assessment 为 reactive 对象，翻转其 hasResults/loading/phase/
+ * orchestrationLog 字段，验证 activeStage 各分支与优先级、splitView 白名单校验。
+ */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { reactive } from 'vue'

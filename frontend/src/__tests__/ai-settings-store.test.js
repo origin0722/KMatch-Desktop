@@ -1,3 +1,11 @@
+/**
+ * 场景：aiSettings store——AI 助手持久化设置。
+ *
+ * aiSettings 持有代理、工具权限（allow/ask/deny × 6 工具）、记忆条目、推理模式（auto/fast/deep），
+ * 统一序列化为一个 JSON blob 存 localStorage['kmatch-ai-settings']。
+ * 这里验证：持久化往返、各字段默认值、reasoningMode 驱动后端 thinking 字段的映射、
+ * 工具权限决策（permissionFor）。每个测试前清空 localStorage 保证隔离。
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAiSettingsStore } from '@/stores/aiSettings'

@@ -1,3 +1,12 @@
+/**
+ * 场景：标题栏菜单（TitlebarMenu）交互与主题守卫。
+ *
+ * 标题栏菜单承载窗口/主题/关于等入口。这里验证：
+ *  - 菜单挂载、按钮可点击；
+ *  - 主题切换调对 store（亮/暗），并给出 ElMessage 反馈；
+ *  - 主题相关 UI 用 token 而非硬编码色（阶段7 主题收编纪律）。
+ * element-plus 的 ElMessage/ElMessageBox 用 vi.mock 替身，断言调用而非真实弹窗。
+ */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
