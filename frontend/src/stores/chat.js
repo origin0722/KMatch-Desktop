@@ -207,12 +207,27 @@ export function buildSystemPrompt(context) {
     }
   }
 
+  // 阶段9: 双向联动 — 非导学模式也注入学情画像, 助手可回答"为什么这样规划"
+  let profileBlock = ''
+  const p = context?.profile
+  if (p && typeof p === 'object') {
+    const lines = []
+    if (p.theory_level != null) lines.push(`- 理论水平: ${p.theory_level}/5`)
+    if (p.practice_level != null) lines.push(`- 实操水平: ${p.practice_level}/5`)
+    const weak = Array.isArray(p.weak_topics) ? p.weak_topics : []
+    if (weak.length) lines.push('- 薄弱知识点: ' + weak.slice(0, 5).map((t) => t.name || t.node_id || t).join('、'))
+    const kg = context?.knowledgeGraph
+    if (kg?.learning_path?.length) lines.push(`- 学习路径: ${kg.learning_path.length} 个节点, 预计 ${kg.estimated_total_hours?.toFixed?.(1) ?? '?'}h`)
+    if (lines.length) profileBlock = '\n\n## 学习者学情画像 (可据此回答"为什么这样规划")\n' + lines.join('\n')
+  }
+
   return {
     role: 'system',
     content:
       '你是 KMatch IDE 的 AI 编程助手。你可以阅读项目文件、解释代码、提供改进建议、帮助调试。\n'
       + '回答用中文，代码块标注语言。保持回答简洁实用。\n'
       + '如果你需要查看某个文件来更好地回答问题，使用 tool_call 格式请求读取。'
+      + profileBlock
       + memoriesBlock
       + reasoningBlock
       + ctxBlock
@@ -767,7 +782,9 @@ export const useChatStore = defineStore('chat', () => {
     const ctx = { tutorMode: tutorMode.value }
     try {
       const { useAssessmentStore } = await import('@/stores/assessment')
-      ctx.profile = useAssessmentStore().profile
+      const a = useAssessmentStore()
+      ctx.profile = a.profile
+      if (a.hasResults) ctx.knowledgeGraph = a.knowledgeGraph
     } catch { /* assessment store 未就绪, 忽略 */ }
 
     try {
