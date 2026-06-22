@@ -210,6 +210,15 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
   · 82 测试全过 (新增 session-store 10 + learning-session 2; 删 4 孤儿测试 -20) + vite build 通过
   · subagent-driven 执行, 12 commits, 最终整分支 code review Approved (修了孤儿/雷达图/reset/策略/retryCount 回归)
   · 手动 e2e 待跑; 后续 polish (M-3~M-8 minor)
+**阶段10** (6/23): 消息分支 (重生成分支) — Apix 借鉴收官 ✅
+  - 助手消息重生成不覆盖原回复, 新建 version, ‹n/m› 切换历史版本; 用户消息编辑不做 (YAGNI)
+  - 任意助手可重生成, 后续消息隐藏 (不删, 切回原版恢复), 非树形 (线性 versions + trailingAfter)
+  - chat.js: activeChunksOf helper (兼容旧消息); _addMessage 建 versions; visibleMessages 按 trailingAfter 过滤; setVersion; regenMessage (复用 SSE+工具循环); _streamResponse/sendMessage 流进 activeVersion
+  - AssistantPanel.vue: visibleMessages 渲染; ‹n/m› 切换器 + 重生成钮 (hover 浮现, streaming/审批门禁用, reduced-motion); hasContent/hasThink 改 activeChunksOf
+  · 关键: spanEnd 单索引模型 → trailingAfter (每版记录可见 trailing id 集)。spanEnd 分不清"旧 trailing(隐藏)"vs"regen后新消息(显示)", 导致"重生末条→追问"静默丢消息; trailingAfter 精确表达归属, _addMessage 追加时维护前一助手 active version 的 trailingAfter
+  · subagent-driven 执行, 9 commits, 最终 code review Approved (修了 Critical spanEnd→trailingAfter + Important 审批门禁用 regen)
+  · 94 测试全过 (新增 12: chat-chunks +4, chat-branch +8 含 Critical 回归测试) + vite build 通过
+  · 手动 e2e 待跑; Apix 借鉴三大项 (文件监听 Worker / 消息 chunks / 消息分支) 全部完成
 **已知待修** (见 docs/Apix借鉴与代码审查报告_2026-06-20.md): ~~S1/S2/S3/S4/S5/S6~~ 均已修 (见各阶段); 沙箱强化 DockerSandboxExecutor (阶段5 残留)。
 
 ### 原 KMatch 后端已交付项

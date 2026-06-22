@@ -32,7 +32,7 @@
       <!-- 消息列表 -->
       <template v-else>
         <div
-          v-for="msg in chat.messages"
+          v-for="msg in chat.visibleMessages"
           :key="msg.id"
           class="message"
           :class="msg.role"
@@ -43,7 +43,7 @@
               <el-icon :size="18"><Cpu /></el-icon>
             </div>
             <div class="msg-content">
-              <template v-for="(chunk, ci) in msg.chunks" :key="ci">
+              <template v-for="(chunk, ci) in (msg.versions?.[msg.activeVersion ?? 0]?.chunks || msg.chunks)" :key="ci">
                 <!-- 思考过程 (可折叠) -->
                 <div v-if="chunk.type === 'think'" class="think-block">
                   <button class="think-toggle" @click="toggleThink(msg.id)">
@@ -164,6 +164,21 @@
                   <div v-else-if="chunk.status === 'in_progress'" class="tool-running">执行中…</div>
                 </div>
               </template>
+              <!-- 版本切换器: 多版本才显示, hover 浮现 -->
+              <div v-if="msg.versions && msg.versions.length > 1" class="version-bar">
+                <button class="ver-btn" :disabled="msg.activeVersion === 0" title="上一版" @click="chat.setVersion(msg.id, msg.activeVersion - 1)">‹</button>
+                <span class="ver-count">{{ msg.activeVersion + 1 }}/{{ msg.versions.length }}</span>
+                <button class="ver-btn" :disabled="msg.activeVersion === msg.versions.length - 1" title="下一版" @click="chat.setVersion(msg.id, msg.activeVersion + 1)">›</button>
+              </div>
+              <!-- 重生成钮: hover 浮现, streaming/审批门/工具循环中禁用 -->
+              <button
+                class="regen-btn"
+                :disabled="chat.streaming || chat.pendingApproval"
+                :title="(chat.streaming || chat.pendingApproval) ? '生成中…' : '重新生成'"
+                @click="chat.regenMessage(msg.id)"
+              >
+                <el-icon :size="14"><RefreshRight /></el-icon>
+              </button>
               <!-- 流式占位 (空 chunks) -->
               <span v-if="chat.streaming && chat.currentStreamId === msg.id && !hasContent(msg) && !hasThink(msg)" class="typing">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
@@ -366,9 +381,9 @@
 
 <script setup>
 import { ref, reactive, watch, nextTick } from 'vue'
-import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick } from '@element-plus/icons-vue'
+import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
-import { useChatStore, contentTextOf } from '@/stores/chat'
+import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
@@ -430,11 +445,12 @@ function revealEntity(e) {
 }
 
 // ---- chunks 模型辅助 (借鉴 Apix MessageChunk) ----
+// 助手消息读 versions[activeVersion].chunks (经 activeChunksOf), 用户/旧消息读 msg.chunks
 function hasContent(msg) {
-  return (msg.chunks || []).some((c) => c.type === 'content' && c.content)
+  return activeChunksOf(msg).some((c) => c.type === 'content' && c.content)
 }
 function hasThink(msg) {
-  return (msg.chunks || []).some((c) => c.type === 'think' && c.content)
+  return activeChunksOf(msg).some((c) => c.type === 'think' && c.content)
 }
 function contentText(msg) {
   return contentTextOf(msg)
@@ -615,6 +631,7 @@ async function copyText(text) {
 /* ---- 消息 ---- */
 .message {
   display: flex;
+  position: relative;
   animation: msgIn 0.3s var(--km-ease-out);
 }
 @keyframes msgIn {
@@ -1041,4 +1058,38 @@ async function copyText(text) {
 .test-summary { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .test-note { font-size: 11px; color: var(--km-warning, #e6a23c); }
 .cov-row { display: flex; gap: 10px; font-size: 11px; color: var(--km-gray-600); }
+
+/* ---- 版本分支: 切换器 + 重生成钮 ---- */
+.version-bar {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; opacity: 0; transition: opacity 0.12s var(--km-ease);
+  font-size: 11px; color: var(--km-gray-500);
+}
+.message.assistant:hover .version-bar { opacity: 1; }
+.ver-btn {
+  border: 1px solid var(--km-border); background: var(--km-bg-layer-3);
+  color: var(--km-gray-600); border-radius: 4px; width: 18px; height: 18px;
+  cursor: pointer; font-size: 12px; line-height: 1; padding: 0;
+}
+.ver-btn:hover:not(:disabled) { border-color: var(--km-primary); color: var(--km-primary); }
+.ver-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ver-count { font-family: var(--km-font-mono); }
+
+.regen-btn {
+  position: absolute; right: 4px; bottom: 4px;
+  border: 0; background: transparent; color: var(--km-gray-400);
+  cursor: pointer; padding: 4px; border-radius: 4px;
+  opacity: 0; transition: opacity 0.12s var(--km-ease);
+}
+.message.assistant:hover .regen-btn { opacity: 1; }
+.regen-btn:hover:not(:disabled) { color: var(--km-primary); background: var(--km-primary-light); }
+.regen-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* 版本切换淡入淡出 */
+.msg-content { transition: opacity 0.15s var(--km-ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .version-bar, .regen-btn { opacity: 1; transition: none; }
+  .msg-content { transition: none; }
+}
 </style>

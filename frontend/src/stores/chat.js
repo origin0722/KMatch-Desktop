@@ -272,16 +272,24 @@ export function appendTextChunk(chunks, type, text) {
   }
 }
 
-/** 拼接消息中所有 content chunk 文本 (供 API 历史 + MarkdownViewer) */
-export function contentTextOf(msg) {
-  if (!msg || !Array.isArray(msg.chunks)) return ''
-  return msg.chunks.filter((c) => c.type === 'content').map((c) => c.content).join('')
+/** 取消息当前生效的 chunks (助手消息读 versions[activeVersion], 旧消息/用户消息读 chunks) */
+export function activeChunksOf(msg) {
+  if (!msg) return []
+  if (msg.role === 'assistant' && Array.isArray(msg.versions)) {
+    const v = msg.versions[msg.activeVersion ?? 0]
+    return v?.chunks ?? []
+  }
+  return Array.isArray(msg.chunks) ? msg.chunks : []
 }
 
-/** 拼接消息中所有 think chunk 文本 */
+/** 拼接消息当前 version 的 content chunk 文本 (供 API 历史 + MarkdownViewer) */
+export function contentTextOf(msg) {
+  return activeChunksOf(msg).filter((c) => c.type === 'content').map((c) => c.content).join('')
+}
+
+/** 拼接消息当前 version 的 think chunk 文本 */
 export function thinkTextOf(msg) {
-  if (!msg || !Array.isArray(msg.chunks)) return ''
-  return msg.chunks.filter((c) => c.type === 'think').map((c) => c.content).join('')
+  return activeChunksOf(msg).filter((c) => c.type === 'think').map((c) => c.content).join('')
 }
 
 /**
@@ -364,6 +372,34 @@ export const useChatStore = defineStore('chat', () => {
   const tutorMode = ref(_loadStr(STORAGE_KEY_TUTOR, 'false') === 'true')
 
   const hasMessages = computed(() => messages.value.length > 0)
+
+  /**
+   * 当前可见消息: 每个助手消息"管辖"它之后的消息——由其 activeVersion.trailingAfter
+   * (一组消息 ID) 决定哪些后续消息可见。切 version 换 trailingAfter → 后续显隐。
+   *
+   * trailingAfter 模型 (替代 spanEnd): 单一下标断点无法区分"旧 version 的尾随 (重生成
+   * 时应隐藏)"与"重生成后新追加的消息 (应可见)", 会导致 regen 后追问静默丢消息。
+   * trailingAfter 显式记录每个 version 自己的尾随 ID; 新版本从 [] 起, 新消息经
+   * _addMessage 钩子归入当前活跃版本的 trailingAfter。
+   *
+   * 走法: 维护 visibleTrailing (null=尚未遇到助手, 对话顶部全可见; 否则为最近一个
+   * 【可见】助手 active 版本 trailingAfter 的 Set)。每条消息 (含助手) 必须在
+   * visibleTrailing 内才可见; 可见的助手消息会把 visibleTrailing 换成自己的。
+   */
+  const visibleMessages = computed(() => {
+    const all = messages.value
+    const out = []
+    let visibleTrailing = null // null = 还没遇到助手 (对话顶部, 全可见)
+    for (const m of all) {
+      if (visibleTrailing !== null && !visibleTrailing.has(m.id)) continue // 属于非活跃分支, 隐藏
+      out.push(m)
+      if (m.role === 'assistant' && Array.isArray(m.versions)) {
+        const v = m.versions[m.activeVersion ?? 0]
+        visibleTrailing = new Set(Array.isArray(v?.trailingAfter) ? v.trailingAfter : [])
+      }
+    }
+    return out
+  })
 
   /** 由 aiSettings.reasoningMode 推导后端 reasoning 字段 (借鉴 Apix llm_adapter):
    *  AUTO → 不传 (模型默认; DeepSeek-V4 默认 thinking enabled)
@@ -466,12 +502,40 @@ export const useChatStore = defineStore('chat', () => {
     const chunks = typeof payload === 'string'
       ? [{ type: 'content', content: payload }]
       : Array.isArray(payload) ? payload : []
-    const msg = { id: _nextId(), role, chunks, timestamp: new Date().toISOString(), ...extra }
+    const ts = new Date().toISOString()
+    let msg
+    if (role === 'assistant') {
+      // 助手消息: versions 结构 (支持重生成分支)
+      // trailingAfter = [] (开放): 线性追加的后续消息经下方钩子归入当前活跃版本,
+      // 直到重生成追加新 version (新版本 trailingAfter=[], 旧版本冻结)。
+      const versionId = _nextId().replace('msg_', 'ver_')
+      msg = {
+        id: _nextId(), role,
+        versions: [{ id: versionId, chunks, timestamp: ts, trailingAfter: [] }],
+        activeVersion: 0,
+        timestamp: ts,
+        ...extra,
+      }
+    } else {
+      msg = { id: _nextId(), role, chunks, timestamp: ts, ...extra }
+    }
+    // trailingAfter 维护: 新消息归入"此前最后一个助手消息"的当前活跃版本分支。
+    // 线性对话 → 每条新消息追加到上一助手的 trailingAfter → 可见;
+    // regen 后新版本活跃 → 新消息归新版本 (旧版本冻结不收) → 新消息在新分支可见 (Critical: 不再静默丢)。
+    let prevAssistant = null
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+      const m = messages.value[i]
+      if (m.role === 'assistant' && Array.isArray(m.versions)) { prevAssistant = m; break }
+    }
     messages.value.push(msg)
+    if (prevAssistant && prevAssistant.id !== msg.id) {
+      const v = prevAssistant.versions[prevAssistant.activeVersion ?? 0]
+      if (v && Array.isArray(v.trailingAfter)) v.trailingAfter.push(msg.id)
+    }
     return msg
   }
 
-  /** 解析单个 SSE block, 累积进 assistantMsg.chunks; 返回 'error' 表示遇到错误应中止 */
+  /** 解析单个 SSE block, 累积进 assistantMsg 当前 version 的 chunks; 返回 'error' 表示遇到错误应中止 */
   function _applySseBlock(block, assistantMsg) {
     if (!block.trim()) return null
     const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
@@ -480,11 +544,11 @@ export const useChatStore = defineStore('chat', () => {
       const data = JSON.parse(dataStr)
       if (data.error) {
         error.value = data.error
-        appendTextChunk(assistantMsg.chunks, 'content', `❌ ${data.error}`)
+        appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${data.error}`)
         return 'error'
       }
-      if (data.reasoning) appendTextChunk(assistantMsg.chunks, 'think', data.reasoning)
-      if (data.delta) appendTextChunk(assistantMsg.chunks, 'content', data.delta)
+      if (data.reasoning) appendTextChunk(activeChunksOf(assistantMsg), 'think', data.reasoning)
+      if (data.delta) appendTextChunk(activeChunksOf(assistantMsg), 'content', data.delta)
     } catch { /* skip malformed block */ }
     return null
   }
@@ -832,8 +896,9 @@ export const useChatStore = defineStore('chat', () => {
       toolRound++
 
       // 构建 API 消息列表 (assistant content 去掉 tool_call 块; chunks 模型无 tool 角色)
+      // 用 visibleMessages: regen 隐藏的尾随消息不应进 API 历史 (见 regenMessage)
       const systemMsg = buildSystemPrompt(context)
-      const historyMsgs = messages.value.map((m) => ({
+      const historyMsgs = visibleMessages.value.map((m) => ({
         role: m.role,
         content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
       }))
@@ -848,11 +913,11 @@ export const useChatStore = defineStore('chat', () => {
         await _streamResponse(apiMessages, assistantMsg)
       } catch (e) {
         if (e.name === 'AbortError') {
-          if (contentTextOf(assistantMsg) === '') appendTextChunk(assistantMsg.chunks, 'content', '(已停止)')
+          if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
           streaming.value = false; currentStreamId.value = null; return
         }
         error.value = e.message || '对话请求失败'
-        if (contentTextOf(assistantMsg) === '') appendTextChunk(assistantMsg.chunks, 'content', `❌ ${error.value}`)
+        if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${error.value}`)
         streaming.value = false; currentStreamId.value = null; return
       }
 
@@ -860,18 +925,19 @@ export const useChatStore = defineStore('chat', () => {
       currentStreamId.value = null
 
       // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
+      // 读写都走当前 version 的 chunks (助手消息无顶层 chunks, 见 _addMessage)
       const segs = splitToolCallChunks(contentTextOf(assistantMsg))
       const hasToolCall = segs.some((c) => c.type === 'tool_call')
       if (!hasToolCall) {
         // 纯文本回复，完成 (content chunks 已就位, 无需重建)
         break
       }
-      const thinkChunks = assistantMsg.chunks.filter((c) => c.type === 'think')
-      assistantMsg.chunks = [...thinkChunks, ...segs]
+      const thinkChunks = activeChunksOf(assistantMsg).filter((c) => c.type === 'think')
+      assistantMsg.versions[assistantMsg.activeVersion].chunks = [...thinkChunks, ...segs]
 
       // 逐个执行 tool_call chunk: 状态机 pending → in_progress → completed/error
       const toolResults = []
-      for (const chunk of assistantMsg.chunks) {
+      for (const chunk of activeChunksOf(assistantMsg)) {
         if (chunk.type !== 'tool_call') continue
         chunk.status = 'in_progress'
         const result = await _executeTool(chunk.args)
@@ -922,8 +988,110 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /** 重生成指定助手消息 (追加新 version, 不覆盖原) */
+  async function regenMessage(msgId) {
+    if (streaming.value) return // 流中禁止重生成
+    const target = messages.value.find((m) => m.id === msgId)
+    if (!target || target.role !== 'assistant' || !Array.isArray(target.versions)) return
+    const targetIdx = messages.value.indexOf(target)
+
+    error.value = null
+    abortController.value = new AbortController()
+
+    // 1. 旧版 trailingAfter 冻结 (保留其旧 trailing IDs, 无需改动)
+    // 2. 追加新 version (trailingAfter=[], 无 trailing), activeVersion 指向它
+    const newVerId = _nextId().replace('msg_', 'ver_')
+    target.versions.push({ id: newVerId, chunks: [], timestamp: new Date().toISOString(), trailingAfter: [] })
+    target.activeVersion = target.versions.length - 1
+
+    // 3. 收集上下文
+    const context = await _collectContext()
+
+    // 4. 工具循环 (复用 sendMessage 逻辑, 历史只取 target 之前的 visible 消息)
+    let toolRound = 0
+    while (toolRound < MAX_TOOL_ROUNDS) {
+      toolRound++
+      const systemMsg = buildSystemPrompt(context)
+      const visibleSoFar = visibleMessages.value.filter((m) => messages.value.indexOf(m) < targetIdx)
+      const historyMsgs = visibleSoFar.map((m) => ({
+        role: m.role,
+        content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
+      }))
+      const apiMessages = [systemMsg, ...historyMsgs]
+
+      streaming.value = true
+      currentStreamId.value = target.id
+      try {
+        await _streamResponse(apiMessages, target)
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          if (contentTextOf(target) === '') appendTextChunk(activeChunksOf(target), 'content', '(已停止)')
+          streaming.value = false; currentStreamId.value = null; return
+        }
+        error.value = e.message || '重生成失败'
+        if (contentTextOf(target) === '') appendTextChunk(activeChunksOf(target), 'content', `❌ ${error.value}`)
+        streaming.value = false; currentStreamId.value = null; return
+      }
+      streaming.value = false
+      currentStreamId.value = null
+
+      // 流式后切 chunks (think 保留 + segs)
+      const segs = splitToolCallChunks(contentTextOf(target))
+      const hasToolCall = segs.some((c) => c.type === 'tool_call')
+      if (!hasToolCall) break
+
+      const thinkChunks = activeChunksOf(target).filter((c) => c.type === 'think')
+      target.versions[target.activeVersion].chunks = [...thinkChunks, ...segs]
+
+      // 执行 tool_call
+      const toolResults = []
+      for (const chunk of target.versions[target.activeVersion].chunks) {
+        if (chunk.type !== 'tool_call') continue
+        chunk.status = 'in_progress'
+        const result = await _executeTool(chunk.args)
+        chunk.status = result.error ? 'error' : 'completed'
+        chunk.result = result
+        toolResults.push({ call: chunk.args, result })
+      }
+      if (toolResults.length === 0) break
+
+      // 工具结果摘要作 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护)
+      const toolResultSummary = toolResults.map((tr) => {
+        if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
+        if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
+        if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
+        if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
+        if (tr.result.tool === 'generate_project_graph') {
+          const s = tr.result.stats || {}
+          return `项目图谱已生成 (${tr.result.sourcePath}). 统计: 模块${s.module||0}/类${s.class||0}/函数${s.function||0}/方法${s.method||0}.`
+        }
+        if (tr.result.tool === 'code_review') {
+          const rv = tr.result.review || {}
+          return `代码审查 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score!=null?(rv.overall_score*100).toFixed(0)+'%':'?'}.`
+        }
+        if (tr.result.tool === 'code_test') {
+          const rp = tr.result.report || {}; const sm = rp.summary || {}
+          return `代码测试 (${tr.result.sourcePath}): ${sm.passed||0}/${sm.total||0} 通过.`
+        }
+        return ''
+      }).filter(Boolean).join('\n\n')
+      if (toolResultSummary) {
+        // trailingAfter 由 _addMessage 钩子自动维护 (target 为最后一个助手时, 归入新版本)
+        _addMessage('user', `[工具返回]\n${toolResultSummary}`)
+      }
+    }
+  }
+
   function stopStreaming() {
     abortController.value?.abort()
+  }
+
+  /** 切助手消息的版本 (prev/next 导航) */
+  function setVersion(msgId, idx) {
+    const m = messages.value.find((x) => x.id === msgId)
+    if (!m || !Array.isArray(m.versions)) return
+    if (idx < 0 || idx >= m.versions.length) return
+    m.activeVersion = idx
   }
 
   function clearMessages() {
@@ -944,7 +1112,7 @@ export const useChatStore = defineStore('chat', () => {
   fetchModels()
 
   return {
-    messages, streaming, currentStreamId, error,
+    messages, visibleMessages, streaming, currentStreamId, error,
     hasMessages,
     // write_file 审批门 (阶段3.1)
     pendingApproval, resolveApproval,
@@ -955,5 +1123,6 @@ export const useChatStore = defineStore('chat', () => {
     tutorMode, setTutorMode,
     // 对话
     sendMessage, stopStreaming, clearMessages,
+    setVersion, regenMessage,
   }
 })
