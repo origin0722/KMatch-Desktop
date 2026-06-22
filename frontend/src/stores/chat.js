@@ -788,7 +788,8 @@ export const useChatStore = defineStore('chat', () => {
 
   /** 重生成指定助手消息 (追加新 version, 不覆盖原) */
   async function regenMessage(msgId) {
-    if (streaming.value) return // 流中禁止重生成
+    // 流中或 write_file 审批门进行中禁止重生成 (与 UI 钮禁用一致, F10)
+    if (streaming.value || pendingApproval.value) return
     const target = messages.value.find((m) => m.id === msgId)
     if (!target || target.role !== 'assistant' || !Array.isArray(target.versions)) return
     const targetIdx = messages.value.indexOf(target)

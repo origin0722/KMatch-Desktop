@@ -167,4 +167,17 @@ describe('chat 分支 — regenMessage', () => {
     expect(visOld).toContain('msg_u_2')
     expect(visOld).not.toContain(q3.id)
   })
+
+  it('regenMessage 在 write_file 审批门进行中拒绝执行 (F10: 与 UI 钮禁用一致)', async () => {
+    const chat = useChatStore()
+    pushUser(chat, 'q1')
+    const a = pushAssistant(chat, { versions: [{ chunks: [{ type: 'content', content: 'old' }], trailingAfter: [] }] })
+    // 模拟审批门进行中: 直接塞一个 pendingApproval
+    chat.pendingApproval = { id: 1, call: { tool: 'write_file' }, content: 'x', resolve: () => {} }
+    const before = a.versions.length
+    await chat.regenMessage(a.id)
+    // 审批门期间 regen 被拒, 不新增 version
+    expect(a.versions.length).toBe(before)
+    chat.pendingApproval = null
+  })
 })
