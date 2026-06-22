@@ -211,6 +211,43 @@ function hasIpc() {
   return typeof window !== 'undefined' && !!window.api?.fs
 }
 
+/**
+ * 把一轮工具执行结果汇总成回喂 AI 的 user 消息文本 (C1.4 单一源)。
+ * sendMessage 与 regenMessage 共用, 消除原先 regen 的精简重复副本。
+ */
+export function summarizeToolResults(toolResults) {
+  return toolResults.map((tr) => {
+    if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
+    if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
+    if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
+    if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
+    if (tr.result.tool === 'generate_project_graph') {
+      const s = tr.result.stats || {}
+      const ents = (tr.result.entities || []).slice(0, 20)
+        .map((e) => `- ${e.kind} ${e.qualified_name} (行${e.line_start || '?'}-${e.line_end || '?'})`)
+        .join('\n')
+      return `项目图谱已生成 (${tr.result.sourcePath}, written=${tr.result.written}). 统计: 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}.\n实体清单:\n${ents || '(无)'}`
+    }
+    if (tr.result.tool === 'code_review') {
+      const rv = tr.result.review || {}
+      const dims = rv.dimensions || {}
+      const dimLines = Object.entries(dims).map(([k, v]) => `${k}: ${((v.score ?? 0) * 100).toFixed(0)}%`).join(', ')
+      const highIssues = (Object.values(dims).flatMap((d) => d.issues || []).filter((i) => i.severity === 'high')).slice(0, 5)
+        .map((i) => `- [high] ${i.problem}`).join('\n')
+      return `代码审查结果 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'}, 通过阈值0.85. 维度: ${dimLines}.${rv.retry_hint ? ' 提示: ' + rv.retry_hint : ''}${highIssues ? '\n高危问题:\n' + highIssues : ''}`
+    }
+    if (tr.result.tool === 'code_test') {
+      const rp = tr.result.report || {}
+      const sm = rp.summary || {}
+      const cov = rp.coverage || {}
+      const fails = (rp.failed_tests || []).slice(0, 5)
+        .map((f) => `- ${f.test_name}: ${f.suggestion || f.error_type || '失败'}`).join('\n')
+      return `代码测试结果 (${tr.result.sourcePath}): ${sm.passed || 0}/${sm.total || 0} 通过, 行覆盖${((cov.line_coverage || 0) * 100).toFixed(0)}%, 分支覆盖${((cov.branch_coverage || 0) * 100).toFixed(0)}%, 函数覆盖${((cov.function_coverage || 0) * 100).toFixed(0)}%.${rp.note ? ' 备注: ' + rp.note : ''}${fails ? '\n失败用例:\n' + fails : ''}${rp.rejected ? ' (已拒绝: ' + (rp.reject_reason || '') + ')' : ''}`
+    }
+    return ''
+  }).filter(Boolean).join('\n\n')
+}
+
 export const useChatStore = defineStore('chat', () => {
   // ============================================================
   // 状态
@@ -620,6 +657,62 @@ export const useChatStore = defineStore('chat', () => {
     return ctx
   }
 
+  /**
+   * 单轮工具循环体 (C1.4 抽出, sendMessage 与 regenMessage 共用):
+   * 流式 → 切 tool_call chunks → 执行工具 → 摘要回喂。
+   * @returns {'done'|'continue'|'abort'} done=无工具调用或无结果(循环结束); continue=有工具结果继续下轮; abort=流式被中止/出错
+   */
+  async function _runToolRound({ apiMessages, assistantMsg, errorLabel }) {
+    streaming.value = true
+    currentStreamId.value = assistantMsg.id
+    try {
+      await _streamResponse(apiMessages, assistantMsg)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
+        streaming.value = false; currentStreamId.value = null; return 'abort'
+      }
+      error.value = e.message || errorLabel
+      if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${error.value}`)
+      streaming.value = false; currentStreamId.value = null; return 'abort'
+    }
+    streaming.value = false
+    currentStreamId.value = null
+
+    // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
+    const segs = splitToolCallChunks(contentTextOf(assistantMsg))
+    const hasToolCall = segs.some((c) => c.type === 'tool_call')
+    if (!hasToolCall) return 'done' // 纯文本回复, 完成
+
+    const thinkChunks = activeChunksOf(assistantMsg).filter((c) => c.type === 'think')
+    assistantMsg.versions[assistantMsg.activeVersion].chunks = [...thinkChunks, ...segs]
+
+    // 逐个执行 tool_call chunk: 状态机 pending → in_progress → completed/error
+    const toolResults = []
+    toolLoopRunning.value = true
+    try {
+      for (const chunk of activeChunksOf(assistantMsg)) {
+        if (chunk.type !== 'tool_call') continue
+        chunk.status = 'in_progress'
+        const result = await _executeTool(chunk.args)
+        chunk.status = result.error ? 'error' : 'completed'
+        chunk.result = result
+        toolResults.push({ call: chunk.args, result })
+      }
+    } finally {
+      toolLoopRunning.value = false
+    }
+
+    if (toolResults.length === 0) return 'done'
+
+    // 工具结果摘要作为新 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护)
+    const toolResultSummary = summarizeToolResults(toolResults)
+    if (toolResultSummary) {
+      _addMessage('user', `[工具返回]\n${toolResultSummary}`)
+    }
+    return 'continue'
+  }
+
   /** 发送用户消息并获取 AI 回复 (SSE 流式 + 工具循环) */
   async function sendMessage(userContent) {
     if (streaming.value || !userContent.trim()) return
@@ -648,92 +741,11 @@ export const useChatStore = defineStore('chat', () => {
       }))
       const apiMessages = [systemMsg, ...historyMsgs]
 
-      // 添加助手占位消息 (空 chunks)
+      // 每轮添加新的助手占位消息 (空 chunks)
       const assistantMsg = _addMessage('assistant', [])
-      currentStreamId.value = assistantMsg.id
-      streaming.value = true
 
-      try {
-        await _streamResponse(apiMessages, assistantMsg)
-      } catch (e) {
-        if (e.name === 'AbortError') {
-          if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
-          streaming.value = false; currentStreamId.value = null; return
-        }
-        error.value = e.message || '对话请求失败'
-        if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${error.value}`)
-        streaming.value = false; currentStreamId.value = null; return
-      }
-
-      streaming.value = false
-      currentStreamId.value = null
-
-      // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
-      // 读写都走当前 version 的 chunks (助手消息无顶层 chunks, 见 _addMessage)
-      const segs = splitToolCallChunks(contentTextOf(assistantMsg))
-      const hasToolCall = segs.some((c) => c.type === 'tool_call')
-      if (!hasToolCall) {
-        // 纯文本回复，完成 (content chunks 已就位, 无需重建)
-        break
-      }
-      const thinkChunks = activeChunksOf(assistantMsg).filter((c) => c.type === 'think')
-      assistantMsg.versions[assistantMsg.activeVersion].chunks = [...thinkChunks, ...segs]
-
-      // 逐个执行 tool_call chunk: 状态机 pending → in_progress → completed/error
-      const toolResults = []
-      toolLoopRunning.value = true
-      try {
-        for (const chunk of activeChunksOf(assistantMsg)) {
-          if (chunk.type !== 'tool_call') continue
-          chunk.status = 'in_progress'
-          const result = await _executeTool(chunk.args)
-          chunk.status = result.error ? 'error' : 'completed'
-          chunk.result = result
-          toolResults.push({ call: chunk.args, result })
-        }
-      } finally {
-        toolLoopRunning.value = false
-      }
-
-      if (toolResults.length === 0) break
-
-      // 将工具结果摘要作为新 user 消息塞入历史 (供下一轮 API 上下文)
-      const toolResultSummary = toolResults.map((tr) => {
-        if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
-        if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
-        if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
-        if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
-        if (tr.result.tool === 'generate_project_graph') {
-          const s = tr.result.stats || {}
-          const ents = (tr.result.entities || []).slice(0, 20)
-            .map((e) => `- ${e.kind} ${e.qualified_name} (行${e.line_start || '?'}-${e.line_end || '?'})`)
-            .join('\n')
-          return `项目图谱已生成 (${tr.result.sourcePath}, written=${tr.result.written}). 统计: 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}.\n实体清单:\n${ents || '(无)'}`
-        }
-        if (tr.result.tool === 'code_review') {
-          const rv = tr.result.review || {}
-          const dims = rv.dimensions || {}
-          const dimLines = Object.entries(dims).map(([k, v]) => `${k}: ${((v.score ?? 0) * 100).toFixed(0)}%`).join(', ')
-          const highIssues = (Object.values(dims).flatMap((d) => d.issues || []).filter((i) => i.severity === 'high')).slice(0, 5)
-            .map((i) => `- [high] ${i.problem}`).join('\n')
-          return `代码审查结果 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'}, 通过阈值0.85. 维度: ${dimLines}.${rv.retry_hint ? ' 提示: ' + rv.retry_hint : ''}${highIssues ? '\n高危问题:\n' + highIssues : ''}`
-        }
-        if (tr.result.tool === 'code_test') {
-          const rp = tr.result.report || {}
-          const sm = rp.summary || {}
-          const cov = rp.coverage || {}
-          const fails = (rp.failed_tests || []).slice(0, 5)
-            .map((f) => `- ${f.test_name}: ${f.suggestion || f.error_type || '失败'}`).join('\n')
-          return `代码测试结果 (${tr.result.sourcePath}): ${sm.passed || 0}/${sm.total || 0} 通过, 行覆盖${((cov.line_coverage || 0) * 100).toFixed(0)}%, 分支覆盖${((cov.branch_coverage || 0) * 100).toFixed(0)}%, 函数覆盖${((cov.function_coverage || 0) * 100).toFixed(0)}%.${rp.note ? ' 备注: ' + rp.note : ''}${fails ? '\n失败用例:\n' + fails : ''}${rp.rejected ? ' (已拒绝: ' + (rp.reject_reason || '') + ')' : ''}`
-        }
-        return ''
-      }).filter(Boolean).join('\n\n')
-
-      if (toolResultSummary) {
-        _addMessage('user', `[工具返回]\n${toolResultSummary}`)
-      }
-
-      // 继续循环，让 AI 基于工具结果回答
+      const outcome = await _runToolRound({ apiMessages, assistantMsg, errorLabel: '对话请求失败' })
+      if (outcome !== 'continue') break // done (纯文本) 或 abort (中止/出错)
     }
   }
 
@@ -757,7 +769,7 @@ export const useChatStore = defineStore('chat', () => {
     // 3. 收集上下文
     const context = await _collectContext()
 
-    // 4. 工具循环 (复用 sendMessage 逻辑, 历史只取 target 之前的 visible 消息)
+    // 4. 工具循环 (复用 _runToolRound, 历史只取 target 之前的 visible 消息; 流进 target 新版本)
     let toolRound = 0
     while (toolRound < MAX_TOOL_ROUNDS) {
       toolRound++
@@ -769,71 +781,9 @@ export const useChatStore = defineStore('chat', () => {
       }))
       const apiMessages = [systemMsg, ...historyMsgs]
 
-      streaming.value = true
-      currentStreamId.value = target.id
-      try {
-        await _streamResponse(apiMessages, target)
-      } catch (e) {
-        if (e.name === 'AbortError') {
-          if (contentTextOf(target) === '') appendTextChunk(activeChunksOf(target), 'content', '(已停止)')
-          streaming.value = false; currentStreamId.value = null; return
-        }
-        error.value = e.message || '重生成失败'
-        if (contentTextOf(target) === '') appendTextChunk(activeChunksOf(target), 'content', `❌ ${error.value}`)
-        streaming.value = false; currentStreamId.value = null; return
-      }
-      streaming.value = false
-      currentStreamId.value = null
-
-      // 流式后切 chunks (think 保留 + segs)
-      const segs = splitToolCallChunks(contentTextOf(target))
-      const hasToolCall = segs.some((c) => c.type === 'tool_call')
-      if (!hasToolCall) break
-
-      const thinkChunks = activeChunksOf(target).filter((c) => c.type === 'think')
-      target.versions[target.activeVersion].chunks = [...thinkChunks, ...segs]
-
-      // 执行 tool_call
-      const toolResults = []
-      toolLoopRunning.value = true
-      try {
-        for (const chunk of target.versions[target.activeVersion].chunks) {
-          if (chunk.type !== 'tool_call') continue
-          chunk.status = 'in_progress'
-          const result = await _executeTool(chunk.args)
-          chunk.status = result.error ? 'error' : 'completed'
-          chunk.result = result
-          toolResults.push({ call: chunk.args, result })
-        }
-      } finally {
-        toolLoopRunning.value = false
-      }
-      if (toolResults.length === 0) break
-
-      // 工具结果摘要作 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护)
-      const toolResultSummary = toolResults.map((tr) => {
-        if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
-        if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
-        if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
-        if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
-        if (tr.result.tool === 'generate_project_graph') {
-          const s = tr.result.stats || {}
-          return `项目图谱已生成 (${tr.result.sourcePath}). 统计: 模块${s.module||0}/类${s.class||0}/函数${s.function||0}/方法${s.method||0}.`
-        }
-        if (tr.result.tool === 'code_review') {
-          const rv = tr.result.review || {}
-          return `代码审查 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score!=null?(rv.overall_score*100).toFixed(0)+'%':'?'}.`
-        }
-        if (tr.result.tool === 'code_test') {
-          const rp = tr.result.report || {}; const sm = rp.summary || {}
-          return `代码测试 (${tr.result.sourcePath}): ${sm.passed||0}/${sm.total||0} 通过.`
-        }
-        return ''
-      }).filter(Boolean).join('\n\n')
-      if (toolResultSummary) {
-        // trailingAfter 由 _addMessage 钩子自动维护 (target 为最后一个助手时, 归入新版本)
-        _addMessage('user', `[工具返回]\n${toolResultSummary}`)
-      }
+      // trailingAfter 由 _addMessage 钩子自动维护 (target 为最后一个助手时, 工具结果归入新版本)
+      const outcome = await _runToolRound({ apiMessages, assistantMsg: target, errorLabel: '重生成失败' })
+      if (outcome !== 'continue') break
     }
   }
 
