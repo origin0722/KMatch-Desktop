@@ -1,9 +1,12 @@
 /**
  * 文件系统 IPC (阶段1)
  * 所有 fs 操作只在 main 做, 渲染层无 Node fs 权限。
- * 路径安全: 限定在当前 workspace 根内 (阶段3 权限门会加审批)。
+ * 路径安全: 限定在当前 workspace 根内 (resolveSafe 守卫)。
  *
- * 阶段1 暂不接审批门 — 读写均在 workspace 内, 阶段3 引入 permissionGate。
+ * F12 防御纵深: 写操作 (write/create/delete/rename) 除渲染层审批门外, main 侧
+ *  - 审计日志: 记录操作/路径/字节数, 便于追溯异常写入 (renderer 被攻破或调用方绕过 gate 时可发现)
+ *  - 危险删除守卫: 拒绝删除 workspace 根本身 (避免 rm -rf 整个项目)
+ *  - 符号链接穿越检查: 拒绝写/删指向 workspace 外的符号链接
  */
 import { ipcMain, dialog } from 'electron'
 import fs from 'fs/promises'
@@ -28,8 +31,14 @@ const IGNORE_NAMES = new Set([
 
 export { IGNORE_NAMES }
 
+/** F12: 写操作审计日志 (main 侧防御纵深, 追溯异常写入) */
+function auditWrite(op, relPath, extra = {}) {
+  const meta = Object.entries(extra).map(([k, v]) => `${k}=${v}`).join(' ')
+  console.log(`[fs-audit] ${op} ${relPath}${meta ? ' ' + meta : ''}`)
+}
+
 /** 规范化并校验路径在 workspace 内, 防越界 */
-function resolveSafe(relPath) {
+export function resolveSafe(relPath) {
   if (!workspaceRoot) throw new Error('未打开工作区')
   const abs = path.isAbsolute(relPath)
     ? relPath
@@ -39,6 +48,29 @@ function resolveSafe(relPath) {
     throw new Error(`路径越界工作区: ${relPath}`)
   }
   return abs
+}
+
+/**
+ * F12: 写/删操作的强化守卫。
+ *  - 拒绝操作 workspace 根本身 (防止 rm 根目录或覆盖根)
+ *  - 拒绝符号链接穿越 (目标指向 workspace 外)
+ * 抛错则 IPC 返回异常, 渲染层 http/fs 错误路径处理。
+ */
+export function assertSafeForWrite(abs, op) {
+  if (!workspaceRoot || path.resolve(abs) === path.resolve(workspaceRoot)) {
+    throw new Error(`禁止${op}工作区根目录`)
+  }
+  // 符号链接穿越检查 (若 abs 是/含符号链接且最终目标在工作区外, 拒绝)
+  try {
+    const real = fsSync.realpathSync(abs)
+    const rel = path.relative(workspaceRoot, real)
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      throw new Error(`符号链接穿越工作区: ${abs} → ${real}`)
+    }
+  } catch (e) {
+    if (e.message.startsWith('符号链接穿越') || e.message.startsWith('禁止')) throw e
+    // realpathSync 失败 = 文件不存在 (createFile/writeFile 新建场景), 放行
+  }
 }
 
 export function registerFsIpc() {
@@ -69,9 +101,12 @@ export function registerFsIpc() {
     return listOne(abs)
   })
 
-  // 阶段1 写操作暂直接执行 (限 workspace 内); 阶段3 接审批门 + safety-check
+  // F12: 写操作经 assertSafeForWrite + 审计日志 (renderer 审批门之外的防御纵深)
   ipcMain.handle('fs:writeFile', async (_e, filePath, content) => {
     const abs = resolveSafe(filePath)
+    assertSafeForWrite(abs, '写入')
+    const bytes = typeof content === 'string' ? Buffer.byteLength(content, 'utf-8') : 0
+    auditWrite('write', filePath, { bytes })
     await fs.mkdir(path.dirname(abs), { recursive: true })
     await fs.writeFile(abs, content, 'utf-8')
     return { ok: true, path: path.relative(workspaceRoot, abs) }
@@ -79,7 +114,9 @@ export function registerFsIpc() {
 
   ipcMain.handle('fs:createFile', async (_e, filePath) => {
     const abs = resolveSafe(filePath)
+    assertSafeForWrite(abs, '创建')
     if (fsSync.existsSync(abs)) throw new Error('文件已存在')
+    auditWrite('create', filePath)
     await fs.mkdir(path.dirname(abs), { recursive: true })
     await fs.writeFile(abs, '', 'utf-8')
     return { ok: true }
@@ -87,6 +124,8 @@ export function registerFsIpc() {
 
   ipcMain.handle('fs:deleteFile', async (_e, filePath) => {
     const abs = resolveSafe(filePath)
+    assertSafeForWrite(abs, '删除')
+    auditWrite('delete', filePath)
     await fs.rm(abs, { recursive: true, force: true })
     return { ok: true }
   })
@@ -94,6 +133,9 @@ export function registerFsIpc() {
   ipcMain.handle('fs:rename', async (_e, oldPath, newPath) => {
     const absOld = resolveSafe(oldPath)
     const absNew = resolveSafe(newPath)
+    assertSafeForWrite(absOld, '重命名(源)')
+    assertSafeForWrite(absNew, '重命名(目标)')
+    auditWrite('rename', oldPath, { to: newPath })
     await fs.rename(absOld, absNew)
     return { ok: true }
   })
