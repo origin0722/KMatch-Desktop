@@ -170,8 +170,16 @@ function hasIpc() {
 export function summarizeToolResults(toolResults) {
   return toolResults.map((tr) => {
     if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
-    if (tr.result.written) return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
-    if (tr.result.content) return `文件 ${tr.result.path} 内容:\n\`\`\`\n${tr.result.content.slice(0, 6000)}\n\`\`\``
+    // write_file 才有 written=true; generate_project_graph 的 written 是"是否落 Neo4j"语义不同,
+    // 故 written 分支限定 write_file, 避免吞掉 graph 摘要 (review 发现)
+    if (tr.result.written && tr.call.tool === 'write_file') return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
+    if (tr.result.content) {
+      // F7: 截断 6000 字符时明示, 让 AI 知道被截断 (大文件推理不再静默降级)
+      const max = 6000
+      const full = tr.result.content
+      const truncated = full.length > max ? full.slice(0, max) + `\n... (内容已截断, 共 ${full.length} 字符, 仅显示前 ${max}; 如需后续内容请指明行号范围)` : full
+      return `文件 ${tr.result.path} 内容:\n\`\`\`\n${truncated}\n\`\`\``
+    }
     if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
     if (tr.result.tool === 'generate_project_graph') {
       const s = tr.result.stats || {}

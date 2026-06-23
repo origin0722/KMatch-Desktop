@@ -62,4 +62,21 @@ describe('summarizeToolResults (C1.4 单一源)', () => {
     expect(out).toContain('a.py 内容')
     expect(out).not.toContain('\n\n\n')
   })
+
+  it('F7: 大文件截断 6000 字符时明示 (不再静默降级)', () => {
+    const big = 'x'.repeat(7000)
+    const out = summarizeToolResults([{ call: { tool: 'read_file' }, result: { content: big, path: 'a.py' } }])
+    expect(out).toContain('内容已截断')
+    expect(out).toContain('7000 字符')
+    expect(out).not.toContain('x'.repeat(7000)) // 未全量塞回
+  })
+
+  it('written 分支限定 write_file: generate_project_graph(written=true) 走 graph 摘要不被吞 (review 修正)', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'generate_project_graph' },
+      result: { tool: 'generate_project_graph', sourcePath: 'a.py', written: true, stats: { module: 1, class: 0, function: 0, method: 0 }, entities: [] },
+    }])
+    expect(out).toContain('模块1')          // graph 摘要
+    expect(out).not.toContain('已成功写入') // 不被 write_file 分支吞
+  })
 })
