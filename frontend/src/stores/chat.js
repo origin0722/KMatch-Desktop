@@ -24,8 +24,44 @@ import {
   buildAdvertisedToolNames,
   toolPermissionError,
 } from '@/ide/tools/registry'
+import {
+  hasProfile,
+  profileTheoryLevel,
+  profilePracticeLevel,
+  profileWeakTopicNames,
+  learningPathLength,
+  learningEstimatedHours,
+} from '@/ide/chat/types'
 
 const MAX_TOOL_ROUNDS = 3
+
+/**
+ * 构建学情画像提示块 (C3: 经 chat/types.js 类型化 helper 读取, 不再硬编码 profile/knowledgeGraph 字段名)。
+ * @param {Object} ctx  context (含 profile, knowledgeGraph)
+ * @param {string} title  画像块标题
+ * @returns {string}  画像块 (含前置换行), 无内容返回 ''
+ */
+function buildProfileBlock(ctx, title) {
+  const p = ctx?.profile
+  if (!hasProfile(p)) return ''
+  const lines = []
+  const theory = profileTheoryLevel(p)
+  const practice = profilePracticeLevel(p)
+  if (theory != null) lines.push(`- 理论水平: ${theory}/5`)
+  if (practice != null) lines.push(`- 实操水平: ${practice}/5`)
+  const weak = profileWeakTopicNames(p, 5)
+  if (weak.length) lines.push('- 薄弱知识点: ' + weak.join('、'))
+  // 学习路径信息仅非导学模式注入 (导学模式聚焦薄弱点); 由调用方决定是否传 kg
+  if (ctx?.knowledgeGraph) {
+    const pathLen = learningPathLength(ctx.knowledgeGraph)
+    if (pathLen) {
+      const hours = learningEstimatedHours(ctx.knowledgeGraph)
+      lines.push(`- 学习路径: ${pathLen} 个节点, 预计 ${hours ?? '?'}h`)
+    }
+  }
+  if (!lines.length) return ''
+  return `\n\n## ${title}\n` + lines.join('\n')
+}
 
 export function buildSystemPrompt(context) {
   let ctxBlock = ''
@@ -60,19 +96,8 @@ export function buildSystemPrompt(context) {
 
   // ---- 阶段4③ 启发式交互导学模式 (赛题(4)②) ----
   if (context && context.tutorMode) {
-    // 注入学情画像 (来自 assessment store), 做个性化引导
-    let profileBlock = ''
-    const p = context.profile
-    if (p && typeof p === 'object') {
-      const lines = []
-      if (p.theory_level != null) lines.push(`- 理论水平: ${p.theory_level}/5`)
-      if (p.practice_level != null) lines.push(`- 实操水平: ${p.practice_level}/5`)
-      const weak = Array.isArray(p.weak_topics) ? p.weak_topics : []
-      if (weak.length) {
-        lines.push('- 薄弱知识点: ' + weak.slice(0, 5).map((t) => t.name || t.node_id || t).join('、'))
-      }
-      if (lines.length) profileBlock = '\n\n## 学习者学情画像 (个性化引导依据)\n' + lines.join('\n')
-    }
+    // 注入学情画像 (经 types.js helper 读取, 导学模式聚焦薄弱点, 不含学习路径)
+    const profileBlock = buildProfileBlock({ profile: context.profile }, '学习者学情画像 (个性化引导依据)')
 
     return {
       role: 'system',
@@ -92,19 +117,8 @@ export function buildSystemPrompt(context) {
     }
   }
 
-  // 阶段9: 双向联动 — 非导学模式也注入学情画像, 助手可回答"为什么这样规划"
-  let profileBlock = ''
-  const p = context?.profile
-  if (p && typeof p === 'object') {
-    const lines = []
-    if (p.theory_level != null) lines.push(`- 理论水平: ${p.theory_level}/5`)
-    if (p.practice_level != null) lines.push(`- 实操水平: ${p.practice_level}/5`)
-    const weak = Array.isArray(p.weak_topics) ? p.weak_topics : []
-    if (weak.length) lines.push('- 薄弱知识点: ' + weak.slice(0, 5).map((t) => t.name || t.node_id || t).join('、'))
-    const kg = context?.knowledgeGraph
-    if (kg?.learning_path?.length) lines.push(`- 学习路径: ${kg.learning_path.length} 个节点, 预计 ${kg.estimated_total_hours?.toFixed?.(1) ?? '?'}h`)
-    if (lines.length) profileBlock = '\n\n## 学习者学情画像 (可据此回答"为什么这样规划")\n' + lines.join('\n')
-  }
+  // 阶段9: 双向联动 — 非导学模式也注入学情画像 (含学习路径), 助手可回答"为什么这样规划"
+  const profileBlock = buildProfileBlock(context, '学习者学情画像 (可据此回答"为什么这样规划")')
 
   return {
     role: 'system',
