@@ -144,6 +144,16 @@ async function switchTo(relPath) {
 
 watch(() => theme.mode, applyTheme)
 
+// F9: 项目切换 (root 变) 时清空 model 缓存。models 按 relPath 缓存, 但 relPath 相对项目根;
+// 新项目若含同 relPath 文件, 会复用旧 model (旧项目内容) 直到外部改动失效。切项目即全失效。
+watch(() => ws.root, () => {
+  if (!editor) return
+  models.forEach((m) => { try { m.dispose() } catch { /* ignore */ } })
+  models.clear()
+  conflictPath.value = null
+  if (!ws.activeFile) editor.setModel(null)
+})
+
 // ---- 阶段8: 外部文件变动响应 ----
 // watch externalChanges: 对已打开的非脏文件失效 model (下次 getOrCreateModel 重读磁盘);
 //                       对脏文件设 conflictPath 弹 banner。
