@@ -1,10 +1,15 @@
 # B 端联调用例集（A 端提供）
 
+> ⚠️ **历史存档**（三人协作时代，6/18）。本文件指向旧 KMatch Web 前端联调，**已被 KMatch-Desktop 收编取代**。
+> API 契约部分仍可参考，但以 [docs/ARCHITECTURE.md](../../ARCHITECTURE.md) 与后端 `backend/app/api/` 为准。
+> 新工作开 GitHub Issue，勿据此改代码。
+>
 > **面向**: B（前端）开发与联调
 > **用途**: 每个接口的成功/降级/错误响应 JSON 样本，可作前端 mock 数据或 Postman 验证基准。无需起 Neo4j+LLM 即可开发前端。
 > **基准**: 后端 main 分支 `5e922a0`，对齐 `docs/A端后端对接文档.md`
 
 ---
+
 
 ## 一、POST /api/diagnostics/assess
 
