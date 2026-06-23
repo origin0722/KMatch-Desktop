@@ -410,10 +410,15 @@ export const useChatStore = defineStore('chat', () => {
 
   /** UI 触发: 批准/拒绝 write_file. decision = { approved, content? } */
   function resolveApproval(decision) {
+    _cancelPendingApproval(decision)
+  }
+
+  /** F8 集中处理: 取消未决审批 (按 decision 解决 await, 默认拒绝), 防新退出路径忘 reject 导致 hung promise。 */
+  function _cancelPendingApproval(decision = { approved: false }) {
     const p = pendingApproval.value
     if (!p) return
     pendingApproval.value = null
-    p.resolve(decision || { approved: false })
+    p.resolve(decision)
   }
 
   /**
@@ -754,6 +759,8 @@ export const useChatStore = defineStore('chat', () => {
 
   function stopStreaming() {
     abortController.value?.abort()
+    // F8: 停止时若有未决审批, 按拒绝解开 await (防 hung promise)
+    _cancelPendingApproval()
   }
 
   /** 切助手消息的版本 (prev/next 导航) */
@@ -766,12 +773,8 @@ export const useChatStore = defineStore('chat', () => {
 
   function clearMessages() {
     abortController.value?.abort()
-    // 取消未决的 write_file 审批 (按拒绝处理, 解开 await)
-    if (pendingApproval.value) {
-      const p = pendingApproval.value
-      pendingApproval.value = null
-      p.resolve({ approved: false })
-    }
+    // F8: 集中取消未决审批 (按拒绝), 解开 await
+    _cancelPendingApproval()
     messages.value = []
     streaming.value = false
     currentStreamId.value = null
