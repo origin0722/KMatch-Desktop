@@ -5,6 +5,7 @@
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { useReactiveMap, useReactiveSet } from '@/ide/useReactiveCollection'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const root = ref(null) // 项目根绝对路径
@@ -12,13 +13,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const tree = ref([]) // 扁平文件列表 [{name, path, isDirectory}]
   const openFiles = ref([]) // 打开文件路径数组
   const activeFile = ref(null) // 当前激活文件相对路径
-  const dirtyFiles = ref(new Set()) // 未保存文件
+  // F11: dirtyFiles/externalChanges 用响应式 helper (mutation 后自动 trigger),
+  // 旧实现 Set/Map mutation 不触发响应式 → dirty 标记静默不更新 (EditorTabs/FileExplorer/StatusBar 看不到)
+  const dirtySet = useReactiveSet()
+  const dirtyFiles = dirtySet.ref // 暴露 ref 供组件 .has() 读 (契约不变)
   const recent = ref([])
 
   // 阶段8: 外部文件变动 (主进程 watcher 推送)。
   // externalChanges: Map<relPath, { kind, ts }> — MonacoEditor watch 此表, 对打开的非脏文件失效 model,
   //                  对脏文件标 conflict 弹确认。
-  const externalChanges = ref(new Map())
+  const extChanges = useReactiveMap()
+  const externalChanges = extChanges.ref
   let _unsubscribeWatch = null
   let _refreshTimer = null
 
@@ -74,9 +79,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     _unsubscribeWatch = window.api.fs.onChange(async (event) => {
       if (!event || !event.path) return
       // 记录外部改动 (MonacoEditor 据此响应; projectGraph 经 onExternalChange 订阅响应)
-      externalChanges.value.set(event.path, { kind: event.kind, ts: Date.now() })
-      // 触发响应式 (Map mutation 需手动触发)
-      externalChanges.value = new Map(externalChanges.value)
+      extChanges.set(event.path, { kind: event.kind, ts: Date.now() })
 
       // 通知文件变动订阅者 (C2: projectGraph 自行订阅并 markStale, workspace 不再 import projectGraph)
       for (const cb of _changeListeners) {
@@ -101,15 +104,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       clearTimeout(_refreshTimer)
       _refreshTimer = null
     }
-    externalChanges.value = new Map()
+    extChanges.clear()
   }
 
   /** MonacoEditor 处理完一个外部改动后清除标记 */
   function clearExternalChange(relPath) {
-    if (externalChanges.value.has(relPath)) {
-      externalChanges.value.delete(relPath)
-      externalChanges.value = new Map(externalChanges.value)
-    }
+    extChanges.delete(relPath)
   }
 
   async function openFile(relPath) {
@@ -127,7 +127,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const idx = openFiles.value.indexOf(relPath)
     if (idx < 0) return
     openFiles.value.splice(idx, 1)
-    dirtyFiles.value.delete(relPath)
+    dirtySet.delete(relPath)
     if (activeFile.value === relPath) {
       activeFile.value = openFiles.value[idx] || openFiles.value[idx - 1] || null
     }
@@ -138,13 +138,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function markDirty(relPath, dirty = true) {
-    if (dirty) dirtyFiles.value.add(relPath)
-    else dirtyFiles.value.delete(relPath)
+    if (dirty) dirtySet.add(relPath)
+    else dirtySet.delete(relPath)
   }
 
   async function saveFile(relPath, content) {
     await window.api.fs.writeFile(relPath, content)
-    dirtyFiles.value.delete(relPath)
+    dirtySet.delete(relPath)
     // 自己保存的改动会触发 watcher 回推, 清掉 externalChange 标记避免误判冲突
     clearExternalChange(relPath)
   }
