@@ -327,7 +327,11 @@ export const useChatStore = defineStore('chat', () => {
     return msg
   }
 
-  /** 解析单个 SSE block, 累积进 assistantMsg 当前 version 的 chunks; 返回 'error' 表示遇到错误应中止 */
+  /**
+   * 解析单个 SSE block, 累积进 assistantMsg 当前 version 的 chunks。
+   * 返回 null=继续; 返回 Error=流内错误 (F2: 已渲染 ❌ chunk, streamChat 据 reject,
+   *   _runToolRound catch 见 streamError 标记勿重复渲染)。
+   */
   function _applySseBlock(block, assistantMsg) {
     if (!block.trim()) return null
     const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
@@ -337,7 +341,9 @@ export const useChatStore = defineStore('chat', () => {
       if (data.error) {
         error.value = data.error
         appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${data.error}`)
-        return 'error'
+        const e = new Error(data.error)
+        e.streamError = true // 已渲染 chunk, 调用方勿重复
+        return e
       }
       if (data.reasoning) appendTextChunk(activeChunksOf(assistantMsg), 'think', data.reasoning)
       if (data.delta) appendTextChunk(activeChunksOf(assistantMsg), 'content', data.delta)
@@ -628,8 +634,11 @@ export const useChatStore = defineStore('chat', () => {
         if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
         streaming.value = false; currentStreamId.value = null; return 'abort'
       }
-      error.value = e.message || errorLabel
-      if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${error.value}`)
+      // F2: 流内错误 (e.streamError) 已由 _applySseBlock 渲染 ❌ chunk + 设 error.value, 勿重复
+      if (!e.streamError) {
+        error.value = e.message || errorLabel
+        if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${error.value}`)
+      }
       streaming.value = false; currentStreamId.value = null; return 'abort'
     }
     streaming.value = false

@@ -36,8 +36,9 @@ contextBridge.exposeInMainWorld('api', {
   http: {
     request: (method, urlPath, body, params, opts) =>
       ipcRenderer.invoke('http:request', method, urlPath, body, params, opts),
-    // SSE: 启动流, 返回 reqId; 订阅 chunk/done/error 事件
-    stream: (urlPath, body) => ipcRenderer.invoke('http:stream', urlPath, body),
+    // SSE: 启动流, 返回 reqId; 订阅 chunk/done/error 事件。
+    // F3: 可传 reqId 以便并发多流按 reqId 过滤 (chat 与 diagnostics 评估并发不串扰)。
+    stream: (urlPath, body, reqId) => ipcRenderer.invoke('http:stream', urlPath, body, reqId),
     onChunk: (cb) => {
       const h = (_e, reqId, block) => cb(reqId, block)
       ipcRenderer.on('http:stream:chunk', h)

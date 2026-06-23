@@ -8,13 +8,18 @@
  * 两路共用同一个 \n\n 分帧逻辑（一个 block 可跨两次 reader.read()/IPC chunk）。
  * 调用方（chat store）经 onBlock 回调解析每个 block 并累积进消息 chunks。
  *
- * 这是 F4 的解法：SSE framing 逻辑从 chat.js + http-proxy 双处收口到单一源
- * （http-proxy 已负责把 fetch reader 拆成 block 转发，这里只做 IPC 侧缓冲 + 浏览器回退）。
+ * F3: 渲染层生成 reqId 并按之过滤 IPC 事件——chat 与 diagnostics 评估并发时各自只收自己的流。
+ * F2: onBlock 返回 Error (流内错误) 时, streamChat reject 该错误, 统一错误路径 (不再 200+error 仍 resolve)。
  */
 
 /** 是否有 Electron IPC（决定走 IPC 还是浏览器 fetch 回退）。 */
 function hasIpc() {
   return typeof window !== 'undefined' && !!window.api?.http
+}
+
+/** 生成唯一 reqId (渲染层, 用于并发流过滤)。 */
+function newReqId() {
+  return `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
 }
 
 /**
@@ -23,8 +28,8 @@ function hasIpc() {
  * @param {Object} opts
  * @param {Object} opts.body      请求体（messages/stream/model/api_key/base_url/reasoning…）
  * @param {AbortSignal} opts.signal  abort 信号（用户点停止时触发；IPC 流无法真中断，仅结束等待）
- * @param {(block: string) => ('error'|void)} opts.onBlock  每个 SSE block 的回调；返回 'error' 中止
- * @returns {Promise<void>} resolve=正常结束, reject=传输错误
+ * @param {(block: string) => (Error|void)} opts.onBlock  每个 SSE block 的回调；返回 Error 实例中止并 reject (其他返回值忽略)
+ * @returns {Promise<void>} resolve=正常结束, reject=传输错误或流内错误
  */
 export async function streamChat({ body, signal, onBlock }) {
   // ---- 浏览器 dev 回退: fetch + ReadableStream ----
@@ -49,13 +54,15 @@ export async function streamChat({ body, signal, onBlock }) {
       const parts = buffer.split('\n\n')
       buffer = parts.pop()
       for (const b of parts) {
-        if (onBlock(b) === 'error') return
+        const r = onBlock(b)
+        if (r instanceof Error) throw r // F2: 流内错误 → reject
       }
     }
     return
   }
 
   // ---- Electron: IPC SSE 代理 ----
+  const reqId = newReqId()
   return new Promise((resolve, reject) => {
     let buffer = ''
     let settled = false
@@ -65,30 +72,31 @@ export async function streamChat({ body, signal, onBlock }) {
       offChunk(); offDone(); offError()
       resolve()
     }
-    const offChunk = window.api.http.onChunk((_reqId, block) => {
+    const fail = (err) => {
       if (settled) return
+      settled = true
+      offChunk(); offDone(); offError()
+      reject(err)
+    }
+    // F3: 仅处理本流 reqId 的事件, 忽略其他并发流
+    const offChunk = window.api.http.onChunk((rid, block) => {
+      if (settled || rid !== reqId) return
       buffer += block
       const parts = buffer.split('\n\n')
       buffer = parts.pop()
       for (const b of parts) {
-        if (onBlock(b) === 'error') { finish(); return }
+        const r = onBlock(b)
+        if (r instanceof Error) { fail(r); return } // F2: 流内错误 → reject
       }
     })
-    const offDone = window.api.http.onDone(() => finish())
-    const offError = window.api.http.onError((_reqId, err) => {
-      if (settled) return
-      settled = true
-      offChunk(); offDone(); offError()
-      reject(new Error(err || 'SSE 流失败'))
+    const offDone = window.api.http.onDone((rid) => { if (rid === reqId) finish() })
+    const offError = window.api.http.onError((rid, err) => {
+      if (rid !== reqId) return
+      fail(new Error(err || 'SSE 流失败'))
     })
     // 用户点停止: abort 时结束等待 (IPC 流无法真正中断, 后端流自然结束)
     signal.addEventListener('abort', () => finish())
 
-    window.api.http.stream('/api/chat/completions', body).catch((e) => {
-      if (settled) return
-      settled = true
-      offChunk(); offDone(); offError()
-      reject(e)
-    })
+    window.api.http.stream('/api/chat/completions', body, reqId).catch((e) => fail(e))
   })
 }

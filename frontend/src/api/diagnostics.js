@@ -137,8 +137,11 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
     max_retries: payload.maxRetries ?? 3,
   }
 
+  // F3: 生成 reqId 并按之过滤 IPC 事件, 避免与 chat 等并发 SSE 流串扰
+  const reqId = `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
   let buffer = ''
-  const offChunk = window.api.http.onChunk((_reqId, block) => {
+  const offChunk = window.api.http.onChunk((rid, block) => {
+    if (rid !== reqId) return
     buffer += block
     const parts = buffer.split('\n\n')
     buffer = parts.pop() // 最后一块可能不完整, 留待下次拼接
@@ -155,14 +158,15 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
       // start 事件可忽略
     }
   })
-  const offDone = window.api.http.onDone(() => { offChunk(); offDone(); offError() })
-  const offError = window.api.http.onError((_reqId, err) => {
+  const offDone = window.api.http.onDone((rid) => { if (rid === reqId) { offChunk(); offDone(); offError() } })
+  const offError = window.api.http.onError((rid, err) => {
+    if (rid !== reqId) return
     offChunk(); offDone(); offError()
     onError?.(err || 'SSE 流失败')
   })
 
   try {
-    await window.api.http.stream('/api/diagnostics/assess/stream', body)
+    await window.api.http.stream('/api/diagnostics/assess/stream', body, reqId)
   } catch (e) {
     offChunk(); offDone(); offError()
     onError?.(e.message || '网络请求失败')

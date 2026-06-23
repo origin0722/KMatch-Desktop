@@ -38,9 +38,10 @@ export function registerHttpProxyIpc() {
     }
   })
 
-  // SSE 流式代理: 返回 reqId, 后续通过 'http:stream:chunk' 事件推 chunk
-  ipcMain.handle('http:stream', async (event, urlPath, body) => {
-    const reqId = `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+  // SSE 流式代理: 返回 reqId, 后续通过 'http:stream:chunk' 事件推 chunk。
+  // F3: 渲染层可传 reqId (并发多流时按 reqId 过滤, 避免串扰); 未传则主进程生成。
+  ipcMain.handle('http:stream', async (event, urlPath, body, reqId) => {
+    reqId = reqId || `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
     const win = BrowserWindow.fromWebContents(event.sender)
 
     fetch(BACKEND_URL + urlPath, {
