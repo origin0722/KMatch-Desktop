@@ -766,6 +766,7 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     streaming.value = false
     currentStreamId.value = null
+    toolLoopRunning.value = false
     error.value = null
   }
 

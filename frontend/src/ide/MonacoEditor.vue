@@ -146,12 +146,14 @@ watch(() => theme.mode, applyTheme)
 
 // F9: 项目切换 (root 变) 时清空 model 缓存。models 按 relPath 缓存, 但 relPath 相对项目根;
 // 新项目若含同 relPath 文件, 会复用旧 model (旧项目内容) 直到外部改动失效。切项目即全失效。
+// 注意: openProject 先设 root 再 (await) 清 activeFile, 故此 watcher 触发时 activeFile 可能仍为旧值;
+// 已 dispose 的 model 必须无条件从 editor 摘下, 否则编辑器挂在已 dispose 的 model 上。
 watch(() => ws.root, () => {
   if (!editor) return
   models.forEach((m) => { try { m.dispose() } catch { /* ignore */ } })
   models.clear()
   conflictPath.value = null
-  if (!ws.activeFile) editor.setModel(null)
+  editor.setModel(null)
 })
 
 // ---- 阶段8: 外部文件变动响应 ----

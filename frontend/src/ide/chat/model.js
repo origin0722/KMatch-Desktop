@@ -87,13 +87,18 @@ export function splitToolCallChunks(contentText) {
       call = { tool: '_malformed', _raw: raw }
       malformed = e.message || 'JSON 解析失败'
     }
+    // F6: 有效 JSON 但缺 tool 字段 (或非字符串) 也算格式错误, 否则会 fallthrough 成混淆的权限报错
+    if (!malformed && (typeof call.tool !== 'string' || !call.tool)) {
+      malformed = '缺少 tool 字段'
+      call = { tool: '_malformed', _raw: raw, _orig: call }
+    }
     chunks.push({
       type: 'tool_call',
       id: `tc_${++_tcCounter}`,
       tool: call.tool || '_malformed',
       args: call,
       status: 'pending',
-      _malformed: malformed, // 非空表示 JSON 解析失败, _executeTool 据此报错
+      _malformed: malformed, // 非空表示格式错误, _executeTool 据此报错
     })
     last = re.lastIndex
   }

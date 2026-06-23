@@ -92,6 +92,13 @@ describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
     expect(chunks[0].args._raw).toBe('{not valid json}')
     expect(chunks[0].status).toBe('pending')
   })
+
+  it('F6: 有效 JSON 缺 tool 字段也标 _malformed (不 fallthrough 成权限报错)', () => {
+    const text = '```tool_call\n{"path":"a.py"}\n```'
+    const chunks = splitToolCallChunks(text)
+    expect(chunks[0].tool).toBe('_malformed')
+    expect(chunks[0]._malformed).toBeTruthy()
+  })
 })
 
 describe('contentTextOf 适配 versions', () => {

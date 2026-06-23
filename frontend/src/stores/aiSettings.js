@@ -221,21 +221,26 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     }
   }
 
-  // setters: 先 fetchModels 校正 model, 再 persist —— 避免把 fetch 前的旧/跨厂商 model 写进 blob
+  // setters: 立即 persist provider/apiKey/customBaseUrl (同步落盘, 不依赖网络),
+  // 再 fetchModels 校正 model 并二次 persist (避免把旧/跨厂商 model 写进 blob)。
+  // 审查 #1 修了 model 竞态, 但把 persist 整体 gate 在 fetch 后会导致慢网络下丢失 provider/key —— 拆开。
   async function setProvider(pid) {
     provider.value = pid
+    persist()
     await fetchModels()
     persist()
   }
 
   async function setApiKey(key) {
     apiKey.value = key
+    persist()
     await fetchModels()
     persist()
   }
 
   async function setCustomBaseUrl(url) {
     customBaseUrl.value = (url || '').trim()
+    persist()
     if (provider.value === 'custom') await fetchModels()
     persist()
   }
