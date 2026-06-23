@@ -58,12 +58,17 @@ export function createMainWindow() {
     return { action: 'deny' }
   })
 
-  if (app.isPackaged) {
+  // dev 判断: 优先 ELECTRON_RENDERER_URL (electron-vite dev 必注入, packaged 不注入);
+  // 不只靠 app.isPackaged (部分环境下 dev 模式 isPackaged 仍为 true, 会导致 loadFile 黑屏)。
+  const rendererUrl = process.env.ELECTRON_RENDERER_URL
+  if (rendererUrl) {
+    win.loadURL(rendererUrl)
+    win.webContents.openDevTools({ mode: 'detach' })
+  } else if (app.isPackaged) {
     win.loadFile(path.join(__dirname, '../renderer/index.html'))
   } else {
-    // electron-vite dev: 渲染层 dev server (端口可能自动换, 用注入的 URL)
-    const url = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173'
-    win.loadURL(url)
+    // 兜底 dev (无 ELECTRON_RENDERER_URL, 非 packaged): 用默认 dev server
+    win.loadURL('http://localhost:5173')
     win.webContents.openDevTools({ mode: 'detach' })
   }
 
