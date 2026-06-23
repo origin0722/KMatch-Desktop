@@ -78,13 +78,22 @@ export function splitToolCallChunks(contentText) {
     const before = contentText.slice(last, m.index)
     if (before.trim()) chunks.push({ type: 'content', content: before })
     let call
-    try { call = JSON.parse(m[1].trim()) } catch { call = { tool: 'unknown', _raw: m[1].trim() } }
+    let malformed = null
+    const raw = m[1].trim()
+    try {
+      call = JSON.parse(raw)
+    } catch (e) {
+      // F6: 坏 JSON 不再静默丢——生成可见的 _malformed tool_call, 执行时给明确错误
+      call = { tool: '_malformed', _raw: raw }
+      malformed = e.message || 'JSON 解析失败'
+    }
     chunks.push({
       type: 'tool_call',
       id: `tc_${++_tcCounter}`,
-      tool: call.tool || 'unknown',
+      tool: call.tool || '_malformed',
       args: call,
       status: 'pending',
+      _malformed: malformed, // 非空表示 JSON 解析失败, _executeTool 据此报错
     })
     last = re.lastIndex
   }

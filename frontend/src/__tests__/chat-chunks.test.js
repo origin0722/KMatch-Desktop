@@ -81,6 +81,17 @@ describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
     const contentOnly = splitToolCallChunks(text).filter((c) => c.type === 'content').map((c) => c.content).join('')
     expect(contentOnly.trim()).toBe(stripToolCalls(text))
   })
+
+  it('F6: 坏 JSON 的 tool_call 标 _malformed + _raw, 不静默丢', () => {
+    const text = '```tool_call\n{not valid json}\n```'
+    const chunks = splitToolCallChunks(text)
+    expect(chunks).toHaveLength(1)
+    expect(chunks[0].type).toBe('tool_call')
+    expect(chunks[0].tool).toBe('_malformed')
+    expect(chunks[0]._malformed).toBeTruthy() // 含解析错误信息
+    expect(chunks[0].args._raw).toBe('{not valid json}')
+    expect(chunks[0].status).toBe('pending')
+  })
 })
 
 describe('contentTextOf 适配 versions', () => {

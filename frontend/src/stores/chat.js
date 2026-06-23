@@ -449,6 +449,10 @@ export const useChatStore = defineStore('chat', () => {
   /** 执行单个工具调用 */
   async function _executeTool(call) {
     try {
+      // F6: 坏 JSON 的 tool_call (splitToolCallChunks 标 _malformed) → 明确报错, 不静默丢
+      if (call.tool === '_malformed') {
+        return { error: `工具调用格式错误 (JSON 解析失败): ${call._raw?.slice(0, 120) || ''}` }
+      }
       const aiSettings = useAiSettingsStore()
       const permissionError = toolPermissionError(call.tool, aiSettings.permissionFor(call.tool))
       if (permissionError) return { error: permissionError }
