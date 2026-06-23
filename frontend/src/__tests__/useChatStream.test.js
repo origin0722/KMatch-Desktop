@@ -31,14 +31,15 @@ function mockIpc(streamImpl = () => Promise.resolve()) {
 describe('useChatStream — SSE 传输层 (C1.3)', () => {
   afterEach(() => { vi.unstubAllGlobals(); delete window.api })
 
-  it('IPC 路: 跨 onChunk 的 \n\n 分帧, 逐 block 回调, onDone resolve', async () => {
+  it('IPC 路: 每个 http:stream:chunk 是完整 block (http-proxy 已分帧), 逐块回调', async () => {
+    // http-proxy 已按 \n\n 分帧, 每个 chunk 就是一个完整 SSE block (无 \n\n 定界符)。
+    // 渲染层不再二次 split, 直接交 onBlock。
     const m = mockIpc()
     const blocks = []
     const p = streamChat({ body: {}, signal: new AbortController().signal, onBlock: (b) => blocks.push(b) })
     const rid = m.reqId
-    m.emitChunk(rid, 'data: {"delta":"hel')
-    m.emitChunk(rid, 'lo"}\n\ndata: {"delta":"wo')
-    m.emitChunk(rid, 'rld"}\n\n')
+    m.emitChunk(rid, 'data: {"delta":"hello"}')
+    m.emitChunk(rid, 'data: {"delta":"world"}')
     m.emitDone(rid)
     await p
     expect(blocks).toEqual(['data: {"delta":"hello"}', 'data: {"delta":"world"}'])
@@ -53,7 +54,9 @@ describe('useChatStream — SSE 传输层 (C1.3)', () => {
       onBlock: (b) => { blocks.push(b); return b.includes('bad') ? new Error('bad') : undefined },
     })
     const rid = m.reqId
-    m.emitChunk(rid, 'data: {"delta":"ok"}\n\ndata: {"error":"bad"}\n\ndata: {"delta":"unreached"}\n\n')
+    m.emitChunk(rid, 'data: {"delta":"ok"}')
+    m.emitChunk(rid, 'data: {"error":"bad"}')
+    m.emitChunk(rid, 'data: {"delta":"unreached"}')
     m.emitDone(rid)
     await expect(p).rejects.toThrow('bad')
     expect(blocks).toHaveLength(2) // 第三个 block 中止后不再回调
@@ -88,9 +91,9 @@ describe('useChatStream — SSE 传输层 (C1.3)', () => {
     const p = streamChat({ body: {}, signal: new AbortController().signal, onBlock: (b) => blocks.push(b) })
     const rid = m.reqId
     // 其他流的 chunk (reqId 不匹配) 应被忽略
-    m.emitChunk('other-stream', 'data: {"delta":"not mine"}\n\n')
+    m.emitChunk('other-stream', 'data: {"delta":"not mine"}')
     // 本流的 chunk 正常处理
-    m.emitChunk(rid, 'data: {"delta":"mine"}\n\n')
+    m.emitChunk(rid, 'data: {"delta":"mine"}')
     m.emitDone(rid)
     await p
     expect(blocks).toEqual(['data: {"delta":"mine"}'])

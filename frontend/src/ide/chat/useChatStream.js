@@ -62,9 +62,10 @@ export async function streamChat({ body, signal, onBlock }) {
   }
 
   // ---- Electron: IPC SSE 代理 ----
+  // http-proxy 已按 \n\n 分帧, 每个 http:stream:chunk 就是一个完整 SSE block (无 \n\n 定界符);
+  // 渲染层不再二次缓冲/拆分, 直接交 onBlock。旧实现二次 split('\n\n') 永不产出 → 流式回执空 (修)。
   const reqId = newReqId()
   return new Promise((resolve, reject) => {
-    let buffer = ''
     let settled = false
     const finish = () => {
       if (settled) return
@@ -81,13 +82,8 @@ export async function streamChat({ body, signal, onBlock }) {
     // F3: 仅处理本流 reqId 的事件, 忽略其他并发流
     const offChunk = window.api.http.onChunk((rid, block) => {
       if (settled || rid !== reqId) return
-      buffer += block
-      const parts = buffer.split('\n\n')
-      buffer = parts.pop()
-      for (const b of parts) {
-        const r = onBlock(b)
-        if (r instanceof Error) { fail(r); return } // F2: 流内错误 → reject
-      }
+      const r = onBlock(block)
+      if (r instanceof Error) { fail(r); return } // F2: 流内错误 → reject
     })
     const offDone = window.api.http.onDone((rid) => { if (rid === reqId) finish() })
     const offError = window.api.http.onError((rid, err) => {

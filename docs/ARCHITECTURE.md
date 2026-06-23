@@ -110,7 +110,7 @@ sequenceDiagram
 | `http.{stream,onChunk,onDone,onError}` | `http:stream*` | R→M 起，M→R 流 |
 | `window.openDevTools` | `window:openDevTools` | R→M |
 
-序列化：invoke 参数/结果 structured-clone；on* 事件 `(event, ...args)`，`onDone` 不带 reqId（F3）。
+序列化：invoke 参数/结果 structured-clone；on* 事件 `(event, reqId, ...args)`，三个 SSE 事件（chunk/done/error）均带 reqId，渲染层按 reqId 过滤并发流（F3）。http-proxy 已按 `\n\n` 分帧，每个 `http:stream:chunk` 是完整 SSE block（无定界符），渲染层直接交 onBlock 不再二次拆分。
 
 ### 2.6 后端 agents + 路由
 

@@ -137,26 +137,21 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
     max_retries: payload.maxRetries ?? 3,
   }
 
-  // F3: 生成 reqId 并按之过滤 IPC 事件, 避免与 chat 等并发 SSE 流串扰
+  // F3: 生成 reqId 并按之过滤 IPC 事件, 避免与 chat 等并发 SSE 流串扰。
+  // http-proxy 已按 \n\n 分帧, 每个 http:stream:chunk 就是一个完整 SSE block, 直接解析。
   const reqId = `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
-  let buffer = ''
   const offChunk = window.api.http.onChunk((rid, block) => {
     if (rid !== reqId) return
-    buffer += block
-    const parts = buffer.split('\n\n')
-    buffer = parts.pop() // 最后一块可能不完整, 留待下次拼接
-    for (const b of parts) {
-      if (!b.trim()) continue
-      const event = b.match(/^event:\s*(.+)$/m)?.[1]
-      const dataStr = b.match(/^data:\s*(.+)$/m)?.[1]
-      if (!event || !dataStr) continue
-      let data
-      try { data = JSON.parse(dataStr) } catch { continue }
-      if (event === 'progress') onProgress?.(data)
-      else if (event === 'done') onDone?.(data)
-      else if (event === 'error') onError?.(data.detail || '测评流程失败')
-      // start 事件可忽略
-    }
+    if (!block.trim()) return
+    const event = block.match(/^event:\s*(.+)$/m)?.[1]
+    const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
+    if (!event || !dataStr) return
+    let data
+    try { data = JSON.parse(dataStr) } catch { return }
+    if (event === 'progress') onProgress?.(data)
+    else if (event === 'done') onDone?.(data)
+    else if (event === 'error') onError?.(data.detail || '测评流程失败')
+    // start 事件可忽略
   })
   const offDone = window.api.http.onDone((rid) => { if (rid === reqId) { offChunk(); offDone(); offError() } })
   const offError = window.api.http.onError((rid, err) => {
