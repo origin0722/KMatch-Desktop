@@ -263,12 +263,22 @@
 
     <!-- 输入区 -->
     <div class="assistant-input">
+      <!-- F14: 后端宕机提示 (统一 backendHealth store) -->
+      <el-alert
+        v-if="backend.status === false"
+        class="backend-down-alert"
+        type="error"
+        :closable="false"
+        show-icon
+        title="后端未运行"
+        description="localhost:8000 无响应, AI 对话/测评/图谱功能不可用。请启动后端 (见 scripts/start_all.py 或 CLAUDE.md 快速启动)。"
+      />
       <el-input
         ref="inputRef"
         v-model="inputText"
         type="textarea"
         :rows="2"
-        :disabled="chat.isBusy"
+        :disabled="chat.isBusy || backend.status === false"
         :placeholder="chat.tutorMode ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)' : '输入消息… (Enter 发送, Shift+Enter 换行)'"
         resize="none"
         @keydown="onKeydown"
@@ -333,7 +343,7 @@
           v-else
           type="primary"
           size="small"
-          :disabled="!inputText.trim() || !!chat.pendingApproval"
+          :disabled="!inputText.trim() || chat.isBusy || backend.status === false"
           @click="handleSend"
         >
           <el-icon :size="14"><Promotion /></el-icon>&nbsp;发送
@@ -386,6 +396,7 @@ import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
 import { useAiSettingsStore, PROVIDERS } from '@/stores/aiSettings'
 import { useProjectGraphStore } from '@/stores/projectGraph'
+import { useBackendHealthStore } from '@/stores/backendHealth'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
@@ -393,6 +404,7 @@ const sidebar = useSidebarStore()
 const chat = useChatStore()
 const aiSettings = useAiSettingsStore()
 const projectGraph = useProjectGraphStore()
+const backend = useBackendHealthStore()
 
 const inputText = ref('')
 const inputRef = ref(null)

@@ -9,7 +9,7 @@
     </div>
     <div class="status-right">
       <span class="status-item" :class="backendClass" :title="backendTitle">
-        <span class="dot"></span>{{ backendLabel }}
+        <span class="dot"></span>{{ backend.label }}
       </span>
       <span class="status-item clickable" @click="toggleTheme">
         {{ theme.mode === 'dark' ? '🌙 暗色' : '☀️ 亮色' }}
@@ -19,40 +19,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useThemeStore } from '@/stores/theme'
+import { useBackendHealthStore } from '@/stores/backendHealth'
 
 const ws = useWorkspaceStore()
 const theme = useThemeStore()
+const backend = useBackendHealthStore()
 const toggleTheme = () => theme.toggle()
 
-const backendOk = ref(null) // null=未知, true, false
 const dirty = computed(() => ws.activeFile && ws.dirtyFiles.has(ws.activeFile))
 
-const backendLabel = computed(() => {
-  if (backendOk.value === null) return '后端检测中'
-  return backendOk.value ? '后端就绪' : '后端未起'
-})
 const backendClass = computed(() => ({
-  ok: backendOk.value === true,
-  bad: backendOk.value === false,
+  ok: backend.backendUp,
+  bad: backend.status === false,
 }))
-const backendTitle = computed(() => backendOk.value ? 'localhost:8000' : '后端未运行, 测评/图谱等功能不可用 (见 scripts/start_all.py)')
+const backendTitle = computed(() => backend.backendUp ? 'localhost:8000' : '后端未运行, 测评/图谱等功能不可用 (见 scripts/start_all.py)')
 
-async function checkBackend() {
-  try {
-    const res = await window.api.http.request('GET', '/api/health')
-    backendOk.value = res.ok
-  } catch {
-    backendOk.value = false
-  }
-}
-
-onMounted(() => {
-  checkBackend()
-  setInterval(checkBackend, 8000)
-})
+// 健康检查轮询在 backendHealth store 内启动 (幂等); StatusBar 触发首次启动
+onMounted(() => backend.start())
 </script>
 
 <style scoped>
