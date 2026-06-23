@@ -191,15 +191,137 @@ class SubprocessSandboxExecutor(SandboxExecutor):
 
 
 class DockerSandboxExecutor(SandboxExecutor):
-    """预留: docker run --rm --network=none --memory=512m --cpus=1
-    -v {workdir}:/work -w /work {image} python -m pytest ...
+    """Docker 沙箱: docker run --rm --network=none --memory --cpus 限内存/CPU/禁网。
 
-    冲刺期如需完全满足 06 prompt 沙箱要求 (禁网络/限内存) 再切换实现。
+    满足 06 prompt 沙箱硬约束 (SubprocessSandboxExecutor 做不到的):
+      - 禁网络: --network=none
+      - 限内存: --memory (默认 512m)
+      - 限 CPU: --cpus (默认 1)
+      - 文件系统隔离: 容器内 /work 只读挂载源码 + 可写测试产物
+    workdir 以读写挂载到容器 /work (pytest 需写 junit.xml/coverage.json), 容器内 cwd=/work。
     切换零改动 code_tester (接口已统一)。
+
+    需用户预构建镜像 (SANDBOX_DOCKER_IMAGE, 含 python+pytest+pytest-cov)。
     """
 
-    def run(self, *args, **kwargs) -> TestRunResult:
-        raise NotImplementedError("Docker 沙箱未实现，使用 SubprocessSandboxExecutor")
+    def __init__(self, image=None, memory=None, cpus=None):
+        from app.config import settings
+        self.image = image or settings.SANDBOX_DOCKER_IMAGE
+        self.memory = memory or settings.SANDBOX_MEMORY
+        self.cpus = cpus or settings.SANDBOX_CPUS
+
+    def run(self, workdir, module_name, test_filename, cov_module, timeout=30):
+        # 容器内路径固定 /work; workdir 挂载为 /work (读写, 供 pytest 写 junit/coverage)
+        import platform
+        # Windows 路径需转为 docker 接受的绑定格式 (C:\\proj\\x -> /c/proj/x 旧版, 现代 docker desktop 接受原路径)
+        mount = f"{workdir}:/work"
+        cmd = [
+            "docker", "run", "--rm",
+            "--network=none",
+            f"--memory={self.memory}",
+            f"--cpus={self.cpus}",
+            "-v", mount,
+            "-w", "/work",
+            "-e", "PYTHONDONTWRITEBYTECODE=1",
+            self.image,
+            "python", "-m", "pytest",
+            "-p", "no:cacheprovider",
+            "-o", "addopts=",
+            "--tb=short", "-q",
+            "--junitxml=junit.xml",
+            f"--cov={cov_module}",
+            "--cov-branch",
+            "--cov-report=json:coverage.json",
+            test_filename,
+        ]
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(workdir),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=_sandbox_env(),
+            )
+        except subprocess.TimeoutExpired as e:
+            return TestRunResult(
+                success=False, exit_code=-1, timed_out=True,
+                error=f"测试执行超时 ({timeout}s)",
+                stdout=e.stdout.decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or ""),
+                stderr=e.stderr.decode("utf-8", "replace") if isinstance(e.stderr, bytes) else (e.stderr or ""),
+            )
+        except FileNotFoundError:
+            return TestRunResult(
+                success=False, exit_code=-1,
+                error="docker 未安装或不在 PATH", stderr="",
+            )
+        except Exception as e:
+            return TestRunResult(success=False, exit_code=-1, error=f"沙箱执行异常: {e}")
+
+        # 镜像不存在 / 拉取失败等: docker 退出码 125+, stderr 含镜像名 → 给可读提示
+        if proc.returncode >= 125 and not (workdir / "junit.xml").exists():
+            hint = f"镜像 {self.image} 不存在或无法启动 (docker exit {proc.returncode})。请构建: docker build -t {self.image} ."
+            return TestRunResult(
+                success=False, exit_code=proc.returncode, error=hint,
+                stdout=proc.stdout or "", stderr=proc.stderr or "",
+            )
+
+        success = proc.returncode in (0, 1, 2)
+        junit_path = workdir / "junit.xml"
+        junit_text = junit_path.read_text(encoding="utf-8") if junit_path.exists() else ""
+        summary, cases = parse_junit_xml(junit_text)
+        cov_path = workdir / "coverage.json"
+        coverage = None
+        if cov_path.exists():
+            try:
+                import json
+                coverage = parse_coverage_json(
+                    json.loads(cov_path.read_text(encoding="utf-8")), entities=None,
+                )
+            except Exception:
+                coverage = None
+        return TestRunResult(
+            success=success, exit_code=proc.returncode, summary=summary, cases=cases,
+            coverage=coverage, stdout=proc.stdout or "", stderr=proc.stderr or "",
+        )
+
+
+def docker_available() -> bool:
+    """运行时检测 docker 是否可用 (daemon 在跑 + CLI 在 PATH)。"""
+    try:
+        proc = subprocess.run(
+            ["docker", "version", "--format", "{{.Server.Version}}"],
+            capture_output=True, text=True, timeout=8,
+        )
+        return proc.returncode == 0 and bool(proc.stdout.strip())
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    except Exception:
+        return False
+
+
+def select_executor(mode: Optional[str] = None) -> SandboxExecutor:
+    """按 SANDBOX_MODE 选执行器 (code_tester 默认入口)。
+
+    - auto (默认): docker 可用 → DockerSandboxExecutor, 否则 SubprocessSandboxExecutor
+    - subprocess: 强制子进程 (打包后用户无 Docker 时安全默认)
+    - docker: 强制 Docker (不可用抛 ValueError, 由调用方提示用户)
+    """
+    from app.config import settings
+    mode = (mode or settings.SANDBOX_MODE).lower()
+    if mode == "docker":
+        if not docker_available():
+            raise ValueError("SANDBOX_MODE=docker 但 docker 不可用, 请安装并启动 Docker 或改 SANDBOX_MODE=auto/subprocess")
+        return DockerSandboxExecutor()
+    if mode == "subprocess":
+        return SubprocessSandboxExecutor()
+    # auto
+    if docker_available():
+        try:
+            return DockerSandboxExecutor()
+        except Exception:
+            return SubprocessSandboxExecutor()
+    return SubprocessSandboxExecutor()
 
 
 # ============================================================

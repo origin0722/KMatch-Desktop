@@ -15,9 +15,12 @@ from pathlib import Path
 import pytest
 
 from app.agents.sandbox import (
+    DockerSandboxExecutor,
     SubprocessSandboxExecutor,
+    docker_available,
     parse_coverage_json,
     parse_junit_xml,
+    select_executor,
 )
 
 
@@ -235,3 +238,57 @@ def test_subprocess_failed_test():
     finally:
         import shutil
         shutil.rmtree(workdir, ignore_errors=True)
+
+
+# ============================================================
+# 沙箱执行器选择 (F12/#15: SANDBOX_MODE + docker_available)
+# ============================================================
+
+def test_select_executor_subprocess_forced(monkeypatch):
+    """SANDBOX_MODE=subprocess 强制子进程 (即便 docker 可用)。"""
+    from app.config import settings
+    import app.agents.sandbox as sb
+    monkeypatch.setattr(settings, "SANDBOX_MODE", "subprocess")
+    monkeypatch.setattr(sb, "docker_available", lambda: True)  # 即便 docker 在, 也强制子进程
+    exe = sb.select_executor()
+    assert isinstance(exe, sb.SubprocessSandboxExecutor)
+
+
+def test_select_executor_docker_forced_unavailable_raises(monkeypatch):
+    """SANDBOX_MODE=docker 但 docker 不可用 → ValueError (调用方据此提示用户)。"""
+    from app.config import settings
+    import app.agents.sandbox as sb
+    monkeypatch.setattr(settings, "SANDBOX_MODE", "docker")
+    monkeypatch.setattr(sb, "docker_available", lambda: False)
+    with pytest.raises(ValueError, match="docker 不可用"):
+        sb.select_executor()
+
+
+def test_select_executor_auto_falls_back_when_no_docker(monkeypatch):
+    """auto 模式无 docker → 回退 SubprocessSandboxExecutor (打包后用户无 Docker 的安全默认)。"""
+    from app.config import settings
+    import app.agents.sandbox as sb
+    monkeypatch.setattr(settings, "SANDBOX_MODE", "auto")
+    monkeypatch.setattr(sb, "docker_available", lambda: False)
+    exe = sb.select_executor()
+    assert isinstance(exe, sb.SubprocessSandboxExecutor)
+
+
+def test_select_executor_auto_uses_docker_when_available(monkeypatch):
+    """auto 模式 docker 可用 → DockerSandboxExecutor。"""
+    from app.config import settings
+    import app.agents.sandbox as sb
+    monkeypatch.setattr(settings, "SANDBOX_MODE", "auto")
+    monkeypatch.setattr(sb, "docker_available", lambda: True)
+    exe = sb.select_executor()
+    assert isinstance(exe, sb.DockerSandboxExecutor)
+
+
+def test_docker_executor_image_config():
+    """DockerSandboxExecutor 读 settings 的镜像/内存/CPU 配置。"""
+    exe = DockerSandboxExecutor(image="myimg:1", memory="256m", cpus="2")
+    assert exe.image == "myimg:1"
+    assert exe.memory == "256m"
+    assert exe.cpus == "2"
+
+

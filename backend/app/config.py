@@ -41,6 +41,15 @@ class Settings:
     LLM_TEMPERATURE: float = 0.3
     REVIEW_PASS_THRESHOLD: float = float(os.getenv("REVIEW_PASS_THRESHOLD", "0.85"))
 
+    # --- 沙箱 (code_test) ---
+    # sandbox=auto: Docker 可用则用 DockerSandboxExecutor (--network=none --memory 限内存),
+    # 否则回退 SubprocessSandboxExecutor (诚实限制: 无法禁网/限内存, 仅 env 白名单 + AST 预检)。
+    # sandbox=subprocess 强制子进程; sandbox=docker 强制 Docker (不可用则报错)。
+    SANDBOX_MODE: str = os.getenv("SANDBOX_MODE", "auto")
+    SANDBOX_DOCKER_IMAGE: str = os.getenv("SANDBOX_DOCKER_IMAGE", "kmatch-sandbox:latest")
+    SANDBOX_MEMORY: str = os.getenv("SANDBOX_MEMORY", "512m")
+    SANDBOX_CPUS: str = os.getenv("SANDBOX_CPUS", "1")
+
     # --- CORS ---
     CORS_ORIGINS: list = [
         o.strip() for o in

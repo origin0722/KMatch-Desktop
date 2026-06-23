@@ -42,6 +42,7 @@ from app.agents.llm import get_default_chat_model, llm_configured
 from app.agents.sandbox import (
     SandboxExecutor,
     SubprocessSandboxExecutor,
+    select_executor,
     TestCaseResult,
     TestRunResult,
     parse_coverage_json,
@@ -466,7 +467,15 @@ def run_tests(kg: KnowledgeGraph, sources: dict[str, str], target_direction: str
     Returns:
         06 prompt 测试报告 dict。
     """
-    executor = executor or SubprocessSandboxExecutor()
+    # 沙箱执行器: 调用方可注入; 否则按 SANDBOX_MODE 选 (auto: Docker 可用则 Docker, 否则子进程)
+    if executor is None:
+        try:
+            executor = select_executor()
+        except ValueError as e:
+            return build_test_report(
+                TestRunResult(success=False, exit_code=0), [], [], [],
+                rejected=True, reject_reason=str(e),
+            )
     pid = project_id or "test-temp"
 
     # baseline 模式: 从示例项目加载源码 + 基线测试 (覆盖传入的 sources)
