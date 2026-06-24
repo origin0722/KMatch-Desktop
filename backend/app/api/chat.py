@@ -78,6 +78,49 @@ def _get_anthropic_client(api_key: str) -> AsyncAnthropic:
     return AsyncAnthropic(api_key=api_key)
 
 
+def _split_system(messages: list[dict]) -> tuple[str, list[dict]]:
+    """把 system 消息抽出来拼成字符串 (Anthropic 的 system 是顶层 param);
+    其余按原顺序返回。多个 system 消息以两个换行连接。"""
+    sys_parts = [
+        m["content"] for m in messages
+        if m.get("role") == "system" and isinstance(m.get("content"), str)
+    ]
+    ua = [m for m in messages if m.get("role") != "system"]
+    return ("\n\n".join(sys_parts), ua)
+
+
+def _openai_msg_to_anthropic(msg: dict) -> dict:
+    """OpenAI 风格 message → Anthropic 风格。
+
+    - content 是 string: 原样回
+    - content 是 OpenAI 多模态数组:
+        - text 段: {type: 'text', text: ...}
+        - image_url 段:
+            url 以 data: 开头 → {type: image, source: {type: base64, media_type, data}}
+            否则 → {type: image, source: {type: url, url}}
+    """
+    content = msg.get("content")
+    if isinstance(content, str):
+        return {"role": msg["role"], "content": content}
+    parts = []
+    for p in content or []:
+        ptype = p.get("type")
+        if ptype == "text":
+            parts.append({"type": "text", "text": p.get("text", "")})
+        elif ptype == "image_url":
+            url = (p.get("image_url") or {}).get("url", "")
+            if url.startswith("data:"):
+                header, b64 = url.split(",", 1)
+                media_type = header.split(";")[0].split(":")[1]
+                parts.append({"type": "image",
+                              "source": {"type": "base64",
+                                         "media_type": media_type, "data": b64}})
+            else:
+                parts.append({"type": "image",
+                              "source": {"type": "url", "url": url}})
+    return {"role": msg["role"], "content": parts}
+
+
 def _is_thinking_extra_body_model(model: str) -> bool:
     """走 extra_body.thinking 的模型 — DeepSeek-V4 / 后续 thinking 系列。"""
     m = (model or "").lower()
