@@ -369,7 +369,7 @@
             clearable
           />
         </el-form-item>
-        <el-form-item v-if="aiSettings.provider === 'custom'" label="API Base URL">
+        <el-form-item v-if="isCustomProvider(aiSettings.provider) || aiSettings.provider === 'custom'" label="API Base URL">
           <el-input
             v-model="baseUrlInput"
             placeholder="https://api.example.com/v1"
@@ -377,8 +377,8 @@
           />
         </el-form-item>
         <div class="apikey-tip">
-          当前厂商: {{ PROVIDERS.find((p) => p.id === aiSettings.provider)?.label || aiSettings.provider }}
-          <span v-if="aiSettings.provider !== 'custom'">· Base URL 已预置</span>
+          当前厂商: {{ PROVIDERS.find((p) => p.id === aiSettings.provider)?.label || aiSettings.providerMeta()?.label || aiSettings.provider }}
+          <span v-if="!(isCustomProvider(aiSettings.provider) || aiSettings.provider === 'custom')">· Base URL 已预置</span>
         </div>
       </el-form>
       <template #footer>
@@ -394,7 +394,8 @@ import { ref, reactive, watch, nextTick } from 'vue'
 import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
-import { useAiSettingsStore, PROVIDERS } from '@/stores/aiSettings'
+import { useAiSettingsStore, PROVIDERS, isCustomProvider, customProviderUuid } from '@/stores/aiSettings'
+import { useCustomProvidersStore } from '@/stores/customProviders'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 import { ElMessage } from 'element-plus'
@@ -403,6 +404,7 @@ import MarkdownViewer from '@/components/MarkdownViewer.vue'
 const sidebar = useSidebarStore()
 const chat = useChatStore()
 const aiSettings = useAiSettingsStore()
+const customProviders = useCustomProvidersStore()
 const projectGraph = useProjectGraphStore()
 const backend = useBackendHealthStore()
 
@@ -526,14 +528,31 @@ const baseUrlInput = ref('')
 
 function openApiKeyDialog() {
   apiKeyInput.value = aiSettings.apiKey || ''
-  baseUrlInput.value = aiSettings.customBaseUrl || ''
+  // baseUrl 来源: custom:<uuid> → customProviders entry; plain 'custom' → 空 (首次填写)
+  if (isCustomProvider(aiSettings.provider)) {
+    const cp = customProviders.get(customProviderUuid(aiSettings.provider))
+    baseUrlInput.value = cp?.baseUrl || ''
+  } else {
+    baseUrlInput.value = ''
+  }
   apiKeyDialogVisible.value = true
 }
 
-function saveApiKey() {
-  aiSettings.setApiKey(apiKeyInput.value.trim())
+async function saveApiKey() {
+  const key = apiKeyInput.value.trim()
+  const url = baseUrlInput.value.trim()
   if (aiSettings.provider === 'custom') {
-    aiSettings.setCustomBaseUrl(baseUrlInput.value.trim())
+    // 首次配置自定义: 建 customProviders[default] 并切到 custom:default
+    customProviders.add({
+      id: 'default', name: '自定义', baseUrl: url, apiKey: key, protocol: 'openai',
+    })
+    await aiSettings.setProvider('custom:default')
+  } else if (isCustomProvider(aiSettings.provider)) {
+    const uuid = customProviderUuid(aiSettings.provider)
+    customProviders.update(uuid, { baseUrl: url })
+    await aiSettings.setApiKey(key)
+  } else {
+    await aiSettings.setApiKey(key)
   }
   apiKeyDialogVisible.value = false
   ElMessage.success(aiSettings.apiKey ? 'API 设置已保存' : '已清除 API Key')

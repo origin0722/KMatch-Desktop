@@ -1,6 +1,15 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
+import { useCustomProvidersStore } from './customProviders'
+
+export function isCustomProvider(p) {
+  return typeof p === 'string' && p.startsWith('custom:')
+}
+
+export function customProviderUuid(p) {
+  return isCustomProvider(p) ? p.slice('custom:'.length) : null
+}
 
 const STORAGE_KEY = 'kmatch-ai-settings'
 
@@ -51,10 +60,15 @@ const DEFAULT_MODEL = 'deepseek-v4-pro'
 // 旧 chat.js 散装 localStorage 键 (迁移用, 迁入 blob 后不再写入)
 const LEGACY_KEY_PROVIDER = 'kmatch-chat-provider'
 const LEGACY_KEY_APIKEY = 'kmatch-chat-apikey'
-const LEGACY_KEY_BASEURL = 'kmatch-chat-baseurl'
 
 function fallbackModels(pid) {
-  // custom:<uuid> 走 customProviders.models, 这里只处理 predefined id
+  // custom:<uuid> 走 customProviders.models
+  if (isCustomProvider(pid)) {
+    try {
+      const cp = useCustomProvidersStore().get(customProviderUuid(pid))
+      return Array.isArray(cp?.models) ? [...cp.models] : []
+    } catch { return [] }
+  }
   const meta = PROVIDERS.find((p) => p.id === pid)
   return meta ? [...meta.fallbackModels] : []
 }
@@ -63,22 +77,37 @@ function loadLegacyStr(key) {
   try { return localStorage.getItem(key) || '' } catch { return '' }
 }
 
-/** 从 blob 读取厂商配置; 缺失时从旧 chat 散装键迁移 (一次性, 不删旧键)。 */
+/** 从 blob 读取厂商配置; 缺失时从旧 chat 散装键迁移 (一次性, 不删旧键)。
+ *  另：旧 customBaseUrl + provider='custom' → customProviders[id=default] 一次性迁移。 */
 function loadProviderConfig(saved) {
   const s = saved && typeof saved === 'object' ? saved : {}
   if (s.provider !== undefined || s.apiKey !== undefined || s.customBaseUrl !== undefined) {
-    return {
+    const out = {
       provider: typeof s.provider === 'string' && s.provider ? s.provider : DEFAULT_PROVIDER,
       apiKey: typeof s.apiKey === 'string' ? s.apiKey : '',
-      customBaseUrl: typeof s.customBaseUrl === 'string' ? s.customBaseUrl : '',
       model: typeof s.model === 'string' ? s.model : DEFAULT_MODEL,
     }
+    // 一次性迁移: 旧 customBaseUrl → customProviders[id=default]
+    if (typeof s.customBaseUrl === 'string' && s.customBaseUrl) {
+      const cps = useCustomProvidersStore()
+      cps.add({
+        id: 'default',
+        name: '自定义',
+        baseUrl: s.customBaseUrl,
+        apiKey: out.provider === 'custom' ? out.apiKey : '',
+        protocol: 'openai',
+      })
+      if (out.provider === 'custom') {
+        out.provider = 'custom:default'
+        out.apiKey = ''   // 已挪到 customProviders[default].apiKey
+      }
+    }
+    return out
   }
   // 旧键迁移
   return {
-    provider: loadLegacyStr(LEGACY_KEY_PROVIDER, ) || DEFAULT_PROVIDER,
+    provider: loadLegacyStr(LEGACY_KEY_PROVIDER) || DEFAULT_PROVIDER,
     apiKey: loadLegacyStr(LEGACY_KEY_APIKEY),
-    customBaseUrl: loadLegacyStr(LEGACY_KEY_BASEURL),
     model: DEFAULT_MODEL,
   }
 }
@@ -156,7 +185,6 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   const providerCfg = loadProviderConfig(saved.providerConfig)
   const provider = ref(providerCfg.provider)
   const apiKey = ref(providerCfg.apiKey)
-  const customBaseUrl = ref(providerCfg.customBaseUrl)
   const model = ref(providerCfg.model)
   const models = ref([])
 
@@ -174,7 +202,6 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
       providerConfig: {
         provider: provider.value,
         apiKey: apiKey.value,
-        customBaseUrl: customBaseUrl.value,
         model: model.value,
       },
       proxy: proxy.value,
@@ -186,13 +213,19 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
 
   // ---- 厂商 & 模型 ----
   function providerMeta() {
+    if (isCustomProvider(provider.value)) {
+      const uuid = customProviderUuid(provider.value)
+      const cp = useCustomProvidersStore().get(uuid)
+      return cp
+        ? { id: provider.value, label: cp.name, baseUrl: cp.baseUrl,
+            protocol: cp.protocol || 'openai', iconKey: 'custom',
+            fallbackModels: cp.models || [] }
+        : PROVIDERS[0]
+    }
     return PROVIDERS.find((p) => p.id === provider.value) || PROVIDERS[0]
   }
 
-  function getBaseUrl() {
-    const meta = providerMeta()
-    return meta.baseUrl || customBaseUrl.value || ''
-  }
+  function getBaseUrl() { return providerMeta().baseUrl || '' }
 
   async function fetchModels() {
     const key = apiKey.value.trim()
@@ -237,11 +270,15 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     }
   }
 
-  // setters: 立即 persist provider/apiKey/customBaseUrl (同步落盘, 不依赖网络),
+  // setters: 立即 persist provider/apiKey (同步落盘, 不依赖网络),
   // 再 fetchModels 校正 model 并二次 persist (避免把旧/跨厂商 model 写进 blob)。
   // 审查 #1 修了 model 竞态, 但把 persist 整体 gate 在 fetch 后会导致慢网络下丢失 provider/key —— 拆开。
   async function setProvider(pid) {
     provider.value = pid
+    if (isCustomProvider(pid)) {
+      const cp = useCustomProvidersStore().get(customProviderUuid(pid))
+      apiKey.value = cp?.apiKey || ''
+    }
     persist()
     await fetchModels()
     persist()
@@ -249,15 +286,12 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
 
   async function setApiKey(key) {
     apiKey.value = key
+    if (isCustomProvider(provider.value)) {
+      const uuid = customProviderUuid(provider.value)
+      useCustomProvidersStore().update(uuid, { apiKey: key })
+    }
     persist()
     await fetchModels()
-    persist()
-  }
-
-  async function setCustomBaseUrl(url) {
-    customBaseUrl.value = (url || '').trim()
-    persist()
-    if (provider.value === 'custom') await fetchModels()
     persist()
   }
 
@@ -382,7 +416,6 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     // 厂商 & 模型 (C1.1: 从 chat.js 迁入)
     provider,
     apiKey,
-    customBaseUrl,
     model,
     models,
     providerMeta,
@@ -390,6 +423,5 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     fetchModels,
     setProvider,
     setApiKey,
-    setCustomBaseUrl,
   }
 })

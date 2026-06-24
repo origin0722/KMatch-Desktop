@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAiSettingsStore } from '@/stores/aiSettings'
 import { PROVIDERS } from '@/stores/aiSettings'
+import { useCustomProvidersStore } from '@/stores/customProviders'
 
 describe('PROVIDERS registry (Spec A)', () => {
   it('exposes 8 predefined + custom with required metadata', () => {
@@ -193,27 +194,28 @@ describe('aiSettings store', () => {
     expect(settings.provider).toBe('deepseek')
     expect(settings.model).toBe('deepseek-v4-pro')
     expect(settings.apiKey).toBe('')
-    expect(settings.customBaseUrl).toBe('')
     // DeepSeek 预置 Base URL
     expect(settings.getBaseUrl()).toBe('https://api.deepseek.com/v1')
     // 无 apiKey 时 fetchModels 走 fallback, 不触网
     expect(settings.models).toContain('deepseek-v4-pro')
   })
 
-  it('persists provider/apiKey/customBaseUrl and restores them', async () => {
+  it('persists provider/apiKey and restores them; custom:<uuid> baseUrl 来自 customProviders', async () => {
     const settings = useAiSettingsStore()
-    // setters 现为 async (fetchModels 校正 model 后再 persist), 需 await
+    const cps = useCustomProvidersStore()
+    cps.add({ id: 'default', name: '自定义', baseUrl: 'https://my.proxy/v1', protocol: 'openai' })
+
     await settings.setApiKey('sk-test-123')
-    await settings.setCustomBaseUrl('https://my.proxy/v1')
-    await settings.setProvider('custom')
+    await settings.setProvider('custom:default')
+    // 切到 custom:default 时 apiKey 会取自 customProviders 该条目 (此时为空); 再写入用户 key
+    await settings.setApiKey('sk-test-456')
 
     setActivePinia(createPinia())
     const restored = useAiSettingsStore()
 
-    expect(restored.apiKey).toBe('sk-test-123')
-    expect(restored.customBaseUrl).toBe('https://my.proxy/v1')
-    expect(restored.provider).toBe('custom')
-    // custom 厂商 getBaseUrl 取 customBaseUrl
+    expect(restored.provider).toBe('custom:default')
+    expect(restored.apiKey).toBe('sk-test-456')
+    // custom:default getBaseUrl 取 customProviders.baseUrl
     expect(restored.getBaseUrl()).toBe('https://my.proxy/v1')
   })
 
@@ -232,12 +234,51 @@ describe('aiSettings store', () => {
   it('migrates provider config from legacy chat localStorage keys', () => {
     localStorage.setItem('kmatch-chat-provider', 'openai')
     localStorage.setItem('kmatch-chat-apikey', 'sk-legacy')
-    localStorage.setItem('kmatch-chat-baseurl', 'https://legacy/v1')
 
     const settings = useAiSettingsStore()
 
     expect(settings.provider).toBe('openai')
     expect(settings.apiKey).toBe('sk-legacy')
-    expect(settings.customBaseUrl).toBe('https://legacy/v1')
+  })
+})
+
+describe('provider value-set: custom:<uuid> (Spec A)', () => {
+  beforeEach(() => { setActivePinia(createPinia()); localStorage.clear() })
+
+  it('migrates legacy customBaseUrl + provider="custom" to customProviders[id=default]', () => {
+    localStorage.setItem('kmatch-ai-settings', JSON.stringify({
+      providerConfig: { provider: 'custom', apiKey: 'sk-X', customBaseUrl: 'http://x/v1', model: 'm' },
+    }))
+    const s = useAiSettingsStore()
+    const cps = useCustomProvidersStore()
+    expect(s.provider).toBe('custom:default')
+    expect(cps.list).toHaveLength(1)
+    expect(cps.get('default').baseUrl).toBe('http://x/v1')
+    expect(cps.get('default').apiKey).toBe('sk-X')
+  })
+
+  it('providerMeta() reads from customProviders when provider startsWith custom:', () => {
+    const cps = useCustomProvidersStore()
+    cps.add({ id: 'default', name: 'X', baseUrl: 'http://y/v1', apiKey: 'k', protocol: 'openai' })
+    const s = useAiSettingsStore()
+    s.provider = 'custom:default'   // 直接改 ref, 不走 setProvider 避免 fetchModels
+    const meta = s.providerMeta()
+    expect(meta.baseUrl).toBe('http://y/v1')
+    expect(meta.protocol).toBe('openai')
+    expect(meta.label).toBe('X')
+  })
+
+  it('getBaseUrl returns custom entry baseUrl', () => {
+    const cps = useCustomProvidersStore()
+    cps.add({ id: 'default', name: 'X', baseUrl: 'http://z/v1' })
+    const s = useAiSettingsStore()
+    s.provider = 'custom:default'
+    expect(s.getBaseUrl()).toBe('http://z/v1')
+  })
+
+  it('falls back to PROVIDERS[0] when custom:<uuid> entry missing', () => {
+    const s = useAiSettingsStore()
+    s.provider = 'custom:ghost'
+    expect(s.providerMeta().id).toBe('deepseek')
   })
 })
