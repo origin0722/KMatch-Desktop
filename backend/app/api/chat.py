@@ -19,6 +19,7 @@ import re
 from functools import lru_cache
 from typing import Literal
 
+from anthropic import AsyncAnthropic
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
@@ -71,6 +72,12 @@ def _get_async_client(base_url: str, api_key: str) -> AsyncOpenAI:
     return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
 
+@lru_cache(maxsize=16)
+def _get_anthropic_client(api_key: str) -> AsyncAnthropic:
+    """缓存 AsyncAnthropic client (key 唯一索引)"""
+    return AsyncAnthropic(api_key=api_key)
+
+
 def _is_thinking_extra_body_model(model: str) -> bool:
     """走 extra_body.thinking 的模型 — DeepSeek-V4 / 后续 thinking 系列。"""
     m = (model or "").lower()
@@ -113,18 +120,33 @@ def _build_request_extras(protocol: str, model: str, reasoning_mode: str) -> dic
     return {}
 
 
-def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
-    """
-    优先用请求中的 api_key/base_url 建 AsyncOpenAI;
-    否则用服务端默认 LLM_API_KEY/LLM_BASE_URL (需非 placeholder)。
-    """
+def _resolve_openai_client(req: ChatRequest) -> AsyncOpenAI | None:
+    """优先用请求中的 api_key/base_url 建 AsyncOpenAI; 否则用服务端默认 (非 placeholder)。"""
     if req.api_key:
         base = req.base_url or settings.LLM_BASE_URL
         return _get_async_client(base, req.api_key)
-    # fallback: 服务端默认 key (非 placeholder 才可用)
     if settings.LLM_API_KEY and settings.LLM_API_KEY != "sk-placeholder":
         return _get_async_client(settings.LLM_BASE_URL, settings.LLM_API_KEY)
     return None
+
+
+def _resolve_anthropic_client(req: ChatRequest) -> AsyncAnthropic | None:
+    """Anthropic 仅认请求 api_key — 服务端默认 key 是 OpenAI 兼容, 不复用。"""
+    if req.api_key:
+        return _get_anthropic_client(req.api_key)
+    return None
+
+
+def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
+    """[兼容旧调用] 返回 OpenAI client。Task 12 会切换到 _resolve_client_dispatch。"""
+    return _resolve_openai_client(req)
+
+
+def _resolve_client_dispatch(req: ChatRequest):
+    """根据 protocol 分派 client; 返回 (client, protocol)。None 表示未配置。"""
+    if req.protocol == 'anthropic':
+        return _resolve_anthropic_client(req), 'anthropic'
+    return _resolve_openai_client(req), 'openai'
 
 
 # ----------------------------------------------------------------
