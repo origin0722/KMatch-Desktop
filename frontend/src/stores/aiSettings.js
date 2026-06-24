@@ -19,10 +19,30 @@ const DEFAULT_PROXY = Object.freeze({
 
 // ---- 厂商 & 模型 (C1.1: 从 chat.js 迁入, 统一 AI 配置单一源) ----
 export const PROVIDERS = Object.freeze([
-  { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
-  { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-  { id: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1' },
-  { id: 'custom', label: '自定义', baseUrl: '' },
+  { id: 'deepseek',  label: 'DeepSeek',         baseUrl: 'https://api.deepseek.com/v1',
+    protocol: 'openai',    iconKey: 'deepseek',
+    fallbackModels: ['deepseek-v4-pro', 'deepseek-v3', 'deepseek-reasoner'] },
+  { id: 'openai',    label: 'OpenAI',           baseUrl: 'https://api.openai.com/v1',
+    protocol: 'openai',    iconKey: 'openai',
+    fallbackModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'o1', 'o3-mini'] },
+  { id: 'anthropic', label: 'Anthropic',        baseUrl: 'https://api.anthropic.com',
+    protocol: 'anthropic', iconKey: 'claude',
+    fallbackModels: ['claude-fable-5', 'claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
+  { id: 'moonshot',  label: 'Moonshot',         baseUrl: 'https://api.moonshot.cn/v1',
+    protocol: 'openai',    iconKey: 'moonshot',
+    fallbackModels: ['moonshot-v1-128k', 'moonshot-v1-32k', 'kimi-k2-0905-preview'] },
+  { id: 'qwen',      label: '通义千问',          baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    protocol: 'openai',    iconKey: 'qwen',
+    fallbackModels: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-vl-max'] },
+  { id: 'gemini',    label: 'Google Gemini',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    protocol: 'openai',    iconKey: 'google',
+    fallbackModels: ['gemini-2.5-pro', 'gemini-2.5-flash'] },
+  { id: 'ollama',    label: 'Ollama (本地)',    baseUrl: 'http://localhost:11434/v1',
+    protocol: 'openai',    iconKey: 'ollama',
+    fallbackModels: ['llama3', 'qwen2.5', 'codellama'] },
+  { id: 'custom',    label: '自定义',            baseUrl: '',
+    protocol: 'openai',    iconKey: 'custom',
+    fallbackModels: [] },
 ])
 
 const DEFAULT_PROVIDER = 'deepseek'
@@ -34,13 +54,9 @@ const LEGACY_KEY_APIKEY = 'kmatch-chat-apikey'
 const LEGACY_KEY_BASEURL = 'kmatch-chat-baseurl'
 
 function fallbackModels(pid) {
-  const map = {
-    deepseek: ['deepseek-v4-pro', 'deepseek-v3', 'deepseek-reasoner'],
-    openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-    ollama: ['llama3', 'qwen2.5', 'codellama'],
-    custom: [],
-  }
-  return map[pid] || []
+  // custom:<uuid> 走 customProviders.models, 这里只处理 predefined id
+  const meta = PROVIDERS.find((p) => p.id === pid)
+  return meta ? [...meta.fallbackModels] : []
 }
 
 function loadLegacyStr(key) {

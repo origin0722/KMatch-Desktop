@@ -9,6 +9,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAiSettingsStore } from '@/stores/aiSettings'
+import { PROVIDERS } from '@/stores/aiSettings'
+
+describe('PROVIDERS registry (Spec A)', () => {
+  it('exposes 8 predefined + custom with required metadata', () => {
+    const ids = PROVIDERS.map((p) => p.id)
+    expect(ids).toEqual(['deepseek','openai','anthropic','moonshot','qwen','gemini','ollama','custom'])
+    for (const p of PROVIDERS) {
+      expect(typeof p.label).toBe('string')
+      expect(['openai','anthropic']).toContain(p.protocol)
+      expect(typeof p.iconKey).toBe('string')
+      expect(Array.isArray(p.fallbackModels)).toBe(true)
+    }
+  })
+
+  it('anthropic uses anthropic protocol; others openai', () => {
+    expect(PROVIDERS.find((p) => p.id === 'anthropic').protocol).toBe('anthropic')
+    expect(PROVIDERS.find((p) => p.id === 'gemini').protocol).toBe('openai')
+  })
+})
 
 function resetStorage() {
   localStorage.clear()
