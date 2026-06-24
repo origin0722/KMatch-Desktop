@@ -26,6 +26,12 @@ from app.config import settings
 
 router = APIRouter()
 
+# Anthropic 无 /models 端点, 硬编码列表 (按需更新)
+ANTHROPIC_MODELS = [
+    'claude-fable-5', 'claude-opus-4-8', 'claude-sonnet-4-6',
+    'claude-haiku-4-5', 'claude-opus-4-7', 'claude-sonnet-4',
+]
+
 
 class ChatRequest(BaseModel):
     messages: list[dict] = Field(
@@ -48,6 +54,7 @@ class ChatRequest(BaseModel):
 class ModelsRequest(BaseModel):
     base_url: str = Field(..., description="API Base URL (如 https://api.deepseek.com/v1)")
     api_key: str = Field(..., description="API Key")
+    protocol: str = Field('openai', description="协议: openai | anthropic")
 
 
 class SafetyCheckRequest(BaseModel):
@@ -190,7 +197,9 @@ async def chat_completions(req: ChatRequest, request: Request):
 
 @router.post("/models")
 async def list_models(req: ModelsRequest):
-    """拉取厂商模型列表 (OpenAI 兼容 /models 端点, async)"""
+    """拉取厂商模型列表 (OpenAI 兼容 /models 端点 / Anthropic 硬编码)。"""
+    if req.protocol == 'anthropic':
+        return {"models": list(ANTHROPIC_MODELS)}
     try:
         client = _get_async_client(req.base_url, req.api_key)
         resp = await client.models.list()

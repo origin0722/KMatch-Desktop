@@ -247,7 +247,10 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     }
     try {
       // 走 IPC 代理 (window.api.http), 桌面应用无需浏览器 fetch
-      const res = await window.api.http.request('POST', '/api/chat/models', { base_url: base, api_key: key })
+      const meta = providerMeta()
+      const res = await window.api.http.request('POST', '/api/chat/models', {
+        base_url: base, api_key: key, protocol: meta.protocol || 'openai',
+      })
       const data = res.body
       if (!res.ok) throw new Error(typeof data === 'string' ? data : (data?.error || `HTTP ${res.status}`))
       if (data.models?.length) {
