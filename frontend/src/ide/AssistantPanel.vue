@@ -326,6 +326,22 @@
             <span v-if="chat.tutorMode" class="tutor-label">导学</span>
           </el-button>
         </el-tooltip>
+        <!-- reasoning_mode 三态: auto / fast / deep — Spec A Task 9 -->
+        <el-radio-group
+          :model-value="aiSettings.reasoningMode"
+          size="small"
+          class="reasoning-group"
+          :disabled="chat.streaming"
+          @change="aiSettings.setReasoningMode"
+        >
+          <el-radio-button label="auto" title="自动 — 由模型默认决定">🤖</el-radio-button>
+          <el-radio-button label="fast" title="快速 — 不思考直接回答">⚡</el-radio-button>
+          <el-radio-button
+            label="deep"
+            :disabled="deepDisabled"
+            :title="deepDisabled ? deepDisabledTooltip : '深度 — 充分思考'"
+          >🧠</el-radio-button>
+        </el-radio-group>
         <!-- 模型 (自动) -->
         <span class="model-hint" :title="'当前模型: ' + (aiSettings.model || '未选择')">
           {{ aiSettings.model || '—' }}
@@ -400,6 +416,7 @@ import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import { capabilityOf } from '@/services/llm/modelCapabilities'
 
 const sidebar = useSidebarStore()
 const chat = useChatStore()
@@ -532,6 +549,13 @@ function onProviderChange(pid) {
 const providerSelectValue = computed(() =>
   isCustomProvider(aiSettings.provider) ? 'custom' : aiSettings.provider,
 )
+
+// reasoning deep 按钮 disabled: 当前模型不支持原生 reasoning
+const deepDisabled = computed(() =>
+  capabilityOf(aiSettings.provider, aiSettings.model).reasoning !== 'native')
+
+const deepDisabledTooltip = computed(() =>
+  `当前模型 (${aiSettings.model}) 不支持原生推理；如需思考请用「快速/自动」+ 提示词`)
 
 // ---- API Key 设置对话框 (Electron 不支持 window.prompt, 用 el-dialog) ----
 const apiKeyDialogVisible = ref(false)
@@ -1136,5 +1160,13 @@ async function copyText(text) {
 @media (prefers-reduced-motion: reduce) {
   .version-bar, .regen-btn { opacity: 1; transition: none; }
   .msg-content { transition: none; }
+}
+
+/* ---- reasoning_mode 三态 radio (Spec A Task 9) ---- */
+.reasoning-group { margin-right: 6px; }
+.reasoning-group .el-radio-button__inner { padding: 4px 8px; font-size: 13px; }
+.reasoning-group .is-disabled .el-radio-button__inner {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 </style>

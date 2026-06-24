@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
 import { capabilityOf } from '@/services/llm/modelCapabilities'
@@ -393,6 +393,19 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
 
     return `\n\n## 用户记忆\n${lines.join('\n')}`
   }
+
+  // reasoningMode='deep' + 当前模型 prompt-only -> 自动降级到 auto
+  watch(
+    [() => provider.value, () => model.value, reasoningMode],
+    () => {
+      if (reasoningMode.value !== 'deep') return
+      if (capabilityOf(provider.value, model.value).reasoning !== 'native') {
+        reasoningMode.value = 'auto'
+        persist()
+      }
+    },
+    { flush: 'sync' },
+  )
 
   // 初始化: 拉取模型列表 (无 apiKey 时走 fallback, 不触网)
   fetchModels()

@@ -305,3 +305,29 @@ describe('modelReasoningSupport 委托 capabilityOf（Spec A 收敛为两态）'
     expect(s.modelReasoningSupport('foo', 'bar')).toBe('prompt-only')   // 旧 'unknown' 收敛
   })
 })
+
+describe('reasoningMode auto-downgrade (Spec A)', () => {
+  beforeEach(() => { setActivePinia(createPinia()); localStorage.clear() })
+
+  it('deep 模式下切到 prompt-only 模型 -> 自动降级为 auto', async () => {
+    const s = useAiSettingsStore()
+    s.provider = 'anthropic'
+    s.model = 'claude-fable-5'
+    s.setReasoningMode('deep')
+    expect(s.reasoningMode).toBe('deep')
+
+    s.provider = 'openai'
+    s.model = 'gpt-4o'        // prompt-only 模型
+    await new Promise(r => setTimeout(r, 0))   // watch flush
+    expect(s.reasoningMode).toBe('auto')
+  })
+
+  it('fast 不被降级', async () => {
+    const s = useAiSettingsStore()
+    s.setReasoningMode('fast')
+    s.provider = 'openai'
+    s.model = 'gpt-4o'
+    await new Promise(r => setTimeout(r, 0))
+    expect(s.reasoningMode).toBe('fast')
+  })
+})
