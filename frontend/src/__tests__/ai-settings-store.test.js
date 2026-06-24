@@ -281,4 +281,14 @@ describe('provider value-set: custom:<uuid> (Spec A)', () => {
     s.provider = 'custom:ghost'
     expect(s.providerMeta().id).toBe('deepseek')
   })
+
+  it('after migration, providerMeta still resolves cleanly (caller can map back to custom for UI)', () => {
+    const cps = useCustomProvidersStore()
+    cps.add({ id: 'default', name: '自定义', baseUrl: 'http://x/v1', apiKey: 'k' })
+    const s = useAiSettingsStore()
+    s.provider = 'custom:default'
+    // Caller (AssistantPanel) maps custom:* back to 'custom' for the dropdown; both must resolve cleanly
+    expect(s.providerMeta().baseUrl).toBe('http://x/v1')
+    expect(s.providerMeta().iconKey).toBe('custom')
+  })
 })

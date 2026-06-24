@@ -286,7 +286,7 @@
       <div class="input-bar-row">
         <!-- 厂商选择 -->
         <el-select
-          :model-value="aiSettings.provider"
+          :model-value="providerSelectValue"
           size="small"
           class="provider-select"
           :disabled="chat.streaming"
@@ -390,7 +390,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, nextTick } from 'vue'
+import { ref, reactive, watch, nextTick, computed } from 'vue'
 import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
@@ -517,9 +517,21 @@ function handleSend() {
   chat.sendMessage(text)
 }
 
-function onProviderChange(val) {
-  aiSettings.setProvider(val)
+function onProviderChange(pid) {
+  if (pid === 'custom') {
+    // 用户从下拉选 "自定义": 确保 customProviders[default] 存在再切到 custom:default
+    if (!customProviders.get('default')) {
+      customProviders.add({ id: 'default', name: '自定义', baseUrl: '', apiKey: '', protocol: 'openai' })
+    }
+    return aiSettings.setProvider('custom:default')
+  }
+  return aiSettings.setProvider(pid)
 }
+
+// 下拉值映射: custom:<uuid> 在选项列表中没有对应项, 显示 'custom' 占位 (Task 22 会改为图标分组)
+const providerSelectValue = computed(() =>
+  isCustomProvider(aiSettings.provider) ? 'custom' : aiSettings.provider,
+)
 
 // ---- API Key 设置对话框 (Electron 不支持 window.prompt, 用 el-dialog) ----
 const apiKeyDialogVisible = ref(false)
