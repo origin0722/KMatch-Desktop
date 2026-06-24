@@ -77,7 +77,10 @@ export const useCustomProvidersStore = defineStore('customProviders', () => {
         base_url: cp.baseUrl, api_key: cp.apiKey || '', protocol: cp.protocol || 'openai',
       })
       const data = res.body
-      if (!res.ok || data?.error) return { ok: false, error: data?.error || `HTTP ${res.status}` }
+      if (!res.ok || data?.error) {
+        const msg = typeof data === 'string' ? data : (data?.error || `HTTP ${res.status}`)
+        return { ok: false, error: msg }
+      }
       const models = Array.isArray(data.models) ? data.models : []
       update(id, { models })
       return { ok: true, models }
