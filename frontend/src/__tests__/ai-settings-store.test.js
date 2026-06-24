@@ -116,7 +116,7 @@ describe('aiSettings store', () => {
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-reasoner')).toBe('native')
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-v4-pro')).toBe('native')
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-v3')).toBe('prompt-only')
-    expect(settings.modelReasoningSupport('custom', 'claude-opus-4-8')).toBe('native-when-supported-by-backend')
+    expect(settings.modelReasoningSupport('custom', 'claude-opus-4-8')).toBe('native')
 
     settings.setReasoningMode('deep')
     expect(settings.reasoningInstruction('deepseek', 'deepseek-v4-pro')).toContain('当前模型支持 reasoning')
@@ -290,5 +290,18 @@ describe('provider value-set: custom:<uuid> (Spec A)', () => {
     // Caller (AssistantPanel) maps custom:* back to 'custom' for the dropdown; both must resolve cleanly
     expect(s.providerMeta().baseUrl).toBe('http://x/v1')
     expect(s.providerMeta().iconKey).toBe('custom')
+  })
+})
+
+describe('modelReasoningSupport 委托 capabilityOf（Spec A 收敛为两态）', () => {
+  beforeEach(() => { setActivePinia(createPinia()); localStorage.clear() })
+
+  it('返回 native | prompt-only 两态', () => {
+    const s = useAiSettingsStore()
+    expect(s.modelReasoningSupport('anthropic', 'claude-fable-5')).toBe('native')
+    expect(s.modelReasoningSupport('anthropic', 'claude-opus-4-8')).toBe('native')
+    expect(s.modelReasoningSupport('openai', 'gpt-4o')).toBe('prompt-only')
+    expect(s.modelReasoningSupport('openai', 'o1')).toBe('native')
+    expect(s.modelReasoningSupport('foo', 'bar')).toBe('prompt-only')   // 旧 'unknown' 收敛
   })
 })

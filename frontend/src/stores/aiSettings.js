@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
+import { capabilityOf } from '@/services/llm/modelCapabilities'
 import { useCustomProvidersStore } from './customProviders'
 
 export function isCustomProvider(p) {
@@ -329,22 +330,20 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   }
 
   function modelReasoningSupport(provider, model) {
-    const id = String(model || '').toLowerCase()
-    // DeepSeek-V4 系列 + deepseek-reasoner 走 extra_body.thinking (后端 _is_deepseek_thinking_model)
-    if (provider === 'deepseek' && (id.startsWith('deepseek-v4') || id === 'deepseek-reasoner')) return 'native'
-    if (id.includes('claude-opus-4') || id.includes('claude-fable-5') || id.includes('claude-mythos-5')) {
-      return 'native-when-supported-by-backend'
-    }
-    if (!id) return 'unknown'
-    return 'prompt-only'
+    // 先按当前 provider 查
+    const own = capabilityOf(provider, model).reasoning
+    if (own === 'native') return 'native'
+    // 自定义/未知 provider + claude 模型名 → 也算 native (model 名是更可靠的判定)
+    const asAnthropic = capabilityOf('anthropic', model).reasoning
+    return asAnthropic === 'native' ? 'native' : 'prompt-only'
   }
 
   function reasoningInstruction(provider, model) {
-    const support = modelReasoningSupport(provider, model)
     if (reasoningMode.value === REASONING_MODE.FAST) {
       return '思考模式: 快速。请直接给出简洁实用的回答，不展开冗长推理。'
     }
     if (reasoningMode.value === REASONING_MODE.DEEP) {
+      const support = modelReasoningSupport(provider, model)
       if (support === 'native') return '思考模式: 深度。当前模型支持 reasoning，请进行更充分的分析，并在最终回答中保持结论清晰。'
       return '思考模式: 深度。当前模型未确认支持原生 thinking 参数，请更仔细地分析问题，先内部推理，再给出简洁结论。'
     }
