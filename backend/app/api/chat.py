@@ -15,7 +15,9 @@ POST /api/chat/models
 """
 
 import json
+import re
 from functools import lru_cache
+from typing import Literal
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
@@ -34,20 +36,16 @@ ANTHROPIC_MODELS = [
 
 
 class ChatRequest(BaseModel):
-    messages: list[dict] = Field(
-        ...,
-        description="对话消息数组",
-        min_length=1,
-    )
+    messages: list[dict] = Field(..., min_length=1, description="对话消息数组")
     stream: bool = Field(True, description="是否 SSE 流式返回")
-    max_tokens: int = Field(4096, ge=1, le=32768, description="最大生成 token 数")
-    model: str | None = Field(None, description="模型名称, 不传则使用默认")
-    api_key: str | None = Field(None, description="用户 API Key, 不传则用服务端默认")
-    base_url: str | None = Field(None, description="API Base URL, 不传则用服务端默认")
-    reasoning: bool | None = Field(
-        None,
-        description="思考模式开关 (auto/None=模型默认, True=开启思考, False=关闭思考)。"
-        "DeepSeek-V4 系列 (deepseek-v4-pro/v4) 需经 extra_body thinking 控制。",
+    max_tokens: int = Field(4096, ge=1, le=32768)
+    model: str | None = Field(None)
+    api_key: str | None = Field(None)
+    base_url: str | None = Field(None)
+    protocol: Literal['openai', 'anthropic'] = Field('openai', description="协议分支")
+    reasoning_mode: Literal['auto', 'fast', 'deep'] = Field(
+        'auto',
+        description="思考模式: auto=模型默认 / fast=关思考秒回 / deep=充分思考",
     )
 
 
@@ -73,25 +71,46 @@ def _get_async_client(base_url: str, api_key: str) -> AsyncOpenAI:
     return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
 
-def _is_deepseek_thinking_model(model: str) -> bool:
-    """DeepSeek-V4 系列是 thinking 模型, 需经 extra_body thinking 控制开/关。
-    借鉴 Apix llm_adapter: reasoning=False -> thinking disabled; True -> enabled。
-    deepseek-reasoner 走原生 reasoning_content, 不在此列。"""
+def _is_thinking_extra_body_model(model: str) -> bool:
+    """走 extra_body.thinking 的模型 — DeepSeek-V4 / 后续 thinking 系列。"""
     m = (model or "").lower()
     return m.startswith("deepseek-v4") or m == "deepseek-reasoner-pro"
 
 
-def _build_extra_body(model: str, reasoning: bool | None) -> dict:
-    """构建厂商特定的 extra_body。
-    - DeepSeek-V4 系列: thinking {enabled|disabled} (None 时默认 enabled, 保留模型能力)
-    - 其他模型: 不传 extra_body
+def _is_anthropic_reasoning_model(model: str) -> bool:
+    """Anthropic Claude 4+ 支持 thinking param。"""
+    m = (model or "").lower()
+    return bool(re.match(r'^claude-(opus|sonnet|haiku|fable|mythos)-(4|5)', m))
+
+
+def _build_request_extras(protocol: str, model: str, reasoning_mode: str) -> dict:
     """
-    if not _is_deepseek_thinking_model(model):
+    构造厂商特定的额外 kwargs (不含 messages/model/stream/max_tokens).
+    reasoning_mode: 'auto' | 'fast' | 'deep'
+    返回 kwargs 字典 — 调用方直接 kwargs.update(extras)。
+    """
+    # DeepSeek-V4 系列 + xiaomi MiMo 等: extra_body.thinking
+    if protocol == 'openai' and _is_thinking_extra_body_model(model):
+        thinking = 'disabled' if reasoning_mode == 'fast' else 'enabled'
+        return {'extra_body': {'thinking': {'type': thinking}}}
+
+    # Anthropic Claude 4+: thinking param
+    if protocol == 'anthropic' and _is_anthropic_reasoning_model(model):
+        if reasoning_mode == 'deep':
+            return {'thinking': {'type': 'enabled', 'budget_tokens': 8000}}
+        if reasoning_mode == 'fast':
+            return {'thinking': {'type': 'disabled'}}
         return {}
-    # reasoning=None (auto): 保持 thinking enabled, 体现 reasoner 能力
-    # reasoning=False: 关闭思考, 直接出 content (日常对话推荐)
-    thinking_type = "disabled" if reasoning is False else "enabled"
-    return {"thinking": {"type": thinking_type}}
+
+    # OpenAI o1/o3: reasoning_effort
+    if protocol == 'openai' and re.match(r'^o[13]', (model or '').lower()):
+        if reasoning_mode == 'deep':
+            return {'reasoning_effort': 'high'}
+        if reasoning_mode == 'fast':
+            return {'reasoning_effort': 'low'}
+        return {'reasoning_effort': 'medium'}
+
+    return {}
 
 
 def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
@@ -111,7 +130,7 @@ def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
 # ----------------------------------------------------------------
 # 流式生成器 — SSE 格式 (async for, 不阻塞事件循环)
 # ----------------------------------------------------------------
-async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extra_body: dict | None = None):
+async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extras: dict | None = None):
     """逐 token 推送 SSE 事件 (async for, 释放事件循环)"""
     try:
         kwargs = dict(
@@ -121,9 +140,8 @@ async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: in
             max_tokens=max_tokens,
             temperature=0.7,
         )
-        # DeepSeek-V4 等需要 extra_body.thinking 控制 (借鉴 Apix llm_adapter)
-        if extra_body:
-            kwargs["extra_body"] = extra_body
+        if extras:
+            kwargs.update(extras)
         stream = await client.chat.completions.create(**kwargs)
 
         async for chunk in stream:
@@ -164,11 +182,11 @@ async def chat_completions(req: ChatRequest, request: Request):
             )
         return {"error": detail}
 
-    extra_body = _build_extra_body(model, req.reasoning)
+    extras = _build_request_extras(req.protocol, model, req.reasoning_mode)
 
     if req.stream:
         return StreamingResponse(
-            _stream_chat(client, req.messages, req.max_tokens, model, extra_body),
+            _stream_chat(client, req.messages, req.max_tokens, model, extras),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -186,8 +204,8 @@ async def chat_completions(req: ChatRequest, request: Request):
             max_tokens=req.max_tokens,
             temperature=0.7,
         )
-        if extra_body:
-            kwargs["extra_body"] = extra_body
+        if extras:
+            kwargs.update(extras)
         completion = await client.chat.completions.create(**kwargs)
         content = completion.choices[0].message.content if completion.choices else ""
         return {"content": content}
