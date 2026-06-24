@@ -8,7 +8,8 @@
  *  - parseToolCalls / stripToolCalls：工具调用 fence 解析与后端序列化剥离；
  *  - toolPermissionError：权限门决策（write_file 默认 ask）。
  */
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
 import { buildSystemPrompt, parseToolCalls, stripToolCalls } from '@/stores/chat'
 import { buildAdvertisedToolNames, toolPermissionError } from '@/ide/tools/registry'
 
@@ -89,5 +90,32 @@ describe('chat AI settings integration helpers', () => {
     const text = '请读取文件\n```tool_call\n{"tool":"read_file","path":"a.py"}\n```\n谢谢'
     expect(parseToolCalls(text)).toEqual([{ tool: 'read_file', path: 'a.py' }])
     expect(stripToolCalls(text)).toBe('请读取文件\n\n谢谢')
+  })
+})
+
+describe('chat body: reasoning_mode + protocol (Spec A)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.resetModules()
+  })
+
+  it('streamChat 调用 body 含 reasoning_mode + protocol, 不再含 reasoning 字段', async () => {
+    const captured = { body: null }
+    vi.doMock('@/ide/chat/useChatStream', () => ({
+      streamChat: async ({ body }) => { captured.body = body },
+    }))
+    const { useChatStore } = await import('@/stores/chat')
+    const { useAiSettingsStore } = await import('@/stores/aiSettings')
+    const ai = useAiSettingsStore()
+    ai.provider = 'anthropic'
+    ai.apiKey = 'sk-X'
+    ai.model = 'claude-fable-5'
+    ai.setReasoningMode('deep')
+    const chat = useChatStore()
+    await chat.sendMessage('hi')
+    expect(captured.body.reasoning_mode).toBe('deep')
+    expect(captured.body.protocol).toBe('anthropic')
+    expect(captured.body).not.toHaveProperty('reasoning')
   })
 })

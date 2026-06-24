@@ -274,19 +274,6 @@ export const useChatStore = defineStore('chat', () => {
     return out
   })
 
-  /** 由 aiSettings.reasoningMode 推导后端 reasoning 字段 (借鉴 Apix llm_adapter):
-   *  AUTO → 不传 (模型默认; DeepSeek-V4 默认 thinking enabled)
-   *  FAST → false (关闭思考, 秒回)
-   *  DEEP → true  (开启思考) */
-  function _reasoningForRequest() {
-    try {
-      const mode = useAiSettingsStore().reasoningMode
-      if (mode === 'fast') return false
-      if (mode === 'deep') return true
-    } catch { /* aiSettings 未就绪, 走默认 */ }
-    return undefined
-  }
-
   function setTutorMode(on) {
     tutorMode.value = !!on
     _saveStr(STORAGE_KEY_TUTOR, tutorMode.value ? 'true' : 'false')
@@ -369,10 +356,9 @@ export const useChatStore = defineStore('chat', () => {
       model: ai.model,
       api_key: ai.apiKey || undefined,
       base_url: ai.getBaseUrl() || undefined,
+      protocol: ai.providerMeta().protocol || 'openai',
+      reasoning_mode: ai.reasoningMode,
     }
-    // DeepSeek-V4 等思考模型经 extra_body.thinking 控制 (后端 _build_extra_body)
-    const reasoning = _reasoningForRequest()
-    if (reasoning !== undefined) body.reasoning = reasoning
 
     await streamChat({
       body,
