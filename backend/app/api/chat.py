@@ -180,13 +180,8 @@ def _resolve_anthropic_client(req: ChatRequest) -> AsyncAnthropic | None:
     return None
 
 
-def _resolve_client(req: ChatRequest) -> AsyncOpenAI | None:
-    """[兼容旧调用] 返回 OpenAI client。Task 12 会切换到 _resolve_client_dispatch。"""
-    return _resolve_openai_client(req)
-
-
-def _resolve_client_dispatch(req: ChatRequest):
-    """根据 protocol 分派 client; 返回 (client, protocol)。None 表示未配置。"""
+def _resolve_client(req: ChatRequest):
+    """根据 protocol 分派 client; 返回 (client, protocol)。client=None 表示未配置。"""
     if req.protocol == 'anthropic':
         return _resolve_anthropic_client(req), 'anthropic'
     return _resolve_openai_client(req), 'openai'
@@ -194,9 +189,11 @@ def _resolve_client_dispatch(req: ChatRequest):
 
 # ----------------------------------------------------------------
 # 流式生成器 — SSE 格式 (async for, 不阻塞事件循环)
+# 两个函数发完全相同的 SSE 帧: {delta} / {reasoning} / {error} / [DONE]
+# 前端 chat.js 不感知协议差异。
 # ----------------------------------------------------------------
-async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extras: dict | None = None):
-    """逐 token 推送 SSE 事件 (async for, 释放事件循环)"""
+async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extras: dict | None = None):
+    """逐 token 推送 SSE 事件 (OpenAI 兼容协议, async for 释放事件循环)"""
     try:
         kwargs = dict(
             model=model,
@@ -227,15 +224,45 @@ async def _stream_chat(client: AsyncOpenAI, messages: list[dict], max_tokens: in
         yield f"data: {json.dumps({'error': err_msg}, ensure_ascii=False)}\n\n"
 
 
+async def _stream_anthropic(client, messages, model, max_tokens, extras=None):
+    """逐 token 推送 SSE 事件 (Anthropic 协议) — 与 _stream_openai 帧形状完全一致。
+
+    注意形参顺序与 _stream_openai 不同: 这里 model 在 max_tokens 前
+    (与 Anthropic SDK messages.create 的关键字顺序一致, 也匹配测试调用)。
+    """
+    system_text, ua_msgs = _split_system(messages)
+    anthropic_msgs = [_openai_msg_to_anthropic(m) for m in ua_msgs]
+    try:
+        kwargs = dict(model=model, max_tokens=max_tokens, messages=anthropic_msgs)
+        if system_text:
+            kwargs['system'] = system_text
+        if extras:
+            kwargs.update(extras)
+        async with client.messages.stream(**kwargs) as stream:
+            async for event in stream:
+                if getattr(event, 'type', None) != 'content_block_delta':
+                    continue
+                d = getattr(event, 'delta', None)
+                if d is None:
+                    continue
+                if d.type == 'thinking_delta':
+                    yield f"data: {json.dumps({'reasoning': d.thinking}, ensure_ascii=False)}\n\n"
+                elif d.type == 'text_delta':
+                    yield f"data: {json.dumps({'delta': d.text}, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as exc:
+        yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+
+
 # ----------------------------------------------------------------
 # 路由
 # ----------------------------------------------------------------
 @router.post("/completions")
 async def chat_completions(req: ChatRequest, request: Request):
-    """AI 助手对话 (SSE 流式, OpenAI 兼容, async 不阻塞)"""
+    """AI 助手对话 (SSE 流式, OpenAI / Anthropic 双协议, async 不阻塞)"""
     model = req.model or settings.LLM_MODEL
 
-    client = _resolve_client(req)
+    client, protocol = _resolve_client(req)
 
     if client is None:
         detail = "LLM 未配置（请设置 API Key）"
@@ -247,11 +274,15 @@ async def chat_completions(req: ChatRequest, request: Request):
             )
         return {"error": detail}
 
-    extras = _build_request_extras(req.protocol, model, req.reasoning_mode)
+    extras = _build_request_extras(protocol, model, req.reasoning_mode)
 
     if req.stream:
+        if protocol == 'anthropic':
+            gen = _stream_anthropic(client, req.messages, model, req.max_tokens, extras)
+        else:
+            gen = _stream_openai(client, req.messages, req.max_tokens, model, extras)
         return StreamingResponse(
-            _stream_chat(client, req.messages, req.max_tokens, model, extras),
+            gen,
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -260,7 +291,9 @@ async def chat_completions(req: ChatRequest, request: Request):
             },
         )
 
-    # 非流式 fallback (await, 不阻塞)
+    # 非流式 fallback — 本期只走 OpenAI 路径; Anthropic 非流式留 future
+    if protocol == 'anthropic':
+        return {"error": "Anthropic 非流式 fallback 本期未实现, 请用 stream=true"}
     try:
         kwargs = dict(
             model=model,
