@@ -273,16 +273,25 @@
         title="后端未运行"
         description="localhost:8000 无响应, AI 对话/测评/图谱功能不可用。请启动后端 (见 scripts/start_all.py 或 CLAUDE.md 快速启动)。"
       />
-      <el-input
-        ref="inputRef"
-        v-model="inputText"
-        type="textarea"
-        :rows="2"
-        :disabled="chat.isBusy || backend.status === false"
-        :placeholder="chat.tutorMode ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)' : '输入消息… (Enter 发送, Shift+Enter 换行)'"
-        resize="none"
-        @keydown="onKeydown"
-      />
+      <div class="textarea-wrap" @dragover.prevent @drop.prevent="onDrop">
+        <div v-if="chat.pendingAttachments.length" class="attachments-strip">
+          <div v-for="a in chat.pendingAttachments" :key="a.id" class="attachment-item">
+            <img :src="a.thumbDataUrl" :alt="a.name" />
+            <span class="attachment-meta">{{ a.name }} · {{ formatBytes(a.size) }}</span>
+            <el-button size="small" text @click="chat.removeAttachment(a.id)">✕</el-button>
+          </div>
+        </div>
+        <el-input
+          ref="inputRef"
+          v-model="inputText"
+          type="textarea"
+          :rows="2"
+          :disabled="chat.isBusy || backend.status === false"
+          :placeholder="chat.tutorMode ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)' : '输入消息… (Enter 发送, Shift+Enter 换行)'"
+          resize="none"
+          @keydown="onKeydown"
+        />
+      </div>
       <div class="input-bar-row">
         <!-- 厂商选择 -->
         <el-select
@@ -362,24 +371,45 @@
             </span>
           </el-option>
         </el-select>
-        <el-button
-          v-if="chat.streaming"
-          type="danger"
-          size="small"
-          plain
-          @click="chat.stopStreaming()"
-        >
-          <el-icon :size="14"><VideoPause /></el-icon>&nbsp;停止
-        </el-button>
-        <el-button
-          v-else
-          type="primary"
-          size="small"
-          :disabled="!inputText.trim() || chat.isBusy || backend.status === false"
-          @click="handleSend"
-        >
-          <el-icon :size="14"><Promotion /></el-icon>&nbsp;发送
-        </el-button>
+        <div class="send-group">
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            hidden
+            @change="onFilesPicked"
+          />
+          <el-tooltip :content="attachTooltip" placement="top">
+            <el-button
+              size="small"
+              class="attach-btn"
+              :disabled="attachDisabled"
+              @click="onAttachClick"
+            >
+              <span v-if="visionPending">⋯</span>
+              <span v-else>📎</span>
+            </el-button>
+          </el-tooltip>
+          <el-button
+            v-if="chat.streaming"
+            type="danger"
+            size="small"
+            plain
+            @click="chat.stopStreaming()"
+          >
+            <el-icon :size="14"><VideoPause /></el-icon>&nbsp;停止
+          </el-button>
+          <el-button
+            v-else
+            type="primary"
+            size="small"
+            :disabled="!inputText.trim() || chat.isBusy || backend.status === false"
+            @click="handleSend"
+          >
+            <el-icon :size="14"><Promotion /></el-icon>&nbsp;发送
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -585,6 +615,61 @@ const deepDisabled = computed(() =>
 
 const deepDisabledTooltip = computed(() =>
   `当前模型 (${aiSettings.model}) 不支持原生推理；如需思考请用「快速/自动」+ 提示词`)
+
+// ---- 附件上传 (Spec A 图片上传, 阶段PR-5) ----
+// 仅 vision 确认 (===true) 的模型启用上传; false/undefined 禁用并提示
+const fileInputRef = ref(null)
+
+const visionState = computed(() => {
+  const base = aiSettings.getBaseUrl()
+  return modelVision.hasVision(base, aiSettings.model)   // true/false/undefined
+})
+const visionPending = computed(() => modelVision.isPending(aiSettings.getBaseUrl(), aiSettings.model))
+
+const attachDisabled = computed(() => {
+  if (chat.streaming) return true
+  if (visionState.value === true) return false
+  return true   // false / undefined → 都不允许点
+})
+
+const attachTooltip = computed(() => {
+  if (visionState.value === true) return '上传图片 (≤5MB × ≤5)'
+  if (visionState.value === false) return `当前模型不支持图像 (${aiSettings.model})`
+  if (visionPending.value) return '正在检测视觉能力…'
+  return '当前模型未知是否支持图像 (切换模型自动探测)'
+})
+
+function onAttachClick() {
+  if (visionState.value !== true) return
+  fileInputRef.value?.click()
+}
+
+async function onFilesPicked(e) {
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''   // 允许选同名文件重传
+  for (const f of files) {
+    try { await chat.addAttachment(f) }
+    catch (err) { ElMessage.error(err.message || '附件添加失败') }
+  }
+}
+
+async function onDrop(e) {
+  if (visionState.value !== true) {
+    ElMessage.warning(attachTooltip.value)
+    return
+  }
+  const files = Array.from(e.dataTransfer?.files || [])
+  for (const f of files) {
+    try { await chat.addAttachment(f) }
+    catch (err) { ElMessage.error(err.message || '附件添加失败') }
+  }
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n}B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)}KB`
+  return `${(n / 1024 / 1024).toFixed(1)}MB`
+}
 
 // ---- API Key 设置对话框 (Electron 不支持 window.prompt, 用 el-dialog) ----
 const apiKeyDialogVisible = ref(false)
@@ -1197,4 +1282,22 @@ async function copyText(text) {
 .model-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .model-badges { display: inline-flex; gap: 4px; }
 .model-badges .el-tag { padding: 0 6px; height: 18px; line-height: 18px; }
+
+/* ---- 附件上传 (Spec A, 阶段PR-5) ---- */
+/* send-group: 📎 + 发送/停止 成组右对齐 (.input-bar-row > :last-child 的 margin-left:auto 落到本组) */
+.send-group { display: flex; align-items: center; gap: 8px; }
+.textarea-wrap { position: relative; }
+.attachments-strip {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 6px 8px; background: var(--el-fill-color-light); border-radius: 4px 4px 0 0;
+}
+.attachment-item {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--el-bg-color); padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--el-border-color-lighter);
+}
+.attachment-item img { width: 32px; height: 32px; object-fit: cover; border-radius: 2px; }
+.attachment-meta { font-size: 12px; color: var(--el-text-color-secondary); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attach-btn { padding: 4px 8px; }
+.attach-btn:disabled { opacity: 0.45; }
 </style>
