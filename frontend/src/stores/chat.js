@@ -213,6 +213,74 @@ export const useChatStore = defineStore('chat', () => {
   // 状态
   // ============================================================
   const messages = ref([])
+
+  // ---- 附件 (Spec A 图片上传, 阶段PR-5) ----
+  // 附件单元: { id, name, size, mimeType, base64DataUrl, thumbDataUrl }
+  // base64DataUrl = 全分辨率 data URL (发往后端); thumbDataUrl = ≤200px JPEG (仅 UI 预览)
+  const pendingAttachments = ref([])
+
+  const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+  const MAX_SIZE = 5 * 1024 * 1024
+  const MAX_COUNT = 5
+
+  function _readAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader()
+      fr.onload = () => resolve(fr.result)
+      fr.onerror = () => reject(new Error('读取文件失败'))
+      fr.readAsDataURL(file)
+    })
+  }
+
+  async function _makeThumb(dataUrl, max = 200) {
+    // 单测环境 (jsdom) 无 canvas (getContext('2d') 返回 null); 直接返回原 dataUrl
+    if (typeof document === 'undefined' || !document.createElement('canvas').getContext('2d')) {
+      return dataUrl
+    }
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const ratio = Math.min(1, max / Math.max(img.width, img.height))
+        const w = Math.round(img.width * ratio), h = Math.round(img.height * ratio)
+        const cvs = document.createElement('canvas')
+        cvs.width = w; cvs.height = h
+        cvs.getContext('2d').drawImage(img, 0, 0, w, h)
+        try { resolve(cvs.toDataURL('image/jpeg', 0.8)) }
+        catch { resolve(dataUrl) }
+      }
+      img.onerror = () => resolve(dataUrl)
+      img.src = dataUrl
+    })
+  }
+
+  async function addAttachment(file) {
+    if (!ALLOWED_MIME.includes(file.type)) {
+      throw new Error(`不支持的文件类型: ${file.type || '未知'}（仅 PNG/JPEG/WEBP/GIF）`)
+    }
+    if (file.size > MAX_SIZE) {
+      throw new Error(`文件超过 5MB: ${(file.size / 1024 / 1024).toFixed(1)}MB`)
+    }
+    if (pendingAttachments.value.length >= MAX_COUNT) {
+      throw new Error(`单条消息最多 ${MAX_COUNT} 张图`)
+    }
+    const dataUrl = await _readAsDataURL(file)
+    const thumb = await _makeThumb(dataUrl)
+    pendingAttachments.value = [...pendingAttachments.value, {
+      id: `att_${_nextId()}`,
+      name: file.name || 'image',
+      size: file.size,
+      mimeType: file.type,
+      base64DataUrl: dataUrl,
+      thumbDataUrl: thumb,
+    }]
+  }
+
+  function removeAttachment(id) {
+    pendingAttachments.value = pendingAttachments.value.filter((a) => a.id !== id)
+  }
+
+  function clearAttachments() { pendingAttachments.value = [] }
+
   const streaming = ref(false)
   const currentStreamId = ref(null)
   const error = ref(null)
@@ -787,5 +855,7 @@ export const useChatStore = defineStore('chat', () => {
     // 对话
     sendMessage, stopStreaming, clearMessages,
     setVersion, regenMessage,
+    // 附件 (Spec A 图片上传, 阶段PR-5)
+    pendingAttachments, addAttachment, removeAttachment, clearAttachments,
   }
 })
