@@ -15,8 +15,11 @@ POST /api/chat/models
 """
 
 import json
+import os
 import re
+import tempfile
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from anthropic import AsyncAnthropic
@@ -34,6 +37,26 @@ ANTHROPIC_MODELS = [
     'claude-fable-5', 'claude-opus-4-8', 'claude-sonnet-4-6',
     'claude-haiku-4-5', 'claude-opus-4-7', 'claude-sonnet-4',
 ]
+
+# 76x100 PNG 写有 'test vision' 文字, 用于 vision 能力探测
+# (Pillow 生成: 白底黑字, 两行 'test' / 'vision')
+TEST_IMG_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAEwAAABkCAIAAACjCkEnAAADFklEQVR4nOXZv0tyfRgG8MtrKBos"
+    "l6IEp6BVkwgcOlb042BDRVs/KHAT+gsaGlqkoUWo3aBJaIkCN4kg2iMXhwLDTQ0hC/R+eRGkx/eB"
+    "t+l5tOuzndv7iDf393Dg0mNm+OkIAYQAQgAhgBBACCAEEAIIAYQAQgAhgBBACCAEEAIIAYQAQgAh"
+    "gBBACCAEEAIIAYQAQgAhgBBACCAEh0wmk9+57ZttXcLT8Sesz+erVCr/e9s327pxk4eHh7VabWlp"
+    "qVwub29vLywsOI7z8PAAIJVKTU5OhsPhbDbbbkOvsF8NDQ2ZWTwev7+/N7Pn5+dgMGhmw8PDb29v"
+    "T09POzs77bZe4fntcQ0EAuPj461KsVjM5/PxeLxarSYSicXFxZ47rugYurWi0dHR9/d3M2s0Grlc"
+    "rvVRLpdbX1/f29vruU2i49rr9TYajY2NjYuLCzO7urpyXbdSqTiO8/n5WavVRkZG2m3Wo0PGYrGV"
+    "lZWXlxfXdR3HmZ+fLxQKZnZ8fBwOh0OhUCqVardZjz6TPxIhgBBACCAEEAIIAYQAQgAhgBBACCAE"
+    "EAIIAYQAQnzIx8fHs7Oz7xS7nEcuGQiFQsViEcDHx8fExESz2fT5fB3JciuPBFAqlWKxmOM4sVis"
+    "VCq16gcHB9FoNBgMXl5eonvYF0dHR6enp2Z2c3Ozv7/fjh5/myxvbm6m02kzS6fTW1tbZjYwMHBy"
+    "cmJmhUIhEAhY18DXi3w+v7y8bGaJROL29rY9z+7u7traWjabbbW1in6/v16vm1m9Xvf7/WbW399f"
+    "LpdbPYODg9a1keTU1FS1Wo1EIs1m82uI/N9keWxsrGNIr9fb/p6uSp/ZcXpXV1eTyeT09LTH42lV"
+    "qtVqNBqNRCLn5+fX19ftzrm5uUwmAyCTyczOzv77fLNbX0j2q3w+39fXd3d393UhHclyq1gsFl3X"
+    "nZmZcV339fW1Y3tdtUmP3CvkpyIEEAIIAYQAQgAhgBBACCAEEAIIAYQAQgAhgBBACCAEEAIIAYQA"
+    "QgAhgBBACCAEEAIIAYQAQgAhgBBACODf/gF/wj8a1dy1cMBPvwAAAABJRU5ErkJggg=="
+)
 
 
 class ChatRequest(BaseModel):
@@ -61,6 +84,13 @@ class SafetyCheckRequest(BaseModel):
     filename: str | None = Field(
         None, description="文件名 (用于判断语言; 非 .py 直接判 safe, 跳过 AST)"
     )
+
+
+class ProbeVisionRequest(BaseModel):
+    base_url: str
+    api_key: str
+    model: str
+    protocol: Literal['openai', 'anthropic'] = 'openai'
 
 
 # ----------------------------------------------------------------
@@ -185,6 +215,41 @@ def _resolve_client(req: ChatRequest):
     if req.protocol == 'anthropic':
         return _resolve_anthropic_client(req), 'anthropic'
     return _resolve_openai_client(req), 'openai'
+
+
+# ----------------------------------------------------------------
+# vision 能力探测缓存 (probe-vision) — 持久化到 {DATA_DIR}/vision_cache.json
+# key = "{base_url}::{model}", value = bool (是否支持 vision OCR)
+# 原子写: .tmp 同目录 + os.replace (跨平台原子 rename)
+# ----------------------------------------------------------------
+def _vision_cache_path() -> Path:
+    p = Path(settings.DATA_DIR)
+    p.mkdir(parents=True, exist_ok=True)
+    return p / "vision_cache.json"
+
+
+def _load_vision_cache() -> dict:
+    path = _vision_cache_path()
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+
+
+def _save_vision_cache(cache: dict) -> None:
+    path = _vision_cache_path()
+    # 原子写: .tmp 同目录 + os.replace (跨平台原子 rename)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix='.vision_cache.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False)
+        os.replace(tmp, path)
+    except Exception:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
 
 
 # ----------------------------------------------------------------
@@ -340,3 +405,69 @@ async def safety_check(req: SafetyCheckRequest):
     issues = hard_check_code_safety(req.code or "")
     safe = not any(i.get("severity") == "high" for i in issues)
     return {"language": "python", "issues": issues, "safe": safe, "checked": True}
+
+
+# ----------------------------------------------------------------
+# probe-vision — 探测 model 是否支持 vision (OCR 测试图)
+# ----------------------------------------------------------------
+_VISION_PROMPT = ("You are given an image.\n"
+                  "The image contains only text.\n"
+                  "Extract the exact text from the image.\n"
+                  "Return only the text. No explanation.")
+
+_AUTH_ERR_TOKENS = ('unauthorized', 'authentication', 'invalid api key',
+                    'api key', 'permission denied', '401')
+
+
+@router.post("/probe-vision")
+async def probe_vision(req: ProbeVisionRequest):
+    """探测 model 是否支持 vision; 用一张 OCR 测试图发请求, 看回包是否包含 test/vision 两词。"""
+    cache = _load_vision_cache()
+    key = f"{req.base_url}::{req.model}"
+    if key in cache:
+        return {"vision": cache[key], "cached": True}
+
+    try:
+        if req.protocol == 'openai':
+            client = _get_async_client(req.base_url, req.api_key)
+            resp = await client.chat.completions.create(
+                model=req.model,
+                messages=[
+                    {"role": "system", "content": "You are a precise OCR assistant."},
+                    {"role": "user", "content": [
+                        {"type": "text", "text": _VISION_PROMPT},
+                        {"type": "image_url",
+                         "image_url": {"url": f"data:image/png;base64,{TEST_IMG_BASE64}"}},
+                    ]},
+                ],
+                max_tokens=100, stream=False,
+            )
+            content = (resp.choices[0].message.content or "").strip().lower()
+        else:  # anthropic
+            client = _get_anthropic_client(req.api_key)
+            resp = await client.messages.create(
+                model=req.model, max_tokens=100,
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": _VISION_PROMPT},
+                    {"type": "image", "source": {
+                        "type": "base64", "media_type": "image/png", "data": TEST_IMG_BASE64}},
+                ]}],
+            )
+            content = (resp.content[0].text if resp.content else "").strip().lower()
+
+        is_vision = ("test" in content and "vision" in content)
+    except Exception as exc:
+        err = str(exc).lower()
+        if any(tok in err for tok in _AUTH_ERR_TOKENS):
+            return {"vision": False, "cached": False, "error": "auth"}
+        is_vision = False   # 非 auth 错: 判 False + 写缓存
+
+    cache[key] = is_vision
+    _save_vision_cache(cache)
+    return {"vision": is_vision, "cached": False}
+
+
+@router.delete("/probe-vision/cache")
+async def clear_vision_cache():
+    _save_vision_cache({})
+    return {"ok": True}
