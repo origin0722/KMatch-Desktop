@@ -56,6 +56,10 @@ export function activeChunksOf(msg) {
 
 /** 拼接消息当前 version 的 content chunk 文本 (供 API 历史 + MarkdownViewer)。 */
 export function contentTextOf(msg) {
+  // 兼容: msg.content 是数组 (user 多模态) → 拼接 type==='text' 段
+  if (Array.isArray(msg?.content)) {
+    return msg.content.filter((p) => p?.type === 'text').map((p) => p.text || '').join('')
+  }
   return activeChunksOf(msg).filter((c) => c.type === 'content').map((c) => c.content).join('')
 }
 

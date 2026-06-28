@@ -752,8 +752,25 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
     abortController.value = new AbortController()
 
-    // 添加用户消息
-    _addMessage('user', userContent.trim())
+    // 添加用户消息 (含附件 → 多模态 content 数组; 否则 string payload → chunks)
+    // 注: 无附件时走 string payload 让 chunks 携带文本 (contentTextOf 经 activeChunksOf 读取,
+    //     兼容旧消息/工具回喂/分支测试 m.chunks[0].content 查找); 有附件时 content 字段存数组,
+    //     chunks 留空, contentTextOf 经 Array.isArray 分支取 text 段。
+    const attachments = [...pendingAttachments.value]
+    const userContentNorm = userContent.trim()
+    if (attachments.length === 0) {
+      _addMessage('user', userContentNorm)
+    } else {
+      const userPayload = [
+        { type: 'text', text: userContentNorm },
+        ...attachments.map((a) => ({
+          type: 'image_url',
+          image_url: { url: a.base64DataUrl },
+        })),
+      ]
+      _addMessage('user', null, { content: userPayload, _attachments: attachments })
+    }
+    clearAttachments()
 
     // 收集工作区上下文
     const context = await _collectContext()
@@ -767,10 +784,16 @@ export const useChatStore = defineStore('chat', () => {
       // 构建 API 消息列表 (assistant content 去掉 tool_call 块; chunks 模型无 tool 角色)
       // 用 visibleMessages: regen 隐藏的尾随消息不应进 API 历史 (见 regenMessage)
       const systemMsg = buildSystemPrompt(context)
-      const historyMsgs = visibleMessages.value.map((m) => ({
-        role: m.role,
-        content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
-      }))
+      const historyMsgs = visibleMessages.value.map((m) => {
+        if (m.role === 'assistant') {
+          return { role: 'assistant', content: stripToolCalls(contentTextOf(m)) }
+        }
+        // user: 多模态数组原样传; 否则用文本
+        return {
+          role: 'user',
+          content: Array.isArray(m.content) ? m.content : contentTextOf(m),
+        }
+      })
       const apiMessages = [systemMsg, ...historyMsgs]
 
       // 每轮添加新的助手占位消息 (空 chunks)
@@ -807,10 +830,16 @@ export const useChatStore = defineStore('chat', () => {
       toolRound++
       const systemMsg = buildSystemPrompt(context)
       const visibleSoFar = visibleMessages.value.filter((m) => messages.value.indexOf(m) < targetIdx)
-      const historyMsgs = visibleSoFar.map((m) => ({
-        role: m.role,
-        content: m.role === 'assistant' ? stripToolCalls(contentTextOf(m)) : contentTextOf(m),
-      }))
+      const historyMsgs = visibleSoFar.map((m) => {
+        if (m.role === 'assistant') {
+          return { role: 'assistant', content: stripToolCalls(contentTextOf(m)) }
+        }
+        // user: 多模态数组原样传; 否则用文本
+        return {
+          role: 'user',
+          content: Array.isArray(m.content) ? m.content : contentTextOf(m),
+        }
+      })
       const apiMessages = [systemMsg, ...historyMsgs]
 
       // trailingAfter 由 _addMessage 钩子自动维护 (target 为最后一个助手时, 工具结果归入新版本)

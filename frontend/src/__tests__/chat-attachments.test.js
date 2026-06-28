@@ -68,3 +68,50 @@ describe('chat attachments (Spec A)', () => {
     expect(chat.pendingAttachments).toHaveLength(0)
   })
 })
+
+describe('sendMessage multimodal (Spec A)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    // 必需: 清模块缓存, 否则上方 describe 已缓存的 @/stores/chat 绑定了真实 streamChat,
+    // vi.doMock 不会生效 (与 chat-ai-settings.test.js 同一模式)。
+    vi.resetModules()
+  })
+
+  it('attachments 存在时 user message content 是 OpenAI 数组形式', async () => {
+    const captured = { body: null }
+    vi.doMock('@/ide/chat/useChatStream', () => ({
+      streamChat: async ({ body }) => { captured.body = body },
+    }))
+    const { useChatStore } = await import('@/stores/chat')
+    const { useAiSettingsStore } = await import('@/stores/aiSettings')
+    const ai = useAiSettingsStore()
+    ai.provider = 'openai'; ai.apiKey = 'sk'; ai.model = 'gpt-4o'
+    const chat = useChatStore()
+    chat.pendingAttachments = [
+      { id: 'a1', name: 'a.png', size: 1, mimeType: 'image/png',
+        base64DataUrl: 'data:image/png;base64,AAAA', thumbDataUrl: 'd' },
+    ]
+    await chat.sendMessage('看看')
+    // body.messages = [systemMsg, ...historyMsgs]; 首条用户消息即最后一条 → at(-1)
+    // (spec 原写 at(-2) 指向 systemMsg, 已据代码轨迹修正)
+    const last = captured.body.messages.at(-1)
+    expect(Array.isArray(last.content)).toBe(true)
+    expect(last.content[0]).toEqual({ type: 'text', text: '看看' })
+    expect(last.content[1].type).toBe('image_url')
+    expect(last.content[1].image_url.url).toContain('data:image/png;base64,')
+    expect(chat.pendingAttachments).toHaveLength(0)   // 已清空
+  })
+
+  it('无附件时 user content 仍是 string', async () => {
+    const captured = { body: null }
+    vi.doMock('@/ide/chat/useChatStream', () => ({
+      streamChat: async ({ body }) => { captured.body = body },
+    }))
+    const { useChatStore } = await import('@/stores/chat')
+    const chat = useChatStore()
+    await chat.sendMessage('hi')
+    const last = captured.body.messages.at(-1)
+    expect(typeof last.content).toBe('string')
+  })
+})
