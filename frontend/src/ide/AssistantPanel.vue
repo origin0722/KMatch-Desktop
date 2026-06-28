@@ -190,9 +190,19 @@
             </div>
           </div>
 
-          <!-- 用户消息: 纯文本气泡 -->
+          <!-- 用户消息: 纯文本气泡 + 附件缩略图 -->
           <div v-else class="msg-body user-msg">
             <div class="msg-content">
+              <div v-if="msg._attachments?.length" class="msg-attachments">
+                <img
+                  v-for="a in msg._attachments"
+                  :key="a.id"
+                  :src="a.thumbDataUrl"
+                  :alt="a.name"
+                  class="msg-attachment-thumb"
+                  @click="openImagePreview(a.base64DataUrl)"
+                />
+              </div>
               <pre class="user-text">{{ contentText(msg) }}</pre>
             </div>
           </div>
@@ -448,6 +458,14 @@
         <el-button type="primary" @click="saveApiKey">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 附件大图预览 (点击缩略图触发) -->
+    <el-image-viewer
+      v-if="previewUrl"
+      :url-list="[previewUrl]"
+      hide-on-click-modal
+      @close="closeImagePreview"
+    />
   </div>
 </template>
 
@@ -476,6 +494,11 @@ const modelVision = useModelVisionStore()
 const inputText = ref('')
 const inputRef = ref(null)
 const msgContainer = ref(null)
+
+// ---- 附件缩略图大图预览 (ElImageViewer 全局注册, 仅用 tag) ----
+const previewUrl = ref(null)
+function openImagePreview(url) { previewUrl.value = url }
+function closeImagePreview() { previewUrl.value = null }
 
 // ---- write_file 审批门: 可编辑内容 (随 pendingApproval 出现而初始化) ----
 const approvalContent = ref('')
@@ -1300,4 +1323,11 @@ async function copyText(text) {
 .attachment-meta { font-size: 12px; color: var(--el-text-color-secondary); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attach-btn { padding: 4px 8px; }
 .attach-btn:disabled { opacity: 0.45; }
+
+/* ---- 用户消息附件缩略图 (Task 21) ---- */
+.msg-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.msg-attachment-thumb {
+  width: 80px; height: 80px; object-fit: cover; border-radius: 4px; cursor: zoom-in;
+  border: 1px solid var(--el-border-color-lighter);
+}
 </style>
