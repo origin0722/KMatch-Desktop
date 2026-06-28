@@ -355,12 +355,9 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   }
 
   function modelReasoningSupport(provider, model) {
-    // 先按当前 provider 查
-    const own = capabilityOf(provider, model).reasoning
-    if (own === 'native') return 'native'
-    // 自定义/未知 provider + claude 模型名 → 也算 native (model 名是更可靠的判定)
-    const asAnthropic = capabilityOf('anthropic', model).reasoning
-    return asAnthropic === 'native' ? 'native' : 'prompt-only'
+    // 委托 capabilityOf (Spec A §3.4)。与 deepDisabled/capOf/auto-downgrade watch 保持单一来源,
+    // 避免 modelReasoningSupport 与 UI 行为不一致。custom:<uuid> 走兜底 prompt-only。
+    return capabilityOf(provider, model).reasoning   // 'native' | 'prompt-only'
   }
 
   function reasoningInstruction(provider, model) {

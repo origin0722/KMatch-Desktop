@@ -47,7 +47,7 @@ sequenceDiagram
     R->>R: splitToolCallChunks → 工具循环 (≤3 轮)
 ```
 
-- 后端 `_stream_chat`（`backend/app/api/chat.py:107`）发 `data: {reasoning?, delta?}` + `[DONE]`；错误发 `data: {error}`（200 内）。
+- 后端 `_stream_openai` / `_stream_anthropic`（`backend/app/api/chat.py`，按 `protocol` 分派）发 `data: {reasoning?, delta?}` + `[DONE]`；错误发 `data: {error}`（200 内）。两协议帧形状一致，前端无感。
 - Main `http-proxy.js:42` `http:stream` 拆 `\n\n` 转 block；非 2xx 发 `http:stream:error`（修旧静默丢 body）。
 - Renderer `chat.js:558` `_streamResponse` 再缓冲拆 block；`_applySseBlock`（`:539`）解析。
 - **注意**：chat 走 `window.api.http.*`，**不走** axios 层（`api/index.js` 仅 graph/diagnostics 用）。F1。

@@ -116,7 +116,7 @@ describe('aiSettings store', () => {
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-reasoner')).toBe('native')
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-v4-pro')).toBe('native')
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-v3')).toBe('prompt-only')
-    expect(settings.modelReasoningSupport('custom', 'claude-opus-4-8')).toBe('native')
+    expect(settings.modelReasoningSupport('custom', 'claude-opus-4-8')).toBe('prompt-only')
 
     settings.setReasoningMode('deep')
     expect(settings.reasoningInstruction('deepseek', 'deepseek-v4-pro')).toContain('当前模型支持 reasoning')
