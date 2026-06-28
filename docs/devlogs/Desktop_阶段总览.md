@@ -60,6 +60,16 @@
 - 94 测试过（新增 12 含 Critical 回归）；subagent-driven 9 commits，code review Approved
 - Apix 借鉴三大项（文件监听 Worker / 消息 chunks / 消息分支）全部完成
 
+## 阶段11 (6/24): 聊天框 Apix 化（Spec A — 多厂商 + 模型能力 + Vision + 图片上传 + Anthropic 原生协议）✅
+- 借鉴 Apix `llm_adapter.py` / `assistPage.vue`，把聊天框本身做成多厂商可用
+- **PR-1 厂商注册表 + customProviders**：PROVIDERS 扩 8 项（+protocol/iconKey/fallbackModels）；`provider='custom:<uuid>'` 值域 + 旧 customBaseUrl 一次性迁移；`/models` 加 protocol 字段（Anthropic 短路硬编码列表）
+- **PR-2 模型能力 + reasoning UI**：`services/llm/modelCapabilities.js` 静态表（reasoning/context 按 modelPattern）；`modelReasoningSupport` 四态收敛为 native|prompt-only 单委托；后端 `ChatRequest` 改 `reasoning_mode`+`protocol` + `_build_request_extras` 三态；reasoning radio 三态（auto/fast/deep）+ 不支持模型 deep 灰 + 自动降级 watch
+- **PR-3 Anthropic 原生协议**：anthropic SDK + `_get_anthropic_client` lru 缓存；`_split_system` + `_openai_msg_to_anthropic` 消息转换；`_stream_openai`/`_stream_anthropic` 双 stream 发**完全相同 SSE 帧**（前端无感）；`_resolve_client` 拆双协议派发（tuple）
+- **PR-4 Vision 探测**：`/probe-vision` endpoint + `vision_cache.json` 原子写 + DELETE 清空；`modelVision` store（dedupe + 三态 hasVision）；切 model 异步起探 + 切 apiKey 清同 baseUrl 缓存；模型 select + 👁/🧠/上下文徽章
+- **PR-5 图片上传**：`pendingAttachments` + add/remove/clear（≤5MB×5）；`sendMessage` 多模态 OpenAI 数组 content + `contentTextOf` 数组兼容；📎 按钮 + 拖拽 + 预览条（仅 vision 模型启用）；user 气泡附件缩略图 + ElImageViewer 大图预览；8 厂商 SVG 图标（占位，后续可替换 Apix 官方 logo）
+- 23 commits（subagent-driven，每任务 implementer + spec/quality review）；前端 195 + 后端 430 测试全过；最终 cross-task review Approved（修了 I-1 modelReasoningSupport dual-call 不一致）
+- **Deferred**：Task 13 Anthropic 端到端手测（需真实 key + 代理 + 桌面 app）；Anthropic 非流式 fallback；多组 customProviders CRUD UI / 清缓存按钮（Spec B）
+
 ## 已知待修
 - S1–S6 均已修（见各阶段）
 - 沙箱强化 DockerSandboxExecutor（阶段5 残留）
