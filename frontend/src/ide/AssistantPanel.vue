@@ -311,12 +311,15 @@
           :disabled="chat.streaming"
           @change="onProviderChange"
         >
-          <el-option
-            v-for="p in PROVIDERS"
-            :key="p.id"
-            :label="p.label"
-            :value="p.id"
-          />
+          <template #prefix>
+            <img :src="iconUrlOf(aiSettings.providerMeta().iconKey)" class="provider-icon" alt="" />
+          </template>
+          <el-option v-for="p in PROVIDERS" :key="p.id" :label="p.label" :value="p.id">
+            <span class="provider-row">
+              <img :src="iconUrlOf(p.iconKey)" class="provider-icon" alt="" />
+              <span>{{ p.label }}</span>
+            </span>
+          </el-option>
         </el-select>
         <!-- API Key -->
         <el-button
@@ -481,6 +484,7 @@ import { useBackendHealthStore } from '@/stores/backendHealth'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import { capabilityOf, formatContext } from '@/services/llm/modelCapabilities'
+import { iconUrlOf } from '@/services/llm/icons'
 import { useModelVisionStore } from '@/stores/modelVision'
 
 const sidebar = useSidebarStore()
@@ -1330,4 +1334,8 @@ async function copyText(text) {
   width: 80px; height: 80px; object-fit: cover; border-radius: 4px; cursor: zoom-in;
   border: 1px solid var(--el-border-color-lighter);
 }
+
+/* ---- 厂商下拉图标 (Task 22) ---- */
+.provider-icon { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; }
+.provider-row { display: inline-flex; align-items: center; gap: 6px; }
 </style>
