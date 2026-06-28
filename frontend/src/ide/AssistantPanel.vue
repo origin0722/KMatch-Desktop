@@ -342,10 +342,26 @@
             :title="deepDisabled ? deepDisabledTooltip : '深度 — 充分思考'"
           >🧠</el-radio-button>
         </el-radio-group>
-        <!-- 模型 (自动) -->
-        <span class="model-hint" :title="'当前模型: ' + (aiSettings.model || '未选择')">
-          {{ aiSettings.model || '—' }}
-        </span>
+        <!-- 模型 select + 能力徽章 (vision/reasoning/context) -->
+        <el-select
+          :model-value="aiSettings.model"
+          size="small"
+          class="model-select"
+          :disabled="chat.streaming"
+          @change="aiSettings.setModel"
+        >
+          <el-option v-for="m in aiSettings.models" :key="m" :label="m" :value="m">
+            <span class="model-row">
+              <span class="model-name">{{ m }}</span>
+              <span class="model-badges">
+                <el-tag v-if="capOf(m).vision === true" size="small" type="success" effect="plain">👁</el-tag>
+                <el-tag v-else-if="capOf(m).vision === undefined && capOf(m).pending" size="small" type="info" effect="plain">⋯</el-tag>
+                <el-tag v-if="capOf(m).reasoning === 'native'" size="small" type="warning" effect="plain">🧠</el-tag>
+                <el-tag v-if="capOf(m).context" size="small" type="info" effect="plain">{{ formatContext(capOf(m).context) }}</el-tag>
+              </span>
+            </span>
+          </el-option>
+        </el-select>
         <el-button
           v-if="chat.streaming"
           type="danger"
@@ -416,7 +432,8 @@ import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 import { ElMessage } from 'element-plus'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
-import { capabilityOf } from '@/services/llm/modelCapabilities'
+import { capabilityOf, formatContext } from '@/services/llm/modelCapabilities'
+import { useModelVisionStore } from '@/stores/modelVision'
 
 const sidebar = useSidebarStore()
 const chat = useChatStore()
@@ -424,6 +441,7 @@ const aiSettings = useAiSettingsStore()
 const customProviders = useCustomProvidersStore()
 const projectGraph = useProjectGraphStore()
 const backend = useBackendHealthStore()
+const modelVision = useModelVisionStore()
 
 const inputText = ref('')
 const inputRef = ref(null)
@@ -549,6 +567,17 @@ function onProviderChange(pid) {
 const providerSelectValue = computed(() =>
   isCustomProvider(aiSettings.provider) ? 'custom' : aiSettings.provider,
 )
+
+// 模型能力徽章: 静态 (reasoning/context) + 运行时 vision 三态 (true/false/undefined)
+function capOf(m) {
+  const base = capabilityOf(aiSettings.provider, m)
+  const baseUrl = aiSettings.getBaseUrl()
+  return {
+    ...base,
+    vision: modelVision.hasVision(baseUrl, m),       // true/false/undefined
+    pending: modelVision.isPending(baseUrl, m),
+  }
+}
 
 // reasoning deep 按钮 disabled: 当前模型不支持原生 reasoning
 const deepDisabled = computed(() =>
@@ -965,14 +994,6 @@ async function copyText(text) {
 }
 .tutor-label { font-size: 11px; font-weight: 600; }
 .apikey-tip { font-size: 12px; color: var(--km-gray-500); margin-top: -4px; }
-.model-hint {
-  font-size: 11px;
-  color: var(--km-gray-500);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
 
 /* ---- write_file 审批门 ---- */
 .approval-card {
@@ -1169,4 +1190,11 @@ async function copyText(text) {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ---- 模型 select + 能力徽章 (Task 17) ---- */
+.model-select { width: 200px; margin-right: 6px; }
+.model-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.model-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.model-badges { display: inline-flex; gap: 4px; }
+.model-badges .el-tag { padding: 0 6px; height: 18px; line-height: 18px; }
 </style>
