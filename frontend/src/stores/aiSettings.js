@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
 import { capabilityOf } from '@/services/llm/modelCapabilities'
 import { useCustomProvidersStore } from './customProviders'
+import { useModelVisionStore } from './modelVision'
 
 export function isCustomProvider(p) {
   return typeof p === 'string' && p.startsWith('custom:')
@@ -259,6 +260,8 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
         if (!model.value || !data.models.includes(model.value)) {
           model.value = data.models[0]
         }
+        // 真实模型列表就绪: 异步起 vision 探测
+        _scheduleProbeForCurrent()
       } else {
         models.value = fallbackModels(provider.value)
         if (!model.value || !models.value.find((m) => m === model.value)) {
@@ -286,17 +289,39 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     persist()
     await fetchModels()
     persist()
+    // 切厂商后 model 已校正; 异步起探测, 不阻塞 UI
+    _scheduleProbeForCurrent()
   }
 
   async function setApiKey(key) {
+    const oldBase = getBaseUrl()
     apiKey.value = key
     if (isCustomProvider(provider.value)) {
       const uuid = customProviderUuid(provider.value)
       useCustomProvidersStore().update(uuid, { apiKey: key })
     }
+    // 换 key = 换厂商权限 — 同 baseUrl 旧 vision 结果失效
+    try { useModelVisionStore().clearForBaseUrl(oldBase) } catch { /* store 未就绪也安全 */ }
     persist()
     await fetchModels()
     persist()
+  }
+
+  function setModel(m) {
+    if (model.value === m) return
+    model.value = m
+    persist()
+    // 异步起探测; 不 await, 不阻塞 UI
+    _scheduleProbeForCurrent()
+  }
+
+  function _scheduleProbeForCurrent() {
+    const base = getBaseUrl()
+    if (!base || !model.value || !apiKey.value) return
+    const proto = providerMeta().protocol || 'openai'
+    try {
+      useModelVisionStore().probe(base, apiKey.value, model.value, proto)
+    } catch { /* swallow */ }
   }
 
   function setProxy(next) {
@@ -438,5 +463,6 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     fetchModels,
     setProvider,
     setApiKey,
+    setModel,
   }
 })
