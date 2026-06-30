@@ -78,6 +78,11 @@ class AgentState(TypedDict, total=False):
     # --- 执行日志 ---
     orchestration_log: Annotated[list, _append_log]
 
+    # --- Spec B: per-request LLM 覆写 (Agent 学习引擎独立 key) ---
+    # 路由层从请求体 llm_overrides 提取后塞入 initial state；节点入口读它 set ContextVar。
+    # 工作流路径用此字段传递；直调路径（submit/feedback/review/test）用 use_llm_overrides。
+    llm_overrides: dict
+
 
 def make_initial_state(
     target_direction: str,
@@ -85,11 +90,15 @@ def make_initial_state(
     known_topics: list = None,
     scene: str = "no_project",
     max_retries: int = 3,
+    llm_overrides: dict = None,
 ) -> AgentState:
-    """构造初始状态。学情检测节点将填充 user_profile / assessment。"""
+    """构造初始状态。学情检测节点将填充 user_profile / assessment。
+
+    Spec B: llm_overrides 非空时随 state 下传，节点入口 set 进 ContextVar。
+    """
     import uuid
 
-    return AgentState(
+    state = AgentState(
         session_id=str(uuid.uuid4()),
         scene=scene,
         target_direction=target_direction,
@@ -102,3 +111,6 @@ def make_initial_state(
         max_retries=max_retries,
         orchestration_log=[],
     )
+    if llm_overrides:
+        state["llm_overrides"] = llm_overrides
+    return state
