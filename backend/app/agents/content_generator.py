@@ -22,7 +22,7 @@ from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import get_default_chat_model, llm_configured
+from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured
 from app.graph.engine import KnowledgeGraph
 from app.utils.json_utils import parse_llm_json
 from app.utils.logging import get_logger
@@ -154,6 +154,17 @@ def content_generator_node(kg: KnowledgeGraph):
         kg_state = state.get("knowledge_graph", {}) or {}
         log = [f"[{datetime.utcnow().isoformat()}] 📚 领域知识生成: 开始"]
 
+        # Spec B: 工作流路径 set ContextVar；content_generator 的 ThreadPoolExecutor
+        # 工作线程不继承 ContextVar，_safe_generate 内闭包捕获 overrides 重新 set。
+        overrides = state.get("llm_overrides")
+        ctx_token = _current_overrides.set(overrides) if overrides else None
+        try:
+            return _node_body(state, profile, kg_state, log, overrides)
+        finally:
+            if ctx_token is not None:
+                _current_overrides.reset(ctx_token)
+
+    def _node_body(state, profile, kg_state, log, overrides) -> dict:
         # 无学习路径 (图谱未组装/降级) → 跳过生成 (字段结构与正常分支对齐)
         # 仍标记 content_phase_entered=True: 防止 reviewer 回退画像模式 (BUG-031)
         learning_path = kg_state.get("learning_path", [])
@@ -186,13 +197,21 @@ def content_generator_node(kg: KnowledgeGraph):
         tasks = [(node, ctype) for node in target_nodes for ctype in CONTENT_TYPES]
 
         def _safe_generate(node, ctype):
-            """单任务包装: 返回 (ok, result_or_None)。异常不外抛，避免 ThreadPool 终止其他任务。"""
+            """单任务包装: 返回 (ok, result_or_None)。异常不外抛，避免 ThreadPool 终止其他任务。
+
+            Spec B: ContextVar 不跨线程传播；工作线程内闭包捕获 overrides 重新 set，
+            使 _generate_one → get_default_chat_model() 读到 overrides。
+            """
+            wtoken = _current_overrides.set(overrides) if overrides else None
             try:
                 return True, _generate_one(node, theory_level, ctype)
             except Exception:
                 logger.warning("生成失败 node=%s type=%s",
                                node.get("node_id"), ctype, exc_info=True)
                 return False, None
+            finally:
+                if wtoken is not None:
+                    _current_overrides.reset(wtoken)
 
         resources = []
         failures = 0

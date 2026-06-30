@@ -20,7 +20,7 @@ from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import get_default_chat_model, llm_configured
+from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured
 from app.config import settings
 from app.graph.engine import KnowledgeGraph
 from app.utils.json_utils import parse_llm_json
@@ -260,6 +260,18 @@ def reviewer_node(kg: KnowledgeGraph):
         retry = state.get("retry_count", 0)
         log = [f"[{datetime.utcnow().isoformat()}] 🔍 内容审核: 开始审画像 (第{retry+1}轮)"]
 
+        # Spec B: 工作流路径从 state.llm_overrides set ContextVar（节点退出 reset）。
+        # LLM 语义审核 (_llm_review/_llm_review_content) 调 get_default_chat_model()
+        # 读 _current_overrides 构造用户独立 key 的实例。
+        overrides = state.get("llm_overrides")
+        ctx_token = _current_overrides.set(overrides) if overrides else None
+        try:
+            return _node_body(state, profile, assessment, retry, log)
+        finally:
+            if ctx_token is not None:
+                _current_overrides.reset(ctx_token)
+
+    def _node_body(state, profile, assessment, retry, log) -> dict:
         # 空画像（LLM 未配置/降级/失败）→ 直接判不通过
         # dimensions 仍返回四维度默认满分 (履行对接契约: 不会缺失 key)，
         # overall_score=0 因 passed=False，B 端可安全访问 dimensions.*.score
