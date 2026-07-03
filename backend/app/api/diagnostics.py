@@ -25,7 +25,7 @@ from app.agents.diagnostics import (
     decide_feedback,
     prepare_questions,
 )
-from app.agents.llm import llm_configured
+from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.report_builder import build_learning_report
 from app.utils.logging import get_logger
 
@@ -56,6 +56,7 @@ class AssessRequest(BaseModel):
     known_topics: list = Field(default_factory=list, description="用户自报已学节点 [{node_id, mastery}]")
     scene: str = Field("no_project", description="no_project | with_project")
     max_retries: int = Field(3, description="审核打回最大轮数", ge=1, le=5)
+    llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
 
 
 class AssessResponse(BaseModel):
@@ -82,6 +83,7 @@ class SubmitRequest(BaseModel):
 
     session_id: str = Field(..., description="assess(interactive) 返回的 session_id")
     answers: list = Field(..., description="逐题作答，顺序与 questions 一致；选择题给选项内容/字母，判断题给'对'/'错'")
+    llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
 
 
 class SubmitResponse(BaseModel):
@@ -99,6 +101,7 @@ class FeedbackRequest(BaseModel):
     session_id: str = Field(..., description="assess(interactive) 返回的 session_id")
     strategy: Literal["advance", "remediate", "scaffold"] = Field(..., description="动态反馈策略")
     profile: dict = Field(..., description="submit 返回的画像 (含 weak_topics/theory_level)")
+    llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
 
 
 class FeedbackResponse(BaseModel):
@@ -180,6 +183,7 @@ def assess(req: AssessRequest, request: Request):
         known_topics=req.known_topics,
         scene=req.scene,
         max_retries=req.max_retries,
+        llm_overrides=req.llm_overrides,
     )
 
     logger.info("收到测评请求 session=%s direction=%s mode=%s",
@@ -264,6 +268,7 @@ def assess_stream(req: AssessRequest, request: Request):
         known_topics=req.known_topics,
         scene=req.scene,
         max_retries=req.max_retries,
+        llm_overrides=req.llm_overrides,
     )
     session_id = initial["session_id"]
     config = {"configurable": {"thread_id": session_id}}
@@ -358,8 +363,9 @@ def submit(req: SubmitRequest, request: Request):
     answers = (list(req.answers) + [""] * len(questions))[: len(questions)]
 
     try:
-        grading = _grade(questions, answers)
-        profile = _build_profile(target, nodes, grading, questions=questions)
+        with use_llm_overrides(req.llm_overrides):
+            grading = _grade(questions, answers)
+            profile = _build_profile(target, nodes, grading, questions=questions)
         feedback = decide_feedback(grading["correct_count"], grading["total_count"])
     except Exception as e:
         logger.error("答题判分失败 session=%s", req.session_id, exc_info=True)
@@ -411,7 +417,8 @@ def feedback(req: FeedbackRequest, request: Request):
     learning_path = session.get("nodes", [])
 
     try:
-        result = regenerate_for_feedback(req.strategy, req.profile, learning_path, kg)
+        with use_llm_overrides(req.llm_overrides):
+            result = regenerate_for_feedback(req.strategy, req.profile, learning_path, kg)
     except Exception as e:
         logger.error("feedback 再生失败 session=%s", req.session_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"内容再生失败: {e}")
