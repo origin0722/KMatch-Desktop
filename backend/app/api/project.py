@@ -141,6 +141,7 @@ class ReviewRequest(BaseModel):
     code: str                          # 用户提交的修改后代码
     target_direction: str              # 开发目标 (检索相关领域知识点 + LLM 上下文)
     knowledge_node_ids: Optional[list[str]] = None  # 用户指定的相关知识点 (可选)
+    llm_overrides: dict = None  # Spec B: Agent 独立 key 覆写
 
 
 @router.post("/review", summary="代码审查: 对照领域规范检查逻辑错误/安全隐患")
@@ -157,7 +158,8 @@ def review_project_code_api(req: ReviewRequest, request: Request):
 
     kg = _get_kg(request)
     try:
-        result = review_code(kg, req.code, req.target_direction, req.knowledge_node_ids)
+        result = review_code(kg, req.code, req.target_direction, req.knowledge_node_ids,
+                             llm_overrides=req.llm_overrides)
     except Exception as e:
         logger.error("代码审查失败", exc_info=True)
         raise HTTPException(status_code=500, detail=f"代码审查失败: {e}")
@@ -177,6 +179,7 @@ class TestRequest(BaseModel):
     knowledge_node_ids: Optional[list[str]] = None
     mode: Literal["generate", "baseline"] = "generate"
     project_id: Optional[str] = None        # 已入库项目 (用于风险标注回写)
+    llm_overrides: dict = None  # Spec B: Agent 独立 key 覆写
 
 
 @router.post("/test", summary="代码测试: 生成Pytest并执行，输出通过率/覆盖率+风险标注")
@@ -219,7 +222,7 @@ def test_project_code_api(req: TestRequest, request: Request):
         result = run_tests(
             kg, sources, req.target_direction, req.knowledge_node_ids,
             mode=req.mode, project_id=req.project_id, module_name=module_name,
-            example_name=example_name,
+            example_name=example_name, llm_overrides=req.llm_overrides,
         )
     except Exception as e:
         logger.error("代码测试失败", exc_info=True)

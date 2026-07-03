@@ -134,3 +134,110 @@ def test_feedback_passes_overrides_to_regenerate(monkeypatch):
     assert r.status_code == 200, r.text
     assert seen["ctx"] == overrides
     assert _current_overrides.get() is None
+
+
+# ============================================================
+# Task 6: learning + project 路由透传 llm_overrides
+# ============================================================
+
+def test_learning_report_request_accepts_llm_overrides():
+    from app.api.learning import LearningReportRequest
+    req = LearningReportRequest(session_id="s1", llm_overrides={"api_key": "k"})
+    assert req.llm_overrides == {"api_key": "k"}
+
+
+def test_project_review_request_accepts_llm_overrides():
+    from app.api.project import ReviewRequest, TestRequest
+    assert ReviewRequest(code="x", target_direction="t",
+                         llm_overrides={"api_key": "k"}).llm_overrides == {"api_key": "k"}
+    assert TestRequest(target_direction="t",
+                       llm_overrides={"api_key": "k"}).llm_overrides == {"api_key": "k"}
+
+
+def test_learning_report_passes_overrides_to_pipeline(monkeypatch):
+    """learning report 路由把 llm_overrides 透传进 _run_report_pipeline (进而入 state,
+    供 content_generator ThreadPoolExecutor worker 线程 re-set ContextVar)。
+    路由层 use_llm_overrides 单独不够 — worker 不继承 ContextVar, 必须经 state 下传。"""
+    import app.api.learning as learning_api
+
+    seen = {}
+
+    def fake_pipeline(profile, kg, llm_overrides=None):
+        seen["overrides"] = llm_overrides
+        return {"knowledge_graph": {}, "generated_content": {}, "review_results": {},
+                "orchestration_log": []}
+
+    monkeypatch.setattr(learning_api, "_run_report_pipeline", fake_pipeline)
+    monkeypatch.setattr(learning_api, "build_learning_report",
+                        lambda *a, **k: {})  # 纯函数替身, 避免 FakeKg 缺方法
+    _patch_appstate_kg(monkeypatch)
+
+    api_diag._INTERACTIVE_SESSIONS["s1"] = {
+        "profile": {"theory_level": 1}, "target_direction": "x",
+        "created_at": "2026-01-01T00:00:00",
+    }
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    overrides = {"api_key": "sk-l", "model": "lm"}
+    r = client.post("/api/learning/report",
+                    json={"session_id": "s1", "llm_overrides": overrides})
+    assert r.status_code == 200, r.text
+    assert seen["overrides"] == overrides
+
+
+def test_project_review_passes_overrides_to_review_code(monkeypatch):
+    """project /review 路由把 llm_overrides 透传到 review_code (后者在 llm_review_code
+    内用 use_llm_overrides 包裹 — 直调路径, ContextVar 在 agent 函数内 set)。"""
+    import app.api.project as project_api
+    from app.agents.llm import _current_overrides
+
+    seen = {}
+
+    def fake_review_code(kg, code, td, kn, llm_overrides=None):
+        seen["arg"] = llm_overrides
+        seen["ctx"] = _current_overrides.get()  # 路由未 wrap, 应为 None
+        return {"passed": True, "overall_score": 1.0, "threshold": 0.6,
+                "dimensions": {}, "verdict": "pass", "retry_hint": "",
+                "reviewed_at": "2026-01-01T00:00:00Z"}
+
+    # 路由 from app.agents.code_reviewer import review_code — patch 路由模块绑定
+    monkeypatch.setattr(project_api, "review_code", fake_review_code)
+    _patch_appstate_kg(monkeypatch)
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    overrides = {"api_key": "sk-r", "model": "rm"}
+    r = client.post("/api/project/review",
+                    json={"code": "x=1", "target_direction": "t", "llm_overrides": overrides})
+    assert r.status_code == 200, r.text
+    assert seen["arg"] == overrides
+    assert _current_overrides.get() is None
+
+
+def test_project_test_passes_overrides_to_run_tests(monkeypatch):
+    """project /test 路由把 llm_overrides 透传到 run_tests (后者经 generate_test_cases
+    → llm_generate_tests 内 use_llm_overrides 包裹)。"""
+    import app.api.project as project_api
+
+    seen = {}
+
+    def fake_run_tests(kg, sources, td, kn, **kwargs):
+        seen["overrides"] = kwargs.get("llm_overrides")
+        return {"rejected": True, "reject_reason": "test stub",
+                "summary": {"total": 0, "passed": 0, "failed": 0, "error": 0, "skipped": 0}}
+
+    monkeypatch.setattr(project_api, "run_tests", fake_run_tests)
+    _patch_appstate_kg(monkeypatch)
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    overrides = {"api_key": "sk-t", "model": "tm"}
+    r = client.post("/api/project/test",
+                    json={"source_type": "text", "code": "x=1",
+                          "target_direction": "t", "llm_overrides": overrides})
+    assert r.status_code == 200, r.text
+    assert seen["overrides"] == overrides

@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.content_generator import content_generator_node
 from app.agents.graph_controller import graph_controller_node
-from app.agents.llm import llm_configured
+from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.report_builder import build_learning_report
 from app.agents.reviewer import reviewer_node
 from app.api.diagnostics import _INTERACTIVE_SESSIONS
@@ -33,6 +33,7 @@ class LearningReportRequest(BaseModel):
     """可视化报告请求 (interactive 补跑)。"""
 
     session_id: str = Field(..., description="assess(interactive) + submit 后的 session_id")
+    llm_overrides: dict = Field(default=None, description="Spec B: Agent 独立 key 覆写")
 
 
 class LearningReportResponse(BaseModel):
@@ -55,11 +56,16 @@ def _get_kg(request: Request):
     return kg
 
 
-def _run_report_pipeline(profile: dict, kg) -> dict:
+def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
     """补跑 graph_controller → content_generator → reviewer (单轮，不回环)。
 
     绕过 LangGraph 直接 fold 调用 node 函数 (签名均为 (state)->partial delta)，
     与 submit/feedback 端点风格一致。orchestration_log 手动追加 (绕过 Annotated reducer)。
+
+    Spec B: llm_overrides 随 state 下传 — content_generator 的 ThreadPoolExecutor
+    worker 线程不继承路由层 use_llm_overrides 设的 ContextVar, 必须经 state.llm_overrides
+    由 _safe_generate 在 worker 内 re-set。graph_controller/reviewer 在主线程,
+    路由层 use_llm_overrides 已覆盖 (state 里也有, 节点入口 set 为同一值, 无副作用)。
     """
     state = {
         "user_profile": profile,
@@ -70,6 +76,8 @@ def _run_report_pipeline(profile: dict, kg) -> dict:
         "max_retries": 1,
         "orchestration_log": [f"[{datetime.utcnow().isoformat()}] 📊 学习报告: 开始补跑"],
     }
+    if llm_overrides:
+        state["llm_overrides"] = llm_overrides
     log = list(state["orchestration_log"])
 
     def _fold(delta: dict) -> None:
@@ -145,9 +153,11 @@ def learning_report(req: LearningReportRequest, request: Request):
         raise HTTPException(status_code=503, detail="LLM 未配置，无法补跑内容生成")
     kg = _get_kg(request)
 
-    # ⑤ 补跑
+    # ⑤ 补跑 (Spec B: 用 use_llm_overrides 包裹主线程节点; llm_overrides 经 state
+    # 下传供 content_generator worker 线程 re-set ContextVar)
     try:
-        state = _run_report_pipeline(profile, kg)
+        with use_llm_overrides(req.llm_overrides):
+            state = _run_report_pipeline(profile, kg, llm_overrides=req.llm_overrides)
     except Exception as e:
         logger.error("学习报告补跑失败 session=%s", req.session_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"报告补跑失败: {e}")
