@@ -118,7 +118,7 @@ def test_generate_uses_knowledge_retrieval(monkeypatch):
     kg = _FakeKG(nodes=[{"node_id": "PY-005", "name": "循环", "common_mistakes": ["死循环"]}])
     monkeypatch.setattr(ct, "llm_configured", lambda: True)
     monkeypatch.setattr(ct, "llm_generate_tests",
-                        lambda entities, kn, td, mn: ("def test_x():\n    pass\n",
+                        lambda entities, kn, td, mn, llm_overrides=None: ("def test_x():\n    pass\n",
                                                       [{"test_name": "test_x", "related_node": "e1"}]))
     gen = generate_test_cases(kg, [_entity()], "学习加法", None, "main")
     assert gen["degraded"] is False
@@ -301,7 +301,7 @@ class _MockExecutor:
 def test_run_tests_generate_mocked(monkeypatch):
     """generate 模式: mock 生成 + mock 沙箱 → 完整报告 + 标注。"""
     monkeypatch.setattr(ct, "llm_configured", lambda: True)
-    monkeypatch.setattr(ct, "generate_test_cases", lambda kg, e, td, ids, mn: {
+    monkeypatch.setattr(ct, "generate_test_cases", lambda kg, e, td, ids, mn, llm_overrides=None: {
         "test_code": "from main import add\ndef test_add():\n    assert add(1,2)==3\n",
         "test_metadata": [{"test_name": "test_add", "related_node": "PROJ-p-FUNC-add"}],
         "knowledge_nodes": [], "degraded": False,

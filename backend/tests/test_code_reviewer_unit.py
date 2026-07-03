@@ -116,7 +116,7 @@ def test_review_high_security_veto(monkeypatch):
     """高危安全问题 (eval) 一票否决，即使其他维度满分也不通过。"""
     fake_dims = {dim: {"score": 1.0, "issues": []} for dim in cr.CODE_REVIEW_DIMENSIONS}
     monkeypatch.setattr(cr, "llm_configured", lambda: True)
-    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn: fake_dims)
+    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn, llm_overrides=None: fake_dims)
     monkeypatch.setattr(cr, "_retrieve_knowledge", lambda kg, td, ids, top_k=5: [])
     result = review_code(_FakeKG(), "x = eval('1+1')", "学习")
     assert result["passed"] is False
@@ -127,7 +127,7 @@ def test_review_llm_mocked_pass(monkeypatch):
     """LLM mock 返回高分 → 通过。"""
     fake_dims = {dim: {"score": 0.95, "issues": []} for dim in cr.CODE_REVIEW_DIMENSIONS}
     monkeypatch.setattr(cr, "llm_configured", lambda: True)
-    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn: fake_dims)
+    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn, llm_overrides=None: fake_dims)
     monkeypatch.setattr(cr, "_retrieve_knowledge", lambda kg, td, ids, top_k=5: [])
 
     code = "def add(a, b):\n    return a + b\n"
@@ -146,7 +146,7 @@ def test_review_llm_mocked_reject_builds_hint(monkeypatch):
         "domain_compliance": {"score": 0.9, "issues": []},
     }
     monkeypatch.setattr(cr, "llm_configured", lambda: True)
-    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn: fake_dims)
+    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn, llm_overrides=None: fake_dims)
     monkeypatch.setattr(cr, "_retrieve_knowledge", lambda kg, td, ids, top_k=5: [])
 
     result = review_code(_FakeKG(), "def f():\n    pass", "学习")
@@ -158,7 +158,7 @@ def test_review_retrieves_knowledge_by_target(monkeypatch):
     """未指定 node_ids → 按 target_direction 语义检索知识点。"""
     retrieved = []
     monkeypatch.setattr(cr, "llm_configured", lambda: True)
-    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn: (retrieved.extend(kn), {dim: {"score": 0.95, "issues": []} for dim in cr.CODE_REVIEW_DIMENSIONS})[1])
+    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn, llm_overrides=None: (retrieved.extend(kn), {dim: {"score": 0.95, "issues": []} for dim in cr.CODE_REVIEW_DIMENSIONS})[1])
 
     nodes = [{"node_id": "PY-012", "name": "列表切片", "key_points": ["切片语法"], "common_mistakes": ["越界"]}]
     result = review_code(_FakeKG(nodes=nodes), "def f():\n    pass", "列表切片")
@@ -170,7 +170,7 @@ def test_review_uses_specified_node_ids(monkeypatch):
     """指定 knowledge_node_ids → 用 get_node 取，不调语义检索。"""
     used_nodes = []
     monkeypatch.setattr(cr, "llm_configured", lambda: True)
-    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn: (used_nodes.extend(kn), {dim: {"score": 0.95, "issues": []} for dim in cr.CODE_REVIEW_DIMENSIONS})[1])
+    monkeypatch.setattr(cr, "llm_review_code", lambda code, td, kn, llm_overrides=None: (used_nodes.extend(kn), {dim: {"score": 0.95, "issues": []} for dim in cr.CODE_REVIEW_DIMENSIONS})[1])
 
     nodes = [{"node_id": "PY-005", "name": "循环", "key_points": ["for"], "common_mistakes": []}]
     kg = _FakeKG(nodes=nodes)

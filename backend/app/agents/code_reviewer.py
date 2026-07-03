@@ -30,7 +30,7 @@ from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import get_default_chat_model, llm_configured
+from app.agents.llm import get_default_chat_model, llm_configured, use_llm_overrides
 from app.config import settings
 from app.graph.engine import KnowledgeGraph
 from app.utils.json_utils import parse_llm_json
@@ -92,7 +92,8 @@ def _build_knowledge_context(knowledge_nodes: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def llm_review_code(code: str, target_direction: str, knowledge_nodes: list[dict]) -> dict:
+def llm_review_code(code: str, target_direction: str, knowledge_nodes: list[dict],
+                    llm_overrides: dict = None) -> dict:
     """LLM 对照领域规范审查代码，返回四维度评分。
 
     对照领域元知识 key_points/common_mistakes + 开发目标，检查:
@@ -100,31 +101,34 @@ def llm_review_code(code: str, target_direction: str, knowledge_nodes: list[dict
       - security: 安全隐患 (注入/敏感信息/危险操作)
       - code_quality: 命名/结构/可读性/重复
       - domain_compliance: 是否符合领域规范 (key_points/common_mistakes)
+
+    Spec B: llm_overrides 非空时用独立 key（Agent 学习引擎配置）。
     """
-    model = get_default_chat_model()
-    system = SystemMessage(content=(
-        "你是 KMatch 代码审查 Agent，审查用户提交的修改后 Python 代码。"
-        "对照领域元知识规范 (key_points/common_mistakes) 与开发目标，"
-        "从四个维度审查并打分(0-1)，指出问题与修改建议。"
-        "严格输出 JSON: "
-        '{"logic_correctness":{"score":0-1,"issues":[]},'
-        '"security":{"score":0-1,"issues":[]},'
-        '"code_quality":{"score":0-1,"issues":[]},'
-        '"domain_compliance":{"score":0-1,"issues":[]}}。'
-        "issues 元素: {severity(high|medium|low),problem,location,suggestion}。"
-        "不输出 JSON 以外文字。"
-    ))
-    # 截断超长代码避免 token 爆炸
-    code_payload = code if len(code) <= 6000 else code[:6000] + "\n# ...(截断)"
-    user = HumanMessage(content=(
-        f"开发目标: {target_direction}\n\n"
-        f"相关领域知识规范:\n{_build_knowledge_context(knowledge_nodes)}\n\n"
-        f"待审代码:\n```python\n{code_payload}\n```\n\n"
-        "审查要点: 逻辑是否正确(边界/类型/控制流)；是否存在安全隐患(注入/危险操作/敏感信息)；"
-        "代码规范(命名/结构/可读性)；是否符合领域规范(common_mistakes 提到的误区是否触犯)。"
-    ))
-    resp = model.invoke([system, user])
-    return parse_llm_json(resp.content)
+    with use_llm_overrides(llm_overrides):
+        model = get_default_chat_model()
+        system = SystemMessage(content=(
+            "你是 KMatch 代码审查 Agent，审查用户提交的修改后 Python 代码。"
+            "对照领域元知识规范 (key_points/common_mistakes) 与开发目标，"
+            "从四个维度审查并打分(0-1)，指出问题与修改建议。"
+            "严格输出 JSON: "
+            '{"logic_correctness":{"score":0-1,"issues":[]},'
+            '"security":{"score":0-1,"issues":[]},'
+            '"code_quality":{"score":0-1,"issues":[]},'
+            '"domain_compliance":{"score":0-1,"issues":[]}}。'
+            "issues 元素: {severity(high|medium|low),problem,location,suggestion}。"
+            "不输出 JSON 以外文字。"
+        ))
+        # 截断超长代码避免 token 爆炸
+        code_payload = code if len(code) <= 6000 else code[:6000] + "\n# ...(截断)"
+        user = HumanMessage(content=(
+            f"开发目标: {target_direction}\n\n"
+            f"相关领域知识规范:\n{_build_knowledge_context(knowledge_nodes)}\n\n"
+            f"待审代码:\n```python\n{code_payload}\n```\n\n"
+            "审查要点: 逻辑是否正确(边界/类型/控制流)；是否存在安全隐患(注入/危险操作/敏感信息)；"
+            "代码规范(命名/结构/可读性)；是否符合领域规范(common_mistakes 提到的误区是否触犯)。"
+        ))
+        resp = model.invoke([system, user])
+        return parse_llm_json(resp.content)
 
 
 # ============================================================
@@ -223,6 +227,7 @@ def review_code(
     code: str,
     target_direction: str,
     knowledge_node_ids: Optional[list[str]] = None,
+    llm_overrides: dict = None,
 ) -> dict:
     """代码审查编排: 硬规则 AST 安全检查 + LLM 对照领域规范审查。
 
@@ -273,7 +278,8 @@ def review_code(
     dims = {}
     if llm_configured():
         try:
-            dims = llm_review_code(code, target_direction, knowledge_nodes)
+            dims = llm_review_code(code, target_direction, knowledge_nodes,
+                                   llm_overrides=llm_overrides)
         except Exception:
             logger.warning("LLM 代码审查调用失败，降级为仅硬规则评分", exc_info=True)
             dims = {}

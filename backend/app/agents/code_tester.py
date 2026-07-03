@@ -38,7 +38,7 @@ from typing import Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agents.code_reviewer import hard_check_code_safety
-from app.agents.llm import get_default_chat_model, llm_configured
+from app.agents.llm import get_default_chat_model, llm_configured, use_llm_overrides
 from app.agents.sandbox import (
     SandboxExecutor,
     SubprocessSandboxExecutor,
@@ -133,36 +133,40 @@ def _retrieve_knowledge(kg: KnowledgeGraph, target_direction: str,
 # ============================================================
 
 def llm_generate_tests(entities: list[CodeEntity], knowledge_nodes: list[dict],
-                       target_direction: str, module_name: str) -> tuple[str, list[dict]]:
+                       target_direction: str, module_name: str,
+                       llm_overrides: dict = None) -> tuple[str, list[dict]]:
     """LLM 据图谱函数签名 + common_mistakes 生成 pytest 代码 + 元数据。
 
     Returns:
         (test_code, test_metadata[]) — metadata: {test_name, related_node, related_keypoint, scenario}
+
+    Spec B: llm_overrides 非空时用独立 key。
     """
-    model = get_default_chat_model()
-    system = SystemMessage(content=(
-        "你是 KMatch 代码测试 Agent。基于知识图谱中的函数签名（白盒）与领域 common_mistakes，"
-        f"为 Python 模块 {module_name} 生成 Pytest 单元测试。"
-        "每个被测函数至少生成：正常输入(happy path)、边界值(boundary)、异常输入(exception) 三类用例；"
-        "针对每个 common_mistake 额外生成一个验证用例(mistake)。"
-        "测试命名严格遵循 test_<function_name>_<scenario>。"
-        "测试须 self-contained，从模块 import 被测对象，禁止使用 network/subprocess/os.system/eval/exec/pickle。"
-        "先输出完整可执行的 ```python 测试代码块，再输出 ```json 元数据块。"
-    ))
-    user = HumanMessage(content=(
-        f"模块名: {module_name}\n"
-        f"开发目标: {target_direction}\n\n"
-        f"待测函数（来自知识图谱接口定义）:\n{_build_signature_context(entities, module_name)}\n\n"
-        f"相关领域知识（common_mistakes 用于针对性测试）:\n{_build_knowledge_context(knowledge_nodes)}\n\n"
-        "输出格式:\n"
-        "```python\n# 完整测试代码，from " + module_name + " import ...\n```\n"
-        "```json\n{\"tests\":[{\"test_name\":\"test_xxx_happy_path\","
-        "\"related_node\":\"<entity_id>\",\"related_keypoint\":\"<PY-xxx 或 null>\","
-        "\"scenario\":\"happy_path|boundary|exception|mistake\"}]}\n```"
-    ))
-    resp = model.invoke([system, user])
-    text = resp.content if isinstance(resp.content, str) else str(resp.content)
-    return _extract_test_code_and_metadata(text)
+    with use_llm_overrides(llm_overrides):
+        model = get_default_chat_model()
+        system = SystemMessage(content=(
+            "你是 KMatch 代码测试 Agent。基于知识图谱中的函数签名（白盒）与领域 common_mistakes，"
+            f"为 Python 模块 {module_name} 生成 Pytest 单元测试。"
+            "每个被测函数至少生成：正常输入(happy path)、边界值(boundary)、异常输入(exception) 三类用例；"
+            "针对每个 common_mistake 额外生成一个验证用例(mistake)。"
+            "测试命名严格遵循 test_<function_name>_<scenario>。"
+            "测试须 self-contained，从模块 import 被测对象，禁止使用 network/subprocess/os.system/eval/exec/pickle。"
+            "先输出完整可执行的 ```python 测试代码块，再输出 ```json 元数据块。"
+        ))
+        user = HumanMessage(content=(
+            f"模块名: {module_name}\n"
+            f"开发目标: {target_direction}\n\n"
+            f"待测函数（来自知识图谱接口定义）:\n{_build_signature_context(entities, module_name)}\n\n"
+            f"相关领域知识（common_mistakes 用于针对性测试）:\n{_build_knowledge_context(knowledge_nodes)}\n\n"
+            "输出格式:\n"
+            "```python\n# 完整测试代码，from " + module_name + " import ...\n```\n"
+            "```json\n{\"tests\":[{\"test_name\":\"test_xxx_happy_path\","
+            "\"related_node\":\"<entity_id>\",\"related_keypoint\":\"<PY-xxx 或 null>\","
+            "\"scenario\":\"happy_path|boundary|exception|mistake\"}]}\n```"
+        ))
+        resp = model.invoke([system, user])
+        text = resp.content if isinstance(resp.content, str) else str(resp.content)
+        return _extract_test_code_and_metadata(text)
 
 
 def _extract_test_code_and_metadata(text: str) -> tuple[str, list[dict]]:
@@ -190,7 +194,7 @@ def _extract_test_code_and_metadata(text: str) -> tuple[str, list[dict]]:
 
 def generate_test_cases(kg: KnowledgeGraph, entities: list[CodeEntity],
                         target_direction: str, knowledge_node_ids: Optional[list[str]],
-                        module_name: str) -> dict:
+                        module_name: str, llm_overrides: dict = None) -> dict:
     """编排: 知识检索 + LLM 生成 + 降级。
 
     Returns:
@@ -204,6 +208,7 @@ def generate_test_cases(kg: KnowledgeGraph, entities: list[CodeEntity],
     try:
         test_code, test_metadata = llm_generate_tests(
             entities, knowledge_nodes, target_direction, module_name,
+            llm_overrides=llm_overrides,
         )
     except Exception:
         logger.warning("LLM 测试生成失败", exc_info=True)
@@ -458,7 +463,8 @@ def run_tests(kg: KnowledgeGraph, sources: dict[str, str], target_direction: str
               mode: str = "generate", project_id: Optional[str] = None,
               module_name: str = "main",
               example_name: Optional[str] = None,
-              executor: Optional[SandboxExecutor] = None) -> dict:
+              executor: Optional[SandboxExecutor] = None,
+              llm_overrides: dict = None) -> dict:
     """顶层编排: 解析→AST预检源码→(生成/基线)→AST预检测试→沙箱执行→报告→反向标注。
 
     Args:
@@ -511,7 +517,8 @@ def run_tests(kg: KnowledgeGraph, sources: dict[str, str], target_direction: str
     test_metadata: list[dict] = []
     knowledge_nodes: list[dict] = []
     if mode != "baseline":
-        gen = generate_test_cases(kg, entities, target_direction, knowledge_node_ids, module_name)
+        gen = generate_test_cases(kg, entities, target_direction, knowledge_node_ids,
+                                  module_name, llm_overrides=llm_overrides)
         knowledge_nodes = gen["knowledge_nodes"]
         if gen["degraded"]:
             return build_test_report(
