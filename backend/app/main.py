@@ -188,6 +188,11 @@ from app.api import chat  # noqa: E402
 
 app.include_router(chat.router, prefix="/api/chat", tags=["AI 助手"])
 
+# Spec B: Agent 学习引擎 (测试连接 ping)
+from app.api import agents  # noqa: E402
+
+app.include_router(agents.router, prefix="/api/agents", tags=["Agent 学习引擎"])
+
 
 # ============================================================
 # 直接运行入口
