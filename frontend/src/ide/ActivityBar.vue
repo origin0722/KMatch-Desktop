@@ -34,6 +34,16 @@
         <Moon v-else />
       </el-icon>
     </div>
+
+    <!-- 设置 (Spec B: 底部齿轮, 仿 VS Code 左下角) -->
+    <div
+      class="activity-item"
+      :class="{ active: sidebar.activeView === 'settings' }"
+      title="设置"
+      @click="sidebar.setView('settings')"
+    >
+      <el-icon :size="22"><Setting /></el-icon>
+    </div>
   </div>
 </template>
 

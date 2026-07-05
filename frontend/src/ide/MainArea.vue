@@ -15,8 +15,9 @@
     <!-- 其他视图: 全宽装载 (导航由左侧活动栏统一, 无顶部 Tab)
          套浅色卡片: 赛题视图原为浅色设计, 暗色主题下作为嵌入式浅色面板 -->
     <div v-if="sidebar.activeView !== 'code'" class="view-host">
-      <div class="view-card" :class="{ 'no-pad': sidebar.activeView === 'learning-session' }">
-        <LearningSession v-if="sidebar.activeView === 'learning-session'" />
+      <div class="view-card" :class="{ 'no-pad': ['learning-session', 'settings'].includes(sidebar.activeView) }">
+        <SettingsView v-if="sidebar.activeView === 'settings'" />
+        <LearningSession v-else-if="sidebar.activeView === 'learning-session'" />
         <KnowledgeGraph v-else-if="sidebar.activeView === 'graph'" />
         <Learning v-else-if="sidebar.activeView === 'learning'" />
         <Dashboard v-else-if="sidebar.activeView === 'dashboard'" />
@@ -31,6 +32,7 @@ import { useSidebarStore } from '@/stores/sidebar'
 import FileExplorer from './FileExplorer.vue'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
+import SettingsView from '@/ide/settings/SettingsView.vue'
 import KnowledgeGraph from '@/views/KnowledgeGraph.vue'
 import LearningSession from '@/views/LearningSession.vue'
 import Learning from '@/views/Learning.vue'

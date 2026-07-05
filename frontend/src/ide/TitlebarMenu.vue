@@ -58,6 +58,7 @@ const menuGroups = computed(() => [
     items: [
       { command: 'assistant.toggle', label: sidebar.aiPanelVisible ? '隐藏 AI 助手' : '显示 AI 助手' },
       { command: 'theme.toggle', label: theme.mode === 'dark' ? '切换到亮色' : '切换到暗色' },
+      { command: 'view.settings', label: '设置', divided: true },
       { command: 'window.devtools', label: '打开开发者工具', divided: true },
     ],
   },
@@ -72,11 +73,6 @@ const menuGroups = computed(() => [
 ])
 
 async function runCommand(command) {
-  if (command.startsWith('view.ai-settings')) {
-    if (!sidebar.aiPanelVisible) sidebar.toggleAiPanel()
-    ElMessage.info('AI 设置视图将在下一步启用；当前可在右侧 AI 助手底部设置模型/API Key。')
-    return
-  }
   if (command.startsWith('view.')) {
     const id = command.replace('view.', '').split('.')[0]
     sidebar.setView(id)
