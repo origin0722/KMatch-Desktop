@@ -9,6 +9,7 @@
  * 对齐 backend/app/api/diagnostics.py
  */
 import http from './index'
+import { withOverrides } from '@/stores/agentLlm'
 
 /**
  * 发起学情测评
@@ -34,13 +35,13 @@ export function submitAssessment({
   scene = 'no_project',
   maxRetries = 3,
 }, signal) {
-  return http.post('/api/diagnostics/assess', {
+  return http.post('/api/diagnostics/assess', withOverrides({
     target_direction: targetDirection,
     mode,
     known_topics: knownTopics,
     scene,
     max_retries: maxRetries,
-  }, signal ? { signal } : undefined)
+  }), signal ? { signal } : undefined)
 }
 
 /**
@@ -80,10 +81,10 @@ export function getVersion() {
  * }>}
  */
 export function submitAnswers({ sessionId, answers }, signal) {
-  return http.post('/api/diagnostics/submit', {
+  return http.post('/api/diagnostics/submit', withOverrides({
     session_id: sessionId,
     answers,
-  }, signal ? { signal } : undefined)
+  }), signal ? { signal } : undefined)
 }
 
 /**
@@ -103,11 +104,11 @@ export function submitAnswers({ sessionId, answers }, signal) {
  * }>}
  */
 export function requestFeedback({ sessionId, strategy, profile }, signal) {
-  return http.post('/api/diagnostics/feedback', {
+  return http.post('/api/diagnostics/feedback', withOverrides({
     session_id: sessionId,
     strategy,
     profile,
-  }, signal ? { signal } : undefined)
+  }), signal ? { signal } : undefined)
 }
 
 // ============================================================
@@ -130,12 +131,12 @@ export function requestFeedback({ sessionId, strategy, profile }, signal) {
 export async function startAssessmentStream(payload, { onProgress, onDone, onError }) {
   // S1: 走 IPC SSE 代理 (window.api.http.stream), 桌面应用无需浏览器 fetch。
   // http-proxy.js 转发后端 SSE, 逐块推 'http:stream:chunk' 事件。
-  const body = {
+  const body = withOverrides({
     target_direction: payload.targetDirection,
     mode: 'demo',
     scene: payload.scene || 'no_project',
     max_retries: payload.maxRetries ?? 3,
-  }
+  })
 
   // F3: 生成 reqId 并按之过滤 IPC 事件, 避免与 chat 等并发 SSE 流串扰。
   // http-proxy 已按 \n\n 分帧, 每个 http:stream:chunk 就是一个完整 SSE block, 直接解析。

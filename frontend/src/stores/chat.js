@@ -19,6 +19,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { streamChat } from '@/ide/chat/useChatStream'
 import { useAiSettingsStore } from '@/stores/aiSettings'
+import { withOverrides } from '@/stores/agentLlm'
 import {
   buildToolBlock,
   buildAdvertisedToolNames,
@@ -611,11 +612,11 @@ export const useChatStore = defineStore('chat', () => {
         if (!call.target_direction) return { error: '缺少 target_direction 参数（开发目标方向）' }
         const src = await _resolveCode(call)
         if (src.error) return { error: src.error }
-        const body = {
+        const body = withOverrides({
           code: src.code,
           target_direction: call.target_direction,
           knowledge_node_ids: call.knowledge_node_ids || null,
-        }
+        })
         const r = await _delegate('/api/project/review', body)
         if (!r.ok) return { error: r.error }
         return { tool: 'code_review', review: r.data, sourcePath: src.sourcePath }
@@ -624,14 +625,14 @@ export const useChatStore = defineStore('chat', () => {
         if (!call.target_direction) return { error: '缺少 target_direction 参数（开发目标方向）' }
         const src = await _resolveCode(call)
         if (src.error) return { error: src.error }
-        const body = {
+        const body = withOverrides({
           source_type: 'text',
           code: src.code,
           filename: call.filename || 'main.py',
           target_direction: call.target_direction,
           knowledge_node_ids: call.knowledge_node_ids || null,
           mode: call.mode || 'generate',
-        }
+        })
         // code_test (LLM 生成 + pytest 执行) 可达 60s+, 放宽超时
         const r = await _delegate('/api/project/test', body, 180000)
         if (!r.ok) return { error: r.error }

@@ -5,6 +5,7 @@
  * 不验证 Axios 网络层，只验证我们封装的字段映射 (camelCase → snake_case) 与路径
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
 // Mock http 实例 — 在 import 之前
 vi.mock('@/api/index', () => ({
@@ -23,6 +24,9 @@ import {
 
 describe('api/diagnostics', () => {
   beforeEach(() => {
+    // Spec B: diagnostics API 经 withOverrides -> useAgentLlmStore(), 需活跃 Pinia
+    setActivePinia(createPinia())
+    localStorage.clear()
     vi.clearAllMocks()
   })
 
