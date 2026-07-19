@@ -25,6 +25,22 @@
       <el-button size="small" type="danger" plain data-test="vision-clear" @click="clearVisionCache">🗑 清除视觉缓存</el-button>
     </SettingCard>
 
+    <SettingCard title="网络代理" info="所有 LLM 出站请求通过此代理（影响后端 sidecar 进程）；改后需重启后端生效">
+      <el-switch :model-value="ai.proxy.enabled" data-test="proxy-enabled"
+                 @change="onProxyChange({ enabled: $event })" />
+      <template v-if="ai.proxy.enabled">
+        <el-input :model-value="ai.proxy.url" size="small" style="width: 240px"
+                  placeholder="http://127.0.0.1:7890" data-test="proxy-url"
+                  @change="onProxyChange({ url: $event })" />
+        <el-select :model-value="ai.proxy.type" size="small" style="width: 110px"
+                   @change="onProxyChange({ type: $event })">
+          <el-option label="HTTP" value="http" />
+          <el-option label="SOCKS5" value="socks5" />
+        </el-select>
+        <el-button size="small" type="primary" @click="restartBackend" :loading="restarting">重启后端</el-button>
+      </template>
+    </SettingCard>
+
     <ProviderEditDialog v-model="dialogVisible" :provider="editing" @save="onSave" />
   </div>
 </template>
@@ -34,11 +50,13 @@ import { ref, computed } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useCustomProvidersStore } from '@/stores/customProviders'
 import { useModelVisionStore } from '@/stores/modelVision'
+import { useAiSettingsStore } from '@/stores/aiSettings'
 import SettingCard from './SettingCard.vue'
 import ProviderEditDialog from './ProviderEditDialog.vue'
 
 const cps = useCustomProvidersStore()
 const modelVision = useModelVisionStore()
+const ai = useAiSettingsStore()
 const dialogVisible = ref(false)
 const editing = ref(null)
 
@@ -89,6 +107,21 @@ async function batchProbeVision() {
 
 async function clearVisionCache() {
   await modelVision.clearAll()
+}
+
+// 网络代理: 盘活 aiSettings.proxy ({enabled,type,url,scope})。UI 改 store;
+// 落盘 + sidecar env 注入在 Task 18-19 (window.api.setProxyConfig/restartBackend 暂为 preload 占位)
+const restarting = ref(false)
+
+function onProxyChange(patch) {
+  ai.setProxy(patch)
+  // 通知 main 进程落盘 + 准备下次 spawn 注入
+  window.api?.setProxyConfig?.(ai.proxy)
+}
+
+async function restartBackend() {
+  restarting.value = true
+  try { await window.api?.restartBackend?.() } finally { restarting.value = false }
 }
 </script>
 
