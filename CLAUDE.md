@@ -85,16 +85,26 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [frontend/src/ide/MonacoEditor.vue](frontend/src/ide/MonacoEditor.vue) — Monaco 编辑器
 - [frontend/src/ide/AssistantPanel.vue](frontend/src/ide/AssistantPanel.vue) — AI 助手面板
 - [frontend/src/ide/StatusBar.vue](frontend/src/ide/StatusBar.vue) — 底部状态栏
+- [frontend/src/ide/settings/SettingsView.vue](frontend/src/ide/settings/SettingsView.vue) - 设置页主壳 + 锚点导航 (Spec B)
+- [frontend/src/ide/settings/AssistantSettings.vue](frontend/src/ide/settings/AssistantSettings.vue) - AI 助手段 (厂商/模型/key + 思考模式 + 工具权限 + 记忆 + 清历史)
+- [frontend/src/ide/settings/AgentSettings.vue](frontend/src/ide/settings/AgentSettings.vue) - Agent 独立 key 段 + 测试连接 (Spec B)
+- [frontend/src/ide/settings/ProvidersSettings.vue](frontend/src/ide/settings/ProvidersSettings.vue) - 自定义厂商 CRUD + 视觉探测 + 网络代理 UI
 - [frontend/src/stores/sidebar.js](frontend/src/stores/sidebar.js) — IDE 布局状态 (单一指示模型)
 - [frontend/src/stores/workspace.js](frontend/src/stores/workspace.js) — 工作区/文件状态
 - [frontend/src/stores/theme.js](frontend/src/stores/theme.js) — 亮暗主题
 - [frontend/src/stores/assessment.js](frontend/src/stores/assessment.js) — 学情测评状态 (含 interactive 三阶段 + learningReport)
 - [frontend/src/stores/chat.js](frontend/src/stores/chat.js) — AI 助手对话 (SSE 流式 + 工具调用循环 + write_file 审批门 + 图谱委派工具 + 消息分支; isBusy 统一禁用源)
 - [frontend/src/stores/aiSettings.js](frontend/src/stores/aiSettings.js) — AI 配置单一源 (provider/apiKey/model/PROVIDERS + 工具权限 + 记忆 + 推理模式; C1.1/C1.2 后收编)
+- [frontend/src/stores/agentLlm.js](frontend/src/stores/agentLlm.js) - Agent 学习引擎独立 LLM 配置 + withOverrides 注入 helper (Spec B)
+- [frontend/src/stores/customProviders.js](frontend/src/stores/customProviders.js) - 自定义厂商 CRUD + autoFetchModels (Spec A)
+- [frontend/src/stores/modelVision.js](frontend/src/stores/modelVision.js) - 模型视觉能力探测缓存 (Spec A)
 - [frontend/src/ide/tools/registry.js](frontend/src/ide/tools/registry.js) — 工具定义 + 权限默认 + 广告/审批/提示词块 helper 单一源 (C1.2)
 - [frontend/src/stores/projectGraph.js](frontend/src/stores/projectGraph.js) — 项目代码图谱 + Monaco 符号联动状态 (阶段4b)
 - [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models + /safety-check)
 - [backend/app/agents/code_safety.py](backend/app/agents/code_safety.py) — 纯 Python AST 安全检查 (hard_check_code_safety, 供 chat 审批门复用)
+- [backend/app/api/agents.py](backend/app/api/agents.py) - /api/agents/ping Agent 独立 key 连通性测试 (Spec B)
+- [backend/app/agents/llm.py](backend/app/agents/llm.py) - LLM 适配层 + use_llm_overrides ContextVar (per-request overrides, Spec B)
+- [backend/app/agents/sandbox.py](backend/app/agents/sandbox.py) - 代码测试沙箱 (SubprocessSandboxExecutor + DockerSandboxExecutor + select_executor)
 
 ### 后端核心 (原 KMatch)
 - [backend/app/main.py](backend/app/main.py) — FastAPI 入口
@@ -132,9 +142,11 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 
 ## 当前开发阶段
 
-**最新：阶段10** (6/23) 消息分支（重生成分支）— Apix 借鉴三大项收官 ✅。完整阶段0–10 日志见 [docs/devlogs/Desktop_阶段总览.md](docs/devlogs/Desktop_阶段总览.md)。
+**最新：Spec B** (2026/07/19) 设置页 + Agent 独立 key - Task 1-17 已合并 main (a38cd98)。Apix 借鉴三大项 (阶段10) + Spec A 聊天框 Apix 化 (阶段11) 均已收官。完整阶段日志见 [docs/devlogs/Desktop_阶段总览.md](docs/devlogs/Desktop_阶段总览.md)。
 
-**已知待修**：沙箱强化已落地（#15 DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，见 `backend/sandbox/Dockerfile`）；F1–F15 脆弱点 + 解耦 candidates 转 GitHub Issues（见 [docs/重构方案_解耦.md](docs/重构方案_解耦.md)）。
+**Spec B 进度**：Task 1-7 后端 (ContextVar per-request llm_overrides + AgentState 字段 + 5 agent 透传 + 8 路由 + /api/agents/ping) ✅；Task 8-17 前端 (设置页主壳 + AI 助手 / Agent 独立 key / 供应商管理 CRUD + 视觉探测 + 网络代理 UI) ✅；Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入) ⏳ 待做；Task 20 全量收尾 ⏳。
+
+**已知待修**：沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现见 [backend/app/agents/sandbox.py](backend/app/agents/sandbox.py)，Dockerfile 见 `backend/sandbox/`）；feature/regularization 分支（F 系列脆弱点修复 + C1-C4 解耦 + 24 GitHub Issues）已合并 main（见 [docs/重构方案_解耦.md](docs/重构方案_解耦.md) + ADR-0006）；Apix 审查 S1-S9 全部已修（ADR-0005）；Spec B Task 18-19 代理落盘未接线（UI 已就绪，preload/IPC/env 注入待做）。
 
 ### 原 KMatch 后端已交付项
 - ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证
@@ -142,12 +154,12 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - ✅ 6 个 Agent 全部实现 (orchestrator/diagnostics/graph_controller/content_generator/reviewer/code_reviewer/code_tester)
 - ✅ 场景一全流程闭环 (学情画像→图谱组装→资源生成→审核→交付→反馈迭代)
 - ✅ 场景二全链路 (代码解析→项目图谱→代码审查→代码测试)
-- ✅ 395 后端 + 42 前端单元测试全部通过
+- ✅ 459 后端 + 223 前端单元测试全部通过 (2026/07/19 main 实测)
 - ✅ 赛题 M5 质量检测指标 (幻觉率<5%/适配率≥85%/覆盖率≥90%)
 - ✅ 知识库管理 CRUD API
 - ✅ SSE 流式测评
 
-BUG 清单: 76 条 (76 已解决, 含 IDE 化 S7-S9 三断点)
+BUG 清单: 77 条 (77 已解决, 含 IDE 化 S7-S9 三断点; 见 [docs/BUG决策日志.md](docs/BUG决策日志.md) BUG-001~077)
 
 ## 开发约定
 

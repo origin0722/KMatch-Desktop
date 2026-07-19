@@ -1,4 +1,4 @@
-# Desktop 开发阶段总览（阶段0–10）
+# Desktop 开发阶段总览（阶段0–11 + Spec B）
 
 > 从 CLAUDE.md 迁出的历史阶段日志。详细 devlog 见同目录按端分类的日期文件。架构决策见 [../adr/](../adr/)。
 
@@ -70,10 +70,18 @@
 - 23 commits（subagent-driven，每任务 implementer + spec/quality review）；前端 195 + 后端 430 测试全过；最终 cross-task review Approved（修了 I-1 modelReasoningSupport dual-call 不一致）
 - **Deferred**：Task 13 Anthropic 端到端手测（需真实 key + 代理 + 桌面 app）；Anthropic 非流式 fallback；多组 customProviders CRUD UI / 清缓存按钮（Spec B）
 
+## 阶段12 (2026/07/19): Spec B 设置页 + Agent 独立 key (Task 1-17 已合并 main a38cd98) ✅
+- 设置页主壳 + 锚点导航 (SettingsView/SettingCard)；AI 助手段盘活 aiSettings (厂商/模型/key + 思考模式 + 工具权限 + 记忆 + 清历史)
+- Agent 独立 key: 后端 ContextVar per-request llm_overrides (use_llm_overrides) + AgentState 字段 + 5 agent 透传 + 8 路由 (assess/stream/submit/feedback/learning/project + /api/agents/ping) + 前端 agentLlm store + withOverrides 6 注入点 + AgentSettings UI
+- 供应商管理: customProviders CRUD + ProviderEditDialog + 视觉批量探测 + 网络代理 UI
+- 459 后端 + 223 前端测试全过；feature/settings FF 合并 main
+- **Deferred**: Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入)；Task 20 全量收尾
+
 ## 已知待修
-- S1–S6 均已修（见各阶段）
-- 沙箱强化 DockerSandboxExecutor（阶段5 残留）
-- F1–F15 脆弱点 + 解耦 candidates → GitHub Issues 跟踪（见 [../重构方案_解耦.md](../重构方案_解耦.md)）
+- Apix 审查 S1–S9 全部已修（见各阶段 + ADR-0005）
+- 沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现 backend/app/agents/sandbox.py）
+- F 系列脆弱点修复 + C1–C4 解耦已合并 main（feature/regularization 已并入；见 [../重构方案_解耦.md](../重构方案_解耦.md) + ADR-0006）
+- Spec B Task 18-19 代理主进程落盘未接线（UI 已就绪，preload/IPC/env 注入待做）
 
 ## 规范化（2026-06-23，feature/regularization 分支）
 
