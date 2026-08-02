@@ -56,7 +56,7 @@ export function activeChunksOf(msg) {
 
 /** 拼接消息当前 version 的 content chunk 文本 (供 API 历史 + MarkdownViewer)。 */
 export function contentTextOf(msg) {
-  // 兼容: msg.content 是数组 (user 多模态) → 拼接 type==='text' 段
+  // 兼容: msg.content 是数组 (user 多模态) -> 拼接 type==='text' 段
   if (Array.isArray(msg?.content)) {
     return msg.content.filter((p) => p?.type === 'text').map((p) => p.text || '').join('')
   }
@@ -68,33 +68,57 @@ export function thinkTextOf(msg) {
   return activeChunksOf(msg).filter((c) => c.type === 'think').map((c) => c.content).join('')
 }
 
+/** 模型漏 tool 字段时, 按参数签名推断工具 (容错, 避免 _malformed 丢弃合法调用)。 */
+function _inferTool(args) {
+  if (!args || typeof args !== 'object') return null
+  if (args.write_to_neo4j !== undefined) return 'generate_project_graph'
+  if (args.target_direction && args.mode) return 'code_test'
+  if (args.target_direction) return 'code_review'
+  return null  // 仅 path 歧义 (read_file/list_directory/generate_project_graph), 不猜
+}
+
 /**
- * 把一段 content 文本按 ```tool_call 块切成 [content?, tool_call{status:'pending'}, content?, ...] 段。
- * 复用 parseToolCalls 的正则, 但保留位置信息以便分段。
+ * 把一段 content 文本按工具调用切成 [content?, tool_call{status:'pending'}, content?, ...] 段。
+ * 匹配两种形式:
+ *   1. ```tool_call fence (标准格式)
+ *   2. 裸 JSON 对象 (容错: 模型偶尔不用 fence) - 仅当含工具专属字段
+ *      (tool/write_to_neo4j/target_direction) 才视为工具调用, 避免误抓正文普通 JSON
+ * 缺 tool 字段时按参数签名推断 (write_to_neo4j->generate_project_graph 等)。
  */
 export function splitToolCallChunks(contentText) {
   if (!contentText) return []
   const chunks = []
-  const re = /```tool_call\n([\s\S]*?)```/g
+  // fence 优先; 裸 JSON 仅匹配非嵌套对象 {[^{}]*}
+  const re = /```tool_call\n([\s\S]*?)```|\{[^{}]*\}/g
   let last = 0
   let m
   while ((m = re.exec(contentText)) !== null) {
+    const isFence = m[1] !== undefined
+    const raw = (isFence ? m[1] : m[0]).trim()
+    // 裸 JSON: 仅含工具专属字段才视为工具调用, 否则当普通正文 (跳过, 不切段)
+    if (!isFence && !/"(tool|write_to_neo4j|target_direction)"\s*:/.test(raw)) {
+      continue
+    }
     const before = contentText.slice(last, m.index)
     if (before.trim()) chunks.push({ type: 'content', content: before })
     let call
     let malformed = null
-    const raw = m[1].trim()
     try {
       call = JSON.parse(raw)
     } catch (e) {
-      // F6: 坏 JSON 不再静默丢——生成可见的 _malformed tool_call, 执行时给明确错误
+      // F6: 坏 JSON 生成可见的 _malformed tool_call, 执行时给明确错误
       call = { tool: '_malformed', _raw: raw }
       malformed = e.message || 'JSON 解析失败'
     }
-    // F6: 有效 JSON 但缺 tool 字段 (或非字符串) 也算格式错误, 否则会 fallthrough 成混淆的权限报错
+    // 缺 tool 字段 -> 按参数推断; 推断不出才报 _malformed
     if (!malformed && (typeof call.tool !== 'string' || !call.tool)) {
-      malformed = '缺少 tool 字段'
-      call = { tool: '_malformed', _raw: raw, _orig: call }
+      const inferred = _inferTool(call)
+      if (inferred) {
+        call = { ...call, tool: inferred }
+      } else {
+        malformed = '缺少 tool 字段且无法按参数推断 (请补 "tool": "工具名")'
+        call = { tool: '_malformed', _raw: raw, _orig: call }
+      }
     }
     chunks.push({
       type: 'tool_call',

@@ -77,7 +77,9 @@ export function getVersion() {
  *   session_id: string,
  *   profile: Object,
  *   assessment: Object,
- *   feedback: { strategy: 'advance'|'remediate'|'scaffold', accuracy: number, description: string }
+ *   feedback: { strategy: 'advance'|'remediate'|'scaffold', accuracy: number, description: string },
+ *   knowledge_graph: Object,
+ *   orchestration_log: string[]
  * }>}
  */
 export function submitAnswers({ sessionId, answers }, signal) {
@@ -103,11 +105,12 @@ export function submitAnswers({ sessionId, answers }, signal) {
  *   node_count: number
  * }>}
  */
-export function requestFeedback({ sessionId, strategy, profile }, signal) {
+export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, signal) {
   return http.post('/api/diagnostics/feedback', withOverrides({
     session_id: sessionId,
     strategy,
     profile,
+    tavily_key: tavilyKey || undefined,
   }), signal ? { signal } : undefined)
 }
 

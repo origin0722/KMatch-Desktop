@@ -67,7 +67,11 @@ http.interceptors.response.use(
   },
   (error) => {
     const status = error.response?.status
-    const detail = error.response?.data?.detail || error.message
+    // 422 的 detail 是 Pydantic 校验错误数组 [{type,loc,msg,input}],原样拼成字符串会显示 [object Object]
+    const rawDetail = error.response?.data?.detail
+    const detail = Array.isArray(rawDetail)
+      ? rawDetail.map((d) => d?.msg || JSON.stringify(d)).join('; ')
+      : (rawDetail || error.message)
 
     if (status === 503) {
       ElMessage.error(`服务未就绪：${detail}`)

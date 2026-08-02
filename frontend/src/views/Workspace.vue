@@ -41,11 +41,29 @@
     </div>
 
     <StatusBar />
+
+    <!-- 首次引导 (借鉴 OnboardingOverlay) -->
+    <el-dialog v-model="onboardingVisible" title="欢迎使用 KMatch·知链" width="520px"
+               :close-on-click-modal="false" :show-close="false">
+      <div class="onboard">
+        <p>KMatch·知链 是知识图谱驱动的个性化 Python 学习平台。主要功能:</p>
+        <ol>
+          <li><b>学习会话</b>:选学习目标 → 答题 → 自动生成画像 + 专属知识图谱 + 讲义</li>
+          <li><b>知识图谱</b>:可视化学习路径, 点击节点看详情, 路径查找, 角色切换详略</li>
+          <li><b>AI 助手</b>:基于学情讲义答疑 (右侧面板)</li>
+          <li><b>设置</b>:右上角齿轮, 配置 API Key / 联网搜索 / Agent</li>
+        </ol>
+        <p class="tip">提示:先在设置页配置 LLM API Key + Tavily 联网搜索 key, 再开始学习会话。</p>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="finishOnboarding">开始使用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { FolderOpened, ChatDotRound, Setting } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -59,7 +77,14 @@ const ws = useWorkspaceStore()
 const sidebar = useSidebarStore()
 
 function openAiSettingsEntry() {
-  if (!sidebar.aiPanelVisible) sidebar.toggleAiPanel()
+  sidebar.setView('settings')
+}
+
+// 首次引导 (借鉴 Understand-Anything OnboardingOverlay): 首次打开显示功能介绍
+const onboardingVisible = ref(!localStorage.getItem('kmatch-onboarded'))
+function finishOnboarding() {
+  localStorage.setItem('kmatch-onboarded', '1')
+  onboardingVisible.value = false
 }
 
 onMounted(() => ws.loadRecent())

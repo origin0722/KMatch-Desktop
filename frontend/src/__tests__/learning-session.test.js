@@ -29,12 +29,12 @@ const GLOBAL = { stubs: STUBS, directives: { loading: {} } }
 describe('LearningSession', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('渲染阶段卡 + 进度连线 (无结果时 3 卡, rail 4 节点)', () => {
+  it('渲染阶段卡 + 进度连线 (无结果时 3 卡 3 节点, 轨卡同步)', () => {
     const w = mount(LearningSession, { global: { plugins: [createPinia()], ...GLOBAL } })
     expect(w.find('.session-flow').exists()).toBe(true)
     expect(w.findAll('.stage-card').length).toBe(3) // goal/quiz/agent (graph v-if hasResults)
-    expect(w.find('.progress-rail').exists()).toBe(true)
-    expect(w.findAll('.rail-node').length).toBe(4) // rail always shows all 4 stages
+    expect(w.find('.stages-grid').exists()).toBe(true)
+    expect(w.findAll('.rail-node').length).toBe(3) // 轨卡同步: graph 无结果时节点不显示, 避免错位
   })
 
   it('默认 activeStage=goal 时 StageGoal 可见且标记 active', () => {

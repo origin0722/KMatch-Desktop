@@ -77,6 +77,49 @@
 - 459 后端 + 223 前端测试全过；feature/settings FF 合并 main
 - **Deferred**: Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入)；Task 20 全量收尾
 
+## 阶段13 (2026/07/29): 学情报告组件回填（KMatch 源仓借鉴）⏳
+> 源仓 `D:\Origin_jerry\KMatch` 的 B 端报告/引导组件，Desktop 迁移时只取了 GraphDemo/MarkdownViewer/ProfileRadar，三个高价值组件被内联或丢弃。后端数据已就绪，纯前端补全。逐任务推进。
+
+**借鉴来源对比结论**：Desktop 后端已是 KMatch 超集（多 code_safety/chat.py/agents.py/search.py），故借鉴全部集中在前端可视化/报告组件。
+
+| 任务 | 组件 | 缺口 | 数据就绪 | 落点 |
+|:---:|:---|:---|:---|:---|
+| T1 | `ScaffoldGuide.vue` | 后端 content_generator 明确生成 5 级渐进式实操指南（"第1级…第5级…首次仅呈现第1级"），但前端把 practice_guide 当扁平 markdown 渲染，逐级揭示教学法 UX 完全没落地 | ✅ content_generator.py prompt 已约定 5 级格式 | StageQuiz feedback 资源区 + Learning 实操指南 tab |
+| T2 | `ReviewReport.vue` | 后端 reviewer 产四维度（factual_accuracy 40%/hallucination 30%/logic_consistency 20%/teaching_appropriateness 10% + issues），store 有 reviewResults.dimensions，但 Dashboard 只显示"通过/打回+得分"小卡，四维度明细与打回原因从未展示 | ✅ reviewer.py 键名与组件完全对齐 | Dashboard 审核卡区展开 / 报告区 |
+| T3 | `AssessmentReport.vue` | StageQuiz feedback 只显示正确率/理论水平/策略+雷达图+资源，无逐题回顾（对错/正确答案/按节点汇总） | ✅ store.assessment.{questions,answers,per_node} 齐全 | StageQuiz feedback 阶段补"错题回顾" |
+
+**不借鉴（已冗余）**：BlindSpotHeatmap/DifficultyMatchCurve（Dashboard 已有等价 ECharts 内联图）、QuizCard（已被 StageQuiz 取代）、ProjectUpload（Web 上传范式，Desktop 用 IDE 打开文件夹+ProjectGraphView）、LearningPathGraph（Dashboard 用横向卡片流替代；REQUIRES 依赖边丢失属可接受取舍，必要时再评估）。
+
+**移植注意**：源组件用旧 `--color-*`/`--space-*` token + 原生 Element Plus，Desktop 是 `km-surface`/`km-workbench` 设计语言；组件自带 CSS fallback 可直接跑，落地后按需对齐主题 token。
+
+**T1 ScaffoldGuide ✅**：新建 `utils/scaffold.js`（纯函数 `splitScaffoldLevels` + 5 级标题常量）+ `components/ScaffoldGuide.vue`（km-* token 适配，el-collapse 5 级折叠，默认仅展开第 1 级）+ 13 单测；接线 Learning.vue 实操指南 tab + StageQuiz.vue feedback 资源区（practice_guide 走 ScaffoldGuide，余走 MarkdownViewer；顺手修 StageQuiz CT map `practice`->`practice_guide` 死键）。正则较源仓放宽（允许可选 `#`/`*` 前缀，应对 prompt 未强制标题格式）；拆分失败降级整体 MarkdownViewer 不回归。236 测试过 + build 过。
+
+**T2 ReviewReport ✅**：新建 `components/ReviewReport.vue`（verdict-bar + 四维度卡片 grid + 打回原因 alert；km-* token 适配，el-progress 进度色用 hex 常量镜像 Dashboard THEME 保持全看板配色一致）+ 6 单测；接线 Dashboard.vue 新增「④ 内容审核报告」卡（path-card 与 quality-card 之间，v-if="reviewResults"）。维度键名与 reviewer.py 完全对齐（factual_accuracy 40%/hallucination 30%/logic_consistency 20%/teaching_appropriateness 10%），缺省 threshold 85%、缺省 dimensions 0 分兜底。242 测试过 + build 过。
+
+**T3 AssessmentReport ✅**：新建 `components/AssessmentReport.vue`（逐题回顾：对错标记/正确答案/按知识点节点汇总；km-* token 适配）+ 6 单测；接线 StageQuiz.vue feedback 阶段 el-collapse「题目明细与错题回顾」（测评完成后才可见，v-if 时机正确）。数据来自 submitAnswers 返回的 questions/answers/per_node/correct_count/total_count（判分三态 BUG-019/BUG-029 注释明确）。阶段13 全部收官：248 前端 + 471 后端测试过（含阶段14）。
+
+## 阶段14 (2026/07/30-08/02): 联网搜索 + 图谱增强 + 代码梳理 ✅
+
+阶段13 期间连续开发的第二批功能，2026-08-02 统一梳理修复后收尾。赛题呼应：实时联网资源（降幻觉/学情反馈个性化）、学习路径规划、场景二项目图谱可视化。
+
+**F1 联网搜索 (Tavily)**：
+- 后端：`utils/web_search.py`（`search_web` + `search_weak_topics`：画像薄弱点最多 3 点 x 2 条 web_link 资源，带 `target_node_id` 溯源；无 key 静默降级）+ `api/search.py`（`POST /api/search/web` 任意 query，key 前端传入优先 / `settings.TAVILY_API_KEY` 兜底，双无 503）+ config/.env.example 加 TAVILY_API_KEY
+- 前端：ProvidersSettings「联网搜索」key 配置 UI（localStorage 持久化）；chat.js `web_search` 工具（max_results 钳制 1-8）+ `generate_learning_resources` 透传 tavily_key；learningResources store（url 去重、新结果置顶）；Learning.vue「联网资源」tab（空态引导 + transition-group 入场动画）
+- diagnostics feedback 弱知识点联网资源：`FeedbackRequest.tavily_key` + `resources.extend(search_weak_topics(...))`，学习资源模块 web_link 与讲义/实操/测试合并展示
+
+**F2 图谱路径查找**：`PathFinderModal.vue`（选起点/目标 → prereqMap 邻接表 BFS 最短学习路径，同色板，无可达路径空态）；KnowledgeGraph 工具栏「路径查找」按钮触发。呼应赛题"学习路径规划图"。
+
+**F3 项目代码图谱视图（场景二可视化）**：`ProjectGraphView.vue`（462 行）+ backend `project.py` `source_type="files"`（读工作区全部 .py 拼 sources 解析）+ chat.js `generate_project_graph` 目录解析分支 + MainArea/sidebar 视图注册 + AssistantPanel「看图谱」快捷入口。
+
+**F4 2026-08-02 梳理修复**（双 agent 审查 + 手工核对）：
+- chat.js `web_search` 结果字段 bug：`x.content`→`x.snippet`（后端返回键是 snippet，原恒 undefined → 联网资源摘要全空）
+- SettingsView `boundClientRect`→`boundingClientRect` 拼写回归（IntersectionObserver 排序 TypeError，锚点高亮失效）
+- KnowledgeGraph tooltip 死代码清理（tooltipData/labelOf/.node-tooltip CSS 从未使用）+ 详情面板补「关键点」展示（useGraphData 的 key_points 字段原先无人消费，persona 进阶/高级设计意图落地）
+- 补 `test_web_search.py` 12 单测（search_web 解析/降级 + search_weak_topics 溯源 + /api/search/web 503/422/200/key 优先级/max_results 边界）
+- http-proxy body 防双重序列化修复（axios adapter 场景 422）
+
+**测试**：248 前端 + 471 后端（459+12）全过。已知限制：联网资源 store 纯内存不持久化（重启清空，UI 无清空入口）；Tavily 搜索词硬编码 `Python {name} 教程`（平台定位 Python，可接受）。
+
 ## 已知待修
 - Apix 审查 S1–S9 全部已修（见各阶段 + ADR-0005）
 - 沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现 backend/app/agents/sandbox.py）

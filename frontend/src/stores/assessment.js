@@ -229,12 +229,14 @@ export const useAssessmentStore = defineStore('assessment', () => {
     loading.value = true
     error.value = null
     try {
-      const data = await submitAnswers(sessionId.value, userAnswers.value)
+      const data = await submitAnswers({ sessionId: sessionId.value, answers: userAnswers.value })
       // submit 返回: { session_id, profile, assessment, review_results, feedback:{strategy,...} }
       profile.value = data.profile
       assessment.value = data.assessment
       reviewResults.value = data.review_results
       feedbackStrategy.value = data.feedback?.strategy || null
+      knowledgeGraph.value = data.knowledge_graph || null
+      orchestrationLog.value = data.orchestration_log || []
       phase.value = 'feedback'
     } catch (e) {
       error.value = e.response?.data?.detail || e.message || '提交答题失败'
@@ -253,7 +255,9 @@ export const useAssessmentStore = defineStore('assessment', () => {
     loading.value = true
     error.value = null
     try {
-      const data = await requestFeedback(sessionId.value, feedbackStrategy.value, profile.value)
+      const { useAiSettingsStore } = await import('@/stores/aiSettings')
+      const tavilyKey = useAiSettingsStore().tavilyKey
+      const data = await requestFeedback({ sessionId: sessionId.value, strategy: feedbackStrategy.value, profile: profile.value, tavilyKey })
       feedbackContent.value = data
     } catch (e) {
       error.value = e.response?.data?.detail || e.message || '动态反馈再生失败'

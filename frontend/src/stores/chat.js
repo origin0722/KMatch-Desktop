@@ -17,6 +17,8 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
+import { useLearningResourcesStore } from '@/stores/learningResources'
+import { getNode } from '@/api/graph'
 import { streamChat } from '@/ide/chat/useChatStream'
 import { useAiSettingsStore } from '@/stores/aiSettings'
 import { withOverrides } from '@/stores/agentLlm'
@@ -95,6 +97,20 @@ export function buildSystemPrompt(context) {
     ? `\n\n## 思考模式\n${context.reasoningInstruction}`
     : ''
 
+  // 学情讲义: 用户答题后生成的针对性内容 (feedbackContent.resources), 注入后助手可基于讲义解答疑问
+  let lectureBlock = ''
+  const fc = context?.feedbackContent
+  if (fc && Array.isArray(fc.resources) && fc.resources.length) {
+    const parts = fc.resources.map((r, i) => {
+      const title = r.title || r.target_node_id || `资源${i + 1}`
+      const content = r.content || ''
+      const max = 4000
+      const truncated = content.length > max ? content.slice(0, max) + '\n... (内容已截断)' : content
+      return `### ${title}\n${truncated}`
+    })
+    lectureBlock = '\n\n## 学情讲义 (用户已生成的针对性学习内容, 可据此解答疑问)\n' + parts.join('\n\n')
+  }
+
   // ---- 阶段4③ 启发式交互导学模式 (赛题(4)②) ----
   if (context && context.tutorMode) {
     // 注入学情画像 (经 types.js helper 读取, 导学模式聚焦薄弱点, 不含学习路径)
@@ -111,6 +127,7 @@ export function buildSystemPrompt(context) {
         + '\n4. 事实底座抗幻觉: 涉及项目代码时先用 read_file/generate_project_graph 等工具查证真实代码与结构, 严禁凭记忆臆造项目细节; 解释通用概念时也只讲你确信的内容。'
         + '\n5. 简洁: 每轮回复聚焦一个引导点 + 一个追问, 不要长篇大论。'
         + profileBlock
+        + lectureBlock
         + memoriesBlock
         + reasoningBlock
         + ctxBlock
@@ -128,6 +145,7 @@ export function buildSystemPrompt(context) {
       + '回答用中文，代码块标注语言。保持回答简洁实用。\n'
       + '如果你需要查看某个文件来更好地回答问题，使用 tool_call 格式请求读取。'
       + profileBlock
+      + lectureBlock
       + memoriesBlock
       + reasoningBlock
       + ctxBlock
@@ -503,6 +521,21 @@ export const useChatStore = defineStore('chat', () => {
     return { code: call.code, sourcePath: call.filename || 'main.py' }
   }
 
+  /** 读工作区目录所有 .py 文件 -> {module_name: source} (项目级图谱解析用) */
+  async function _readProjectPyFiles(dirPath) {
+    const entries = await window.api.fs.listDirectory(dirPath, { deep: true })
+    const pyFiles = (entries || []).filter((e) => !e.isDirectory && e.path.endsWith('.py'))
+    const sources = {}
+    for (const f of pyFiles) {
+      try {
+        const content = await window.api.fs.readFile(f.path)
+        const module = (f.path || '').replace(/\.py$/, '').replace(/[\/\\]/g, '.')
+        sources[module] = content
+      } catch { /* skip unreadable */ }
+    }
+    return sources
+  }
+
   /** 委派后端 /api/project/* 路由; 返回 { ok, status, data } */
   async function _delegate(urlPath, body, timeoutMs) {
     try {
@@ -575,13 +608,19 @@ export const useChatStore = defineStore('chat', () => {
 
       // ---- 阶段4: 图谱委派工具 (复用 /api/project/* 路由) ----
       if (call.tool === 'generate_project_graph') {
-        const src = await _resolveCode(call)
-        if (src.error) return { error: src.error }
-        const body = {
-          source_type: 'text',
-          code: src.code,
-          filename: call.filename || 'main.py',
-          write_to_neo4j: call.write_to_neo4j === true,
+        // 项目级: path 是目录 -> 读工作区所有 .py 多文件解析
+        const isDir = call.path && call.path !== '' && !call.path.endsWith('.py')
+        let body, sourcePath
+        if (isDir) {
+          const sources = await _readProjectPyFiles(call.path)
+          if (!Object.keys(sources).length) return { error: '项目中没有可解析的 .py 文件' }
+          body = { source_type: 'files', sources, write_to_neo4j: call.write_to_neo4j === true }
+          sourcePath = call.path
+        } else {
+          const src = await _resolveCode(call)
+          if (src.error) return { error: src.error }
+          body = { source_type: 'text', code: src.code, filename: call.filename || 'main.py', write_to_neo4j: call.write_to_neo4j === true }
+          sourcePath = src.sourcePath
         }
         const r = await _delegate('/api/project/parse', body)
         if (!r.ok) return { error: r.error }
@@ -601,11 +640,11 @@ export const useChatStore = defineStore('chat', () => {
           stats: d.stats || {},
           entities,
           relations: d.edges || [],
-          sourcePath: src.sourcePath,
+          sourcePath,
           written: !!d.written_to_neo4j,
         }
         // 供 4b Monaco 符号联动
-        try { useProjectGraphStore().setGraph(result, src.sourcePath) } catch { /* store 未就绪不影响 */ }
+        try { useProjectGraphStore().setGraph(result, sourcePath) } catch { /* store 未就绪不影响 */ }
         return result
       }
       if (call.tool === 'code_review') {
@@ -639,6 +678,55 @@ export const useChatStore = defineStore('chat', () => {
         return { tool: 'code_test', report: r.data, sourcePath: src.sourcePath }
       }
 
+      if (call.tool === 'web_search') {
+        if (!call.query) return { error: '缺少 query 参数（搜索词）' }
+        // 传 UI 配置的 tavilyKey (存 localStorage), 后端优先用传入 key, 免去 .env 配置
+        // max_results 钳制到后端约束 (1-8), 防模型传越界值 422
+        const maxResults = Math.min(8, Math.max(1, parseInt(call.max_results, 10) || 3))
+        const r = await _delegate('/api/search/web', { query: call.query, max_results: maxResults, tavily_key: aiSettings.tavilyKey || undefined })
+        if (!r.ok) return { error: r.error }
+        const results = (r.data?.results || []).map((x) => ({
+          title: x.title, url: x.url, snippet: x.snippet,
+        }))
+        // 结果落学习资源模块 (Learning.vue "联网资源" tab 读取)
+        try { useLearningResourcesStore().addWebResources(call.query, results) } catch { /* store 未就绪不影响 */ }
+        return { tool: 'web_search', query: call.query, results, count: results.length }
+      }
+
+      if (call.tool === 'get_knowledge_node') {
+        if (!call.node_id) return { error: '缺少 node_id 参数（知识点编号）' }
+        try {
+          const n = await getNode(call.node_id)
+          return {
+            tool: 'get_knowledge_node', node_id: call.node_id,
+            name: n.name, summary: n.summary, difficulty: n.difficulty, category: n.category,
+          }
+        } catch (e) { return { error: e.response?.data?.detail || e.message || '知识点查询失败' } }
+      }
+
+      if (call.tool === 'generate_learning_resources') {
+        // 调后端 content_generator 图谱驱动生成结构化资源 (讲义/实操/测试), 落「学习资源」模块
+        const { useAssessmentStore } = await import('@/stores/assessment')
+        const aStore = useAssessmentStore()
+        if (!aStore.sessionId) return { error: '尚无学情测评 session。请先前往「学习会话」完成答题测评, 再生成资源。' }
+        if (!aStore.profile) return { error: '尚无学情画像, 请先完成测评' }
+        const strategy = call.strategy || aStore.feedbackStrategy || 'scaffold'
+        const r = await _delegate('/api/diagnostics/feedback', {
+          session_id: aStore.sessionId, strategy, profile: aStore.profile,
+          tavily_key: aiSettings.tavilyKey || undefined,
+        })
+        if (!r.ok) return { error: r.error }
+        // 合并 resources 到 generatedContent (Learning.vue 读)
+        const existing = aStore.generatedContent || { resources: [] }
+        const newRes = r.data?.resources || []
+        aStore.generatedContent = {
+          ...existing,
+          resources: [...(existing.resources || []), ...newRes],
+          node_count: r.data?.node_count ?? existing.node_count,
+        }
+        return { tool: 'generate_learning_resources', strategy, generated: newRes.length, node_count: r.data?.node_count, hint: '资源已落入「学习资源」页, 学习路径图谱在「知识图谱」页' }
+      }
+
       return { error: `未知工具: ${call.tool}` }
     } catch (e) {
       return { error: e.message || '工具执行失败' }
@@ -660,6 +748,7 @@ export const useChatStore = defineStore('chat', () => {
       const a = useAssessmentStore()
       ctx.profile = a.profile
       if (a.hasResults) ctx.knowledgeGraph = a.knowledgeGraph
+      if (a.feedbackContent) ctx.feedbackContent = a.feedbackContent
     } catch { /* assessment store 未就绪, 忽略 */ }
 
     try {

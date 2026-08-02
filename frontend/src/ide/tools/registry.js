@@ -65,6 +65,24 @@ export const TOOLS = Object.freeze([
       knowledge_node_ids: 'string[] (可选)',
     },
   },
+  {
+    name: 'web_search',
+    description: '联网搜索 (Tavily) 查领域知识/教程/文档, 减少幻觉; 结果自动落学习资源模块。参数: query (搜索词)。',
+    parameters: {
+      query: 'string (搜索词, 必填)',
+      max_results: 'number (默认3, 1-8)',
+    },
+  },
+  {
+    name: 'get_knowledge_node',
+    description: '按知识点编号查详情 (name/summary/difficulty/category)。不知道 PY-xxx 编号对应什么主题时调它, 不要反问用户。',
+    parameters: { node_id: 'string (知识点编号, 如 PY-002)' },
+  },
+  {
+    name: 'generate_learning_resources',
+    description: '基于学情画像薄弱知识点, 调后端 content_generator 生成结构化学习资源 (讲义/实操/测试题), 结果自动落「学习资源」模块。用户说"生成学习资源/讲义"时调它, 不要自己手写讲义。需先完成学情测评。',
+    parameters: { strategy: 'string (scaffold补基础|remediate降维|advance进阶, 默认 scaffold)' },
+  },
 ])
 
 /** 工具名清单（派生自 TOOLS，单一源）。 */
@@ -78,6 +96,9 @@ export const DEFAULT_TOOL_PERMISSIONS = Object.freeze({
   generate_project_graph: TOOL_PERMISSION.ALLOW,
   code_review: TOOL_PERMISSION.ALLOW,
   code_test: TOOL_PERMISSION.ALLOW,
+  web_search: TOOL_PERMISSION.ALLOW,
+  get_knowledge_node: TOOL_PERMISSION.ALLOW,
+  generate_learning_resources: TOOL_PERMISSION.ALLOW,
 })
 
 const TOOL_CALL_EXAMPLES = {
@@ -87,6 +108,9 @@ const TOOL_CALL_EXAMPLES = {
   generate_project_graph: '{"tool": "generate_project_graph", "path": "相对路径", "write_to_neo4j": false}',
   code_review: '{"tool": "code_review", "path": "相对路径", "target_direction": "开发目标方向"}',
   code_test: '{"tool": "code_test", "path": "相对路径", "target_direction": "开发目标方向", "mode": "generate"}',
+  web_search: '{"tool": "web_search", "query": "Python 装饰器原理与用法"}',
+  get_knowledge_node: '{"tool": "get_knowledge_node", "node_id": "PY-002"}',
+  generate_learning_resources: '{"tool": "generate_learning_resources", "strategy": "scaffold"}',
 }
 
 export function toolCallExample(tool) {
@@ -140,6 +164,15 @@ export function buildToolBlock(allowedTools) {
   if (allow.has('code_test')) {
     notes.push('- code_test: LLM 生成 pytest 用例并沙箱执行, 返回通过率/覆盖率/失败用例; 需 Neo4j+LLM 在线。')
   }
+  if (allow.has('web_search')) {
+    notes.push('- web_search: 联网搜索 (Tavily) 查领域知识/教程/文档, 返回 web_link 资源并自动落入学习资源模块; 遇不确定的领域概念或需要最新文档时主动调, 减少幻觉。')
+  }
+  if (allow.has('get_knowledge_node')) {
+    notes.push('- get_knowledge_node: 按知识点编号 (如 PY-002) 查详情 (名称/摘要/难度/分类); 遇到不认识的 PY-xxx 编号 (如学情画像薄弱点) 时主动调, 查清主题后再生成资源, 不要反问用户。')
+  }
+  if (allow.has('generate_learning_resources')) {
+    notes.push('- generate_learning_resources: 用户要"生成学习资源/讲义/实操/测试题"时调它, 调后端 content_generator 图谱驱动生成结构化资源并自动落「学习资源」模块; 【不要自己手写讲义】。需用户已完成学情测评 (有 session+画像), 无则引导先去学习会话测评。strategy: scaffold(补基础,默认)/remediate(降维)/advance(进阶)。')
+  }
   if (allow.has('generate_project_graph') || allow.has('code_review') || allow.has('code_test')) {
     notes.push('- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。')
   }
@@ -147,7 +180,11 @@ export function buildToolBlock(allowedTools) {
 
   return `
 ## 可用工具
-你可以通过以下格式调用工具来读写项目文件、委派后端多 Agent 能力:
+调用工具时【必须严格用 ` + '```tool_call' + ` fence 格式】, 否则工具不会执行:
+- 格式: ` + '```tool_call' + ` 换行 + JSON 对象 + 换行 + ` + '```' + `
+- JSON 必须含 "tool" 字段 (工具名, 见下方示例), 缺失会报格式错误
+- 每个 fence 放一个工具调用; 不要在正文里裸写 JSON 当作工具调用
+示例:
 ${examples || '(当前没有可用工具)'}
 ${notes.join('\n')}`
 }

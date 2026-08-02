@@ -12,17 +12,25 @@ export const ACTIVITY_ITEMS = [
   { id: 'code', icon: 'Document', title: '代码' },
   { id: 'learning-session', icon: 'ChatDotRound', title: '学习会话' },
   { id: 'graph', icon: 'Share', title: '知识图谱' },
+  { id: 'project-graph', icon: 'Connection', title: '项目图谱' },
   { id: 'learning', icon: 'Reading', title: '学习资源' },
   { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
 ]
 
 export const useSidebarStore = defineStore('sidebar', () => {
   const activeView = ref('code') // 主区视图 = 活动栏唯一指示
+  const prevView = ref('code') // 上一个视图 (设置页返回用)
   const sidebarVisible = ref(true) // 文件树显隐 (代码视图内)
   const aiPanelVisible = ref(true) // AI 助手面板
+  const persona = ref('beginner') // 学习角色: beginner/intermediate/advanced, 调整图谱节点详略
 
   function setView(id) {
+    if (id !== activeView.value) prevView.value = activeView.value
     activeView.value = id
+  }
+
+  function back() {
+    activeView.value = prevView.value
   }
 
   function toggleSidebar() {
@@ -33,5 +41,7 @@ export const useSidebarStore = defineStore('sidebar', () => {
     aiPanelVisible.value = !aiPanelVisible.value
   }
 
-  return { activeView, sidebarVisible, aiPanelVisible, setView, toggleSidebar, toggleAiPanel }
+  function setPersona(p) { persona.value = p }
+
+  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, setView, back, setPersona, toggleSidebar, toggleAiPanel }
 })

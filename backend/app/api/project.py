@@ -48,11 +48,12 @@ def _get_kg(request: Request):
 # ============================================================
 
 class ParseRequest(BaseModel):
-    source_type: Literal["example", "text"] = "example"
+    source_type: Literal["example", "text", "files"] = "example"
     project_id: Optional[str] = None     # 缺省: example→example_name; text→text-{uuid8}
     example_name: Optional[str] = None   # source_type=example 时必填
     code: Optional[str] = None           # source_type=text 时必填
     filename: str = "main.py"            # text 源文件名
+    sources: Optional[dict] = None       # source_type=files 时必填 {module_name: source}
     write_to_neo4j: bool = True          # False=仅解析返回不落库 (前端预览)
 
 
@@ -80,6 +81,11 @@ def parse_project_api(req: ParseRequest, request: Request):
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"示例项目不存在: {req.example_name}")
         project_id = req.project_id or req.example_name
+    elif req.source_type == "files":
+        if not req.sources:
+            raise HTTPException(status_code=422, detail="source_type=files 时 sources 必填")
+        sources = req.sources
+        project_id = req.project_id or f"files-{uuid.uuid4().hex[:8]}"
     else:  # text
         if not req.code or not req.code.strip():
             raise HTTPException(status_code=422, detail="source_type=text 时 code 必填")

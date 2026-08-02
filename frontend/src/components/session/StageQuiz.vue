@@ -44,6 +44,12 @@
         <div style="margin-bottom: 12px;">
           <ProfileRadar :profile="store.profile" />
         </div>
+        <!-- 题目明细与错题回顾 (默认折叠, 展开看逐题对错) -->
+        <el-collapse class="report-collapse" style="margin-bottom: 12px;">
+          <el-collapse-item title="题目明细与错题回顾" name="report">
+            <AssessmentReport :assessment="store.assessment" />
+          </el-collapse-item>
+        </el-collapse>
         <div class="feedback-actions">
           <el-button v-if="store.feedbackStrategy && !store.feedbackContent" size="small" type="primary" :loading="store.loading" @click="store.fetchFeedback()">
             获取针对性反馈 →
@@ -53,10 +59,14 @@
         <div v-if="store.feedbackContent" class="feedback-resources">
           <el-card v-for="(r, i) in (store.feedbackContent.resources || [])" :key="i" shadow="never" class="resource-item">
             <template #header>
-              <el-tag size="small">{{ contentTypeLabel(r.content_type) }}</el-tag>
+              <el-tag size="small" :type="r.content_type === 'web_link' ? 'success' : ''">{{ contentTypeLabel(r.content_type) }}</el-tag>
               <span style="margin-left: 8px;">{{ r.title || r.target_node_id }}</span>
+              <el-button v-if="r.content_type === 'web_link' && r.url" size="small" type="primary" link
+                         class="web-link-btn" @click="openUrl(r.url)">打开网站 ↗</el-button>
             </template>
-            <MarkdownViewer :content="r.content" />
+            <MarkdownViewer v-if="r.content_type !== 'web_link' && r.content_type !== 'practice_guide'" :content="r.content" />
+            <ScaffoldGuide v-else-if="r.content_type === 'practice_guide'" :content="r.content" />
+            <p v-else class="web-link-snippet">{{ r.content }}</p>
           </el-card>
         </div>
       </template>
@@ -72,6 +82,8 @@ import { computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import ScaffoldGuide from '@/components/ScaffoldGuide.vue'
+import AssessmentReport from '@/components/AssessmentReport.vue'
 import ProfileRadar from '@/components/ProfileRadar.vue'
 
 const store = useAssessmentStore()
@@ -84,7 +96,7 @@ function levelLabel(l) { return { 1: '零基础', 2: '入门', 3: '进阶', 4: '
 const STRATEGY = { advance: '进阶挑战（正确率高，提升难度）', remediate: '降维解释（正确率中等，换角度讲解）', scaffold: '补前置基础（正确率低，巩固基础）' }
 function strategyLabel(s) { return STRATEGY[s] || s || '-' }
 function strategyTagType(s) { return { advance: 'success', remediate: 'warning', scaffold: 'danger' }[s] || 'info' }
-const CT = { lecture: '讲义', practice: '实操指南', quiz: '测试题', explanation: '讲解', exercise: '练习' }
+const CT = { lecture: '讲义', practice_guide: '实操指南', quiz: '测试题', explanation: '讲解', exercise: '练习', web_link: '相关网站' }
 function contentTypeLabel(t) { return CT[t] || t || '资源' }
 
 async function handleSubmitAnswers() {
@@ -92,6 +104,10 @@ async function handleSubmitAnswers() {
   if (unanswered === store.pendingQuestions.length) return
   await store.submitAssessmentAnswers()
 }
+function openUrl(url) {
+  if (url) window.open(url, '_blank', 'noopener')
+}
+
 function autoFillDemo() {
   store.pendingQuestions.forEach((q, idx) => {
     if (q.type === 'choice' && q.options?.length) store.userAnswers[idx] = optLabel(q.options[0])
@@ -112,12 +128,13 @@ function autoFillDemo() {
 .quiz-item { padding: 12px 0; border-bottom: 1px solid var(--km-border-light); }
 .quiz-question { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 13px; }
 .q-text { flex: 1; }
-.quiz-options { display: flex; flex-direction: column; gap: 6px; padding-left: 28px; }
-.quiz-option { margin-right: 0 !important; }
+.quiz-options { display: flex; flex-direction: column; gap: 8px; padding-left: 28px; }
+.quiz-option { margin-right: 0 !important; width: 100%; height: auto; }
+.quiz-option :deep(.el-radio__label) { white-space: normal; word-break: break-word; line-height: 1.5; }
 .quiz-fill { max-width: 360px; }
 .quiz-submit { display: flex; gap: 12px; margin-top: 16px; }
 .feedback-actions { display: flex; gap: 8px; margin-bottom: 12px; }
 .feedback-resources { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .resource-item { background: var(--km-bg-layer-1); }
-.quiz-loading { min-height: 80px; }
+.quiz-loading { min-height: 140px; display: flex; align-items: center; justify-content: center; }
 </style>

@@ -27,18 +27,18 @@ describe('AssistantSettings', () => {
 
   const mountOpts = () => ({ global: { plugins: [ElementPlus], stubs: ['el-icon'] } })
 
-  it('renders tool permission rows for all 6 tools', () => {
+  it('renders tool permission rows for all 9 tools', () => {
     const w = mount(AssistantSettings, mountOpts())
-    expect(w.findAll('.tool-perm-row')).toHaveLength(6)
+    expect(w.findAll('.tool-perm-row')).toHaveLength(9)
   })
 
   it('changing a tool permission calls setToolPermission', async () => {
     const ai = useAiSettingsStore()
     const w = mount(AssistantSettings, mountOpts())
-    // 思考模式 1 个 ElRadioGroup 在前 (auto/fast/deep); 工具权限 6 个在后 (allow/ask/deny, 按 TOOLS 顺序)
+    // 思考模式 1 个 ElRadioGroup 在前 (auto/fast/deep); 工具权限 9 个在后 (allow/ask/deny, 按 TOOLS 顺序)
     // findAll 返回 DOMWrapper 无 .vm (test-utils v2), 用 findAllComponents 取 VueWrapper
     const groups = w.findAllComponents({ name: 'ElRadioGroup' })
-    expect(groups).toHaveLength(7)
+    expect(groups).toHaveLength(10)
     await groups[1].vm.$emit('change', 'deny') // groups[1] = 第一个工具 read_file
     expect(ai.permissionFor('read_file')).toBe('deny')
   })

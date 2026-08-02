@@ -14,6 +14,14 @@
       </div>
     </div>
 
+    <!-- 场景二快捷引导 (有项目时) -->
+    <div class="quick-actions" v-if="ws.hasProject">
+      <el-button size="small" plain @click="quickAction('解析这个项目的代码结构')">解析项目</el-button>
+      <el-button size="small" plain @click="sidebar.setView('project-graph')">看图谱</el-button>
+      <el-button size="small" plain @click="quickAction('审查当前打开文件的代码')">审查代码</el-button>
+      <el-button size="small" plain @click="quickAction('为当前文件生成单元测试')">测试代码</el-button>
+    </div>
+
     <!-- 消息列表 -->
     <div ref="msgContainer" class="assistant-body">
       <!-- 空状态 -->
@@ -476,6 +484,7 @@
 import { ref, reactive, watch, nextTick, computed } from 'vue'
 import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
 import { useAiSettingsStore, PROVIDERS, isCustomProvider, customProviderUuid } from '@/stores/aiSettings'
 import { useCustomProvidersStore } from '@/stores/customProviders'
@@ -489,6 +498,10 @@ import { useModelVisionStore } from '@/stores/modelVision'
 
 const sidebar = useSidebarStore()
 const chat = useChatStore()
+const ws = useWorkspaceStore()
+
+// 场景二快捷引导: 一键发消息
+function quickAction(text) { chat.sendMessage(text) }
 const aiSettings = useAiSettingsStore()
 const customProviders = useCustomProvidersStore()
 const projectGraph = useProjectGraphStore()
@@ -768,6 +781,7 @@ async function copyText(text) {
 }
 
 /* ---- 头部 ---- */
+.quick-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--km-border-light); background: var(--km-bg-layer-1); }
 .assistant-header {
   height: 40px;
   display: flex;
@@ -938,7 +952,7 @@ async function copyText(text) {
 }
 .user-text {
   background: linear-gradient(135deg, var(--km-primary), var(--km-primary-active));
-  color: var(--km-primary-text);
+  color: #ffffff;
   padding: 8px 12px;
   border-radius: 12px 12px 4px 12px;
   font-size: 13px; line-height: 1.5;
@@ -946,6 +960,11 @@ async function copyText(text) {
   margin: 0;
   font-family: var(--km-font-ui);
   box-shadow: var(--km-shadow-sm);
+}
+/* 暗色模式: primary 偏亮(#8b9cf0), 白字对比度不足; 改深紫底白字+primary 边框 (修用户消息看不清) */
+html.dark .user-text {
+  background: var(--km-primary-light);
+  border: 1px solid var(--km-primary);
 }
 
 /* 打字动画 */

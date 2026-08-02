@@ -197,6 +197,9 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     ? saved.reasoningMode
     : REASONING_MODE.AUTO)
 
+  // 联网搜索 (Tavily, 学情反馈搜薄弱知识点相关网站)
+  const tavilyKey = ref(typeof saved.tavilyKey === 'string' ? saved.tavilyKey : '')
+
   const enabledMemories = computed(() => memories.value.filter((m) => m.enabled && m.title && m.content))
 
   function persist() {
@@ -210,6 +213,7 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
       toolPermissions: toolPermissions.value,
       memories: memories.value,
       reasoningMode: reasoningMode.value,
+      tavilyKey: tavilyKey.value,
     })
   }
 
@@ -429,6 +433,8 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     { flush: 'sync' },
   )
 
+  function setTavilyKey(k) { tavilyKey.value = k || ''; persist() }
+
   // 初始化: 拉取模型列表 (无 apiKey 时走 fallback, 不触网)
   fetchModels()
 
@@ -461,5 +467,7 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     setProvider,
     setApiKey,
     setModel,
+    tavilyKey,
+    setTavilyKey,
   }
 })

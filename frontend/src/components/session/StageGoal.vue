@@ -12,7 +12,7 @@
               v-for="d in presetDirections"
               :key="d"
               :effect="form.targetDirection === d ? 'dark' : 'plain'"
-              :type="form.targetDirection === d ? '' : 'info'"
+              :type="form.targetDirection === d ? 'primary' : 'info'"
               class="preset-tag"
               @click="form.targetDirection = d"
             >{{ d }}</el-tag>

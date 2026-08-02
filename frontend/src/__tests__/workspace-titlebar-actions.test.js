@@ -46,13 +46,11 @@ describe('Workspace titlebar actions', () => {
     expect(gear.attributes('title')).toContain('AI 设置')
   })
 
-  it('gear reveals the assistant panel as interim settings entry', async () => {
+  it('gear opens the settings view as AI settings entry', async () => {
     const pinia = createPinia()
     const wrapper = mountWorkspace(pinia)
-    const sidebar = useSidebarStore()
-    sidebar.aiPanelVisible = false
 
     await wrapper.find('[data-test="ai-settings-gear"]').trigger('click')
-    expect(sidebar.aiPanelVisible).toBe(true)
+    expect(useSidebarStore().activeView).toBe('settings')
   })
 })

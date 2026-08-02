@@ -100,6 +100,14 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [frontend/src/stores/modelVision.js](frontend/src/stores/modelVision.js) - 模型视觉能力探测缓存 (Spec A)
 - [frontend/src/ide/tools/registry.js](frontend/src/ide/tools/registry.js) — 工具定义 + 权限默认 + 广告/审批/提示词块 helper 单一源 (C1.2)
 - [frontend/src/stores/projectGraph.js](frontend/src/stores/projectGraph.js) — 项目代码图谱 + Monaco 符号联动状态 (阶段4b)
+- [frontend/src/stores/learningResources.js](frontend/src/stores/learningResources.js) — 联网搜索 web_link 资源 store (阶段14 F1)
+- [frontend/src/components/PathFinderModal.vue](frontend/src/components/PathFinderModal.vue) — 图谱路径查找 (BFS 最短学习路径, 阶段14 F2)
+- [frontend/src/components/ScaffoldGuide.vue](frontend/src/components/ScaffoldGuide.vue) — 5 级渐进式实操引导 (阶段13 T1)
+- [frontend/src/components/ReviewReport.vue](frontend/src/components/ReviewReport.vue) — 内容审核四维度报告 (阶段13 T2)
+- [frontend/src/components/AssessmentReport.vue](frontend/src/components/AssessmentReport.vue) — 学情测评题目明细/错题回顾 (阶段13 T3)
+- [frontend/src/views/ProjectGraphView.vue](frontend/src/views/ProjectGraphView.vue) — 项目代码图谱视图 (场景二可视化, 阶段14 F3)
+- [backend/app/utils/web_search.py](backend/app/utils/web_search.py) — Tavily 联网搜索封装 (search_web + search_weak_topics, 阶段14 F1)
+- [backend/app/api/search.py](backend/app/api/search.py) — /api/search/web 联网搜索路由 (阶段14 F1)
 - [backend/app/api/chat.py](backend/app/api/chat.py) — AI 对话 SSE 后端 (/api/chat/completions + /models + /safety-check)
 - [backend/app/agents/code_safety.py](backend/app/agents/code_safety.py) — 纯 Python AST 安全检查 (hard_check_code_safety, 供 chat 审批门复用)
 - [backend/app/api/agents.py](backend/app/api/agents.py) - /api/agents/ping Agent 独立 key 连通性测试 (Spec B)
@@ -142,7 +150,7 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 
 ## 当前开发阶段
 
-**最新：Spec B** (2026/07/19) 设置页 + Agent 独立 key - Task 1-17 已合并 main (a38cd98)。Apix 借鉴三大项 (阶段10) + Spec A 聊天框 Apix 化 (阶段11) 均已收官。完整阶段日志见 [docs/devlogs/Desktop_阶段总览.md](docs/devlogs/Desktop_阶段总览.md)。
+**最新：阶段14** (2026/08/02) 联网搜索 + 图谱增强 + 代码梳理 - F1 Tavily 联网搜索（web_search 工具 + 设置页 key + Learning 联网资源 tab）✅ / F2 图谱路径查找（BFS 最短学习路径）✅ / F3 项目代码图谱视图（场景二可视化）✅ / F4 双 agent 代码审查修复（snippet 字段 bug + SettingsView 拼写回归 + tooltip 死代码清理）✅。阶段13 学情报告组件回填（T1 ScaffoldGuide / T2 ReviewReport / T3 AssessmentReport）已全部收官。上一个里程碑：Spec B (2026/07/19) 设置页 + Agent 独立 key - Task 1-17 已合并 main (a38cd98)。完整阶段日志见 [docs/devlogs/Desktop_阶段总览.md](docs/devlogs/Desktop_阶段总览.md)。248 前端 + 471 后端测试全过。
 
 **Spec B 进度**：Task 1-7 后端 (ContextVar per-request llm_overrides + AgentState 字段 + 5 agent 透传 + 8 路由 + /api/agents/ping) ✅；Task 8-17 前端 (设置页主壳 + AI 助手 / Agent 独立 key / 供应商管理 CRUD + 视觉探测 + 网络代理 UI) ✅；Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入) ⏳ 待做；Task 20 全量收尾 ⏳。
 

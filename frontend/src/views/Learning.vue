@@ -114,7 +114,7 @@
                 </div>
               </template>
               <div class="resource-body">
-                <MarkdownViewer :content="res.content || ''" />
+                <ScaffoldGuide :content="res.content || ''" />
               </div>
               <div v-if="res.source_nodes?.length" class="source-nodes">
                 <span class="source-label">溯源：</span>
@@ -180,6 +180,33 @@
             </el-card>
           </div>
         </el-tab-pane>
+
+        <!-- 联网资源 (AI 助手 web_search 结果, transition-group 平滑入场) -->
+        <el-tab-pane label="联网资源" name="web_link">
+          <div v-if="webList.length === 0" class="empty-tab">
+            <el-empty description="尚无联网资源 — 在 AI 助手中让它搜索某个知识点" :image-size="80" />
+          </div>
+          <transition-group v-else name="res-flow" tag="div" class="resource-list">
+            <el-card
+              v-for="(res, idx) in webList"
+              :key="res.url || idx"
+              shadow="never"
+              class="resource-card web-card"
+            >
+              <template #header>
+                <div class="resource-card-header">
+                  <span class="resource-title">{{ res.title || res.url }}</span>
+                  <el-tag size="small" type="success">🌐 联网</el-tag>
+                </div>
+              </template>
+              <div class="resource-body web-snippet">{{ res.content || '(无摘要)' }}</div>
+              <div class="web-actions">
+                <code class="web-url">{{ res.url }}</code>
+                <el-button size="small" type="primary" @click="openUrl(res.url)">打开 ↗</el-button>
+              </div>
+            </el-card>
+          </transition-group>
+        </el-tab-pane>
       </el-tabs>
     </template>
 
@@ -219,11 +246,14 @@
 import { ref, computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useLearningResourcesStore } from '@/stores/learningResources'
 import { extractTitle, difficultyTagType, contentTypeLabel } from '@/utils/format'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import ScaffoldGuide from '@/components/ScaffoldGuide.vue'
 
 const store = useAssessmentStore()
 const sidebar = useSidebarStore()
+const learningRes = useLearningResourcesStore()
 
 // ---------------------------------------------------------------
 // 资源类型定义
@@ -232,6 +262,7 @@ const resourceTypes = [
   { key: 'lecture', label: '讲义' },
   { key: 'practice_guide', label: '实操指南' },
   { key: 'test', label: '测试题' },
+  { key: 'web_link', label: '联网资源' },
 ]
 
 const activeTab = ref('lecture')
@@ -241,11 +272,15 @@ const activeTab = ref('lecture')
 // ---------------------------------------------------------------
 const resources = computed(() => store.generatedContent?.resources || [])
 
-const hasResources = computed(() => resources.value.length > 0)
+// AI 联网搜索结果 (web_link, 来自 learningResources store, 独立于学情生成资源)
+const webResources = computed(() => learningRes.webResources || [])
+
+const hasResources = computed(() => resources.value.length > 0 || webResources.value.length > 0)
 
 const resourceNodeCount = computed(() => store.generatedContent?.node_count ?? 0)
 
 function countByType(type) {
+  if (type === 'web_link') return webResources.value.length
   return resources.value.filter((r) => r.content_type === type).length
 }
 
@@ -258,6 +293,7 @@ const guideList = computed(() =>
 const testList = computed(() =>
   resources.value.filter((r) => r.content_type === 'test'),
 )
+const webList = computed(() => webResources.value)
 
 // ---------------------------------------------------------------
 // 资源标题：从 markdown 首行提取，fallback 到类型中文名+序号
@@ -266,6 +302,10 @@ function resTitle(res, idx) {
   const extracted = extractTitle(res.content)
   if (extracted) return extracted
   return `${contentTypeLabel(res.content_type)} #${idx + 1}`
+}
+
+function openUrl(url) {
+  if (url) window.open(url, '_blank', 'noopener')
 }
 
 // ---------------------------------------------------------------
@@ -357,5 +397,39 @@ function goToNode(nodeId) {
 .quiz-placeholder ul {
   text-align: left; margin: 10px 0 0;
   padding-left: 20px; line-height: 1.8;
+}
+
+/* ---- 联网资源卡 ---- */
+.web-card .web-snippet {
+  font-size: 13px; color: var(--km-gray-600); line-height: 1.6;
+}
+.web-actions {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+}
+.web-url {
+  flex: 1; min-width: 0; font-size: 11px; color: var(--km-gray-500);
+  background: var(--km-bg-layer-1); padding: 2px 8px; border-radius: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- 资源卡入场动画 (平滑生动, cubic-bezier 非线性, 非死板线性) ---- */
+.res-flow-enter-active {
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.res-flow-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 1, 1);
+  position: absolute;
+}
+.res-flow-enter-from {
+  opacity: 0; transform: translateY(12px) scale(0.98);
+}
+.res-flow-leave-to {
+  opacity: 0; transform: translateX(20px);
+}
+.res-flow-move {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .res-flow-enter-active, .res-flow-leave-active, .res-flow-move { transition: none; }
 }
 </style>

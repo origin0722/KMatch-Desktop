@@ -41,6 +41,9 @@ class Settings:
     LLM_TEMPERATURE: float = 0.3
     REVIEW_PASS_THRESHOLD: float = float(os.getenv("REVIEW_PASS_THRESHOLD", "0.85"))
 
+    # --- 联网搜索 (Tavily, 学情反馈搜薄弱知识点相关网站) ---
+    TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+
     # --- 沙箱 (code_test) ---
     # sandbox=auto: Docker 可用则用 DockerSandboxExecutor (--network=none --memory 限内存),
     # 否则回退 SubprocessSandboxExecutor (诚实限制: 无法禁网/限内存, 仅 env 白名单 + AST 预检)。

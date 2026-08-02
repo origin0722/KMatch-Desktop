@@ -25,9 +25,12 @@ from app.agents.diagnostics import (
     decide_feedback,
     prepare_questions,
 )
+from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.report_builder import build_learning_report
+from app.config import settings
 from app.utils.logging import get_logger
+from app.utils.web_search import search_weak_topics
 
 logger = get_logger(__name__)
 
@@ -87,12 +90,14 @@ class SubmitRequest(BaseModel):
 
 
 class SubmitResponse(BaseModel):
-    """答题提交响应: 判分 + 画像 + 动态反馈。"""
+    """答题提交响应: 判分 + 画像 + 动态反馈 + 专属图谱 + 协同日志。"""
 
     session_id: str
     profile: dict
     assessment: dict
     feedback: dict = Field(..., description="动态反馈策略: advance/remediate/scaffold")
+    knowledge_graph: dict = Field(default_factory=dict, description="专属学习路径图谱 (submit 后由 graph_controller 组装)")
+    orchestration_log: list = Field(default_factory=list, description="Agent 协同执行日志 (判分/画像/图谱)")
 
 
 class FeedbackRequest(BaseModel):
@@ -102,6 +107,7 @@ class FeedbackRequest(BaseModel):
     strategy: Literal["advance", "remediate", "scaffold"] = Field(..., description="动态反馈策略")
     profile: dict = Field(..., description="submit 返回的画像 (含 weak_topics/theory_level)")
     llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
+    tavily_key: str = Field(default=None, description="Tavily API key (联网搜索薄弱知识点相关网站)")
 
 
 class FeedbackResponse(BaseModel):
@@ -336,13 +342,13 @@ def assess_stream(req: AssessRequest, request: Request):
     )
 
 
-@router.post("/submit", response_model=SubmitResponse, summary="提交答题（interactive 模式判分+动态反馈）")
+@router.post("/submit", response_model=SubmitResponse, summary="提交答题（interactive 模式判分+动态反馈+图谱组装）")
 def submit(req: SubmitRequest, request: Request):
     """提交 interactive 模式的答题，后端判分并产出画像 + 动态反馈策略。
 
     流程: 取缓存题目 → _grade 判分 → _build_profile 画像 → decide_feedback 动态反馈。
     """
-    _get_kg(request)  # 前置检查: Neo4j 是否就绪
+    kg = _get_kg(request)  # 前置检查 + 供 graph_controller 组装路径
 
     # _grade 调 LLM 判分，未配置时提前 503 (与 assess interactive 一致)
     if not llm_configured():
@@ -362,20 +368,40 @@ def submit(req: SubmitRequest, request: Request):
     # 答案数量对齐 (缺失补空串，多余截断)
     answers = (list(req.answers) + [""] * len(questions))[: len(questions)]
 
+    orchestration_log = []
+    knowledge_graph = {}
     try:
         with use_llm_overrides(req.llm_overrides):
             grading = _grade(questions, answers)
             profile = _build_profile(target, nodes, grading, questions=questions)
         feedback = decide_feedback(grading["correct_count"], grading["total_count"])
+
+        # 记录判分 + 画像协同日志 (供前端 StageAgent 展示)
+        ts = datetime.utcnow().isoformat()
+        orchestration_log.append(
+            f"[{ts}] 🔧 学情检测: 判分 {grading['correct_count']}/{grading['total_count']}"
+        )
+        orchestration_log.append(
+            f"[{ts}] 📋 画像构建: theory_level={profile.get('theory_level')} "
+            f"weak={len(profile.get('weak_topics', []))} known={len(profile.get('known_topics', []))}"
+        )
+
+        # 复用 graph_controller 节点组装专属学习路径 (同 demo 工作流, 产出 knowledge_graph + log)
+        graph_node = graph_controller_node(kg)
+        graph_update = graph_node({"user_profile": profile})
+        knowledge_graph = graph_update.get("knowledge_graph", {})
+        orchestration_log.extend(graph_update.get("orchestration_log", []))
     except Exception as e:
         logger.error("答题判分失败 session=%s", req.session_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"判分失败: {e}")
 
-    logger.info("答题提交 session=%s 正确率=%d/%d 策略=%s",
-                req.session_id, grading["correct_count"], grading["total_count"], feedback["strategy"])
+    logger.info("答题提交 session=%s 正确率=%d/%d 策略=%s 路径节点=%d",
+                req.session_id, grading["correct_count"], grading["total_count"], feedback["strategy"],
+                len(knowledge_graph.get("learning_path", [])))
 
-    # 回写画像到 session 缓存，供 POST /api/learning/report 补跑报告时读取 (仅需 session_id)
+    # 回写画像 + 图谱到 session 缓存，供 POST /api/learning/report 补跑报告时读取
     session["profile"] = profile
+    session["knowledge_graph"] = knowledge_graph
 
     return SubmitResponse(
         session_id=req.session_id,
@@ -388,6 +414,8 @@ def submit(req: SubmitRequest, request: Request):
             "total_count": grading["total_count"],
         },
         feedback=feedback,
+        knowledge_graph=knowledge_graph,
+        orchestration_log=orchestration_log,
     )
 
 
@@ -423,8 +451,15 @@ def feedback(req: FeedbackRequest, request: Request):
         logger.error("feedback 再生失败 session=%s", req.session_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"内容再生失败: {e}")
 
+    # 联网搜索薄弱知识点相关网站 (Tavily, 可选; 无 key 静默跳过)
+    tavily_key = req.tavily_key or settings.TAVILY_API_KEY
+    if tavily_key:
+        web_resources = search_weak_topics(req.profile, tavily_key, nodes=session.get("nodes"))
+        if web_resources:
+            result.setdefault("resources", []).extend(web_resources)
+
     logger.info("feedback 再生 session=%s strategy=%s resources=%d",
-                req.session_id, req.strategy, len(result["resources"]))
+                req.session_id, req.strategy, len(result.get("resources", [])))
 
     return FeedbackResponse(
         session_id=req.session_id,

@@ -193,6 +193,11 @@ from app.api import agents  # noqa: E402
 
 app.include_router(agents.router, prefix="/api/agents", tags=["Agent 学习引擎"])
 
+# 联网搜索 (Tavily, AI 助手 web_search 工具调用, 结果落学习资源模块)
+from app.api import search  # noqa: E402
+
+app.include_router(search.router, prefix="/api/search", tags=["Search"])
+
 
 # ============================================================
 # 直接运行入口

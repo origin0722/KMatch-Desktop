@@ -68,6 +68,8 @@ export function useGraphData() {
         id: n.node_id,
         data: {
           label: n.name || n.node_id,
+          summary: n.summary || '',
+          key_points: Array.isArray(n.key_points) ? n.key_points : [],
           mastery: m,
           nodeColor: masteryColor(m),
           nodeSize: masterySize(m),

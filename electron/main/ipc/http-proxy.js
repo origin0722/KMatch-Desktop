@@ -22,7 +22,9 @@ export function registerHttpProxyIpc() {
       headers: { 'Content-Type': 'application/json' },
     }
     if (body !== undefined && body !== null && init.method !== 'GET') {
-      init.body = JSON.stringify(body)
+      // body 可能是对象(直调 window.api.http.request)或 JSON 字符串(axios adapter 已被
+      // transformRequest 序列化);字符串直接用,避免双重序列化使后端收到 str 而非 dict -> 422
+      init.body = typeof body === 'string' ? body : JSON.stringify(body)
     }
     // 阶段4: code_test 等 (LLM 生成测试 + pytest 执行) 可达 60s+,
     // 调用方可经 opts.timeoutMs 放宽超时 (默认 60s, 不影响现有调用)。

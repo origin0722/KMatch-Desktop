@@ -41,13 +41,25 @@
       </template>
     </SettingCard>
 
+    <SettingCard title="联网搜索" info="学情反馈时搜索薄弱知识点相关网站 (Tavily); 配置后下次反馈生效">
+      <div class="tavily-guide">
+        <p>① 前往 <a href="https://tavily.com" target="_blank" rel="noopener">tavily.com</a> 注册 (免费 1000 次/月)</p>
+        <p>② 在 Dashboard 复制 API Key</p>
+        <p>③ 粘贴到下方</p>
+      </div>
+      <el-input v-model="tavilyInput" type="password" show-password size="small" style="width: 260px"
+                placeholder="tvly-..." data-test="tavily-key" @change="saveTavily" @keyup.enter="saveTavily" />
+      <el-button size="small" type="primary" @click="saveTavily">保存</el-button>
+      <span v-if="!ai.tavilyKey" class="tavily-hint">未配置则不联网搜索, 只返回 LLM 讲义</span>
+    </SettingCard>
+
     <ProviderEditDialog v-model="dialogVisible" :provider="editing" @save="onSave" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ref, computed, watch } from 'vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { useCustomProvidersStore } from '@/stores/customProviders'
 import { useModelVisionStore } from '@/stores/modelVision'
 import { useAiSettingsStore } from '@/stores/aiSettings'
@@ -57,6 +69,14 @@ import ProviderEditDialog from './ProviderEditDialog.vue'
 const cps = useCustomProvidersStore()
 const modelVision = useModelVisionStore()
 const ai = useAiSettingsStore()
+// Tavily key 本地镜像: v-model 双向输入流畅, 失焦 @change 持久化
+// (修: 原 :model-value 受控 + @change 导致粘贴/输入后被 store 空值重置, 表现为"粘贴不了")
+const tavilyInput = ref(ai.tavilyKey || '')
+watch(() => ai.tavilyKey, (v) => { tavilyInput.value = v || '' })
+function saveTavily() {
+  ai.setTavilyKey(tavilyInput.value)
+  ElMessage.success(tavilyInput.value ? 'Tavily Key 已保存' : '已清除 Tavily Key')
+}
 const dialogVisible = ref(false)
 const editing = ref(null)
 
@@ -135,4 +155,9 @@ async function restartBackend() {
 .cp-name { font-size: 13px; font-weight: 600; color: var(--km-gray-800); }
 .cp-baseurl { font-size: 11.5px; color: var(--km-gray-500); }
 .cp-models { font-size: 11.5px; color: var(--km-gray-400); }
+.tavily-guide { font-size: 12px; color: var(--km-gray-500); margin-bottom: 8px; line-height: 1.6; }
+.tavily-guide p { margin: 0; }
+.tavily-guide a { color: var(--km-primary); text-decoration: none; }
+.tavily-guide a:hover { text-decoration: underline; }
+.tavily-hint { margin-left: 8px; color: var(--km-gray-400); font-size: 12px; }
 </style>

@@ -1,38 +1,52 @@
 <template>
   <div class="settings-view">
-    <div ref="mainEl" class="settings-main" @scroll="onScroll">
-      <div class="settings-content">
-        <section id="sec-assistant" ref="secAssistant" class="settings-section">
-          <h2 class="section-title">AI 助手</h2>
-          <AssistantSettings />
-        </section>
-        <section id="sec-agent" ref="secAgent" class="settings-section">
-          <h2 class="section-title">Agent 学习引擎</h2>
-          <AgentSettings />
-        </section>
-        <section id="sec-providers" ref="secProviders" class="settings-section">
-          <h2 class="section-title">供应商管理</h2>
-          <ProvidersSettings />
-        </section>
-      </div>
+    <div v-if="renderErr" class="settings-fatal">
+      <strong>设置页加载失败</strong>
+      <pre>{{ renderErr }}</pre>
+      <p class="hint">打开开发者工具 (Ctrl+Shift+I) 查看完整堆栈, 或刷新页面重试。</p>
     </div>
-    <aside class="settings-anchors">
-      <a
-        v-for="a in anchors"
-        :key="a.id"
-        class="settings-anchor"
-        :class="{ active: activeAnchor === a.id }"
-        @click="scrollTo(a.id)"
-      >{{ a.label }}</a>
-    </aside>
+    <template v-else>
+      <div ref="mainEl" class="settings-main" @scroll="onScroll">
+        <div class="settings-topbar">
+          <span class="settings-title">设置</span>
+          <button class="settings-close" @click="sidebar.back()" title="关闭设置">×</button>
+        </div>
+        <div class="settings-content">
+          <section id="sec-assistant" ref="secAssistant" class="settings-section">
+            <h2 class="section-title">AI 助手</h2>
+            <AssistantSettings />
+          </section>
+          <section id="sec-agent" ref="secAgent" class="settings-section">
+            <h2 class="section-title">Agent 学习引擎</h2>
+            <AgentSettings />
+          </section>
+          <section id="sec-providers" ref="secProviders" class="settings-section">
+            <h2 class="section-title">供应商管理</h2>
+            <ProvidersSettings />
+          </section>
+        </div>
+      </div>
+      <aside class="settings-anchors">
+        <a
+          v-for="a in anchors"
+          :key="a.id"
+          class="settings-anchor"
+          :class="{ active: activeAnchor === a.id }"
+          @click="scrollTo(a.id)"
+        >{{ a.label }}</a>
+      </aside>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, onErrorCaptured } from 'vue'
 import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
 import ProvidersSettings from './ProvidersSettings.vue'
+import { useSidebarStore } from '@/stores/sidebar'
+
+const sidebar = useSidebarStore()
 
 const anchors = [
   { id: 'sec-assistant', label: 'AI 助手' },
@@ -42,7 +56,15 @@ const anchors = [
 
 const mainEl = ref(null)
 const activeAnchor = ref('sec-assistant')
+const renderErr = ref(null)
 let observer = null
+
+// 错误边界: 子组件渲染崩溃时捕获并显示, 避免白屏表现为"点设置没反应"
+onErrorCaptured((err) => {
+  renderErr.value = err?.stack || err?.message || String(err)
+  console.error('[SettingsView] 子组件渲染错误:', err)
+  return false
+})
 
 function scrollTo(id) {
   activeAnchor.value = id
@@ -83,12 +105,26 @@ onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <style scoped>
+.settings-fatal {
+  flex: 1;
+  padding: 24px;
+  color: var(--km-danger, #f56c6c);
+  font-family: var(--km-font-mono, monospace);
+  font-size: 12.5px;
+}
+.settings-fatal strong { font-size: 15px; display: block; margin-bottom: 8px; }
+.settings-fatal pre { white-space: pre-wrap; word-break: break-all; background: var(--km-bg-layer-2); padding: 10px; border-radius: 6px; margin: 8px 0; }
+.settings-fatal .hint { color: var(--km-gray-500); margin-top: 10px; font-family: inherit; }
 .settings-view {
   display: flex;
   height: 100%;
   min-height: 0;
   background: var(--km-bg-layer-1);
 }
+.settings-topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 10px 28px; border-bottom: 1px solid var(--km-border-light); position: sticky; top: 0; background: var(--km-bg-layer-1); z-index: 2; }
+.settings-title { font-size: 15px; font-weight: 650; color: var(--km-gray-800); }
+.settings-close { border: 0; background: transparent; color: var(--km-gray-500); cursor: pointer; font-size: 22px; line-height: 1; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.settings-close:hover { background: var(--km-gray-100); color: var(--km-gray-800); }
 .settings-main {
   flex: 1;
   overflow-y: auto;

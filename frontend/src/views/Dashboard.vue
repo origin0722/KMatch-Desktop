@@ -119,6 +119,12 @@
         </div>
       </el-card>
 
+      <!-- 内容审核四维度报告 -->
+      <el-card class="review-card" shadow="never" v-if="reviewResults">
+        <template #header><span>④ 内容审核报告</span></template>
+        <ReviewReport :review-results="reviewResults" />
+      </el-card>
+
       <!-- 第三行: 质量指标 -->
       <el-card class="quality-card" shadow="never" v-if="qualityMetrics">
         <template #header>
@@ -183,6 +189,7 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import * as echarts from 'echarts'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
+import ReviewReport from '@/components/ReviewReport.vue'
 
 const store = useAssessmentStore()
 const sidebar = useSidebarStore()

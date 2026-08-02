@@ -10,13 +10,16 @@
     <transition name="agent-expand">
       <div v-show="expanded && hasLogs" class="stage-body">
         <div class="cockpit-grid">
-          <aside class="agent-roster">
-            <button v-for="agent in status.agentNodes.value" :key="agent.key"
-              class="agent-roster-item" :class="{ active: selectedAgent?.key === agent.key }"
-              @click.stop="selectedAgent = agent">
-              <span class="status-dot" :class="`status-${agent.status}`" />
-              <span class="agent-copy"><strong>{{ agent.label }}</strong><small>{{ agent.role }}</small></span>
-            </button>
+          <aside class="agent-flow">
+            <template v-for="(agent, i) in status.agentNodes.value" :key="agent.key">
+              <button class="flow-node" :class="[`status-${agent.status}`, { active: selectedAgent?.key === agent.key }]"
+                      @click.stop="selectedAgent = agent">
+                <span class="flow-icon">{{ agent.icon }}</span>
+                <span class="flow-label">{{ agent.label }}</span>
+                <span v-if="agent.retryCount > 0" class="flow-retry">×{{ agent.retryCount }}</span>
+              </button>
+              <span v-if="i < status.agentNodes.value.length - 1" class="flow-arrow">↓</span>
+            </template>
           </aside>
           <section class="agent-thread">
             <div class="thread-header"><span>协同对话流</span></div>
@@ -103,15 +106,17 @@ watch(parsedLogs, async () => {
 .stage-empty { padding: 16px; color: var(--km-gray-500); font-size: 13px; }
 
 .cockpit-grid { display: grid; grid-template-columns: 200px 1fr 240px; gap: 12px; min-height: 360px; }
-.agent-roster-item { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; border-radius: var(--km-radius-sm); padding: 8px; text-align: left; color: var(--km-gray-700); cursor: pointer; }
-.agent-roster-item:hover, .agent-roster-item.active { background: var(--km-primary-light); color: var(--km-primary-active); }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--km-gray-400); flex-shrink: 0; }
-.status-dot.status-running { background: var(--km-warning); animation: pulse 1.6s ease-in-out infinite; }
-.status-dot.status-done { background: var(--km-success); }
-.status-dot.status-failed { background: var(--km-danger); }
-.agent-copy { display: flex; flex-direction: column; gap: 2px; }
-.agent-copy strong { font-size: 12px; }
-.agent-copy small { font-size: 10px; color: var(--km-gray-500); }
+.agent-flow { display: flex; flex-direction: column; align-items: center; gap: 0; padding-top: 12px; overflow-y: auto; }
+.flow-node { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid var(--km-border-light); background: var(--km-bg-layer-2); border-radius: 10px; padding: 8px 10px; min-width: 140px; cursor: pointer; transition: all 0.2s var(--km-ease); position: relative; }
+.flow-node:hover { border-color: var(--km-primary); }
+.flow-node.active { border-color: var(--km-primary); box-shadow: 0 0 0 3px rgba(108,124,224,0.15); }
+.flow-node.status-running { border-color: var(--km-warning); background: rgba(240,160,64,0.1); animation: pulse 1.6s ease-in-out infinite; }
+.flow-node.status-done { border-color: var(--km-success); background: rgba(52,179,126,0.08); }
+.flow-node.status-failed { border-color: var(--km-danger); background: rgba(224,85,85,0.08); }
+.flow-icon { font-size: 18px; }
+.flow-label { font-size: 12px; font-weight: 600; color: var(--km-gray-800); }
+.flow-retry { position: absolute; top: -6px; right: -6px; background: var(--km-danger); color: #fff; font-size: 10px; border-radius: 8px; padding: 1px 5px; }
+.flow-arrow { color: var(--km-gray-400); font-size: 18px; margin: 4px 0; line-height: 1; }
 .agent-thread { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); }
 .thread-header { height: 36px; padding: 0 12px; display: flex; align-items: center; border-bottom: 1px solid var(--km-border-light); font-weight: 650; font-size: 13px; }
 .thread-body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 320px; }
