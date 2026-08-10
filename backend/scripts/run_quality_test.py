@@ -113,7 +113,7 @@ def measure_one(artifacts: dict, kg, do_judge: bool = True) -> dict:
             resources = generated.get("resources", [])
             independent = {
                 "hallucination": judge_hallucination(resources, kg=kg),
-                "adaptation": judge_adaptation(resources, profile, kg=kg),
+                "adaptation": judge_adaptation(resources, profile),
             }
         except Exception:
             logger.error("画像 [%s] 独立裁判失败, 降级仅自评", artifacts["name"], exc_info=True)
@@ -128,6 +128,9 @@ def measure_one(artifacts: dict, kg, do_judge: bool = True) -> dict:
         "review_passed": review.get("passed", False),
         "quality_metrics": qm,
         "independent": independent,
+        # 资源正文 + 画像 (供 --judge-only 模式重跑裁判, 免重跑工作流)
+        "resources": generated.get("resources", []),
+        "profile": profile,
     }
 
 
@@ -366,7 +369,44 @@ def main():
                         help="强制串行 (调试用; 默认并行)")
     parser.add_argument("--no-judge", action="store_true",
                         help="跳过独立裁判判定 (仅自评指标, 省 LLM 调用)")
+    parser.add_argument("--judge-only", action="store_true",
+                        help="只重跑独立裁判 (读上次 quality_report.json 的资源, 免重跑工作流; 需 Neo4j)")
     args = parser.parse_args()
+
+    # --- --judge-only: 读上次报告重跑裁判 (迭代裁判 prompt 用, 免全量工作流) ---
+    if args.judge_only:
+        json_path = Path(args.json_out)
+        if not json_path.is_file():
+            logger.error("--judge-only 需已有 %s (先全量跑一次)", json_path)
+            sys.exit(2)
+        embedding_client = KnowledgeGraph.create_embedding_client()
+        kg = KnowledgeGraph.from_settings(embedding_client=embedding_client)
+        if not kg.test_connection():
+            logger.error("Neo4j 不可达, 请先 docker-compose up -d 起 Neo4j。")
+            sys.exit(2)
+        previous = json.loads(json_path.read_text(encoding="utf-8"))
+        per_run = previous.get("per_run", [])
+        if not per_run or not per_run[0].get("resources"):
+            logger.error("上次报告无 resources 字段 (旧格式), 请全量重跑一次生成。")
+            sys.exit(2)
+        for r in per_run:
+            try:
+                r["independent"] = {
+                    "hallucination": judge_hallucination(r.get("resources", []), kg=kg),
+                    "adaptation": judge_adaptation(r.get("resources", []), r.get("profile") or {}),
+                }
+            except Exception:
+                logger.error("画像 [%s] 重判失败", r.get("name"), exc_info=True)
+                r["independent"] = None
+        # 重算聚合 + 重写报告
+        per_run = [r for r in per_run if r["quality_metrics"]]
+        aggregate_result = aggregate(per_run)
+        report = {"aggregate": aggregate_result, "per_run": per_run}
+        write_json(report, json_path)
+        write_markdown(report, Path(args.out))
+        print(f"\n--judge-only 完成: 重判 {len(per_run)} 画像, 报告已刷新: {args.out}")
+        kg.close()
+        sys.exit(0)
 
     # --- 环境依赖检查 ---
     if not llm_configured():
