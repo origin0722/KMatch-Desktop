@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML028-001",
+ "source_node_id": "ML-028",
+ "type": "choice",
+ "question": "模型部署时最容易踩的坑是？",
+ "options": [
+  "训练与推理预处理不一致",
+  "使用 FastAPI",
+  "模型过大",
+  "使用 pickle"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "预处理管线不一致是常见泄漏"
+}

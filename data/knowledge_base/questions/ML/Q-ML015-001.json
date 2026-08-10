@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML015-001",
+ "source_node_id": "ML-015",
+ "type": "choice",
+ "question": "PCA 降维的核心思想是？",
+ "options": [
+  "最小化标签相关",
+  "投影到方差最大的正交方向",
+  "最大化类别可分性",
+  "随机投影"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "方差最大方向保留主要信息"
+}

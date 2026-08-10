@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML030-001",
+ "source_node_id": "ML-030",
+ "type": "choice",
+ "question": "防数据泄漏的正确做法是？",
+ "options": [
+  "全量数据一起 fit 预处理再划分",
+  "只在训练集 fit, 再 transform 测试集",
+  "测试集单独 fit",
+  "不做预处理"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "fit/transform 分离"
+}

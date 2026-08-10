@@ -1,0 +1,55 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-JTP-001",
+ "name": "Java转Python老张",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "跨语言学习者",
+ "description": "Java 后端 5 年经验, 熟悉 OOP/设计模式, 因新项目要转 Python。概念都已掌握, 只需要快速对齐 Python 语法与生态差异, 不喜欢冗余讲解。",
+ "demographics": {
+  "age_range": "18-30",
+  "education": "本科（毕业5年）",
+  "major": "计算机科学与技术",
+  "programming_experience_months": 60,
+  "python_experience_months": 3,
+  "previously_learned_languages": [
+   "Java",
+   "C++"
+  ]
+ },
+ "theory_level": 4,
+ "practical_level": 3,
+ "learning_style": "read_write",
+ "target_direction": "Python 进阶（面向对象/常用库）",
+ "preferred_pace": "fast",
+ "time_per_week": 14,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "Python 动态特性 (鸭子类型/装饰器) 需要建立心智模型",
+  "对 Python 的库生态与工程化不熟"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 9,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 1,
+   "auditory": 1,
+   "read_write": 5,
+   "kinesthetic": 2
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_weeks": 4
+ }
+}

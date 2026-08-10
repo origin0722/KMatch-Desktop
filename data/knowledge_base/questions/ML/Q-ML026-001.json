@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML026-001",
+ "source_node_id": "ML-026",
+ "type": "choice",
+ "question": "LSTM 相比基础 RNN 的核心改进是？",
+ "options": [
+  "门控机制缓解长程依赖梯度问题",
+  "更快的卷积",
+  "无需训练",
+  "只能处理图像"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "门控记忆"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML021-001",
+ "source_node_id": "ML-021",
+ "type": "choice",
+ "question": "XGBoost 相比传统 GBDT 的改进不包括？",
+ "options": [
+  "二阶泰勒展开",
+  "正则化项",
+  "近似分裂加速",
+  "只能运行在 GPU 上"
+ ],
+ "answer": "D",
+ "difficulty": 3,
+ "explanation": "XGBoost 同时支持 CPU/GPU"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML027-001",
+ "source_node_id": "ML-027",
+ "type": "choice",
+ "question": "词嵌入 (Word2Vec) 的特点是？",
+ "options": [
+  "词向量稀疏",
+  "语义相近的词向量距离近",
+  "无法捕捉语义",
+  "必须人工设计特征"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "稠密向量编码语义"
+}

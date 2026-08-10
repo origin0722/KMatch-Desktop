@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML010-002",
+ "source_node_id": "ML-010",
+ "type": "choice",
+ "question": "决策树对以下哪种预处理最不敏感？",
+ "options": [
+  "特征标准化",
+  "缺失值补全",
+  "类别编码",
+  "异常值"
+ ],
+ "answer": "D",
+ "difficulty": 2,
+ "explanation": "树基于分裂阈值, 对尺度/异常不敏感"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML010-001",
+ "source_node_id": "ML-010",
+ "type": "choice",
+ "question": "CART 决策树的分裂准则默认是？",
+ "options": [
+  "信息增益",
+  "基尼不纯度",
+  "交叉熵",
+  "错误率"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "CART 用基尼不纯度"
+}

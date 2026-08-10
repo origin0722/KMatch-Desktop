@@ -1,0 +1,54 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-DAT-001",
+ "name": "数据方向小李",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "方向专攻学习者",
+ "description": "统计专业研一, 会用 R 但想转 Python 生态做数据分析。数学功底好, 逻辑强, 希望快速掌握 numpy/pandas 并完成真实数据分析项目。",
+ "demographics": {
+  "age_range": "18-30",
+  "education": "硕士在读",
+  "major": "统计学",
+  "programming_experience_months": 4,
+  "python_experience_months": 3,
+  "previously_learned_languages": [
+   "R"
+  ]
+ },
+ "theory_level": 3,
+ "practical_level": 2,
+ "learning_style": "visual",
+ "target_direction": "Python 数据分析（numpy/pandas）",
+ "preferred_pace": "fast",
+ "time_per_week": 12,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "只会调用示例, 不理解 Python 数据结构的特性",
+  "对 DataFrame 索引/切片等核心操作不熟练"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 7,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 3,
+   "auditory": 1,
+   "read_write": 3,
+   "kinesthetic": 2
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_weeks": 4
+ }
+}

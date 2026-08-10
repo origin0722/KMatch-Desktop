@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML006-002",
+ "source_node_id": "ML-006",
+ "type": "choice",
+ "question": "R² 决定系数为 -0.3 表示？",
+ "options": [
+  "模型完全正确",
+  "模型优于均值预测",
+  "模型比均值预测还差",
+  "无法解释"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "R²<0 说明不如直接预测均值"
+}

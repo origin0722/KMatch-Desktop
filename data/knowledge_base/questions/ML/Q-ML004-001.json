@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML004-001",
+ "source_node_id": "ML-004",
+ "type": "choice",
+ "question": "模型在训练集误差很小、测试集误差很大, 最可能是？",
+ "options": [
+  "欠拟合",
+  "过拟合",
+  "数据泄漏",
+  "特征不足"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "训练好测试差是过拟合的典型信号"
+}

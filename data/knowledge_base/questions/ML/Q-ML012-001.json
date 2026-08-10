@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML012-001",
+ "source_node_id": "ML-012",
+ "type": "choice",
+ "question": "SVM 中'支持向量'指？",
+ "options": [
+  "所有训练样本",
+  "决定最大间隔超平面的关键样本",
+  "错误样本",
+  "聚类质心"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "支持向量位于间隔边界"
+}

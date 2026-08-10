@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML017-001",
+ "source_node_id": "ML-017",
+ "type": "choice",
+ "question": "K 折交叉验证的主要用途是？",
+ "options": [
+  "最终测试集评估",
+  "超参数调优与模型选择",
+  "特征构造",
+  "数据增强"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "交叉验证用于模型选择, 测试集只留最后"
+}

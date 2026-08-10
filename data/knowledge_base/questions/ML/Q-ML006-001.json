@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML006-001",
+ "source_node_id": "ML-006",
+ "type": "choice",
+ "question": "线性回归的常见损失函数是？",
+ "options": [
+  "交叉熵",
+  "均方误差 MSE",
+  "合页损失",
+  "指数损失"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "回归用 MSE"
+}

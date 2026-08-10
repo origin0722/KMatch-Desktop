@@ -1,0 +1,52 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-STH-001",
+ "name": "自学程序员小周",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "自学补漏学习者",
+ "description": "靠网课自学 Python 一年, 能跑通示例代码但不懂原理, 基础有漏洞。会写简单脚本, 但面向对象/异常处理一知半解, 想系统补全基础。",
+ "demographics": {
+  "age_range": "18-30",
+  "education": "本科（毕业1年）",
+  "major": "机械工程",
+  "programming_experience_months": 14,
+  "python_experience_months": 12,
+  "previously_learned_languages": []
+ },
+ "theory_level": 2,
+ "practical_level": 2,
+ "learning_style": "read_write",
+ "target_direction": "Python 基础补全 + 面向对象",
+ "preferred_pace": "fast",
+ "time_per_week": 10,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "自学无系统, 基础语法有漏: 列表/字典混用、作用域不清",
+  "面向对象只见过类名, 不理解封装/继承的意义"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 6,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 2,
+   "auditory": 1,
+   "read_write": 3,
+   "kinesthetic": 3
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_weeks": 4
+ }
+}

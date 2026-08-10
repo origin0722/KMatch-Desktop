@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML007-001",
+ "source_node_id": "ML-007",
+ "type": "choice",
+ "question": "梯度下降中学习率过大的后果是？",
+ "options": [
+  "收敛加速且更优",
+  "损失震荡甚至发散",
+  "梯度消失",
+  "必然过拟合"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "学习率大跨度过量"
+}

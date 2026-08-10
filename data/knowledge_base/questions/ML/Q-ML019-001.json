@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML019-001",
+ "source_node_id": "ML-019",
+ "type": "choice",
+ "question": "朴素贝叶斯的核心假设是？",
+ "options": [
+  "特征完全相关",
+  "特征条件独立",
+  "样本独立",
+  "无任何假设"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "条件独立假设"
+}

@@ -1,0 +1,52 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-HSC-001",
+ "name": "高一学生小凡",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "高中零基础学习者",
+ "description": "高一学生, 学校开设信息课, 对编程感兴趣, 想为信息学竞赛打基础。数学不错, 但从未接触代码, 需要趣味化入门。",
+ "demographics": {
+  "age_range": "18-30",
+  "education": "高中",
+  "major": "高中在读",
+  "programming_experience_months": 0,
+  "python_experience_months": 0,
+  "previously_learned_languages": []
+ },
+ "theory_level": 1,
+ "practical_level": 1,
+ "learning_style": "kinesthetic",
+ "target_direction": "Python 入门（信息学竞赛基础）",
+ "preferred_pace": "normal",
+ "time_per_week": 5,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "编程完全零基础, 需要解释什么是程序",
+  "需要趣味案例保持兴趣"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 3,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 2,
+   "auditory": 1,
+   "read_write": 1,
+   "kinesthetic": 4
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_weeks": 4
+ }
+}

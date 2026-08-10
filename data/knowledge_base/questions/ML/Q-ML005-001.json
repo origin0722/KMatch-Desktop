@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML005-001",
+ "source_node_id": "ML-005",
+ "type": "choice",
+ "question": "类别不平衡(正类仅 1%)场景下, 评估模型最不应单独使用？",
+ "options": [
+  "精确率",
+  "召回率",
+  "F1",
+  "准确率"
+ ],
+ "answer": "D",
+ "difficulty": 2,
+ "explanation": "准确率会被多数类主导虚高"
+}

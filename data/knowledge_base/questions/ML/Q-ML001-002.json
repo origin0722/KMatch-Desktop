@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML001-002",
+ "source_node_id": "ML-001",
+ "type": "choice",
+ "question": "机器学习区别于传统规则编程的核心是？",
+ "options": [
+  "编写更多 if-else 规则",
+  "从数据中自动学习规律",
+  "使用更快的 CPU",
+  "人工标注所有逻辑"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "数据驱动自动学习是机器学习本质"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML022-001",
+ "source_node_id": "ML-022",
+ "type": "choice",
+ "question": "隐藏层最常用的激活函数是？",
+ "options": [
+  "sigmoid",
+  "ReLU",
+  "线性激活",
+  "softmax"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "ReLU 缓解梯度消失且计算快"
+}

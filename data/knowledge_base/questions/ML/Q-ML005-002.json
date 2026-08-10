@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML005-002",
+ "source_node_id": "ML-005",
+ "type": "choice",
+ "question": "精确率 P 与召回率 R 的 F1 分数公式是？",
+ "options": [
+  "(P+R)/2",
+  "2PR/(P+R)",
+  "P·R",
+  "P−R"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "F1 是 P、R 的调和平均"
+}

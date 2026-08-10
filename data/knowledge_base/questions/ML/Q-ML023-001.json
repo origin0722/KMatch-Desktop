@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML023-001",
+ "source_node_id": "ML-023",
+ "type": "choice",
+ "question": "反向传播计算梯度的数学依据是？",
+ "options": [
+  "贝叶斯定理",
+  "链式法则",
+  "傅里叶变换",
+  "最大似然"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "链式法则逐层回传"
+}

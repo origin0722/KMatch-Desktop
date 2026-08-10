@@ -5,11 +5,17 @@
   适配率  ≥85%  批量 = 总 matched 资源 / 总资源 (加权)
   覆盖率  ≥90%  批量 = 总 covered 弱项 / 总弱项 (加权)
 
+M5 升级 (2026-08-03): 独立裁判 (LLM-as-Judge) 双列对比 — 幻觉率/适配率除自评外,
+另由独立裁判判定 (judge_hallucination/judge_adaptation), 破除"作者自评"循环验证。
+裁判 LLM 用 .env JUDGE_LLM_* 独立配置 (可与主 LLM 不同源); 未配置回退主 LLM 并
+在报告标注 same_source 诚实降级。--no-judge 可关闭独立判定。
+
 用法:
   cd backend
-  python scripts/run_quality_test.py                 # 跑 3 个内置画像
+  python scripts/run_quality_test.py                 # 跑全部内置画像 (默认 10 组)
   python scripts/run_quality_test.py --profiles beginner intermediate
   python scripts/run_quality_test.py --out ../docs/质量检测报告.md
+  python scripts/run_quality_test.py --no-judge      # 仅自评指标 (跳过独立裁判)
 
 依赖: Neo4j 已起 + .env 配 LLM_API_KEY (demo 模式 LLM 自动作答)。
 产出: data/quality_report.json (机读) + docs/质量检测报告.md (人读, M5 交付物)。
@@ -30,6 +36,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.agents import make_initial_state  # noqa: E402
 from app.agents.llm import llm_configured  # noqa: E402
 from app.agents.orchestrator import build_workflow  # noqa: E402
+from app.agents.quality_judge import judge_adaptation, judge_hallucination  # noqa: E402
 from app.agents.quality_metrics import (  # noqa: E402
     ADAPTATION_TARGET,
     COVERAGE_TARGET,
@@ -44,7 +51,12 @@ from app.utils.logging import get_logger  # noqa: E402
 logger = get_logger(__name__)
 
 PROFILES_DIR = Path(settings.DATA_DIR) / "user_profiles"
-DEFAULT_PROFILES = ["beginner", "intermediate", "advanced"]
+# M5 升级: 3 原有 + 7 新增差异化画像 = 10 组 (赛题 ≥3 组不同背景画像要求超配)
+DEFAULT_PROFILES = [
+    "beginner", "intermediate", "advanced",
+    "non_tech", "career_switch", "self_taught", "data_analyst",
+    "web_dev", "high_school", "java_to_python",
+]
 REPORT_JSON = Path(settings.DATA_DIR) / "quality_report.json"
 REPORT_MD = Path(settings.DATA_DIR).parent / "docs" / "质量检测报告.md"
 
@@ -82,14 +94,30 @@ def run_one(kg, profile: dict) -> dict:
     }
 
 
-def measure_one(artifacts: dict, kg) -> dict:
-    """对单次运行产出算质量指标 (复用 build_learning_report)。"""
+def measure_one(artifacts: dict, kg, do_judge: bool = True) -> dict:
+    """对单次运行产出算质量指标 (复用 build_learning_report) + 独立裁判判定。
+
+    do_judge=True 时对生成的资源逐条跑独立裁判 (幻觉 + 难度适配), 结果挂
+    independent 字段; 判定失败 (LLM 未配/调用异常) 时该字段为 None 并降级仅自评。
+    """
     profile = artifacts["user_profile"]
     kg_state = artifacts["knowledge_graph"]
     generated = artifacts["generated_content"]
     review = artifacts["review_results"]
     report = build_learning_report(profile, kg_state, generated, review, kg=kg)
     qm = report["quality_metrics"]
+
+    independent = None
+    if do_judge:
+        try:
+            resources = generated.get("resources", [])
+            independent = {
+                "hallucination": judge_hallucination(resources, kg=kg),
+                "adaptation": judge_adaptation(resources, profile, kg=kg),
+            }
+        except Exception:
+            logger.error("画像 [%s] 独立裁判失败, 降级仅自评", artifacts["name"], exc_info=True)
+
     return {
         "profile_id": artifacts["profile_id"],
         "name": artifacts["name"],
@@ -99,6 +127,7 @@ def measure_one(artifacts: dict, kg) -> dict:
         "weak_count": qm["coverage_rate"]["total_weak"],
         "review_passed": review.get("passed", False),
         "quality_metrics": qm,
+        "independent": independent,
     }
 
 
@@ -132,6 +161,37 @@ def aggregate(per_run: list[dict]) -> dict:
         and coverage_rate >= COVERAGE_TARGET
     )
 
+    # --- 独立裁判双列 (M5 升级): 有独立判定的运行才纳入独立聚合 ---
+    judged_runs = [r for r in per_run if r.get("independent")]
+    independent = None
+    if judged_runs:
+        ih = [r["independent"]["hallucination"] for r in judged_runs]
+        ia = [r["independent"]["adaptation"] for r in judged_runs]
+        j_total = sum(h["total"] for h in ih)
+        j_hallucinated = sum(h["hallucinated"] for h in ih)
+        j_unverifiable = sum(h["unverifiable"] for h in ih)
+        a_matched = sum(a["matched"] for a in ia)
+        a_total = sum(a["total"] for a in ia)
+        independent = {
+            "n_runs": len(judged_runs),
+            "hallucination_rate": {
+                "rate": round(j_hallucinated / j_total, 3) if j_total else 0.0,
+                "hallucinated": j_hallucinated,
+                "unverifiable": j_unverifiable,
+                "total": j_total,
+                "target_lt": HALLUCINATION_TARGET,
+                "passed": (j_hallucinated / j_total) < HALLUCINATION_TARGET if j_total else True,
+            },
+            "adaptation_rate": {
+                "rate": round(a_matched / a_total, 3) if a_total else 0.0,
+                "matched": a_matched,
+                "total": a_total,
+                "target_gte": ADAPTATION_TARGET,
+                "passed": (a_matched / a_total) >= ADAPTATION_TARGET if a_total else False,
+            },
+            "same_source": all(h["same_source"] for h in ih) and all(a["same_source"] for a in ia),
+        }
+
     return {
         "n_profiles": n,
         "hallucination_rate": {
@@ -155,6 +215,7 @@ def aggregate(per_run: list[dict]) -> dict:
             "target_gte": COVERAGE_TARGET,
             "passed": coverage_rate >= COVERAGE_TARGET,
         },
+        "independent": independent,
         "all_passed": all_passed,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
@@ -193,7 +254,36 @@ def write_markdown(report: dict, path: Path) -> None:
         f"- 适配率: {agg['adaptation_rate']['matched']}/{agg['adaptation_rate']['total_resources']} 资源难度匹配",
         f"- 覆盖率: {agg['coverage_rate']['covered']}/{agg['coverage_rate']['total_weak']} 弱项被路径覆盖",
         "",
-        "## 二、指标定义",
+        "## 二、独立裁判判定 (M5 升级, LLM-as-Judge)",
+        "",
+        "> 破解'作者自评'循环验证: 幻觉率/适配率除系统自评外, 由**独立裁判**判定 — 裁判只拿到资源内容"
+        " + 图谱事实 (summary/key_points), 不拿生成过程与 reviewer 结论。裁判 LLM 经 .env "
+        "JUDGE_LLM_* 独立配置, 可与主 LLM 不同源。",
+    ]
+    ind = agg.get("independent")
+    if ind:
+        ih, ia = ind["hallucination_rate"], ind["adaptation_rate"]
+        src = "⚠️ 同源裁判 (未配置 JUDGE_LLM_*, 回退主 LLM)" if ind["same_source"] else "✅ 独立裁判 (JUDGE_LLM_* 不同源)"
+        lines += [
+            f"**裁判源**: {src}",
+            "",
+            "| 指标 | 系统自评 | 独立裁判 | 达标线 | 独立判定 |",
+            "|:---|:---:|:---:|:---:|:---:|",
+            f"| 幻觉率 | {agg['hallucination_rate']['rate']*100:.1f}% | "
+            f"{ih['rate']*100:.1f}% ({ih['hallucinated']}/{ih['total']} 条, "
+            f"unverifiable {ih['unverifiable']} 条) | <{HALLUCINATION_TARGET*100:.0f}% | "
+            f"{'✅' if ih['passed'] else '❌'} |",
+            f"| 适配率 | {agg['adaptation_rate']['rate']*100:.1f}% | "
+            f"{ia['rate']*100:.1f}% ({ia['matched']}/{ia['total']} 条) | ≥{ADAPTATION_TARGET*100:.0f}% | "
+            f"{'✅' if ia['passed'] else '❌'} |",
+            "",
+            f"- 独立裁判覆盖 {ind['n_runs']} 次运行; 判定失败的运行仅计入自评列 (标注 n/a)",
+        ]
+    else:
+        lines += ["**独立裁判未运行** (--no-judge 或全部判定失败), 下表仅为自评指标。"]
+    lines += [
+        "",
+        "## 三、指标定义",
         "",
         "- **幻觉率**: reviewer 抗幻觉维度 (factual_accuracy + hallucination) 检出问题的运行占比。"
         "reviewer 通过(维度满分)→0%。批量=检出幻觉运行数/总运行数。",
@@ -212,7 +302,7 @@ def write_markdown(report: dict, path: Path) -> None:
         "- **幻觉率 0%**: content_generator↔reviewer 打回博弈 + 层次1减幻觉 (prompt 禁图谱外事实) 生效, "
         "3 画像 reviewer 审核 0.96-1.0 一次过, 无幻觉检出。",
         "",
-        "## 三、逐画像明细",
+        "## 四、逐画像明细",
         "",
         "| 画像 | 类型 | 资源数 | 弱项数 | 审核 | 幻觉率 | 适配率 | 覆盖率 |",
         "|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|",
@@ -228,7 +318,28 @@ def write_markdown(report: dict, path: Path) -> None:
         )
     lines += [
         "",
-        "## 四、抗幻觉机制说明",
+        "## 五、独立判定证据链 (逐条资源)",
+        "",
+        "> 每条资源的独立裁判判定明细 (内容 → 图谱事实 → 判定), 供评委追溯。"
+        "graph: grounded(可溯源) / hallucinated(幻觉) / unverifiable(无法核实)。",
+        "",
+        "| 画像 | 资源# | 类型 | 目标节点 | 幻觉判定 | 理由 |",
+        "|:---|:---:|:---|:---|:---:|:---|",
+    ]
+    for r in per_run:
+        ind = r.get("independent")
+        if not ind:
+            lines.append(f"| {r['name']} | - | - | - | n/a | 独立判定未运行 |")
+            continue
+        for v in ind["hallucination"]["verdicts"]:
+            vmark = {"grounded": "✅", "hallucinated": "❌", "unverifiable": "⚠️"}.get(v["verdict"], "?")
+            lines.append(
+                f"| {r['name']} | {v['resource_index']} | {v['content_type']} | "
+                f"{v['target_node_id']} | {vmark} {v['verdict']} | {v['reason']} |"
+            )
+    lines += [
+        "",
+        "## 六、抗幻觉机制说明",
         "",
         "本系统通过 content_generator ↔ reviewer 打回博弈 (赛题(4)①辩论与交叉验证) 消除幻觉:",
         "- content_generator prompt 显式禁止图谱外事实,强制 source_nodes 溯源 (层次1减幻觉杠杆A)",
@@ -253,6 +364,8 @@ def main():
                         help="画像并行度 (默认 2; 受 LLM 速率限制, 过高易 429)")
     parser.add_argument("--serial", action="store_true",
                         help="强制串行 (调试用; 默认并行)")
+    parser.add_argument("--no-judge", action="store_true",
+                        help="跳过独立裁判判定 (仅自评指标, 省 LLM 调用)")
     args = parser.parse_args()
 
     # --- 环境依赖检查 ---
@@ -281,12 +394,12 @@ def main():
     logger.info("开始跑 %d 画像质量检测 [%s]", len(pending), mode)
 
     def _run_pair(name_profile):
-        """单画像: 跑工作流 + 算指标。返回 (name, measured_or_None)。"""
+        """单画像: 跑工作流 + 算指标 (+ 独立裁判)。返回 (name, measured_or_None)。"""
         name, profile = name_profile
         logger.info("▶ 跑画像 [%s] target=%s", name, profile.get("target_direction"))
         try:
             artifacts = run_one(kg, profile)
-            measured = measure_one(artifacts, kg)
+            measured = measure_one(artifacts, kg, do_judge=not args.no_judge)
             return name, measured
         except Exception:
             logger.error("画像 [%s] 运行失败", name, exc_info=True)
@@ -345,6 +458,11 @@ def main():
     print(f"  覆盖率: {aggregate_result['coverage_rate']['rate']*100:.1f}%  "
           f"(达标 ≥{COVERAGE_TARGET*100:.0f}%) "
           f"{'✅' if aggregate_result['coverage_rate']['passed'] else '❌'}")
+    ind = aggregate_result.get("independent")
+    if ind:
+        src = "同源" if ind["same_source"] else "独立源"
+        print(f"  [独立裁判 {src}] 幻觉率: {ind['hallucination_rate']['rate']*100:.1f}% / "
+              f"适配率: {ind['adaptation_rate']['rate']*100:.1f}%")
     print(f"  总体: {'✅ 全达标' if aggregate_result['all_passed'] else '❌ 未全达标'}")
     print(f"  报告: {args.out}")
     print("=" * 60)

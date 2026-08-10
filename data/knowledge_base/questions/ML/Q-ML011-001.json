@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML011-001",
+ "source_node_id": "ML-011",
+ "type": "choice",
+ "question": "随机森林通过哪种机制降低树间相关性？",
+ "options": [
+  "对特征随机子集分裂",
+  "串行拟合残差",
+  "调整样本权重",
+  "无任何机制"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "特征子集随机是关键"
+}

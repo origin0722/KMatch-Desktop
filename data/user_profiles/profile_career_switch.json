@@ -1,0 +1,52 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-CSW-001",
+ "name": "财务张姐",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "在职转岗学习者",
+ "description": "30 岁财务主管, 白天上班晚上学习, 目标转岗数据分析。会用 Excel 但不了解编程, 希望学 Python 提升数据处理效率, 学习时间碎片化。",
+ "demographics": {
+  "age_range": "18-30",
+  "education": "本科",
+  "major": "会计学",
+  "programming_experience_months": 0,
+  "python_experience_months": 0,
+  "previously_learned_languages": []
+ },
+ "theory_level": 2,
+ "practical_level": 1,
+ "learning_style": "read_write",
+ "target_direction": "Python 数据分析基础（pandas 入门）",
+ "preferred_pace": "normal",
+ "time_per_week": 8,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "编程基础薄弱, 只熟悉 Excel 函数概念",
+  "对自动化批处理没有概念, 需要讲清楚脚本是什么"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 4,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 2,
+   "auditory": 1,
+   "read_write": 4,
+   "kinesthetic": 2
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_weeks": 4
+ }
+}

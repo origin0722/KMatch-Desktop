@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML025-001",
+ "source_node_id": "ML-025",
+ "type": "choice",
+ "question": "卷积层权值共享的意义是？",
+ "options": [
+  "减少参数且局部特征提取",
+  "增加参数量",
+  "让网络变成线性",
+  "消除池化"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "共享卷积核降参"
+}

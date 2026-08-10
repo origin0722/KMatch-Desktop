@@ -1,0 +1,10 @@
+{
+ "qid": "Q-ML007-002",
+ "source_node_id": "ML-007",
+ "type": "fill",
+ "question": "梯度下降每次迭代沿损失函数____方向更新参数。",
+ "options": [],
+ "answer": "负梯度",
+ "difficulty": 2,
+ "explanation": "下降方向为负梯度"
+}

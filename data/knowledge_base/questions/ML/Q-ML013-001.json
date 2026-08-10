@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML013-001",
+ "source_node_id": "ML-013",
+ "type": "choice",
+ "question": "使用 KNN 前必须做的预处理是？",
+ "options": [
+  "数据标准化",
+  "One-Hot 编码",
+  "PCA 降维",
+  "随机采样"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "距离对尺度敏感"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML024-001",
+ "source_node_id": "ML-024",
+ "type": "choice",
+ "question": "现代深度学习图像任务的主流做法是？",
+ "options": [
+  "从零随机初始化训练",
+  "加载预训练权重微调",
+  "只用规则特征",
+  "不使用 GPU"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "迁移学习微调"
+}

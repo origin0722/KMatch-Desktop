@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML029-001",
+ "source_node_id": "ML-029",
+ "type": "choice",
+ "question": "CRISP-DM 流程第一步是？",
+ "options": [
+  "建模",
+  "业务理解",
+  "数据准备",
+  "部署"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "业务理解先行"
+}

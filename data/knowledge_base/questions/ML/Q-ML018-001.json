@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML018-001",
+ "source_node_id": "ML-018",
+ "type": "choice",
+ "question": "Boosting 与 Bagging 的主要区别是？",
+ "options": [
+  "Boosting 串行降低偏差, Bagging 并行降低方差",
+  "两者完全相同",
+  "Boosting 不能用于分类",
+  "Bagging 只能用于回归"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "串行/并行与偏差/方差的对应"
+}

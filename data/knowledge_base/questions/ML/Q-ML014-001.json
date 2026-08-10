@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML014-001",
+ "source_node_id": "ML-014",
+ "type": "choice",
+ "question": "K-Means 属于哪类学习？",
+ "options": [
+  "监督学习",
+  "无监督学习",
+  "强化学习",
+  "半监督学习"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "无标签聚类"
+}

@@ -1,0 +1,52 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-NTC-001",
+ "name": "文科生小林",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "零基础转行学习者",
+ "description": "汉语言文学大三学生, 想转行互联网, 从未写过代码。对编程充满好奇但完全零基础, 需要从变量/数据类型一步步讲起, 例子要贴近生活。",
+ "demographics": {
+  "age_range": "18-30",
+  "education": "本科在读（大三）",
+  "major": "汉语言文学",
+  "programming_experience_months": 0,
+  "python_experience_months": 0,
+  "previously_learned_languages": []
+ },
+ "theory_level": 1,
+ "practical_level": 1,
+ "learning_style": "visual",
+ "target_direction": "Python 零基础入门到能独立写小脚本",
+ "preferred_pace": "slow",
+ "time_per_week": 6,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "从未接触编程, 对变量/数据类型等基本概念无任何认知",
+  "逻辑思维偏文科, 条件判断和循环需要大量类比讲解"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 2,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 4,
+   "auditory": 2,
+   "read_write": 2,
+   "kinesthetic": 1
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_weeks": 4
+ }
+}

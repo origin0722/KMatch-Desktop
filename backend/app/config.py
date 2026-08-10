@@ -27,6 +27,12 @@ class Settings:
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-v4-pro")
 
+    # --- 独立裁判 LLM (M5 质检升级: 与主 LLM 不同源, 提升指标可信度) ---
+    # 留空则回退主 LLM (报告标注 same_source=True 诚实降级)
+    JUDGE_LLM_API_KEY: str = os.getenv("JUDGE_LLM_API_KEY", "")
+    JUDGE_LLM_BASE_URL: str = os.getenv("JUDGE_LLM_BASE_URL", "")
+    JUDGE_LLM_MODEL: str = os.getenv("JUDGE_LLM_MODEL", "")
+
     # --- Embedding ---
     # 独立配置，如未设置则 fallback 到 LLM_* 的值
     EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", "") or os.getenv("LLM_API_KEY", "sk-placeholder")

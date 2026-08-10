@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML020-001",
+ "source_node_id": "ML-020",
+ "type": "choice",
+ "question": "GBDT 每棵新树拟合的对象是？",
+ "options": [
+  "原始标签",
+  "前序模型的负梯度(近似残差)",
+  "随机噪声",
+  "类别分布"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "负梯度拟合"
+}

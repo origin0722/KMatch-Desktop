@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML001-001",
+ "source_node_id": "ML-001",
+ "type": "choice",
+ "question": "下列哪项属于监督学习的典型任务？",
+ "options": [
+  "聚类",
+  "回归预测房价",
+  "降维可视化",
+  "关联规则挖掘"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "回归/分类有标签, 属监督学习"
+}

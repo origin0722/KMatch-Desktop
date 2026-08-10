@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML008-001",
+ "source_node_id": "ML-008",
+ "type": "choice",
+ "question": "逻辑回归输出层的激活函数是？",
+ "options": [
+  "ReLU",
+  "sigmoid",
+  "tanh",
+  "softmax(仅多类)"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "二分类用 sigmoid 映射 (0,1)"
+}

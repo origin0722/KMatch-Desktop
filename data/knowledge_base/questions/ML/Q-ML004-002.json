@@ -1,0 +1,15 @@
+{
+ "qid": "Q-ML004-002",
+ "source_node_id": "ML-004",
+ "type": "choice",
+ "question": "缓解过拟合的有效手段不包括？",
+ "options": [
+  "增加正则化强度",
+  "增加训练数据",
+  "增大模型复杂度",
+  "早停 (Early Stopping)"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "增大复杂度会加重过拟合"
+}
