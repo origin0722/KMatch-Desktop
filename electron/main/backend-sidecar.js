@@ -6,6 +6,7 @@
  * Neo4j 仍由用户用 Docker 起 (scripts/start_all.py), 本模块不拉 Neo4j。
  */
 import { spawn } from 'child_process'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { app } from 'electron'
@@ -48,29 +49,34 @@ function resolvePackagedBackendExe() {
 }
 
 function spawnBackend() {
-  if (app.isPackaged) {
-    // S3: 生产分支 — spawn PyInstaller 可执行体
-    const exe = resolvePackagedBackendExe()
-    const proc = spawn(exe, [], {
-      cwd: path.dirname(exe),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env },
-    })
-    proc.stdout?.on('data', (d) => process.stdout.write(`[backend] ${d}`))
-    proc.stderr?.on('data', (d) => process.stderr.write(`[backend] ${d}`))
-    proc.on('exit', (code) => { console.log(`[backend] KMatchBackend 退出, code=${code}`); backendProc = null })
-    return proc
-  }
+  // 生产判定: 不再盲信 app.isPackaged (electron-vite dev 下部分环境仍为 true, 会误走
+  // KMatchBackend.exe 分支 → ENOENT 崩溃, 实测黑屏根因)。改为"exe 真实存在"才算生产。
+  const exe = resolvePackagedBackendExe()
+  const usePackaged = app.isPackaged && fs.existsSync(exe)
+  const cwd = usePackaged ? path.dirname(exe) : resolveDevBackendDir()
 
-  // 开发期: python -m uvicorn
-  const cwd = resolveDevBackendDir()
-  const proc = spawn(process.env.PYTHON || 'python', [
-    '-m', 'uvicorn', 'app.main:app',
-    '--host', '127.0.0.1', '--port', '8000',
-  ], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+  // PYTHONIOENCODING=utf-8: 后端日志含 ✅/❌ 等字符, 管道下 Python 默认按 GBK 编码会
+  // UnicodeEncodeError 刷 "Logging error" 噪音 (实测)。
+  const env = { ...process.env, PYTHONIOENCODING: 'utf-8' }
+  const proc = usePackaged
+    ? spawn(exe, [], { cwd, stdio: ['ignore', 'pipe', 'pipe'], env })
+    : spawn(process.env.PYTHON || 'python', [
+        '-m', 'uvicorn', 'app.main:app',
+        '--host', '127.0.0.1', '--port', '8000',
+      ], { cwd, stdio: ['ignore', 'pipe', 'pipe'], env })
+
+  // 必须挂 'error' 处理器: spawn 目标不存在 (ENOENT) 时若不加, 会触发未捕获异常,
+  // 直接弹 "A JavaScript error occurred in the main process" + 黑屏 (实测根因)。
+  proc.on('error', (err) => {
+    console.error(`[backend] spawn 失败 (${usePackaged ? exe : 'python -m uvicorn'}): ${err.message}`)
+    backendProc = null
+  })
   proc.stdout?.on('data', (d) => process.stdout.write(`[backend] ${d}`))
   proc.stderr?.on('data', (d) => process.stderr.write(`[backend] ${d}`))
-  proc.on('exit', (code) => { console.log(`[backend] uvicorn 退出, code=${code}`); backendProc = null })
+  proc.on('exit', (code) => {
+    console.log(`[backend] ${usePackaged ? 'KMatchBackend' : 'uvicorn'} 退出, code=${code}`)
+    backendProc = null
+  })
   return proc
 }
 
@@ -81,13 +87,15 @@ export async function startBackend() {
     return
   }
   // 2. spawn
-  console.log(`[backend] 启动 sidecar (${app.isPackaged ? 'packaged exe' : 'uvicorn dev'})...`)
+  const exe = resolvePackagedBackendExe()
+  const usePackaged = app.isPackaged && fs.existsSync(exe)
+  console.log(`[backend] 启动 sidecar (${usePackaged ? 'packaged exe' : 'uvicorn dev'})...`)
   backendProc = spawnBackend()
   const ready = await waitForReady()
   if (ready) {
     console.log('[backend] 就绪 ✓')
   } else {
-    const hint = app.isPackaged
+    const hint = usePackaged
       ? '打包后端启动失败 (检查 resources/backend/KMatchBackend.exe 是否存在)'
       : '请确认 backend 依赖已装 (pip install -r requirements.txt) + .env 已配 + Neo4j 已起'
     console.warn(`[backend] 30s 内未就绪, 业务功能不可用。${hint}`)
