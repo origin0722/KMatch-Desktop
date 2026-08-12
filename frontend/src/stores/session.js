@@ -9,6 +9,9 @@
  *
  * splitView: null | 'graph' | 'learning' | 'dashboard' (主从分屏右半视图)
  *
+ * showCollab: #30 答题完成后默认展示 AI 协同。纯布局状态 (可手动收起)——
+ *   由 assessment.phase watch 自动点亮 (feedback→true, idle→复位), 用户可 setShowCollab(false) 收起。
+ *
  * 优先级 (高→低): graph > agent > quiz > goal
  *
  * 边界 (C4 决策: 保留为独立 store):
@@ -17,7 +20,7 @@
  *   并入 assessment 会让领域 store 混入布局职责, 反增耦合。session 作为"学习会话布局"独立
  *   store 合理; activeStage 派生自 assessment 是有意为之 (单一真相源, 见重构方案_解耦.md C4)。
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useAssessmentStore } from '@/stores/assessment'
 
@@ -26,6 +29,28 @@ const SPLITTABLE = new Set(['graph', 'learning', 'dashboard'])
 
 export const useSessionStore = defineStore('session', () => {
   const splitView = ref(null)
+
+  /**
+   * #30 答题完成后默认展示 AI 协同 (可手动收起)。
+   * 派生自 assessment.phase (单一真相源): feedback 自动点亮, idle 复位。
+   * 手动收起走 setShowCollab(false), 不随 phase 重复点亮 (phase 不变回 idle 不会重置)。
+   */
+  const showCollab = ref(false)
+  watch(
+    () => {
+      const a = useAssessmentStore()
+      return a.phase
+    },
+    (p) => {
+      if (p === 'feedback') showCollab.value = true
+      else if (p === 'idle') showCollab.value = false
+    },
+    { flush: 'sync' },
+  )
+
+  function setShowCollab(v) {
+    showCollab.value = !!v
+  }
 
   const activeStage = computed(() => {
     const a = useAssessmentStore()
@@ -43,5 +68,5 @@ export const useSessionStore = defineStore('session', () => {
     splitView.value = null
   }
 
-  return { activeStage, splitView, setSplitView, closeSplit }
+  return { activeStage, splitView, showCollab, setSplitView, closeSplit, setShowCollab }
 })

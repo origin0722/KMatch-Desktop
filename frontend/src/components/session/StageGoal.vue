@@ -5,39 +5,36 @@
       <h4>目标设定</h4>
     </header>
     <div class="stage-body">
-      <el-form :model="form" label-width="100px" label-position="left" @submit.prevent="handleStart">
-        <el-form-item label="学习目标方向" required>
-          <div class="preset-directions">
-            <el-tag
-              v-for="d in presetDirections"
-              :key="d"
-              :effect="form.targetDirection === d ? 'dark' : 'plain'"
-              :type="form.targetDirection === d ? 'primary' : 'info'"
-              class="preset-tag"
-              @click="form.targetDirection = d"
-            >{{ d }}</el-tag>
-          </div>
-          <el-input
-            v-model="form.targetDirection"
-            placeholder="或自定义方向（如：Python 基础语法入门）"
-            :maxlength="200"
-            show-word-limit
-          />
-        </el-form-item>
-        <el-form-item label="场景">
-          <el-select v-model="form.scene" style="width: 200px;">
-            <el-option label="无项目技能训练" value="no_project" />
-            <el-option label="有项目二次开发" value="with_project" />
-          </el-select>
-          <span class="hint-text">选择学习场景类型</span>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" size="large" :disabled="!canStart" :loading="store.loading" @click="handleStart">
-            开始测评 →
-          </el-button>
-          <span v-if="!canStart" class="hint-text">请选择或输入学习目标方向</span>
-        </el-form-item>
-      </el-form>
+      <!-- #30: 学习目标方向压成一行 — 顶部胶囊标签 (点击即选) + 内联自定义输入, 不换行可横向滚动 -->
+      <div class="direction-row">
+        <el-tag
+          v-for="d in presetDirections"
+          :key="d"
+          :effect="form.targetDirection === d ? 'dark' : 'plain'"
+          :type="form.targetDirection === d ? 'primary' : 'info'"
+          class="preset-tag"
+          @click="form.targetDirection = d"
+        >{{ d }}</el-tag>
+        <el-input
+          v-model="form.targetDirection"
+          placeholder="自定义方向…"
+          :maxlength="120"
+          class="direction-input"
+        />
+      </div>
+      <div class="control-row">
+        <span class="field-label">场景</span>
+        <el-select v-model="form.scene" style="width: 200px;">
+          <el-option label="无项目技能训练" value="no_project" />
+          <el-option label="有项目二次开发" value="with_project" />
+        </el-select>
+      </div>
+      <div class="control-row actions">
+        <el-button type="primary" size="large" :disabled="!canStart" :loading="store.loading" @click="handleStart">
+          开始测评 →
+        </el-button>
+        <span v-if="!canStart" class="hint-text">请选择或输入学习目标方向</span>
+      </div>
     </div>
   </section>
 </template>
@@ -67,8 +64,15 @@ async function handleStart() {
 .stage-no { font-family: var(--km-font-mono); font-size: 12px; color: var(--km-gray-500); }
 .stage-head h4 { margin: 0; font-size: 14px; color: var(--km-gray-800); }
 .stage-body { padding: 16px; }
-.preset-directions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.preset-tag { cursor: pointer; font-size: 13px; user-select: none; }
+
+/* #30: 单行方向 — 胶囊 + 输入同行, 溢出横向滚动 (隐藏滚动条) */
+.direction-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 4px; }
+.direction-row::-webkit-scrollbar { display: none; }
+.preset-tag { cursor: pointer; font-size: 13px; user-select: none; flex-shrink: 0; margin: 0 !important; }
 .preset-tag:hover { opacity: 0.85; }
-.hint-text { margin-left: 12px; color: var(--km-gray-500); font-size: 13px; }
+.direction-input { flex: 1; min-width: 200px; }
+.control-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.field-label { font-size: 13px; font-weight: 600; color: var(--km-gray-700); flex-shrink: 0; }
+.actions { margin-top: 16px; }
+.hint-text { color: var(--km-gray-500); font-size: 13px; }
 </style>

@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { watch, nextTick, ref, computed } from 'vue'
+import { watch, nextTick, ref, computed, onBeforeUnmount } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
 import StageGoal from '@/components/session/StageGoal.vue'
@@ -80,8 +80,30 @@ const flowRef = ref(null)
 watch(() => session.activeStage, async () => {
   await nextTick()
   const el = flowRef.value?.querySelector('.stage-card.active')
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
 })
+
+// #30: 滚动驱动激活 — 答题区滚动到底 (提交按钮可见) 自动点亮 AI 协同入口。
+// 提交后 session store 已由 phase=feedback 置 showCollab, 此处负责"提前点亮"与回退清理。
+const collabObserver = ref(null)
+function bindCollabObserver() {
+  collabObserver.value?.disconnect()
+  const submitEl = flowRef.value?.querySelector('.quiz-submit')
+  if (!submitEl || typeof IntersectionObserver === 'undefined') return
+  collabObserver.value = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting)) session.setShowCollab(true)
+  }, { root: flowRef.value, threshold: 0.4 })
+  collabObserver.value.observe(submitEl)
+}
+watch(() => store.phase, async (p) => {
+  if (p === 'answering') {
+    await nextTick()
+    bindCollabObserver()
+  } else {
+    collabObserver.value?.disconnect()
+  }
+})
+onBeforeUnmount(() => collabObserver.value?.disconnect())
 </script>
 
 <style scoped>

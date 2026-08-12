@@ -46,6 +46,23 @@ describe('session store', () => {
     expect(s.splitView).toBeNull()
   })
 
+  it('#30 showCollab: 默认 false, phase=feedback 自动点亮, 可手动收起', () => {
+    const s = useSessionStore()
+    expect(s.showCollab).toBe(false)
+    mockAssessment.phase = 'feedback'
+    expect(s.showCollab).toBe(true)   // flush: 'sync' → 同步点亮
+    s.setShowCollab(false)            // 手动收起
+    expect(s.showCollab).toBe(false)
+  })
+
+  it('#30 showCollab: phase 回 idle (重新测评) 复位', () => {
+    const s = useSessionStore()
+    mockAssessment.phase = 'feedback'
+    expect(s.showCollab).toBe(true)
+    mockAssessment.phase = 'idle'
+    expect(s.showCollab).toBe(false)
+  })
+
   it('setSplitView 拒绝非法视图名', () => {
     const s = useSessionStore()
     s.setSplitView('code')
