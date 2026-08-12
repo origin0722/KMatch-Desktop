@@ -22,13 +22,7 @@
           class="direction-input"
         />
       </div>
-      <div class="control-row">
-        <span class="field-label">场景</span>
-        <el-select v-model="form.scene" style="width: 200px;">
-          <el-option label="无项目技能训练" value="no_project" />
-          <el-option label="有项目二次开发" value="with_project" />
-        </el-select>
-      </div>
+      <!-- #30 反馈: 学习会话是"无项目技能训练"场景一专属, 不暴露"有项目二次开发"选项 (场景二走项目图谱视图) -->
       <div class="control-row actions">
         <el-button type="primary" size="large" :disabled="!canStart" :loading="store.loading" @click="handleStart">
           开始测评 →
@@ -45,7 +39,7 @@ import { useAssessmentStore } from '@/stores/assessment'
 
 const store = useAssessmentStore()
 
-const form = reactive({ targetDirection: '', scene: 'no_project' })
+const form = reactive({ targetDirection: '' })
 const presetDirections = [
   'Python 基础语法入门', '数据结构与算法', '面向对象编程',
   'Python 进阶', '常用库与工具', '项目实战',
@@ -54,7 +48,8 @@ const canStart = computed(() => form.targetDirection.trim().length > 0)
 
 async function handleStart() {
   if (!canStart.value) return
-  await store.startAssessment({ targetDirection: form.targetDirection.trim(), scene: form.scene })
+  // 学习会话固定场景一 (无项目技能训练), scene 默认 no_project
+  await store.startAssessment({ targetDirection: form.targetDirection.trim(), scene: 'no_project' })
 }
 </script>
 

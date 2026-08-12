@@ -106,12 +106,13 @@ export function submitAnswers({ sessionId, answers }, signal) {
  * }>}
  */
 export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, signal) {
+  // timeout 150s: feedback 逐节点 LLM 再生 + 可选 Tavily 联网, 常超默认 60s
   return http.post('/api/diagnostics/feedback', withOverrides({
     session_id: sessionId,
     strategy,
     profile,
     tavily_key: tavilyKey || undefined,
-  }), signal ? { signal } : undefined)
+  }), { signal, timeout: 150_000 })
 }
 
 // ============================================================

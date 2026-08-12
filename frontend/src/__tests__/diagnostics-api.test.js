@@ -105,7 +105,8 @@ describe('api/diagnostics', () => {
           strategy: 'remediate',
           profile,
         },
-        undefined,
+        // #30 反馈: timeout 150s (逐节点 LLM 再生常超默认 60s, 经 axios config.timeout 透传主进程代理)
+        { signal: undefined, timeout: 150000 },
       )
     })
 

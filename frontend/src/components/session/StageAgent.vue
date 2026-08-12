@@ -104,9 +104,10 @@ watch(() => session.activeStage, (s) => {
   if (s === 'agent') expanded.value = true
 }, { immediate: true })
 
-// #30: 答题完成默认展示 AI 协同 — showCollab 点亮时自动展开 (可手动收起, 不强制展开)
-watch(() => session.showCollab, (v) => {
-  if (v && hasLogs.value) expanded.value = true
+// #30: 答题完成默认展示 AI 协同 — collabOn (showCollab && hasLogs) 成立即自动展开 (可手动收起)。
+// 需同时监听两者: showCollab 可能被滚动驱动提前点亮 (日志未就绪), 提交后日志到达 hasLogs 翻真时仍要展开。
+watch([() => session.showCollab, hasLogs], () => {
+  if (session.showCollab && hasLogs.value) expanded.value = true
 })
 
 watch(parsedLogs, async () => {

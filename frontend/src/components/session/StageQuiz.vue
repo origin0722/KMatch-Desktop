@@ -26,7 +26,6 @@
         </div>
         <div class="quiz-submit">
           <el-button type="primary" size="large" @click="handleSubmitAnswers">提交答题 →</el-button>
-          <el-button size="large" @click="autoFillDemo">一键填演示答案</el-button>
         </div>
       </template>
 
@@ -106,13 +105,6 @@ async function handleSubmitAnswers() {
 }
 function openUrl(url) {
   if (url) window.open(url, '_blank', 'noopener')
-}
-
-function autoFillDemo() {
-  store.pendingQuestions.forEach((q, idx) => {
-    if (q.type === 'choice' && q.options?.length) store.userAnswers[idx] = optLabel(q.options[0])
-    else store.userAnswers[idx] = '示例答案'
-  })
 }
 </script>
 

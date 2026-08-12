@@ -26,7 +26,9 @@ if (hasIpc) {
     const url = config.url || ''
     const body = config.data
     const params = config.params
-    const res = await window.api.http.request(method, url, body, params)
+    // 透传 axios 的 timeout 给主进程代理 opts.timeoutMs (默认 60s):
+    // 长耗时调用 (如 feedback 逐节点 LLM 再生) 可经请求级 timeout 放宽, 否则 60s 被掐 → "网络错误: HTTP 0"
+    const res = await window.api.http.request(method, url, body, params, { timeoutMs: config.timeout })
     const data = res.body
     if (!res.ok) {
       const err = new Error(`HTTP ${res.status}`)
