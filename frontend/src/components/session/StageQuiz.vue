@@ -55,23 +55,18 @@
           </el-button>
           <el-button size="small" @click="store.reset()">重新测评</el-button>
         </div>
-        <div v-if="store.feedbackContent" class="feedback-resources">
-          <el-card v-for="(r, i) in (store.feedbackContent.resources || [])" :key="i" shadow="never" class="resource-item">
-            <template #header>
-              <el-tag size="small" :type="r.content_type === 'web_link' ? 'success' : ''">{{ contentTypeLabel(r.content_type) }}</el-tag>
-              <span style="margin-left: 8px;">{{ r.title || r.target_node_id }}</span>
-              <el-button v-if="r.content_type === 'web_link' && r.url" size="small" type="primary" link
-                         class="web-link-btn" @click="openUrl(r.url)">打开网站 ↗</el-button>
-            </template>
-            <MarkdownViewer v-if="r.content_type !== 'web_link' && r.content_type !== 'practice_guide'" :content="r.content" />
-            <ScaffoldGuide v-else-if="r.content_type === 'practice_guide'" :content="r.content" />
-            <p v-else class="web-link-snippet">{{ r.content }}</p>
-          </el-card>
+        <!-- #30 后续: 反馈内容已落入「学习资源」页 (Learning.vue), 此处只留轻提示 + 跳转 -->
+        <div v-if="store.feedbackContent" class="feedback-done">
+          <el-tag type="success" size="small" effect="dark">✓ 已生成</el-tag>
+          <span class="feedback-done-text">
+            共 {{ store.feedbackContent.resources?.length || 0 }} 份针对性内容（知识点 + 相关网址），已放入「学习资源」
+          </span>
+          <el-button size="small" type="primary" plain @click="openLearning()">在学习资源中查看 →</el-button>
         </div>
       </template>
 
       <!-- interactive loading (判分/取反馈, 不进阶段③) -->
-      <div v-if="store.loading && store.phase !== 'answering'" class="quiz-loading" v-loading="true" element-loading-text="处理中…"></div>
+      <div v-if="store.loading && store.phase !== 'answering'" class="quiz-loading" v-loading="true" element-loading-text="正在生成针对性学习内容（约 1 分钟，含联网搜索）…"></div>
     </div>
   </section>
 </template>
@@ -80,8 +75,6 @@
 import { computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
-import MarkdownViewer from '@/components/MarkdownViewer.vue'
-import ScaffoldGuide from '@/components/ScaffoldGuide.vue'
 import AssessmentReport from '@/components/AssessmentReport.vue'
 import ProfileRadar from '@/components/ProfileRadar.vue'
 
@@ -95,16 +88,14 @@ function levelLabel(l) { return { 1: '零基础', 2: '入门', 3: '进阶', 4: '
 const STRATEGY = { advance: '进阶挑战（正确率高，提升难度）', remediate: '降维解释（正确率中等，换角度讲解）', scaffold: '补前置基础（正确率低，巩固基础）' }
 function strategyLabel(s) { return STRATEGY[s] || s || '-' }
 function strategyTagType(s) { return { advance: 'success', remediate: 'warning', scaffold: 'danger' }[s] || 'info' }
-const CT = { lecture: '讲义', practice_guide: '实操指南', quiz: '测试题', explanation: '讲解', exercise: '练习', web_link: '相关网站' }
-function contentTypeLabel(t) { return CT[t] || t || '资源' }
 
 async function handleSubmitAnswers() {
   const unanswered = store.userAnswers.filter((a) => !a || String(a).trim() === '').length
   if (unanswered === store.pendingQuestions.length) return
   await store.submitAssessmentAnswers()
 }
-function openUrl(url) {
-  if (url) window.open(url, '_blank', 'noopener')
+function openLearning() {
+  session.setSplitView('learning')
 }
 </script>
 
@@ -126,7 +117,12 @@ function openUrl(url) {
 .quiz-fill { max-width: 360px; }
 .quiz-submit { display: flex; gap: 12px; margin-top: 16px; }
 .feedback-actions { display: flex; gap: 8px; margin-bottom: 12px; }
-.feedback-resources { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
-.resource-item { background: var(--km-bg-layer-1); }
+.feedback-done {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding: 10px 12px;
+  background: var(--km-bg-layer-1); border: 1px dashed var(--km-success);
+  border-radius: var(--km-radius-sm);
+}
+.feedback-done-text { font-size: 13px; color: var(--km-gray-700); flex: 1; min-width: 180px; }
 .quiz-loading { min-height: 140px; display: flex; align-items: center; justify-content: center; }
 </style>

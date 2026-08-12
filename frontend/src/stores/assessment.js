@@ -259,6 +259,28 @@ export const useAssessmentStore = defineStore('assessment', () => {
       const tavilyKey = useAiSettingsStore().tavilyKey
       const data = await requestFeedback({ sessionId: sessionId.value, strategy: feedbackStrategy.value, profile: profile.value, tavilyKey })
       feedbackContent.value = data
+      // #30 后续: 反馈产物落入「学习资源」页 (Learning.vue 读取)——
+      //   再生知识点 (lecture/practice_guide/test) → generatedContent (讲义/实操/测试 tab)
+      //   web_link 相关网址 → learningResources (联网资源 tab); 有产物时自动打开右侧学习资源分屏
+      const resources = data.resources || []
+      const links = resources.filter((r) => r.content_type === 'web_link')
+      const content = resources.filter((r) => r.content_type !== 'web_link')
+      if (links.length) {
+        const { useLearningResourcesStore } = await import('@/stores/learningResources')
+        useLearningResourcesStore().addFeedbackLinks(links)
+      }
+      if (content.length) {
+        const existing = generatedContent.value || { resources: [] }
+        generatedContent.value = {
+          ...existing,
+          resources: [...(existing.resources || []), ...content],
+          node_count: data.node_count ?? existing.node_count,
+        }
+      }
+      if (resources.length) {
+        const { useSessionStore } = await import('@/stores/session')
+        useSessionStore().setSplitView('learning')
+      }
     } catch (e) {
       error.value = e.response?.data?.detail || e.message || '动态反馈再生失败'
     } finally {

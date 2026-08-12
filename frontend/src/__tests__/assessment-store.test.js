@@ -187,6 +187,66 @@ describe('useAssessmentStore', () => {
       expect(store.feedbackContent?.resources).toHaveLength(1)
       expect(store.feedbackContent?.strategy).toBe('scaffold')
     })
+
+    // #30 后续: 反馈产物不再只在答题卡原位置展示, 知识点 → generatedContent (学习资源讲义 tab),
+    // 网址 → learningResources (联网资源 tab), 并自动打开右侧学习资源分屏
+    it('反馈产物应落入「学习资源」(知识点 + 网址) 并自动打开分屏', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 's', profile: { profile_id: 'P' }, assessment: { correct_count: 0, total_count: 1 },
+        review_results: {}, feedback: { strategy: 'remediate' },
+      })
+      requestFeedback.mockResolvedValueOnce({
+        session_id: 's', strategy: 'remediate', node_count: 2,
+        resources: [
+          { content_type: 'lecture', content: '# 降维讲义' },
+          { content_type: 'web_link', title: '教程', url: 'https://a.b/c', content: '摘要' },
+        ],
+      })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      await store.submitAssessmentAnswers()
+      await store.fetchFeedback()
+
+      // 知识点 → generatedContent (学习资源 讲义/实操/测试 tab)
+      expect(store.generatedContent?.resources).toHaveLength(1)
+      expect(store.generatedContent?.resources[0].content_type).toBe('lecture')
+      expect(store.generatedContent?.node_count).toBe(2)
+      // 网址 → learningResources (联网资源 tab)
+      const { useLearningResourcesStore } = await import('@/stores/learningResources')
+      const lr = useLearningResourcesStore()
+      expect(lr.webResources).toHaveLength(1)
+      expect(lr.webResources[0].url).toBe('https://a.b/c')
+      // 自动打开学习资源分屏
+      const { useSessionStore } = await import('@/stores/session')
+      expect(useSessionStore().splitView).toBe('learning')
+    })
+
+    it('无资源时不打开学习资源分屏', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 's', profile: { profile_id: 'P' }, assessment: { correct_count: 0, total_count: 1 },
+        review_results: {}, feedback: { strategy: 'advance' },
+      })
+      requestFeedback.mockResolvedValueOnce({
+        session_id: 's', strategy: 'advance', resources: [], node_count: 0,
+      })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      await store.submitAssessmentAnswers()
+      await store.fetchFeedback()
+
+      const { useSessionStore } = await import('@/stores/session')
+      expect(useSessionStore().splitView).toBeNull()
+    })
   })
 
   // ============================================================
