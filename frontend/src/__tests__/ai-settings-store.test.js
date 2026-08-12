@@ -13,9 +13,9 @@ import { PROVIDERS } from '@/stores/aiSettings'
 import { useCustomProvidersStore } from '@/stores/customProviders'
 
 describe('PROVIDERS registry (Spec A)', () => {
-  it('exposes 8 predefined + custom with required metadata', () => {
+  it('exposes 9 predefined + custom with required metadata', () => {
     const ids = PROVIDERS.map((p) => p.id)
-    expect(ids).toEqual(['deepseek','openai','anthropic','moonshot','qwen','gemini','ollama','custom'])
+    expect(ids).toEqual(['deepseek','openai','anthropic','moonshot','qwen','glm','gemini','ollama','custom'])
     for (const p of PROVIDERS) {
       expect(typeof p.label).toBe('string')
       expect(['openai','anthropic']).toContain(p.protocol)
@@ -226,8 +226,8 @@ describe('aiSettings store', () => {
     // 模拟残留跨厂商 model
     settings.model = 'deepseek-v4-pro'
     await settings.fetchModels()
-    // openai fallback 含 gpt-4o; model 应被校正为 openai 系, 不再是 deepseek-*
-    expect(settings.models).toContain('gpt-4o')
+    // openai fallback 含 gpt-5 (旧 gpt-4o 已随 #34 移除); model 应被校正为 openai 系, 不再是 deepseek-*
+    expect(settings.models).toContain('gpt-5')
     expect(settings.model).not.toMatch(/^deepseek/)
   })
 

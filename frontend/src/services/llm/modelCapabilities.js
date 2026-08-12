@@ -8,24 +8,32 @@
  * vision 不在此表 — 走运行时探测 (modelVision store)。
  */
 const CAPABILITY_TABLE = [
-  // OpenAI
-  { provider: 'openai', modelPattern: /^o(1|3)/,       reasoning: 'native',      context: 128_000 },
+  // OpenAI (#34: gpt-5 系列原生推理)
+  { provider: 'openai', modelPattern: /^o(1|3|4)/,     reasoning: 'native',      context: 128_000 },
+  { provider: 'openai', modelPattern: /^gpt-5/,        reasoning: 'native',      context: 400_000 },
   { provider: 'openai', modelPattern: /^gpt-4\.1/,     reasoning: 'prompt-only', context: 1_000_000 },
   { provider: 'openai', modelPattern: /^gpt-4o/,       reasoning: 'prompt-only', context: 128_000 },
 
   // DeepSeek
   { provider: 'deepseek', modelPattern: /^deepseek-v4/,       reasoning: 'native', context: 128_000 },
   { provider: 'deepseek', modelPattern: /^deepseek-reasoner/, reasoning: 'native', context:  64_000 },
+  { provider: 'deepseek', modelPattern: /^deepseek-chat/,     reasoning: 'prompt-only', context: 128_000 },
 
   // Anthropic
   { provider: 'anthropic', modelPattern: /^claude-(opus|sonnet|haiku|fable|mythos)-(4|5)/,
     reasoning: 'native', context: 200_000 },
 
+  // Moonshot (#34: kimi-k2 原生思考)
+  { provider: 'moonshot', modelPattern: /^kimi-k2/, reasoning: 'native', context: 256_000 },
+
   // Qwen
   { provider: 'qwen', modelPattern: /^qwen-/, reasoning: 'prompt-only', context: 128_000 },
 
+  // 智谱 GLM (#34: glm-4.6+/5.x 支持思考)
+  { provider: 'glm', modelPattern: /^glm-/, reasoning: 'native', context: 128_000 },
+
   // Gemini
-  { provider: 'gemini', modelPattern: /^gemini-2\.5/, reasoning: 'native', context: 1_000_000 },
+  { provider: 'gemini', modelPattern: /^gemini-(3|2\.5)/, reasoning: 'native', context: 1_000_000 },
 ]
 
 const DEFAULT_CAP = Object.freeze({ reasoning: 'prompt-only', context: null })
