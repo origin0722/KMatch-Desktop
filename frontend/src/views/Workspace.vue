@@ -10,11 +10,15 @@
       </div>
     </div>
 
-    <!-- IDE 主体: 左导航栏 | 主区(文件树+编辑器/视图) | AI面板 -->
+    <!-- IDE 主体: 左导航栏(可拖宽) | 主区(文件树+编辑器/视图) | AI面板(可拖宽) -->
     <div class="ide-body">
-      <NavSidebar />
+      <ResizablePanel panel-key="km.nav-w" :min="180" :max="280" :initial="208" side="right">
+        <NavSidebar />
+      </ResizablePanel>
       <MainArea />
-      <AssistantPanel v-if="sidebar.aiPanelVisible" />
+      <ResizablePanel v-if="sidebar.aiPanelVisible" panel-key="km.ai-w" :min="280" :max="560" :initial="340" side="left">
+        <AssistantPanel />
+      </ResizablePanel>
     </div>
 
     <StatusBar />
@@ -32,6 +36,7 @@ import { useSidebarStore } from '@/stores/sidebar'
 import NavSidebar from '@/ide/NavSidebar.vue'
 import MainArea from '@/ide/MainArea.vue'
 import AssistantPanel from '@/ide/AssistantPanel.vue'
+import ResizablePanel from '@/ide/ResizablePanel.vue'
 import StatusBar from '@/ide/StatusBar.vue'
 import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
 

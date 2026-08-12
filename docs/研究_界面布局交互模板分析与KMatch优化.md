@@ -192,6 +192,32 @@ onUnmounted(onUp)
 
 ---
 
+## 六、Explore.poker 思考模式交互研究（#35/#37 补充）
+
+> 研究方式：curl 直连 `ai.explore.poker/chat` 抓取其 Next.js 产物（webpack runtime + 可达 chunk 源码逐段阅读）。聊天页核心组件为动态导入 chunk，本网络环境部分 404（CDN 边缘与线上构建不一致），但已解析出它的"思考模式"设计骨架。
+
+### 6.1 核心发现：思考模式 = 模型身份的一部分（`/reasoner` vs `/chat`）
+
+- 每个模型在 Explore 里成对出现，靠**模型 key 的后缀**决定思考模式：
+  - `deepseek-v4-pro-202606/reasoner`（深度思考）↔ `deepseek-v4-pro-202606/chat`
+  - 另有 `qwen3.5-plus/reasoner`、`kimi-k2.6/reasoner`、`glm-5.2/reasoner`、`Kimi-K2.5/reasoner` 等
+- 代码里一个 `modeOf(model)` 函数直接从 key 取最后一段：`"reasoner" → 深度思考`、`"chat" → 快速`、否则 `auto`。
+- 模型选择器带元数据：`recommended` + `recommendReason`（如 "Best Max Model"、"Best Free Model, smarter than GLM5.2 in reasoning tasks"）+ 价格（input/output/cached），帮用户在"要深度还是要快"之间决策。
+
+**结论**：Explore 不做独立的"思考模式开关"——**选模型即选思考深度**。对 KMatch 的直接启示是：聊天输入框里的 auto/fast/deep 三态开关（即 #38 的 el-radio 弃用警告来源），可朝"模型自带推理档位"演进（模型条目上标 🧠 档位，而不是每次手动切）。
+
+### 6.2 KMatch 可借鉴的 3 点
+
+1. **模型 key 内联推理档位**：KMatch 的 `reasoningMode` 已有 auto/fast/deep 语义，未来可把"深度/快速"绑到具体模型条目（如 `deepseek-v4-pro` 自带 native reasoning），输入框不再需要三态开关。
+2. **选型建议文案**：模型下拉现已有 🧠/👁 徽章，可补一行 `recommendReason` 式副文案（"适合长推理" / "响应最快"）。
+3. **思考过程展示**：Explore 的思考正文渲染 DOM 未达（动态 chunk 404），但其形态是"思考模式=模型、思考块随模型固定出现"。KMatch 已实现"默认展开 + 手动收起 + 思考中呼吸动画"，从可用性上并不落后；可补的是"思考中不可交互/可中断"的提示，以及思考与正文之间的视觉分隔线。
+
+### 6.3 局限
+
+聊天核心 chunk（325/329/24/954）从本网络 404，思考气泡的具体排版/动画未解析；如需 1:1 对照建议浏览器打开 `ai.explore.poker/chat` 目测。模型命名情报（`deepseek-v4-pro-202606`、`qwen3.5-plus` 等）已与 [docs/模型更新调研_2026-08.md](模型更新调研_2026-08.md) 呼应，可佐证型号存在性。
+
+---
+
 ## 附：研究来源与局限性
 
 - 来源：模板仓库 tarball 全量阅读（`src/`、`.claude/skills/clone-website/SKILL.md`、`AGENTS.md`、`docs/research/INSPECTION_GUIDE.md`、`globals.css`、`ui/button.tsx`）；参考站点 `ai.explore.poker/chat` 仅抓到 SPA 静态壳（布局由 JS 渲染，无法离线展开），故布局细节以模板设计规范为准。

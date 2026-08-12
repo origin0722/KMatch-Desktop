@@ -3,7 +3,9 @@
     <!-- 代码视图: 文件树 + 编辑器标签 + Monaco
          阶段8: v-show 常驻 (治 S6 — 切视图不销毁 Monaco, models/未保存编辑保留) -->
     <div class="code-layout" v-show="sidebar.activeView === 'code'">
-      <FileExplorer v-show="sidebar.sidebarVisible" />
+      <ResizablePanel v-show="sidebar.sidebarVisible" panel-key="km.explorer-w" :min="180" :max="420" :initial="240" side="right">
+        <FileExplorer />
+      </ResizablePanel>
       <div class="editor-area">
         <EditorTabs />
         <div class="editor-host">
@@ -31,6 +33,7 @@
 import { nextTick, watch } from 'vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import FileExplorer from './FileExplorer.vue'
+import ResizablePanel from './ResizablePanel.vue'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
 import SettingsView from '@/ide/settings/SettingsView.vue'
@@ -95,6 +98,7 @@ watch(() => sidebar.activeView, async () => {
   min-width: 0;
   padding: 22px 26px;
   box-shadow: var(--km-shadow-sm);
+  font-size: 14px; /* #29 各功能页统一继承字号 (原各自 12-13.5px 不同步) */
 }
 .view-card :deep(.el-card) {
   --el-card-bg-color: var(--km-bg-layer-2);

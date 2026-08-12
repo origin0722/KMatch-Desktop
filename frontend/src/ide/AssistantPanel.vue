@@ -377,20 +377,12 @@
             </div>
             <div class="config-row">
               <label>思考模式</label>
-              <el-radio-group
+              <SegmentedControl
                 :model-value="aiSettings.reasoningMode"
-                size="small"
+                :options="REASONING_OPTIONS"
                 :disabled="chat.streaming"
-                @change="aiSettings.setReasoningMode"
-              >
-                <el-radio-button label="auto" title="自动 - 由模型默认决定">自动</el-radio-button>
-                <el-radio-button label="fast" title="快速 - 不思考直接回答">快速</el-radio-button>
-                <el-radio-button
-                  label="deep"
-                  :disabled="deepDisabled"
-                  :title="deepDisabled ? deepDisabledTooltip : '深度 - 充分思考'"
-                >深度</el-radio-button>
-              </el-radio-group>
+                @update:model-value="aiSettings.setReasoningMode"
+              />
             </div>
             <el-button
               size="small"
@@ -523,6 +515,7 @@ import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import { capabilityOf, formatContext } from '@/services/llm/modelCapabilities'
 import { iconUrlOf } from '@/services/llm/icons'
 import { useModelVisionStore } from '@/stores/modelVision'
+import SegmentedControl from '@/ide/settings/SegmentedControl.vue'
 
 const sidebar = useSidebarStore()
 const chat = useChatStore()
@@ -612,15 +605,15 @@ function isThinking(msg) {
 const STATUS_LABEL = { pending: '待执行', in_progress: '执行中', completed: '完成', error: '失败' }
 function statusLabel(s) { return STATUS_LABEL[s] || s }
 
-// Think 折叠状态: { [msgId]: boolean }
-const thinkExpanded = reactive({})
+// Think 状态: 默认展开 (#35 让用户看到思考过程, 不干等), 用户手动折叠记入集合
+const thinkCollapsed = reactive({})
 function isThinkExpanded(msgId) {
-  // 流式传输中默认展开
+  // 流式传输中始终展开
   if (chat.streaming && chat.currentStreamId === msgId) return true
-  return !!thinkExpanded[msgId]
+  return !thinkCollapsed[msgId]
 }
 function toggleThink(msgId) {
-  thinkExpanded[msgId] = !thinkExpanded[msgId]
+  thinkCollapsed[msgId] = !thinkCollapsed[msgId]
 }
 
 // ---------------------------------------------------------------
@@ -684,6 +677,13 @@ const deepDisabled = computed(() =>
 
 const deepDisabledTooltip = computed(() =>
   `当前模型 (${aiSettings.model}) 不支持原生推理；如需思考请用「快速/自动」+ 提示词`)
+
+// #38 思考模式分段控件选项 (替换 el-radio-button, 消除 label 弃用警告)
+const REASONING_OPTIONS = computed(() => [
+  { label: '自动', value: 'auto', title: '自动 - 由模型默认决定' },
+  { label: '快速', value: 'fast', title: '快速 - 不思考直接回答' },
+  { label: '深度', value: 'deep', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '深度 - 充分思考' },
+])
 
 // ---- 附件上传 (Spec A 图片上传, 阶段PR-5) ----
 // 仅 vision 确认 (===true) 的模型启用上传; false/undefined 禁用并提示
@@ -800,7 +800,7 @@ async function copyText(text) {
 
 <style scoped>
 .assistant-panel {
-  width: 340px;
+  width: 100%; /* #25 宽度由外层 ResizablePanel 控制 */
   background: var(--km-bg-layer-0);
   display: flex;
   flex-direction: column;

@@ -84,7 +84,7 @@ function onNodeClick(node) {
 
 <style scoped>
 .file-explorer {
-  width: 240px;
+  width: 100%; /* #25 宽度由外层 ResizablePanel 控制 */
   background: var(--km-bg-layer-0);
   display: flex;
   flex-direction: column;

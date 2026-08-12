@@ -36,12 +36,11 @@
 
     <!-- 思考模式 -->
     <SettingCard title="思考模式" info="控制 AI 推理深度；深度模式仅原生 reasoning 模型可用">
-      <el-radio-group :model-value="ai.reasoningMode" size="small" @change="ai.setReasoningMode">
-        <el-radio-button label="auto">自动</el-radio-button>
-        <el-radio-button label="fast">快速</el-radio-button>
-        <el-radio-button label="deep" :disabled="deepDisabled"
-          :title="deepDisabled ? deepDisabledTooltip : ''">深度</el-radio-button>
-      </el-radio-group>
+      <SegmentedControl
+        :model-value="ai.reasoningMode"
+        :options="REASONING_OPTIONS"
+        @update:model-value="ai.setReasoningMode"
+      />
     </SettingCard>
 
     <!-- 工具权限 -->
@@ -51,12 +50,12 @@
           <span class="tool-name">{{ tool.name }}</span>
           <span class="tool-desc">{{ tool.description }}</span>
         </div>
-        <el-radio-group :model-value="ai.permissionFor(tool.name)" size="small"
-                        @change="ai.setToolPermission(tool.name, $event)">
-          <el-radio-button label="allow">允许</el-radio-button>
-          <el-radio-button label="ask">询问</el-radio-button>
-          <el-radio-button label="deny">禁用</el-radio-button>
-        </el-radio-group>
+        <SegmentedControl
+          class="perm-seg"
+          :model-value="ai.permissionFor(tool.name)"
+          :options="PERM_OPTIONS"
+          @update:model-value="ai.setToolPermission(tool.name, $event)"
+        />
       </div>
     </SettingCard>
 
@@ -94,6 +93,7 @@ import { TOOLS } from '@/ide/tools/registry'
 import { capabilityOf, formatContext } from '@/services/llm/modelCapabilities'
 import { iconUrlOf } from '@/services/llm/icons'
 import SettingCard from './SettingCard.vue'
+import SegmentedControl from './SegmentedControl.vue'
 
 const ai = useAiSettingsStore()
 const chat = useChatStore()
@@ -126,6 +126,18 @@ function capOf(m) {
 const deepDisabled = computed(() => capabilityOf(ai.provider, ai.model).reasoning !== 'native')
 const deepDisabledTooltip = computed(() => `当前模型 (${ai.model}) 不支持原生推理；如需思考请用「快速/自动」`)
 
+// #28 分段控件选项
+const REASONING_OPTIONS = computed(() => [
+  { label: '自动', value: 'auto' },
+  { label: '快速', value: 'fast' },
+  { label: '深度', value: 'deep', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '' },
+])
+const PERM_OPTIONS = [
+  { label: '允许', value: 'allow', tone: 'success' },
+  { label: '询问', value: 'ask', tone: 'warning' },
+  { label: '禁用', value: 'deny', tone: 'danger' },
+]
+
 async function onClearHistory() {
   try {
     await ElMessageBox.confirm('确定清空所有 AI 助手对话记录？此操作不可恢复。', '清除聊天历史', {
@@ -148,6 +160,7 @@ async function onClearHistory() {
 .tool-info { display: flex; flex-direction: column; min-width: 0; }
 .tool-name { font-size: 13px; font-weight: 600; color: var(--km-gray-800); }
 .tool-desc { font-size: 11.5px; color: var(--km-gray-500); margin-top: 2px; }
+.perm-seg { width: 168px; }
 .memory-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; width: 100%; }
 .memory-item { display: flex; align-items: center; gap: 8px; width: 100%; }
 </style>

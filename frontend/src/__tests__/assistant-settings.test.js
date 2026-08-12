@@ -35,11 +35,11 @@ describe('AssistantSettings', () => {
   it('changing a tool permission calls setToolPermission', async () => {
     const ai = useAiSettingsStore()
     const w = mount(AssistantSettings, mountOpts())
-    // 思考模式 1 个 ElRadioGroup 在前 (auto/fast/deep); 工具权限 9 个在后 (allow/ask/deny, 按 TOOLS 顺序)
-    // findAll 返回 DOMWrapper 无 .vm (test-utils v2), 用 findAllComponents 取 VueWrapper
-    const groups = w.findAllComponents({ name: 'ElRadioGroup' })
-    expect(groups).toHaveLength(10)
-    await groups[1].vm.$emit('change', 'deny') // groups[1] = 第一个工具 read_file
+    // 第一个工具 (read_file) 行的「禁用」分段按钮 → deny (#28 SegmentedControl)
+    const firstRow = w.find('.tool-perm-row')
+    const denyBtn = firstRow.findAll('button.seg-item').find((b) => b.text() === '禁用')
+    expect(denyBtn).toBeTruthy()
+    await denyBtn.trigger('click')
     expect(ai.permissionFor('read_file')).toBe('deny')
   })
 

@@ -2,6 +2,7 @@
 html, body, #app { height: 100%; width: 100%; overflow: hidden; }
 body {
   font-family: var(--km-font-ui);
+  font-size: 14px; /* #29 全局字号提升 (原继承 16px, 组件各自 13px) */
   background: var(--km-bg-base);
   color: var(--km-gray-700);
   margin: 0;

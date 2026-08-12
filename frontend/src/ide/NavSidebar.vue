@@ -1,12 +1,8 @@
 <template>
   <!-- Codex 风格左侧导航栏: 240px 带 label (替代 48px 图标活动栏) -->
   <div class="nav-sidebar">
-    <!-- 顶部: 品牌 + 菜单 (原标题栏内容下移) -->
+    <!-- 顶部: 菜单行 (品牌名收敛进窗口标题, #26 去除品牌框) -->
     <div class="nav-head">
-      <div class="nav-brand">
-        <span class="nav-logo">知</span>
-        <span class="nav-brand-name">KMatch·知链</span>
-      </div>
       <TitlebarMenu class="nav-menu" />
     </div>
 
@@ -96,42 +92,24 @@ function onViewClick(id) {
 
 <style scoped>
 .nav-sidebar {
-  width: 208px;
-  background: var(--km-bg-layer-0);
+  width: 100%; /* #25 宽度由外层 ResizablePanel 控制 */
+  /* #27 玻璃感: 提高透明度让层次可见 + 背景模糊 + 顶部高光/右缘投影 */
+  background: color-mix(in srgb, var(--km-bg-layer-0) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 1px 0 6px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   border-right: 1px solid var(--km-border-light);
   padding: 10px 8px;
 }
-/* ---- 顶部品牌 + 菜单 ---- */
+/* ---- 顶部菜单行 (#26 无品牌框: 紧凑菜单行, 无底边线) ---- */
 .nav-head {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 2px 6px 10px;
-  border-bottom: 1px solid var(--km-border-light);
-  margin-bottom: 8px;
-}
-.nav-brand {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  -webkit-app-region: drag;
-}
-.nav-logo {
-  width: 26px; height: 26px;
-  border-radius: 7px;
-  background: var(--km-primary);
-  color: var(--km-primary-text);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700;
-  flex-shrink: 0;
-}
-.nav-brand-name {
-  font-size: 13px; font-weight: 650; letter-spacing: 0.3px;
-  color: var(--km-gray-800);
-  white-space: nowrap;
+  padding: 0 2px 8px;
+  margin-bottom: 2px;
 }
 .nav-menu {
   -webkit-app-region: no-drag;
@@ -161,15 +139,27 @@ function onViewClick(id) {
 .nav-item:active { transform: scale(0.98); }
 .nav-item.active {
   color: var(--km-activity-active-text);
-  background: var(--km-activity-active-bg);
+  /* #27 激活态用品牌色软底 + 图标/文字着色, 视觉更明显 */
+  background: color-mix(in srgb, var(--km-primary-light) 72%, transparent);
+}
+.nav-item.active .nav-item-label {
+  font-weight: 600;
 }
 .nav-item.active::before {
   content: '';
   position: absolute;
   left: 0; top: 8px; bottom: 8px;
-  width: 3px;
+  width: 4px;
   border-radius: 2px;
-  background: var(--km-activity-active);
+  background: linear-gradient(180deg, var(--km-activity-active), var(--km-primary-active));
+  /* #27 点击动画: 指示条 scaleY 回弹入场 */
+  transform: scaleY(0);
+  transform-origin: center top;
+  animation: nav-indicator-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes nav-indicator-in {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
 .nav-item.on {
   color: var(--km-activity-active-text);
