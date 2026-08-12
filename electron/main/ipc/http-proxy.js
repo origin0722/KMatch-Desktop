@@ -26,9 +26,9 @@ export function registerHttpProxyIpc() {
       // transformRequest 序列化);字符串直接用,避免双重序列化使后端收到 str 而非 dict -> 422
       init.body = typeof body === 'string' ? body : JSON.stringify(body)
     }
-    // 阶段4: code_test 等 (LLM 生成测试 + pytest 执行) 可达 60s+,
-    // 调用方可经 opts.timeoutMs 放宽超时 (默认 60s, 不影响现有调用)。
-    const timeoutMs = (opts && typeof opts.timeoutMs === 'number') ? opts.timeoutMs : 60000
+    // 阶段4/#30: code_test、feedback 等 LLM 逐节点生成常超 60s。
+    // 默认放宽到 120s (连接拒绝/后端宕机仍秒失败, 不受影响), 调用方可经 opts.timeoutMs 进一步放宽。
+    const timeoutMs = (opts && typeof opts.timeoutMs === 'number') ? opts.timeoutMs : 120000
     try {
       const resp = await fetch(url.toString(), { ...init, signal: AbortSignal.timeout(timeoutMs) })
       const text = await resp.text()

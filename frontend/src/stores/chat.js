@@ -711,10 +711,11 @@ export const useChatStore = defineStore('chat', () => {
         if (!aStore.sessionId) return { error: '尚无学情测评 session。请先前往「学习会话」完成答题测评, 再生成资源。' }
         if (!aStore.profile) return { error: '尚无学情画像, 请先完成测评' }
         const strategy = call.strategy || aStore.feedbackStrategy || 'scaffold'
+        // #30: feedback 逐节点 LLM 再生常超 60s, 显式放宽到 150s
         const r = await _delegate('/api/diagnostics/feedback', {
           session_id: aStore.sessionId, strategy, profile: aStore.profile,
           tavily_key: aiSettings.tavilyKey || undefined,
-        })
+        }, 150000)
         if (!r.ok) return { error: r.error }
         // 合并 resources 到 generatedContent (Learning.vue 读)
         const existing = aStore.generatedContent || { resources: [] }
