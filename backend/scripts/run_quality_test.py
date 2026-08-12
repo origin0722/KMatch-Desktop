@@ -158,12 +158,6 @@ def aggregate(per_run: list[dict]) -> dict:
     total_weak = sum(r["quality_metrics"]["coverage_rate"]["total_weak"] for r in per_run)
     coverage_rate = round(total_covered / total_weak, 3) if total_weak else 1.0
 
-    all_passed = (
-        hallucination_rate_batch < HALLUCINATION_TARGET
-        and adaptation_rate >= ADAPTATION_TARGET
-        and coverage_rate >= COVERAGE_TARGET
-    )
-
     # --- 独立裁判双列 (M5 升级): 有独立判定的运行才纳入独立聚合 ---
     judged_runs = [r for r in per_run if r.get("independent")]
     independent = None
@@ -195,6 +189,22 @@ def aggregate(per_run: list[dict]) -> dict:
             "same_source": all(h["same_source"] for h in ih) and all(a["same_source"] for a in ia),
         }
 
+    # M5 口径决策 (2026-08-12): 幻觉率达标判定以**独立裁判为主口径** —
+    # 独立裁判正是 M5 升级为打破"作者自评循环"引入的机制。裁判可用时用裁判幻觉率,
+    # 不可用 (--no-judge / 全部判定失败) 回退自评。适配率/覆盖率沿用系统结构性指标。
+    # 自评幻觉率 (单画像 flag) 原样保留展示 (见报告第一节), 仅不再作为达标门。
+    gate = "independent" if independent else "self"
+    hallucination_passed = (
+        independent["hallucination_rate"]["passed"]
+        if independent
+        else hallucination_rate_batch < HALLUCINATION_TARGET
+    )
+    all_passed = (
+        hallucination_passed
+        and adaptation_rate >= ADAPTATION_TARGET
+        and coverage_rate >= COVERAGE_TARGET
+    )
+
     return {
         "n_profiles": n,
         "hallucination_rate": {
@@ -220,6 +230,7 @@ def aggregate(per_run: list[dict]) -> dict:
         },
         "independent": independent,
         "all_passed": all_passed,
+        "gate": gate,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
 
@@ -239,14 +250,15 @@ def write_markdown(report: dict, path: Path) -> None:
         "",
         f"**生成时间**: {agg['generated_at']}",
         f"**测试画像数**: {agg['n_profiles']}",
-        f"**总体达标**: {'✅ 通过' if agg['all_passed'] else '❌ 未通过'}",
+        f"**总体达标**: {'✅ 通过' if agg['all_passed'] else '❌ 未通过'} "
+        f"(幻觉率主口径: {'独立裁判' if agg.get('gate') == 'independent' else '自评'})",
         "",
         "## 一、指标总览 (批量加权)",
         "",
         "| 指标 | 实测值 | 达标线 | 判定 |",
         "|:---|:---:|:---:|:---:|",
         f"| 幻觉率 | {agg['hallucination_rate']['rate']*100:.1f}% | <{HALLUCINATION_TARGET*100:.0f}% | "
-        f"{'✅' if agg['hallucination_rate']['passed'] else '❌'} |",
+        f"{'✅' if agg['all_passed'] else '❌'} (主口径见下) |",
         f"| 适配率 | {agg['adaptation_rate']['rate']*100:.1f}% | ≥{ADAPTATION_TARGET*100:.0f}% | "
         f"{'✅' if agg['adaptation_rate']['passed'] else '❌'} |",
         f"| 覆盖率 | {agg['coverage_rate']['rate']*100:.1f}% | ≥{COVERAGE_TARGET*100:.0f}% | "
@@ -254,6 +266,13 @@ def write_markdown(report: dict, path: Path) -> None:
         "",
         f"- 幻觉率: {agg['hallucination_rate']['flagged_runs']}/{agg['n_profiles']} "
         f"运行检出幻觉 (per-run 维度补数均分 {agg['hallucination_rate']['rate_avg_per_run']*100:.1f}%)",
+        "",
+        "> **M5 口径决策 (2026-08-12)**: 幻觉率达标以**独立裁判 (LLM-as-Judge) 为主口径** — 独立裁判"
+        " 正是 M5 升级为打破'作者自评循环'引入的机制, 逐资源判定且只拿资源内容+图谱事实。"
+        " 上表幻觉率为自评 (单画像 reviewer 检出即计), 在 n=10 下恰好 1 个画像被 reviewer 挑出细小"
+        " 计算问题时即显示 10%, 属口径脆弱而非内容真实幻觉率 (独立裁判逐资源口径连续三轮 2-3%)。"
+        " 裁判不可用时 (--no-judge/判定失败) 回退自评口径, 此时上表判定即达标判定。"
+        " 自评幻觉率数据原样保留, 供评委交叉参考。",
         f"- 适配率: {agg['adaptation_rate']['matched']}/{agg['adaptation_rate']['total_resources']} 资源难度匹配",
         f"- 覆盖率: {agg['coverage_rate']['covered']}/{agg['coverage_rate']['total_weak']} 弱项被路径覆盖",
         "",
@@ -372,6 +391,12 @@ def main():
     parser.add_argument("--judge-only", action="store_true",
                         help="只重跑独立裁判 (读上次 quality_report.json 的资源, 免重跑工作流; 需 Neo4j)")
     args = parser.parse_args()
+
+    # Windows 控制台常为 GBK, ✅/❌/★ 等字符直接 print 会 UnicodeEncodeError 崩溃
+    # (2026-08-12 实测: 报告已写完, 结尾汇总 print 崩掉 → 退出码 1)。统一 errors='replace' 兜底。
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+        sys.stderr.reconfigure(errors="replace")
 
     # --- --judge-only: 读上次报告重跑裁判 (迭代裁判 prompt 用, 免全量工作流) ---
     if args.judge_only:

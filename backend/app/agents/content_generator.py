@@ -82,6 +82,14 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -
             "生成【分阶测试题】: 基础题50%(直接考察key_points)+进阶题30%(综合2-3个key_points)+"
             "挑战题20%(跨知识点推理)。题型含选择题(4选项含干扰项来自common_mistakes)/填空题/代码题。"
             "代码题须同时给出测试用例。"
+            "\n【答案自检--消除测试题答案幻觉】每道题的答案/预期输出在写入前必须逐步心算执行验证, "
+            "重点复核以下高频易错点(历次独立裁判质检发现的真实错误): "
+            "①列表方法: pop(i)删除并返回索引i的元素(非删除末尾), remove(v)删首个等于v的元素且返回None, "
+            "sort()原地排序返回None(非新列表), sorted()返回新列表不改原对象; "
+            "②字符串方法: find()找不到返回-1(非None/非False), join()由分隔符字符串调用(非列表调用), "
+            "strip()/replace()/upper()/lower()返回新字符串不改原串(字符串不可变); "
+            "③切片: s[a:b]不含索引b(右界不包含), 负索引从末尾计数。"
+            "每道输出推断题/填空题答案后标注[已心算验证], 若无法确定则改出题方式避免写不确定的答案。"
         ),
     }[content_type]
 
@@ -391,7 +399,13 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
 
     type_spec = {
         "lecture": "生成【降维/补基础讲义】" if content_type == "lecture" else "",
-        "test": "生成【进阶挑战题】含跨知识点推理题 + 测试用例",
+        "test": (
+            "生成【进阶挑战题】含跨知识点推理题 + 测试用例。"
+            "\n【答案自检--消除答案幻觉】每道题答案/预期输出写入前须逐步心算执行验证, "
+            "重点复核: pop(i)删索引i元素/ remove/sort返回None/ sorted返回新列表; "
+            "find返回-1非None/ join由分隔符串调用/ 字符串方法返回新串不改原; "
+            "切片 s[a:b] 不含 b。无法确定则改出题方式。"
+        ),
     }.get(content_type, "")
 
     system = SystemMessage(content=(

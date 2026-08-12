@@ -6,7 +6,7 @@
  "type": "高中零基础学习者",
  "description": "高一学生, 学校开设信息课, 对编程感兴趣, 想为信息学竞赛打基础。数学不错, 但从未接触代码, 需要趣味化入门。",
  "demographics": {
-  "age_range": "18-30",
+  "age_range": "<18",
   "education": "高中",
   "major": "高中在读",
   "programming_experience_months": 0,
@@ -47,6 +47,6 @@
  "recommended_path": {
   "current_node": "PY-001",
   "next_nodes": [],
-  "estimated_weeks": 4
+  "estimated_completion_weeks": 4
  }
 }

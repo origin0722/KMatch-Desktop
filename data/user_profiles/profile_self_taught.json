@@ -6,7 +6,7 @@
  "type": "自学补漏学习者",
  "description": "靠网课自学 Python 一年, 能跑通示例代码但不懂原理, 基础有漏洞。会写简单脚本, 但面向对象/异常处理一知半解, 想系统补全基础。",
  "demographics": {
-  "age_range": "18-30",
+  "age_range": "18-25",
   "education": "本科（毕业1年）",
   "major": "机械工程",
   "programming_experience_months": 14,
@@ -47,6 +47,6 @@
  "recommended_path": {
   "current_node": "PY-001",
   "next_nodes": [],
-  "estimated_weeks": 4
+  "estimated_completion_weeks": 4
  }
 }

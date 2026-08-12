@@ -6,7 +6,7 @@
  "type": "方向专攻学习者",
  "description": "统计专业研一, 会用 R 但想转 Python 生态做数据分析。数学功底好, 逻辑强, 希望快速掌握 numpy/pandas 并完成真实数据分析项目。",
  "demographics": {
-  "age_range": "18-30",
+  "age_range": "18-25",
   "education": "硕士在读",
   "major": "统计学",
   "programming_experience_months": 4,
@@ -49,6 +49,6 @@
  "recommended_path": {
   "current_node": "PY-001",
   "next_nodes": [],
-  "estimated_weeks": 4
+  "estimated_completion_weeks": 4
  }
 }

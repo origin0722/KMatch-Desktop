@@ -6,7 +6,7 @@
  "type": "跨语言学习者",
  "description": "Java 后端 5 年经验, 熟悉 OOP/设计模式, 因新项目要转 Python。概念都已掌握, 只需要快速对齐 Python 语法与生态差异, 不喜欢冗余讲解。",
  "demographics": {
-  "age_range": "18-30",
+  "age_range": "26-35",
   "education": "本科（毕业5年）",
   "major": "计算机科学与技术",
   "programming_experience_months": 60,
@@ -50,6 +50,6 @@
  "recommended_path": {
   "current_node": "PY-001",
   "next_nodes": [],
-  "estimated_weeks": 4
+  "estimated_completion_weeks": 4
  }
 }

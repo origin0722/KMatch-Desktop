@@ -11,7 +11,10 @@ from typing import Optional
 from neo4j import GraphDatabase
 
 # 学习路径组装: 弱项补丁覆盖的弱项上限 (entry 收集 + 弱项节点本身统一用此值, BUG B13 一致性)
-_WEAK_PATCH_LIMIT = 3
+# M5 覆盖率≥90% 保障: demo 模式下 user_profile 由 LLM 重新生成, weak_topics 数量每次波动 (常 3-5 个),
+# 原 3 会导致 4+ 弱项画像只强补前 3 个, 覆盖率掉到 75% (2026-08-12 实测 84.8% → 28/33)。
+# 提到 8: 覆盖常见弱项数上限, 路径总数受 max_nodes=20 兜底, 不会显著膨胀。
+_WEAK_PATCH_LIMIT = 8
 
 from app.config import settings
 from app.utils.logging import get_logger

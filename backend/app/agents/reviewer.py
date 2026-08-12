@@ -172,7 +172,11 @@ def _llm_review_content(resources: list[dict], profile: dict) -> dict:
         "①事实幻觉——内容是否编造了图谱节点 summary/key_points/common_mistakes "
         "以外的实现细节/内部表示/具体数值/版本号/性能数据(如「int 内部位数组」「对象头字节数」"
         "等节点未提供的技术断言)，编造即扣 hallucination/factual_accuracy 分；"
-        "②难度/语言风格是否匹配用户 level；③内容内部是否前后矛盾；④溯源标记是否完整。"
+        "②难度/语言风格是否匹配用户 level；③内容内部是否前后矛盾；④溯源标记是否完整；"
+        "⑤测试题答案复核--对 content_type=test 的资源, 逐题复核答案/预期输出的正确性: "
+        "列表方法(pop(i)删索引i元素/remove/sort返回None/sorted返回新列表)、"
+        "字符串方法(find返回-1非None/join由分隔符串调用/不可变方法返回新串)、"
+        "切片右界不包含(s[a:b]不含b)。答案与 Python 实际行为不符即扣 factual_accuracy 分(severity=high)并打回。"
         "注意: 节点未覆盖的技术深度(如某概念节点未讲底层实现)不算幻觉，不扣分；"
         "只扣'编造图谱外事实'，不扣'图谱未覆盖'。"
     ))

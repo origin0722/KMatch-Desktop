@@ -6,7 +6,7 @@
  "type": "方向专攻学习者",
  "description": "前端开发一年经验, JS 熟练, 想补后端变全栈。理解编程概念, 目标用 Flask 做项目, 希望尽快掌握 Python 语法差异与 Web 开发常用库。",
  "demographics": {
-  "age_range": "18-30",
+  "age_range": "18-25",
   "education": "本科（毕业2年）",
   "major": "软件工程",
   "programming_experience_months": 24,
@@ -50,6 +50,6 @@
  "recommended_path": {
   "current_node": "PY-001",
   "next_nodes": [],
-  "estimated_weeks": 4
+  "estimated_completion_weeks": 4
  }
 }

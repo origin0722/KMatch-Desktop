@@ -6,7 +6,7 @@
  "type": "零基础转行学习者",
  "description": "汉语言文学大三学生, 想转行互联网, 从未写过代码。对编程充满好奇但完全零基础, 需要从变量/数据类型一步步讲起, 例子要贴近生活。",
  "demographics": {
-  "age_range": "18-30",
+  "age_range": "18-25",
   "education": "本科在读（大三）",
   "major": "汉语言文学",
   "programming_experience_months": 0,
@@ -47,6 +47,6 @@
  "recommended_path": {
   "current_node": "PY-001",
   "next_nodes": [],
-  "estimated_weeks": 4
+  "estimated_completion_weeks": 4
  }
 }

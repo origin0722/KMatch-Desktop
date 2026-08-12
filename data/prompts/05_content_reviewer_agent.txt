@@ -28,7 +28,12 @@
 - 每个知识陈述必须能在标注的图谱节点中找到对应事实依据
 - 代码示例的输出必须与预期一致（可执行性校验）
 - 常见误区提醒必须是 content.common_mistakes 中的条目
-检测方法: 将生成内容的每句话与图谱节点的 key_points、summary、common_mistakes 做语义匹配
+- 测试题答案复核 (M5 升级): 对 content_type=test 的资源, 逐题复核答案/预期输出的正确性--
+  列表方法(pop(i)删索引i元素/remove/sort返回None/sorted返回新列表)、
+  字符串方法(find返回-1非None/join由分隔符串调用/不可变方法返回新串)、
+  切片右界不包含(s[a:b]不含b)。答案与 Python 实际行为不符即扣分(severity=high)并打回。
+检测方法: 将生成内容的每句话与图谱节点的 key_points、summary、common_mistakes 做语义匹配;
+  测试题答案逐题心算执行复核(生成者与审核者共用 LLM, 同源偏见下审核者亦须独立推演, 勿轻信答案标签)
 ```
 
 ### 规则2: 幻觉检测（权重 30%）
