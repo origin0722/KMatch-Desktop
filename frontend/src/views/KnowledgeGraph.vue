@@ -335,10 +335,11 @@ const categoryColor = (cat) => CATEGORY_COLORS[cat] || THEME.gray400
 
 // 角色详略 (persona 接线: 初学详/进阶中/高级简, 真正改变节点密度与信息量, 非死功能)
 // beginner 显示分类+难度(信息全), intermediate 仅难度, advanced 仅名称(最紧凑 -> 画布最不挤)
+// 阶段C 图谱待办"矩形加大": 节点尺寸整体上调, labelMax 同步, 治"节点太小看不清"
 const PERSONA = {
-  beginner:     { node: [190, 60], layout: [210, 90], labelMax: 180, label: (d) => `${d?.label || d.id}\n${d?.category || ''} · ${'⭐'.repeat(d?.difficulty || 1)}` },
-  intermediate: { node: [165, 50], layout: [185, 78], labelMax: 155, label: (d) => `${d?.label || d.id}\n${'⭐'.repeat(d?.difficulty || 1)}` },
-  advanced:     { node: [140, 40], layout: [160, 66], labelMax: 130, label: (d) => `${d?.label || d.id}` },
+  beginner:     { node: [215, 70], layout: [235, 105], labelMax: 205, label: (d) => `${d?.label || d.id}\n${d?.category || ''} · ${'⭐'.repeat(d?.difficulty || 1)}` },
+  intermediate: { node: [190, 60], layout: [210, 90], labelMax: 180, label: (d) => `${d?.label || d.id}\n${'⭐'.repeat(d?.difficulty || 1)}` },
+  advanced:     { node: [160, 48], layout: [180, 75], labelMax: 150, label: (d) => `${d?.label || d.id}` },
 }
 const personaCfg = () => PERSONA[sidebar.persona] || PERSONA.intermediate
 
@@ -509,8 +510,9 @@ function initGraph() {
     const containerHeight = graphContainer.value.offsetHeight || 600
 
     // 单一布局: dagre 层次 (借鉴 Understand-Anything ELK layered); 间距加大治"还是挤", nodeSize 随 persona
+    // 阶段C 图谱待办"间距": nodesep 70->90, ranksep 150->180, 节点更宽松不挤
     const cfg = personaCfg()
-    const layoutConfig = { type: 'dagre', rankdir: 'TB', nodesep: 70, ranksep: 150, nodeSize: cfg.layout }
+    const layoutConfig = { type: 'dagre', rankdir: 'TB', nodesep: 90, ranksep: 180, nodeSize: cfg.layout }
 
     const { nodes, edges } = buildG6Data()
 

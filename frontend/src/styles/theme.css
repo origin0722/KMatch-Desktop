@@ -230,3 +230,35 @@ html.dark {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* ============================================================
+   Element Plus 品牌接轨 (2026-08-12)
+   默认 EP 主题用 #409eff 蓝 + 直角, 与暖 Indigo 品牌脱节 → 按钮/选择器
+   /单选组/标签全部显"粗糙"。把 EP 主色变量映射到 --km-* 品牌变量,
+   亮暗两套; html.dark 特异性高于 :root, 顺序无关。--el-border-radius
+   统一微圆角, 收掉 EP 默认的方角感。
+   ============================================================ */
+:root {
+  --el-color-primary: var(--km-primary);
+  --el-color-primary-light-3: #98a3e9;
+  --el-color-primary-light-5: #b6bdef;
+  --el-color-primary-light-7: #d3d8f6;
+  --el-color-primary-light-8: #e1e4f8;
+  --el-color-primary-light-9: var(--km-primary-light);
+  --el-color-primary-dark-2: var(--km-primary-active);
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 999px;
+}
+html.dark {
+  --el-color-primary: var(--km-primary);
+  --el-color-primary-light-3: #a0aef4;
+  --el-color-primary-light-5: #6d7bd0;
+  --el-color-primary-light-7: #535fae;
+  --el-color-primary-light-8: #3d4789;
+  --el-color-primary-light-9: var(--km-primary-light);
+  --el-color-primary-dark-2: var(--km-primary-active);
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 999px;
+}

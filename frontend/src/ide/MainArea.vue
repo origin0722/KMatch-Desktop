@@ -82,7 +82,7 @@ watch(() => sidebar.activeView, async () => {
   min-height: 0;
   overflow-y: auto;
   background: var(--kbg);
-  padding: 12px;
+  padding: 20px;
   display: flex;
 }
 /* 赛题视图容器: 使用 KMatch 语义 token, 保持亮暗主题一致 */
@@ -90,10 +90,10 @@ watch(() => sidebar.activeView, async () => {
   background: var(--km-bg-layer-1);
   color: var(--km-gray-700);
   border: 1px solid var(--km-border-light);
-  border-radius: var(--km-radius-lg);
+  border-radius: var(--km-radius-panel);
   flex: 1;
   min-width: 0;
-  padding: 20px 24px;
+  padding: 22px 26px;
   box-shadow: var(--km-shadow-sm);
 }
 .view-card :deep(.el-card) {

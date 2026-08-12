@@ -1,22 +1,18 @@
 /**
- * 场景：Workspace 壳布局——标题栏动作与侧栏/AI 面板可见性联动。
+ * 场景：Workspace 壳布局--组合 NavSidebar/MainArea/AssistantPanel/StatusBar.
  *
- * Workspace.vue 是 IDE 壳，把 ActivityBar/MainArea/AssistantPanel/StatusBar/TitlebarMenu
- * 组合在一起。这里把重子组件 stub 掉，只验壳层逻辑：
- *  - 标题栏按钮能切换侧栏（sidebarVisible）与 AI 面板（aiPanelVisible）可见性；
- *  - 切换经 sidebar store（单一真相），而非组件局部状态。
+ * 阶段A Codex 化: 标题栏精简为拖拽条 + 工作区名, 品牌/菜单/工具入口(AI 开关/设置)移至 NavSidebar.
+ * 这里 stub 重子组件, 只验壳层组合 (动作联动已下沉到 NavSidebar 自身测试, 见 navsidebar.test.js).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import Workspace from '@/views/Workspace.vue'
-import { useSidebarStore } from '@/stores/sidebar'
 
-vi.mock('@/ide/ActivityBar.vue', () => ({ default: { template: '<div />' } }))
-vi.mock('@/ide/MainArea.vue', () => ({ default: { template: '<main />' } }))
-vi.mock('@/ide/AssistantPanel.vue', () => ({ default: { template: '<aside />' } }))
-vi.mock('@/ide/StatusBar.vue', () => ({ default: { template: '<footer />' } }))
-vi.mock('@/ide/TitlebarMenu.vue', () => ({ default: { template: '<nav />' } }))
+vi.mock('@/ide/NavSidebar.vue', () => ({ default: { template: '<nav data-test="nav-sidebar" />' } }))
+vi.mock('@/ide/MainArea.vue', () => ({ default: { template: '<main data-test="main-area" />' } }))
+vi.mock('@/ide/AssistantPanel.vue', () => ({ default: { template: '<aside data-test="assistant-panel" />' } }))
+vi.mock('@/ide/StatusBar.vue', () => ({ default: { template: '<footer data-test="status-bar" />' } }))
 
 vi.mock('@/stores/workspace', () => ({
   useWorkspaceStore: () => ({ hasProject: false, rootName: '', loadRecent: vi.fn() }),
@@ -34,23 +30,22 @@ function mountWorkspace(pinia = createPinia()) {
   })
 }
 
-describe('Workspace titlebar actions', () => {
+describe('Workspace shell composition', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
-  it('renders a gear button for AI settings instead of a titlebar AI settings menu', () => {
+  it('renders NavSidebar and MainArea in the body', () => {
     const wrapper = mountWorkspace()
-    const gear = wrapper.find('[data-test="ai-settings-gear"]')
-    expect(gear.exists()).toBe(true)
-    expect(gear.attributes('title')).toContain('AI 设置')
+    expect(wrapper.find('[data-test="nav-sidebar"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="main-area"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="status-bar"]').exists()).toBe(true)
   })
 
-  it('gear opens the settings view as AI settings entry', async () => {
-    const pinia = createPinia()
-    const wrapper = mountWorkspace(pinia)
-
-    await wrapper.find('[data-test="ai-settings-gear"]').trigger('click')
-    expect(useSidebarStore().activeView).toBe('settings')
+  it('titlebar is a slim drag bar; AI settings gear moved to NavSidebar', () => {
+    const wrapper = mountWorkspace()
+    expect(wrapper.find('.ide-titlebar').exists()).toBe(true)
+    // 标题栏已精简, gear 不在 Workspace 壳层 (在 NavSidebar 内)
+    expect(wrapper.find('.ide-titlebar [data-test="ai-settings-gear"]').exists()).toBe(false)
   })
 })

@@ -26,7 +26,7 @@
     <div ref="msgContainer" class="assistant-body">
       <!-- 空状态 -->
       <div v-if="!chat.hasMessages" class="placeholder">
-        <el-icon :size="40" color="var(--ktext-muted)"><ChatLineSquare /></el-icon>
+        <div class="ph-icon-badge"><el-icon :size="26"><ChatLineSquare /></el-icon></div>
         <p class="ph-title">AI 助手</p>
         <p class="ph-hint">基于 DeepSeek V4 Pro，可阅读项目代码并协助开发</p>
         <div class="ph-features">
@@ -311,87 +311,99 @@
         />
       </div>
       <div class="input-bar-row">
-        <!-- 厂商选择 -->
-        <el-select
-          :model-value="providerSelectValue"
-          size="small"
-          class="provider-select"
-          :disabled="chat.streaming"
-          @change="onProviderChange"
+        <!-- 模型与配置入口: 厂商/模型/思考模式/API Key 收进弹层, 输入栏只留一个芯片 (降密度) -->
+        <el-popover
+          v-model:visible="configPopoverVisible"
+          placement="top-start"
+          :width="300"
+          trigger="click"
+          popper-class="input-config-popper"
         >
-          <template #prefix>
-            <img :src="iconUrlOf(aiSettings.providerMeta().iconKey)" class="provider-icon" alt="" />
+          <template #reference>
+            <button
+              type="button"
+              class="model-chip"
+              :class="{ unset: !aiSettings.apiKey }"
+              :disabled="chat.streaming"
+              :title="aiSettings.apiKey ? '点击切换厂商 / 模型 / 思考模式' : '未设置 API Key, 点击配置'"
+            >
+              <img :src="iconUrlOf(aiSettings.providerMeta().iconKey)" class="provider-icon" alt="" />
+              <span class="model-chip-name">{{ aiSettings.model }}</span>
+              <el-icon :size="11" class="model-chip-caret"><CaretBottom /></el-icon>
+            </button>
           </template>
-          <el-option v-for="p in PROVIDERS" :key="p.id" :label="p.label" :value="p.id">
-            <span class="provider-row">
-              <img :src="iconUrlOf(p.iconKey)" class="provider-icon" alt="" />
-              <span>{{ p.label }}</span>
-            </span>
-          </el-option>
-        </el-select>
-        <!-- API Key -->
-        <el-button
-          size="small"
-          class="apikey-btn"
-          :class="{ set: !!aiSettings.apiKey }"
-          :title="aiSettings.apiKey ? '已设置 API Key' : '设置 API Key'"
-          :disabled="chat.streaming"
-          @click="openApiKeyDialog"
-        >
-          🔑
-        </el-button>
-        <!-- 启发式导学模式 (赛题(4)②) -->
-        <el-tooltip
-          :content="chat.tutorMode ? '导学模式开启: AI 以引导式回答+追问, 不直接给答案。点击关闭' : '开启启发式导学: AI 不直接给答案, 用提问和提示引导你思考'"
-          placement="top"
-        >
-          <el-button
-            size="small"
-            class="tutor-btn"
-            :class="{ on: chat.tutorMode }"
-            :disabled="chat.streaming"
-            @click="chat.setTutorMode(!chat.tutorMode)"
-          >
-            <el-icon :size="14"><MagicStick /></el-icon>
-            <span v-if="chat.tutorMode" class="tutor-label">导学</span>
-          </el-button>
-        </el-tooltip>
-        <!-- reasoning_mode 三态: auto / fast / deep — Spec A Task 9 -->
-        <el-radio-group
-          :model-value="aiSettings.reasoningMode"
-          size="small"
-          class="reasoning-group"
-          :disabled="chat.streaming"
-          @change="aiSettings.setReasoningMode"
-        >
-          <el-radio-button label="auto" title="自动 — 由模型默认决定">🤖</el-radio-button>
-          <el-radio-button label="fast" title="快速 — 不思考直接回答">⚡</el-radio-button>
-          <el-radio-button
-            label="deep"
-            :disabled="deepDisabled"
-            :title="deepDisabled ? deepDisabledTooltip : '深度 — 充分思考'"
-          >🧠</el-radio-button>
-        </el-radio-group>
-        <!-- 模型 select + 能力徽章 (vision/reasoning/context) -->
-        <el-select
-          :model-value="aiSettings.model"
-          size="small"
-          class="model-select"
-          :disabled="chat.streaming"
-          @change="aiSettings.setModel"
-        >
-          <el-option v-for="m in aiSettings.models" :key="m" :label="m" :value="m">
-            <span class="model-row">
-              <span class="model-name">{{ m }}</span>
-              <span class="model-badges">
-                <el-tag v-if="capOf(m).vision === true" size="small" type="success" effect="plain">👁</el-tag>
-                <el-tag v-else-if="capOf(m).vision === undefined && capOf(m).pending" size="small" type="info" effect="plain">⋯</el-tag>
-                <el-tag v-if="capOf(m).reasoning === 'native'" size="small" type="warning" effect="plain">🧠</el-tag>
-                <el-tag v-if="capOf(m).context" size="small" type="info" effect="plain">{{ formatContext(capOf(m).context) }}</el-tag>
-              </span>
-            </span>
-          </el-option>
-        </el-select>
+          <div class="config-panel">
+            <div class="config-row">
+              <label>厂商</label>
+              <el-select
+                :model-value="providerSelectValue"
+                size="small"
+                :disabled="chat.streaming"
+                style="width: 100%"
+                @change="onProviderChange"
+              >
+                <template #prefix>
+                  <img :src="iconUrlOf(aiSettings.providerMeta().iconKey)" class="provider-icon" alt="" />
+                </template>
+                <el-option v-for="p in PROVIDERS" :key="p.id" :label="p.label" :value="p.id">
+                  <span class="provider-row">
+                    <img :src="iconUrlOf(p.iconKey)" class="provider-icon" alt="" />
+                    <span>{{ p.label }}</span>
+                  </span>
+                </el-option>
+              </el-select>
+            </div>
+            <div class="config-row">
+              <label>模型</label>
+              <el-select
+                :model-value="aiSettings.model"
+                size="small"
+                :disabled="chat.streaming"
+                style="width: 100%"
+                @change="aiSettings.setModel"
+              >
+                <el-option v-for="m in aiSettings.models" :key="m" :label="m" :value="m">
+                  <span class="model-row">
+                    <span class="model-name">{{ m }}</span>
+                    <span class="model-badges">
+                      <el-tag v-if="capOf(m).vision === true" size="small" type="success" effect="plain">👁</el-tag>
+                      <el-tag v-else-if="capOf(m).vision === undefined && capOf(m).pending" size="small" type="info" effect="plain">⋯</el-tag>
+                      <el-tag v-if="capOf(m).reasoning === 'native'" size="small" type="warning" effect="plain">🧠</el-tag>
+                      <el-tag v-if="capOf(m).context" size="small" type="info" effect="plain">{{ formatContext(capOf(m).context) }}</el-tag>
+                    </span>
+                  </span>
+                </el-option>
+              </el-select>
+            </div>
+            <div class="config-row">
+              <label>思考模式</label>
+              <el-radio-group
+                :model-value="aiSettings.reasoningMode"
+                size="small"
+                :disabled="chat.streaming"
+                @change="aiSettings.setReasoningMode"
+              >
+                <el-radio-button label="auto" title="自动 - 由模型默认决定">自动</el-radio-button>
+                <el-radio-button label="fast" title="快速 - 不思考直接回答">快速</el-radio-button>
+                <el-radio-button
+                  label="deep"
+                  :disabled="deepDisabled"
+                  :title="deepDisabled ? deepDisabledTooltip : '深度 - 充分思考'"
+                >深度</el-radio-button>
+              </el-radio-group>
+            </div>
+            <el-button
+              size="small"
+              class="config-apikey"
+              :class="{ set: !!aiSettings.apiKey }"
+              style="width: 100%; margin-top: 2px;"
+              @click="openApiKeyDialog(); configPopoverVisible = false"
+            >
+              {{ aiSettings.apiKey ? '🔑  API Key 已设置' : '🔑  设置 API Key' }}
+            </el-button>
+          </div>
+        </el-popover>
+
         <div class="send-group">
           <input
             ref="fileInputRef"
@@ -401,6 +413,22 @@
             hidden
             @change="onFilesPicked"
           />
+          <!-- 启发式导学模式 (赛题(4)②) -->
+          <el-tooltip
+            :content="chat.tutorMode ? '导学模式开启: AI 以引导式回答+追问, 不直接给答案。点击关闭' : '开启启发式导学: AI 不直接给答案, 用提问和提示引导你思考'"
+            placement="top"
+          >
+            <el-button
+              size="small"
+              class="tutor-btn"
+              :class="{ on: chat.tutorMode }"
+              :disabled="chat.streaming"
+              @click="chat.setTutorMode(!chat.tutorMode)"
+            >
+              <el-icon :size="14"><MagicStick /></el-icon>
+              <span v-if="chat.tutorMode" class="tutor-label">导学</span>
+            </el-button>
+          </el-tooltip>
           <el-tooltip :content="attachTooltip" placement="top">
             <el-button
               size="small"
@@ -482,7 +510,7 @@
 
 <script setup>
 import { ref, reactive, watch, nextTick, computed } from 'vue'
-import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight } from '@element-plus/icons-vue'
+import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight, CaretBottom } from '@element-plus/icons-vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
@@ -510,6 +538,7 @@ const modelVision = useModelVisionStore()
 
 const inputText = ref('')
 const inputRef = ref(null)
+const configPopoverVisible = ref(false)
 const msgContainer = ref(null)
 
 // ---- 附件缩略图大图预览 (ElImageViewer 全局注册, 仅用 tag) ----
@@ -832,7 +861,16 @@ async function copyText(text) {
   padding: 28px;
   text-align: center;
 }
-.ph-title { font-size: 15px; font-weight: 600; color: var(--km-gray-700); margin-top: 8px; }
+.ph-icon-badge {
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+  background: var(--km-primary-light);
+  color: var(--km-primary);
+  box-shadow: 0 6px 18px -8px var(--km-primary, #3b82f6);
+  margin-bottom: 4px;
+}
+.ph-title { font-size: 17px; font-weight: 600; color: var(--km-gray-700); margin-top: 6px; letter-spacing: 0.3px; }
 .ph-hint { font-size: 12px; color: var(--km-gray-500); margin-bottom: 16px; line-height: 1.6; }
 .ph-features {
   display: flex; flex-direction: column; gap: 8px;
@@ -841,7 +879,8 @@ async function copyText(text) {
 .feat {
   font-size: 12px;
   color: var(--km-gray-600);
-  background: var(--km-gray-200);
+  background: var(--km-bg-layer-1);
+  border: 1px solid var(--km-border-light);
   padding: 10px 14px;
   border-radius: var(--km-radius-sm);
   transition: all 0.2s var(--km-ease);
@@ -873,10 +912,11 @@ async function copyText(text) {
 .assistant-msg { width: 100%; }
 .msg-avatar {
   flex-shrink: 0; width: 30px; height: 30px;
-  border-radius: var(--km-radius-sm);
-  background: var(--km-primary-light);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--km-primary), var(--km-primary-active));
   display: flex; align-items: center; justify-content: center;
-  color: var(--km-primary);
+  color: #fff;
+  box-shadow: var(--km-shadow-sm);
 }
 /* Think 思考过程 */
 .think-block {
@@ -931,9 +971,18 @@ async function copyText(text) {
   font-size: 13px; line-height: 1.65;
   color: var(--km-gray-700);
 }
+/* 助手消息软气泡 (Phase B: Codex 式质感 — 卡片底 + 细边框 + 左圆角朝向头像) */
+.assistant-msg .msg-content {
+  background: var(--km-bg-layer-2);
+  border: 1px solid var(--km-border-light);
+  border-radius: 12px 16px 16px 16px;
+  padding: 10px 14px 8px;
+}
 .msg-content :deep(pre) {
   max-height: 200px; overflow-y: auto;
-  background: var(--km-bg-layer-2);
+  background: var(--km-gray-100);
+  border: 1px solid var(--km-border-light);
+  border-radius: 6px;
 }
 .msg-content :deep(code) {
   background: var(--km-gray-200);
@@ -1088,24 +1137,55 @@ html.dark .user-text {
 .input-bar-row > :last-child {
   margin-left: auto;
 }
-.provider-select {
-  width: 120px;
-  flex-shrink: 0;
-}
-.provider-select :deep(.el-input__inner) {
+/* 模型配置芯片: 收纳厂商/模型/思考模式/API Key, 输入栏降密度 */
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px 0 6px;
   font-size: 12px;
-}
-.apikey-btn {
-  width: 30px; height: 30px; padding: 0;
-  font-size: 15px;
+  color: var(--km-gray-700);
+  background: var(--km-bg-layer-2);
+  border: 1px solid var(--km-border);
   border-radius: var(--km-radius-sm);
-  opacity: 0.45;
+  cursor: pointer;
+  max-width: 220px;
   transition: all 0.2s var(--km-ease);
 }
-.apikey-btn.set {
+.model-chip:hover:not(:disabled) {
+  border-color: var(--km-border-focus);
+  background: var(--km-bg-layer-1);
+}
+.model-chip:disabled { opacity: 0.6; cursor: not-allowed; }
+.model-chip.unset {
+  border-color: var(--km-warning, #e6a23c);
+  color: var(--km-warning, #e6a23c);
+}
+.model-chip .provider-icon { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.model-chip-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.model-chip-caret { opacity: 0.45; flex-shrink: 0; }
+/* 弹层内配置面板 */
+.config-panel { display: flex; flex-direction: column; gap: 12px; }
+.config-row { display: flex; flex-direction: column; gap: 5px; }
+.config-row > label { font-size: 11px; color: var(--km-gray-500); font-weight: 500; }
+.config-apikey {
+  justify-content: flex-start;
+  border-radius: var(--km-radius-sm);
+  opacity: 0.85;
+  transition: all 0.2s var(--km-ease);
+}
+.config-apikey.set {
   opacity: 1;
   background: var(--km-primary-light);
   border-color: var(--km-primary);
+  color: var(--km-primary);
 }
 /* 启发式导学模式按钮 */
 .tutor-btn {
@@ -1314,16 +1394,7 @@ html.dark .user-text {
   .msg-content { transition: none; }
 }
 
-/* ---- reasoning_mode 三态 radio (Spec A Task 9) ---- */
-.reasoning-group { margin-right: 6px; }
-.reasoning-group .el-radio-button__inner { padding: 4px 8px; font-size: 13px; }
-.reasoning-group .is-disabled .el-radio-button__inner {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 /* ---- 模型 select + 能力徽章 (Task 17) ---- */
-.model-select { width: 200px; margin-right: 6px; }
 .model-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .model-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .model-badges { display: inline-flex; gap: 4px; }

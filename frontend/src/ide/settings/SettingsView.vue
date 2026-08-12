@@ -170,4 +170,24 @@ onBeforeUnmount(() => observer?.disconnect())
   border-left-color: var(--km-primary-active);
   background: var(--km-primary-light);
 }
+/* 设置页按钮质感 (2026-08-12 用户反馈"按钮太粗糙"): 统一圆角/字重/主按钮轻阴影 */
+.settings-content :deep(.el-button) {
+  border-radius: 7px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.settings-content :deep(.el-button--primary:not(.is-plain):not(.is-link):not(.is-text)) {
+  box-shadow: 0 1px 2px rgba(108, 124, 224, 0.28), 0 0 0 1px rgba(108, 124, 224, 0.08);
+}
+.settings-content :deep(.el-button--primary.is-plain) {
+  color: var(--km-primary-active);
+}
+.settings-content :deep(.el-button-group .el-button:first-child) {
+  border-top-left-radius: 7px;
+  border-bottom-left-radius: 7px;
+}
+.settings-content :deep(.el-button-group .el-button:last-child) {
+  border-top-right-radius: 7px;
+  border-bottom-right-radius: 7px;
+}
 </style>

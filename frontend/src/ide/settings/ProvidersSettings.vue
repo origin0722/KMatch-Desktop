@@ -149,7 +149,7 @@ async function restartBackend() {
 .cp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .cp-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; border: 1px solid var(--km-border-light); border-radius: var(--km-radius-md);
+  padding: 10px 12px; border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm);
 }
 .cp-info { display: flex; flex-direction: column; min-width: 0; }
 .cp-name { font-size: 13px; font-weight: 600; color: var(--km-gray-800); }

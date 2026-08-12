@@ -11,9 +11,6 @@
       <span class="status-item" :class="backendClass" :title="backendTitle">
         <span class="dot"></span>{{ backend.label }}
       </span>
-      <span class="status-item clickable" @click="toggleTheme">
-        {{ theme.mode === 'dark' ? '🌙 暗色' : '☀️ 亮色' }}
-      </span>
     </div>
   </div>
 </template>
@@ -21,13 +18,10 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { useThemeStore } from '@/stores/theme'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 
 const ws = useWorkspaceStore()
-const theme = useThemeStore()
 const backend = useBackendHealthStore()
-const toggleTheme = () => theme.toggle()
 
 const dirty = computed(() => ws.activeFile && ws.dirtyFiles.has(ws.activeFile))
 
