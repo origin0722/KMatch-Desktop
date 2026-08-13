@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD017-002",
+ "source_node_id": "WD-017",
+ "type": "choice",
+ "question": "后台任务必须保证？",
+ "options": [
+  "幂等与可重试",
+  "随机执行",
+  "只执行一次不记录",
+  "无状态"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "幂等防重复执行副作用"
+}

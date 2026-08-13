@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA007-001",
+ "source_node_id": "DA-007",
+ "type": "choice",
+ "question": "groupby 后想保持原行数做组内运算, 应使用？",
+ "options": [
+  "agg",
+  "transform",
+  "filter",
+  "merge"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "transform 保持原形状, 用于组内标准化/填充"
+}

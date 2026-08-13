@@ -330,6 +330,12 @@ const CATEGORY_COLORS = {
   'Python进阶': '#6dc8ec',
   '常用库与工具': '#e86452',
   '项目实战': '#945fb9',
+  // 2026-08 扩域新增 5 分类 (色相与原 6 色错开: 青/玫红/橙/靛/黄绿, 避免三紫挤簇)
+  '机器学习': '#61c0bf',
+  '数据分析与可视化': '#f25f9e',
+  'Web后端开发': '#ff9d6c',
+  '数据库与缓存': '#4253a4',
+  '工程化实践': '#82b366',
 }
 const categoryColor = (cat) => CATEGORY_COLORS[cat] || THEME.gray400
 
@@ -359,6 +365,8 @@ const masteryFilter = ref('')
 const categories = [
   '基础语法', '数据结构与算法', '面向对象编程',
   'Python进阶', '常用库与工具', '项目实战',
+  '机器学习', '数据分析与可视化', 'Web后端开发',
+  '数据库与缓存', '工程化实践',
 ]
 
 // 学习角色 (借鉴 Understand-Anything PersonaSelector): 调整节点卡片详略

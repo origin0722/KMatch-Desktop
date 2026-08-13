@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB018-001",
+ "source_node_id": "DB-018",
+ "type": "choice",
+ "question": "MongoDB 存储的数据格式是？",
+ "options": [
+  "BSON 文档",
+  "关系表",
+  "纯文本",
+  "二进制流"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "MongoDB 存 BSON 文档"
+}

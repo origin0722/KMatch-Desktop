@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD025-001",
+ "source_node_id": "WD-025",
+ "type": "choice",
+ "question": "性能调优的第一步是？",
+ "options": [
+  "压测与剖析定位热点",
+  "改所有代码",
+  "换数据库",
+  "关缓存"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "先测量后优化"
+}

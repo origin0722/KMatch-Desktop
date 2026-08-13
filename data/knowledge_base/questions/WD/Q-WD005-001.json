@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD005-001",
+ "source_node_id": "WD-005",
+ "type": "choice",
+ "question": "URL /users/{user_id} 中 user_id 属于？",
+ "options": [
+  "查询参数",
+  "路径参数",
+  "请求体",
+  "请求头"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "大括号中为路径参数"
+}

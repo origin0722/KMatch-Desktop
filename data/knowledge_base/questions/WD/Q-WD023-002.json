@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD023-002",
+ "source_node_id": "WD-023",
+ "type": "choice",
+ "question": "水平扩展的前提是？",
+ "options": [
+  "服务有状态",
+  "服务无状态",
+  "单库单机",
+  "同步阻塞"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "无状态才可水平扩容"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB013-001",
+ "source_node_id": "DB-013",
+ "type": "choice",
+ "question": "Redis 天然适合排行榜的数据结构是？",
+ "options": [
+  "String",
+  "Hash",
+  "ZSet(有序集合)",
+  "List"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "ZSet 按分数排序适合排行榜"
+}

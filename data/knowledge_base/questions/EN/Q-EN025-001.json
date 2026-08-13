@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN025-001",
+ "source_node_id": "EN-025",
+ "type": "choice",
+ "question": "DORA 四指标不包括？",
+ "options": [
+  "部署频率",
+  "变更前置时间",
+  "代码行数",
+  "恢复时间"
+ ],
+ "answer": "C",
+ "difficulty": 4,
+ "explanation": "代码行数非效能指标"
+}

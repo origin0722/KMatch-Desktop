@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN003-002",
+ "source_node_id": "EN-003",
+ "type": "choice",
+ "question": "代码合并前应？",
+ "options": [
+  "直接推主干",
+  "经 PR/MR 评审与集成",
+  "删除分支",
+  "不测试"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "PR/MR 是评审集成入口"
+}

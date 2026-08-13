@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD001-001",
+ "source_node_id": "WD-001",
+ "type": "choice",
+ "question": "Web 后端的主要职责不包括？",
+ "options": [
+  "接口设计与实现",
+  "业务逻辑处理",
+  "页面视觉样式",
+  "数据校验与权限控制"
+ ],
+ "answer": "C",
+ "difficulty": 1,
+ "explanation": "页面视觉是前端职责"
+}

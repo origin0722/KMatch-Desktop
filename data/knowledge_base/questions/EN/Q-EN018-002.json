@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN018-002",
+ "source_node_id": "EN-018",
+ "type": "choice",
+ "question": "特性开关的作用是？",
+ "options": [
+  "解耦部署与发布",
+  "加速渲染",
+  "替代数据库",
+  "加密代码"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "特性开关解耦部署发布"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB015-001",
+ "source_node_id": "DB-015",
+ "type": "choice",
+ "question": "Cache Aside 更新数据的正确顺序是？",
+ "options": [
+  "先删缓存再更库",
+  "先更库再删缓存",
+  "只删缓存",
+  "只更缓存"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "先更库再删缓存减少并发窗口"
+}

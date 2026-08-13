@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD009-002",
+ "source_node_id": "WD-009",
+ "type": "choice",
+ "question": "最小权限原则指？",
+ "options": [
+  "所有用户同权",
+  "角色只授予完成任务所需的最小权限",
+  "管理员拥有一切",
+  "权限不设限"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "最小权限降低被滥用面"
+}

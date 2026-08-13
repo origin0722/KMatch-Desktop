@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD022-001",
+ "source_node_id": "WD-022",
+ "type": "choice",
+ "question": "合理的后端架构演进路径是？",
+ "options": [
+  "单体→模块化单体→微服务",
+  "微服务→单体→模块化",
+  "一步到位微服务",
+  "永远单体"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "渐进式演进, 避免过度设计"
+}

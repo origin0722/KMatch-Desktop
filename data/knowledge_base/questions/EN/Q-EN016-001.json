@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN016-001",
+ "source_node_id": "EN-016",
+ "type": "choice",
+ "question": "重构的前提是？",
+ "options": [
+  "有测试保护",
+  "无测试也行",
+  "删测试",
+  "加新功能"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "测试保护是重构前提"
+}

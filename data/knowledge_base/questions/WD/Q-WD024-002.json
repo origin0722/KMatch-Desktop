@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD024-002",
+ "source_node_id": "WD-024",
+ "type": "choice",
+ "question": "微服务排障的关键工具是？",
+ "options": [
+  "链路追踪",
+  "单机日志拼接",
+  "猜",
+  "重启"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "链路追踪贯穿调用链"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD013-002",
+ "source_node_id": "WD-013",
+ "type": "choice",
+ "question": "结构化日志的优势是？",
+ "options": [
+  "可检索、可与请求ID关联排障",
+  "无法读取",
+  "体积更小",
+  "无需配置"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "结构化字段便于检索关联"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD008-001",
+ "source_node_id": "WD-008",
+ "type": "choice",
+ "question": "JWT 的三个部分依次是？",
+ "options": [
+  "signature.payload.header",
+  "header.payload.signature",
+  "payload.header.signature",
+  "随机字符串"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "JWT 三段式 header.payload.signature"
+}

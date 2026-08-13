@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA008-002",
+ "source_node_id": "DA-008",
+ "type": "choice",
+ "question": "把宽表变长表的操作是？",
+ "options": [
+  "pivot",
+  "melt",
+  "merge",
+  "concat"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "melt 宽转长, pivot 长转宽"
+}

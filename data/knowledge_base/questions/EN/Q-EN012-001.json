@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN012-001",
+ "source_node_id": "EN-012",
+ "type": "choice",
+ "question": "性能优化的正确顺序是？",
+ "options": [
+  "测量-定位-优化-验证",
+  "优化-测量",
+  "直接改代码",
+  "换硬件"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "测量先行再优化后验证"
+}

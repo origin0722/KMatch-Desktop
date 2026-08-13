@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD007-002",
+ "source_node_id": "WD-007",
+ "type": "choice",
+ "question": "需要释放资源(如关闭 DB 会话)的依赖用？",
+ "options": [
+  "return 依赖",
+  "yield 依赖",
+  "普通函数",
+  "装饰器"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "yield 前后实现获取/释放"
+}

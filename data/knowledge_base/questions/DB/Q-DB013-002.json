@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB013-002",
+ "source_node_id": "DB-013",
+ "type": "choice",
+ "question": "Redis 单线程模型的特点是？",
+ "options": [
+  "命令原子执行+IO多路复用",
+  "不支持并发",
+  "多线程并行",
+  "无 IO 优化"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "单线程+多路复用, 命令原子"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB011-001",
+ "source_node_id": "DB-011",
+ "type": "choice",
+ "question": "「未验证的备份」等同于？",
+ "options": [
+  "没有备份",
+  "完美备份",
+  "增量备份",
+  "快照备份"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "不验证可恢复性的备份不可信"
+}

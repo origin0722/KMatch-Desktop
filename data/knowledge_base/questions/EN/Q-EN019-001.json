@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN019-001",
+ "source_node_id": "EN-019",
+ "type": "choice",
+ "question": "自动化工具链的目的不包括？",
+ "options": [
+  "消除重复手工操作",
+  "保证团队一致性",
+  "增加手工审批环节",
+  "降低上手成本"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "自动化减少而非增加手工环节"
+}

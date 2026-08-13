@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD018-002",
+ "source_node_id": "WD-018",
+ "type": "choice",
+ "question": "上传文件需要校验的内容不包括？",
+ "options": [
+  "类型白名单",
+  "大小限制",
+  "内容(非伪装类型)",
+  "文件颜色"
+ ],
+ "answer": "D",
+ "difficulty": 2,
+ "explanation": "颜色与上传安全无关"
+}

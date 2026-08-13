@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA006-001",
+ "source_node_id": "DA-006",
+ "type": "choice",
+ "question": "pd.merge 中 how='outer' 的含义是？",
+ "options": [
+  "只保留左表行",
+  "只保留匹配行",
+  "保留两表所有行, 未匹配补 NaN",
+  "笛卡尔积"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "outer 保留全部行, 缺失补 NaN"
+}

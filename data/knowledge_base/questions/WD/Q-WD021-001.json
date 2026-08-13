@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD021-001",
+ "source_node_id": "WD-021",
+ "type": "choice",
+ "question": "限流的令牌桶算法的特点是？",
+ "options": [
+  "允许一定突发且平均限速",
+  "严格固定速率无突发",
+  "随机拒绝",
+  "无限流量"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "令牌桶缓冲突发"
+}

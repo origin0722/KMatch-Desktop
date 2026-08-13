@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA015-002",
+ "source_node_id": "DA-015",
+ "type": "choice",
+ "question": "Seaborn 相对 Matplotlib 的主要优势是？",
+ "options": [
+  "更快的渲染",
+  "统计图形高级接口+自动误差带",
+  "支持 3D 渲染",
+  "离线绘图"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "Seaborn 封装统计图与误差带"
+}

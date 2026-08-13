@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD022-002",
+ "source_node_id": "WD-022",
+ "type": "choice",
+ "question": "服务划分的主要依据是？",
+ "options": [
+  "团队技术栈",
+  "业务边界与数据边界",
+  "代码行数",
+  "部署机器"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "按业务/数据边界划分服务"
+}

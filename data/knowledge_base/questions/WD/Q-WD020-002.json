@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD020-002",
+ "source_node_id": "WD-020",
+ "type": "choice",
+ "question": "WebSocket 连接管理需要处理？",
+ "options": [
+  "断线重连与心跳保活",
+  "无需管理",
+  "只增不减",
+  "忽略异常"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "心跳与重连保活"
+}

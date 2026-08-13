@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN004-001",
+ "source_node_id": "EN-004",
+ "type": "choice",
+ "question": "代码规范最有效的执行方式是？",
+ "options": [
+  "口头约定",
+  "工具(格式化器+检查器)强制",
+  "每周开会强调",
+  "不强制"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "工具强制优于口头约定"
+}

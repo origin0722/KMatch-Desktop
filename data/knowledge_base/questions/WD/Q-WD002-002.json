@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD002-002",
+ "source_node_id": "WD-002",
+ "type": "choice",
+ "question": "以下哪种 HTTP 方法具备幂等性？",
+ "options": [
+  "POST",
+  "PUT",
+  "GET",
+  "以上全非"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "GET/PUT/DELETE 幂等, POST 不幂等"
+}

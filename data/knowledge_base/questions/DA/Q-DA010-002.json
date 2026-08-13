@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA010-002",
+ "source_node_id": "DA-010",
+ "type": "choice",
+ "question": "查看各列缺失数量的写法是？",
+ "options": [
+  "df.isna().sum()",
+  "df.dropna()",
+  "df.fillna()",
+  "df.isna()"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "isna() 后 sum() 统计每列缺失数"
+}

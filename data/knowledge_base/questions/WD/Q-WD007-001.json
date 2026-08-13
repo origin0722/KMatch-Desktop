@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD007-001",
+ "source_node_id": "WD-007",
+ "type": "choice",
+ "question": "FastAPI 依赖注入的主要收益是？",
+ "options": [
+  "代码更慢",
+  "依赖可复用、易替换、可测试",
+  "无需类型声明",
+  "绕过框架"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "DI 提升复用与可测试性"
+}

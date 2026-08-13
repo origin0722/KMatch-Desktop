@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA016-001",
+ "source_node_id": "DA-016",
+ "type": "choice",
+ "question": "EDA 的主要目的是？",
+ "options": [
+  "直接训练模型",
+  "系统探索数据发现特征、异常与模式",
+  "生成最终报告",
+  "部署上线"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "EDA 是探索而非验证/建模"
+}

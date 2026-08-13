@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB011-002",
+ "source_node_id": "DB-011",
+ "type": "choice",
+ "question": "PITR 指的是？",
+ "options": [
+  "基于时间点恢复",
+  "全量恢复",
+  "删除备份",
+  "备份压缩"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "Point-In-Time Recovery 基于时间点恢复"
+}

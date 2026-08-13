@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB007-001",
+ "source_node_id": "DB-007",
+ "type": "choice",
+ "question": "SQLite 最适合的场景是？",
+ "options": [
+  "高并发写入服务",
+  "桌面应用/原型/测试",
+  "分布式集群",
+  "海量数据分析"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "嵌入式单文件适合轻量场景"
+}

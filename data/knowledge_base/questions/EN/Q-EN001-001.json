@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN001-001",
+ "source_node_id": "EN-001",
+ "type": "choice",
+ "question": "软件工程化的核心目标是？",
+ "options": [
+  "堆砌更多工具",
+  "降低协作摩擦、控质量与风险",
+  "增加流程审批",
+  "替代人写代码"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "工程化服务质量与协作而非堆工具"
+}

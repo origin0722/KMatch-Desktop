@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA023-001",
+ "source_node_id": "DA-023",
+ "type": "choice",
+ "question": "专业数据分析流程的第一步是？",
+ "options": [
+  "写代码",
+  "业务理解(定义问题与指标)",
+  "可视化",
+  "建模型"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "业务理解先行"
+}

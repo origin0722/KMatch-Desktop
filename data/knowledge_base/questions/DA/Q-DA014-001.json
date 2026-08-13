@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA014-001",
+ "source_node_id": "DA-014",
+ "type": "choice",
+ "question": "生成 2×2 子图网格的函数是？",
+ "options": [
+  "plt.subplots(2,2)",
+  "plt.figure(2)",
+  "plt.axes(2,2)",
+  "plt.grid(2,2)"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "subplots 返回 Figure 与 Axes 数组"
+}

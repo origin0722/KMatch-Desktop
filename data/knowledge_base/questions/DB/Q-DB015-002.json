@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB015-002",
+ "source_node_id": "DB-015",
+ "type": "choice",
+ "question": "「先删缓存再更库」的并发风险是？",
+ "options": [
+  "并发请求回填旧值导致不一致",
+  "性能更高",
+  "无风险",
+  "数据丢失"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "删缓存后并发读回填旧值"
+}

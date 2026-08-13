@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN006-001",
+ "source_node_id": "EN-006",
+ "type": "choice",
+ "question": "pytest 管理测试前置与清理用的是？",
+ "options": [
+  "assert",
+  "fixture",
+  "print",
+  "main"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "fixture 管理前置与清理"
+}

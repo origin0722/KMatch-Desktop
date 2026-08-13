@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB005-001",
+ "source_node_id": "DB-005",
+ "type": "choice",
+ "question": "事务的原子性指？",
+ "options": [
+  "操作全做或全不做",
+  "约束始终满足",
+  "并发互不干扰",
+  "提交后不丢"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "原子性 = all or nothing"
+}

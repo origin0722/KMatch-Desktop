@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN010-002",
+ "source_node_id": "EN-010",
+ "type": "choice",
+ "question": "发布流程应？",
+ "options": [
+  "手工随意操作",
+  "自动化(构建+测试+签名+上传)",
+  "只构建不测试",
+  "跳过签名"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "自动化保证一致可追溯"
+}

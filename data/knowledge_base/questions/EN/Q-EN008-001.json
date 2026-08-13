@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN008-001",
+ "source_node_id": "EN-008",
+ "type": "choice",
+ "question": "关于测试覆盖率的正确认识是？",
+ "options": [
+  "覆盖率是质量信号非目标",
+  "100% 覆盖就无 bug",
+  "覆盖率越高越好无脑追",
+  "覆盖率无用"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "覆盖率是信号非目标"
+}

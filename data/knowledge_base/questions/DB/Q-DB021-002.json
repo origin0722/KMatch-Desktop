@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB021-002",
+ "source_node_id": "DB-021",
+ "type": "choice",
+ "question": "至少一次投递要求消费端？",
+ "options": [
+  "幂等消费",
+  "不消费",
+  "随机消费",
+  "只消费一次"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "至少一次可能重复, 需幂等"
+}

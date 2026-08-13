@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN021-002",
+ "source_node_id": "EN-021",
+ "type": "choice",
+ "question": "为演进设计的关键是？",
+ "options": [
+  "接缝与边界先行",
+  "一次性定死架构",
+  "无边界",
+  "最大化耦合"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "接缝边界先行降低变更成本"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD019-001",
+ "source_node_id": "WD-019",
+ "type": "choice",
+ "question": "后端接口自动化测试应覆盖？",
+ "options": [
+  "仅正常路径",
+  "正常+边界+错误分支",
+  "仅错误分支",
+  "不测试"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "三层覆盖才可信"
+}

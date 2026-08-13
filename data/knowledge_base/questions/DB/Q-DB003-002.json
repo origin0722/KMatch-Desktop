@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB003-002",
+ "source_node_id": "DB-003",
+ "type": "choice",
+ "question": "WHERE 与 HAVING 的区别是？",
+ "options": [
+  "WHERE 过滤行, HAVING 过滤分组",
+  "两者完全相同",
+  "HAVING 过滤行",
+  "WHERE 过滤分组"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "HAVING 用于 GROUP BY 后过滤分组"
+}

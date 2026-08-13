@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB017-001",
+ "source_node_id": "DB-017",
+ "type": "choice",
+ "question": "Neo4j 属于哪类 NoSQL？",
+ "options": [
+  "键值",
+  "文档",
+  "图",
+  "列族"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "Neo4j 是图数据库"
+}

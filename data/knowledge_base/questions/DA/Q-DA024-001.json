@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA024-001",
+ "source_node_id": "DA-024",
+ "type": "choice",
+ "question": "实战分析中「口径一致」指的是？",
+ "options": [
+  "所有指标定义与计算范围统一",
+  "图表颜色统一",
+  "代码格式统一",
+  "文件命名统一"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "口径一致是结论可信的前提"
+}

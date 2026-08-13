@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB005-002",
+ "source_node_id": "DB-005",
+ "type": "choice",
+ "question": "事务异常时应执行？",
+ "options": [
+  "COMMIT",
+  "ROLLBACK",
+  "BEGIN",
+  "SELECT"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "异常回滚保证原子性"
+}

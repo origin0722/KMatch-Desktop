@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN022-001",
+ "source_node_id": "EN-022",
+ "type": "choice",
+ "question": "CI 持续集成的核心是？",
+ "options": [
+  "每次提交自动构建+测试",
+  "手工构建",
+  "每月集成一次",
+  "不测试"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "CI 每次提交自动构建测试"
+}

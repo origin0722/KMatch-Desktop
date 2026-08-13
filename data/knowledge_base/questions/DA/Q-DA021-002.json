@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA021-002",
+ "source_node_id": "DA-021",
+ "type": "choice",
+ "question": "仪表盘设计的核心原则是？",
+ "options": [
+  "堆满所有图表",
+  "一屏聚焦有限关键指标",
+  "只用一种图表类型",
+  "不标注口径"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "指标过多反而失焦, 需聚焦"
+}

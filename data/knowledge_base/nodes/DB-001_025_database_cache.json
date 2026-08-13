@@ -1,0 +1,965 @@
+[
+ {
+  "id": "DB-001",
+  "name": "数据库基础概念",
+  "difficulty": 1,
+  "category": "数据库与缓存",
+  "summary": "数据库是结构化存储与管理数据的系统, 核心目标: 持久化、并发安全、高效查询与事务保证。按模型分关系型(SQL: MySQL/PostgreSQL)与非关系型(NoSQL: Redis/MongoDB)。数据库与文件存储的区别在于: 事务、索引、查询语言与并发控制等系统化能力。",
+  "prerequisites": [],
+  "key_points": [
+   "持久化 + 并发安全 + 高效查询 + 事务",
+   "关系型(SQL) vs 非关系型(NoSQL)",
+   "DBMS 提供事务/索引/查询语言/并发控制",
+   "数据独立性: 逻辑/物理层分离",
+   "选型取决于一致性需求/规模/访问模式"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据库基础概念核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把数据库当普通文件用, 忽略事务与索引",
+   "选型只看流行度不看场景匹配"
+  ],
+  "tags": [
+   "数据库",
+   "数据库基础概念"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DB-002",
+  "name": "关系模型与 SQL 基础",
+  "difficulty": 1,
+  "category": "数据库与缓存",
+  "summary": "关系模型用二维表组织数据: 行(记录)列(字段), 表间用外键关联。SQL 是关系数据库标准语言, 分 DDL(建表/改结构)、DML(增删改查)、DQL(查询)、DCL(权限)。基本查询: SELECT 列 FROM 表 WHERE 条件。",
+  "prerequisites": [
+   "DB-001"
+  ],
+  "key_points": [
+   "表(行=记录, 列=字段)是关系模型核心",
+   "外键建立表间关联",
+   "SQL 分类: DDL/DML/DQL/DCL",
+   "SELECT-FROM-WHERE 基本查询骨架",
+   "主键唯一标识行, 非空唯一"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "关系模型与 SQL 基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "无主键的表难以定位行",
+   "外键约束缺失导致脏数据"
+  ],
+  "tags": [
+   "数据库",
+   "关系模型与 SQL 基础"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DB-003",
+  "name": "SQL 查询进阶",
+  "difficulty": 2,
+  "category": "数据库与缓存",
+  "summary": "进阶查询: JOIN 连接多表(inner/left/right)、GROUP BY 分组聚合、HAVING 过滤分组、子查询与 EXISTS、UNION 合并结果集。理解执行顺序(FROM->WHERE->GROUP->HAVING->SELECT->ORDER) 是写对复杂查询的关键。",
+  "prerequisites": [
+   "DB-002"
+  ],
+  "key_points": [
+   "JOIN: inner/left/right/full 多表连接",
+   "GROUP BY + HAVING 分组后过滤",
+   "子查询/EXISTS 表达嵌套条件",
+   "执行顺序: FROM->WHERE->GROUP->SELECT->ORDER",
+   "UNION 合并(去重) / UNION ALL(不去重更快)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "SQL 查询进阶核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "混淆 WHERE(过滤行)与 HAVING(过滤分组)",
+   "LEFT JOIN 后用 WHERE 过滤右表变 INNER JOIN 语义"
+  ],
+  "tags": [
+   "数据库",
+   "SQL 查询进阶"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "DB-004",
+  "name": "索引原理",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "索引是加速查询的辅助数据结构(多为 B+树): 让数据库避免全表扫描, 按列快速定位行。主键/外键/高频过滤列适合建索引, 但索引占空间且拖慢写操作。复合索引遵循最左前缀原则, 覆盖索引可免回表。索引不是越多越好。",
+  "prerequisites": [
+   "DB-003"
+  ],
+  "key_points": [
+   "B+树索引: 范围查询高效",
+   "主键/外键/高频过滤列建索引",
+   "复合索引最左前缀原则",
+   "覆盖索引免回表提速",
+   "索引占空间+拖慢写, 非越多越好"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "索引原理核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "给所有列都建索引(写性能崩)",
+   "复合索引列顺序随意(违反最左前缀失效)"
+  ],
+  "tags": [
+   "数据库",
+   "索引原理"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DB-005",
+  "name": "事务与 ACID",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "事务是一组不可分割的操作, 满足 ACID: 原子性(全做或全不做)、一致性(约束不被破坏)、隔离性(并发互不干扰)、持久性(提交后不丢)。显式事务用 BEGIN/COMMIT/ROLLBACK, 异常时回滚保证原子性。",
+  "prerequisites": [
+   "DB-003"
+  ],
+  "key_points": [
+   "原子性 A: 全做或全不做",
+   "一致性 C: 约束始终满足",
+   "隔离性 I: 并发事务互不干扰",
+   "持久性 D: 提交后落盘不丢",
+   "BEGIN/COMMIT/ROLLBACK 控制事务边界"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "事务与 ACID核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "多步操作不用事务, 中途失败留脏数据",
+   "混淆一致性与原子性"
+  ],
+  "tags": [
+   "数据库",
+   "事务与 ACID"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DB-006",
+  "name": "并发控制与隔离级别",
+  "difficulty": 4,
+  "category": "数据库与缓存",
+  "summary": "并发事务可能产生脏读(读未提交)、不可重复读(同行两次读不同)、幻读(同条件两次查行数不同)。隔离级别由低到高: 读未提交/读已提交/可重复读/串行化, 级别越高一致性越强但并发越低。锁(行锁/表锁)与 MVCC 多版本并发控制是实现手段。",
+  "prerequisites": [
+   "DB-005"
+  ],
+  "key_points": [
+   "脏读/不可重复读/幻读 三类并发问题",
+   "四级隔离: 读未提交->串行化",
+   "MVCC: 多版本读不阻塞写",
+   "锁粒度: 行锁 vs 表锁",
+   "隔离级别越高一致性越强但吞吐越低"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "并发控制与隔离级别核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "默认隔离级别不了解导致并发 bug",
+   "为强一致盲目上串行化(吞吐骤降)"
+  ],
+  "tags": [
+   "数据库",
+   "并发控制与隔离级别"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "DB-007",
+  "name": "SQLite 数据库操作",
+  "difficulty": 2,
+  "category": "数据库与缓存",
+  "summary": "SQLite 是嵌入式单文件数据库, 零配置零服务, 适合桌面应用/原型/测试。Python 标准库 sqlite3 直接连接 .db 文件, 支持 SQL 全集大部分功能。局限: 并发写靠文件锁(写串行), 不适合高并发服务端。",
+  "prerequisites": [
+   "DB-002",
+   "PY-073"
+  ],
+  "key_points": [
+   "嵌入式单文件, 零服务零配置",
+   "sqlite3 标准库直连 .db 文件",
+   "适合桌面/原型/测试场景",
+   "并发写串行(WAL 模式改善)",
+   "不适合高并发服务端写入"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "SQLite 数据库操作核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用 SQLite 扛高并发写服务(锁竞争)",
+   "文件当数据库跨进程共享不并发控制"
+  ],
+  "tags": [
+   "数据库",
+   "SQLite 数据库操作"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DB-008",
+  "name": "数据库范式与设计",
+  "difficulty": 4,
+  "category": "数据库与缓存",
+  "summary": "范式是减少数据冗余与异常的设计规范: 1NF 原子值、2NF 消除部分依赖、3NF 消除传递依赖、BCNF 更严格。实际设计在范式与查询性能间权衡, 适度反范式(冗余)换读取性能。ER 建模(实体-关系)是设计起点, 先理清实体与关系再落表结构。",
+  "prerequisites": [
+   "DB-003",
+   "DB-007"
+  ],
+  "key_points": [
+   "1NF 原子值 / 2NF 消部分依赖 / 3NF 消传递依赖",
+   "BCNF 比 3NF 更严格",
+   "适度反范式冗余换读取性能",
+   "ER 建模: 实体-关系-属性",
+   "设计先于实现: 先 ER 再落表"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据库范式与设计核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "过度追求高范式导致查询需大量 JOIN",
+   "完全不规范化导致冗余与更新异常"
+  ],
+  "tags": [
+   "数据库",
+   "数据库范式与设计"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "DB-009",
+  "name": "ORM 对象关系映射",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "ORM 把表映射为类、行为对象, 用面向对象方式操作数据库, 自动生成 SQL。优势: 类型安全、防注入、减少样板代码; 代价: 性能开销与复杂查询表达受限。N+1 查询是 ORM 最常见性能陷阱, 需用预加载(eager load)规避。",
+  "prerequisites": [
+   "DB-007",
+   "WD-010"
+  ],
+  "key_points": [
+   "表->类, 行->对象, 自动生成 SQL",
+   "类型安全 + 防注入 + 少样板",
+   "代价: 性能开销/复杂查询受限",
+   "N+1 查询陷阱用预加载规避",
+   "性能敏感处可退回原生 SQL"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "ORM 对象关系映射核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "ORM 滥用导致 N+1 与低效查询",
+   "完全依赖 ORM 不懂底层 SQL 无法调优"
+  ],
+  "tags": [
+   "数据库",
+   "ORM 对象关系映射"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DB-010",
+  "name": "查询优化与执行计划",
+  "difficulty": 4,
+  "category": "数据库与缓存",
+  "summary": "EXPLAIN 展示查询执行计划: 是否走索引、扫描行数、连接顺序。优化方向: 命中索引(避免全表扫描)、减少回表、合理连接顺序、只查所需列。慢查询日志定位问题查询, 优化遵循「先看计划再改」。",
+  "prerequisites": [
+   "DB-004",
+   "DB-008"
+  ],
+  "key_points": [
+   "EXPLAIN 看执行计划: 索引/扫描行数/连接顺序",
+   "命中索引避免全表扫描",
+   "覆盖索引/减少回表",
+   "只查所需列别 SELECT *",
+   "慢查询日志定位热点"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "查询优化与执行计划核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "不看执行计划凭直觉改 SQL",
+   "SELECT * 返回多余列增加 IO"
+  ],
+  "tags": [
+   "数据库",
+   "查询优化与执行计划"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "DB-011",
+  "name": "数据库备份与恢复",
+  "difficulty": 2,
+  "category": "数据库与缓存",
+  "summary": "备份是数据安全的底线: 全量备份(完整快照)+增量备份(只备变化)+日志归档(可点恢复)。恢复策略: 基于时间点恢复(PITR)利用归档日志回放。备份必须定期验证可恢复性--未验证的备份等于没有备份。",
+  "prerequisites": [
+   "DB-005"
+  ],
+  "key_points": [
+   "全量+增量+日志归档组合备份",
+   "PITR 基于时间点恢复",
+   "备份须定期验证可恢复性",
+   "RPO/RTO 定义备份恢复目标",
+   "异地备份防机房级故障"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据库备份与恢复核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "只备份从不验证恢复(灾难时发现备份坏)",
+   "备份和实例同机(机房故障全丢)"
+  ],
+  "tags": [
+   "数据库",
+   "数据库备份与恢复"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "DB-012",
+  "name": "高可用与主从复制",
+  "difficulty": 4,
+  "category": "数据库与缓存",
+  "summary": "主从复制: 主库写、从库读, 提升读吞吐与容灾。主库故障可切换从库提升可用性。复制模式: 异步(性能高、可能丢数据)、半同步(折中)、同步(强一致、性能低)。主从延迟是读写分离的常见坑, 写后立即读需走主库。",
+  "prerequisites": [
+   "DB-006",
+   "DB-011"
+  ],
+  "key_points": [
+   "主写从读, 提升读吞吐与容灾",
+   "异步/半同步/同步复制权衡",
+   "主库故障切换从库提升可用性",
+   "主从延迟: 写后立即读走主库",
+   "脑裂风险需仲裁机制"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "高可用与主从复制核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "读写分离忽略主从延迟(读到旧数据)",
+   "无自动故障切换导致主库宕机服务中断"
+  ],
+  "tags": [
+   "数据库",
+   "高可用与主从复制"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "DB-013",
+  "name": "Redis 数据结构与命令",
+  "difficulty": 2,
+  "category": "数据库与缓存",
+  "summary": "Redis 是内存键值存储, 核心数据结构: String/Hash/List/Set/ZSet(有序集合)。单线程模型(命令原子执行)+IO多路复用实现高吞吐。常用场景: 缓存、计数器、排行榜(ZSet)、分布式锁、消息队列(List)。",
+  "prerequisites": [
+   "DB-001"
+  ],
+  "key_points": [
+   "五大结构: String/Hash/List/Set/ZSet",
+   "单线程+IO多路复用, 命令原子",
+   "ZSet 天然适合排行榜",
+   "过期键淘汰 + 内存上限",
+   "原子操作: INCR/SETNX 适合计数与锁"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Redis 数据结构与命令核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把 Redis 当持久库(内存易丢)",
+   "大 key(单值过大)拖垮单线程"
+  ],
+  "tags": [
+   "数据库",
+   "Redis 数据结构与命令"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "DB-014",
+  "name": "Redis 持久化与集群",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "Redis 持久化两种方式: RDB(周期快照, 恢复快可能丢)、AOF(追加日志, 更安全体积大)。集群方案: 主从复制(读写分离)、哨兵(自动故障转移)、Cluster(分片)。Redis 单实例有内存上限, Cluster 分片突破单机内存与吞吐。",
+  "prerequisites": [
+   "DB-013"
+  ],
+  "key_points": [
+   "RDB 快照: 恢复快/可能丢数据",
+   "AOF 日志: 更安全/体积大",
+   "哨兵: 自动故障转移",
+   "Cluster 分片: 突破单机内存与吞吐",
+   "RDB+AOF 混合持久化折中"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Redis 持久化与集群核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "只用内存不持久化(宕机全丢)",
+   "大流量单实例不分片成瓶颈"
+  ],
+  "tags": [
+   "数据库",
+   "Redis 持久化与集群"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "DB-015",
+  "name": "缓存一致性",
+  "difficulty": 5,
+  "category": "数据库与缓存",
+  "summary": "缓存与数据库双写一致性是分布式系统核心难题: 写操作下先更库还是先更缓存、缓存何时失效。主流 Cache Aside: 先更新数据库再删除缓存, 配合延迟双删与消息补偿应对并发窗口。强一致需分布式锁或事务, 代价高; 多数场景接受最终一致。",
+  "prerequisites": [
+   "DB-013",
+   "DB-006"
+  ],
+  "key_points": [
+   "Cache Aside: 先更库再删缓存",
+   "延迟双删应对并发窗口",
+   "消息/订阅补偿最终一致",
+   "强一致需分布式锁代价高",
+   "多数业务接受最终一致而非强一致"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "缓存一致性核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "先删缓存再更库(并发回填旧值)",
+   "追求强一致堆分布式锁拖垮性能"
+  ],
+  "tags": [
+   "数据库",
+   "缓存一致性"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "DB-016",
+  "name": "缓存穿透/击穿/雪崩",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "三大缓存故障: 穿透(查不存在的 key 直击 DB)、击穿(热点 key 过期瞬间海量请求打 DB)、雪崩(大量 key 同时过期)。防御: 穿透用空值缓存/布隆过滤器、击穿用互斥锁/热点永不过期、雪崩用过期时间加随机抖动。",
+  "prerequisites": [
+   "DB-013",
+   "WD-016"
+  ],
+  "key_points": [
+   "穿透: 查不存在 key 直击 DB -> 空值缓存/布隆过滤",
+   "击穿: 热点 key 过期 -> 互斥锁/永不过期",
+   "雪崩: 大量 key 同过期 -> 过期时间随机抖动",
+   "三者区别在触发场景",
+   "兜底: DB 限流与降级保命"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "缓存穿透/击穿/雪崩核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "混淆穿透/击穿/雪崩的防御手段",
+   "只加缓存不设 DB 限流兜底"
+  ],
+  "tags": [
+   "数据库",
+   "缓存穿透/击穿/雪崩"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "DB-017",
+  "name": "NoSQL 概览",
+  "difficulty": 2,
+  "category": "数据库与缓存",
+  "summary": "NoSQL 放宽关系约束换取扩展性与灵活性, 四大类: 键值(Redis)、文档(MongoDB)、列族(HBase)、图(Neo4j)。适用场景: 海量数据水平扩展、灵活 schema、高吞吐。代价: 弱化事务与 JOIN, 一致性模型各异。",
+  "prerequisites": [
+   "DB-001"
+  ],
+  "key_points": [
+   "四大类: 键值/文档/列族/图",
+   "键值(Redis): 简单高速",
+   "文档(MongoDB): 灵活 schema",
+   "图(Neo4j): 关系密集查询",
+   "代价: 弱化事务与 JOIN, BASE 最终一致"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "NoSQL 概览核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "所有场景都上 NoSQL(关系数据硬套文档)",
+   "NoSQL=无 schema 随便存(仍有约束设计)"
+  ],
+  "tags": [
+   "数据库",
+   "NoSQL 概览"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "DB-018",
+  "name": "MongoDB 文档数据库",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "MongoDB 存 BSON 文档(类 JSON), schema 灵活, 适合字段多变的业务。聚合管道(aggregation pipeline)是复杂分析的核心能力。分片(sharding)水平扩展、副本集(replica set)高可用。设计仍需考虑嵌套深度与索引。",
+  "prerequisites": [
+   "DB-017"
+  ],
+  "key_points": [
+   "BSON 文档存储, schema 灵活",
+   "聚合管道做复杂分析",
+   "副本集高可用, 分片水平扩展",
+   "_id 主键自动生成",
+   "嵌套过深影响查询, 仍需索引设计"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "MongoDB 文档数据库核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把关系数据硬塞进文档导致大量冗余",
+   "文档数据库不用索引(同样需要)"
+  ],
+  "tags": [
+   "数据库",
+   "MongoDB 文档数据库"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "DB-019",
+  "name": "缓存策略与淘汰算法",
+  "difficulty": 5,
+  "category": "数据库与缓存",
+  "summary": "缓存策略决定何时写入与失效: Cache Aside/Read-Through/Write-Through/Write-Behind。内存有限时靠淘汰算法腾位: LRU(最近最少用)、LFU(最不常用)、FIFO、随机。Redis 默认 noeviction(写报错), 可配 allkeys-lru 等。策略选择取决于访问模式与业务容忍度。",
+  "prerequisites": [
+   "DB-013",
+   "DB-015"
+  ],
+  "key_points": [
+   "四种策略: Cache Aside/Read-Through/Write-Through/Write-Behind",
+   "淘汰算法: LRU/LFU/FIFO/随机",
+   "Write-Behind 异步写库吞吐高但有丢数据风险",
+   "Redis 淘汰策略 noeviction/allkeys-lru 等",
+   "策略匹配访问模式与一致性容忍度"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "缓存策略与淘汰算法核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "内存满不配淘汰导致写报错",
+   "对写敏感数据用 Write-Behind(宕机丢数据)"
+  ],
+  "tags": [
+   "数据库",
+   "缓存策略与淘汰算法"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "DB-020",
+  "name": "分布式事务",
+  "difficulty": 5,
+  "category": "数据库与缓存",
+  "summary": "跨服务/跨库事务无法用单库 ACID, 需分布式事务方案: 2PC(两阶段提交, 强一致但阻塞)、TCC(try-confirm-cancel, 业务侵入)、Saga(长事务拆补偿步骤)、本地消息表+最终一致。CAP 定理: 一致性/可用性/分区容错三选二, 分布式系统必容忍分区, 实为 C 与 A 权衡。",
+  "prerequisites": [
+   "DB-006",
+   "DB-012"
+  ],
+  "key_points": [
+   "2PC: 强一致但阻塞、性能差",
+   "TCC: 业务侵入、需实现 try/confirm/cancel",
+   "Saga: 长事务拆步+补偿, 最终一致",
+   "本地消息表: 最终一致最常用",
+   "CAP: 分布式必容分区, C 与 A 权衡"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "分布式事务核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "跨服务硬上 2PC(性能与可用性崩)",
+   "分布式事务不分场景一律强一致"
+  ],
+  "tags": [
+   "数据库",
+   "分布式事务"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "DB-021",
+  "name": "消息队列与数据库解耦",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "消息队列(Kafka/RabbitMQ)在数据库与服务间缓冲削峰、异步解耦: 生产者写消息, 消费者落库。数据库写压力被队列平滑, 服务故障时消息暂存不丢。要点: 消息幂等消费、至少一次投递、死信队列处理失败消息。",
+  "prerequisites": [
+   "DB-012",
+   "PY-090"
+  ],
+  "key_points": [
+   "队列削峰填谷 + 异步解耦",
+   "生产者写消息, 消费者落库",
+   "至少一次投递需消费端幂等",
+   "死信队列收失败消息",
+   "数据库写压力被队列平滑"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "消息队列与数据库解耦核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "消费不幂等导致重复落库",
+   "队列积压无监控导致延迟暴涨"
+  ],
+  "tags": [
+   "数据库",
+   "消息队列与数据库解耦"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "DB-022",
+  "name": "数据仓库基础",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "数据仓库面向分析而非事务: OLAP 聚合查询为主, 维度建模(事实表+维度表)是核心。ETL(抽取-转换-加载)把业务库数据加工入仓。星型/雪花模型组织维度。与 OLTP(业务库)区别: 仓库写少读多、聚合重、历史全。",
+  "prerequisites": [
+   "DB-003",
+   "DB-017"
+  ],
+  "key_points": [
+   "OLAP 分析导向 vs OLTP 事务导向",
+   "维度建模: 事实表+维度表",
+   "ETL: 抽取-转换-加载入仓",
+   "星型/雪花模型组织维度",
+   "仓库写少读多, 存历史全量"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据仓库基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用业务 OLTP 库直接跑重分析(拖垮业务)",
+   "维度建模不分事实表与维度表"
+  ],
+  "tags": [
+   "数据库",
+   "数据仓库基础"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "DB-023",
+  "name": "读写分离与分库分表",
+  "difficulty": 4,
+  "category": "数据库与缓存",
+  "summary": "单库瓶颈时: 读写分离(主写从读)扩读、分库分表扩写与存储。分片维度: 垂直(按业务/字段拆)、水平(按行拆, 哈希/范围分片)。分片引入跨片查询、分布式 ID、分布式事务等复杂度, 需中间件协调。",
+  "prerequisites": [
+   "DB-012",
+   "DB-020"
+  ],
+  "key_points": [
+   "读写分离: 主写从读扩读吞吐",
+   "垂直分: 按业务/字段拆库拆表",
+   "水平分: 按行哈希/范围分片",
+   "分片引入跨片查询/分布式 ID/分布式事务复杂度",
+   "中间件屏蔽分片细节"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "读写分离与分库分表核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "过早分库分表(未到瓶颈增加复杂度)",
+   "分片键选错导致数据倾斜与跨片查询"
+  ],
+  "tags": [
+   "数据库",
+   "读写分离与分库分表"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "DB-024",
+  "name": "数据库运维与监控",
+  "difficulty": 3,
+  "category": "数据库与缓存",
+  "summary": "数据库运维: 监控关键指标(连接数/QPS/慢查询/缓存命中率/磁盘)、定期备份验证、容量规划、版本升级与参数调优。告警阈值基于业务影响设定, 异常先止血(限流/切流)再根治。",
+  "prerequisites": [
+   "DB-011",
+   "DB-012"
+  ],
+  "key_points": [
+   "监控: 连接数/QPS/慢查询/缓存命中率/磁盘",
+   "定期备份+验证可恢复",
+   "容量规划: 提前扩容防告警",
+   "参数调优: 连接池/缓冲区配置",
+   "异常先止血(限流/切流)再根治"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据库运维与监控核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "只部署不监控(故障靠用户反馈)",
+   "告警阈值随意导致狼来了或漏报"
+  ],
+  "tags": [
+   "数据库",
+   "数据库运维与监控"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DB-025",
+  "name": "数据库架构设计实战",
+  "difficulty": 5,
+  "category": "数据库与缓存",
+  "summary": "综合设计数据库架构: 单库->读写分离->分库分表->分布式, 按瓶颈驱动渐进演进。权衡一致性/可用性/成本/复杂度, 避免过度设计。关键决策: 存储选型(SQL/NoSQL/混用)、缓存层、分片策略、容灾方案。架构文档化与容量复盘是长期可持续基础。",
+  "prerequisites": [
+   "DB-015",
+   "DB-020",
+   "DB-023"
+  ],
+  "key_points": [
+   "架构演进: 单库->读写分离->分片->分布式, 瓶颈驱动",
+   "存储选型: SQL/NoSQL/混用按场景",
+   "缓存层 + 分片策略 + 容灾方案 综合权衡",
+   "避免过度设计, 瓶颈到再演进",
+   "架构文档化 + 容量复盘保长期可持续"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据库架构设计实战核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "一上来就分库分表分布式(过度设计)",
+   "只看功能不看容量与容灾, 故障无预案"
+  ],
+  "tags": [
+   "数据库",
+   "数据库架构设计实战"
+  ],
+  "estimated_minutes": 50
+ }
+]

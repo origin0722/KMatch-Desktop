@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA017-001",
+ "source_node_id": "DA-017",
+ "type": "choice",
+ "question": "均值受哪种数据影响最大？",
+ "options": [
+  "中位数",
+  "异常值",
+  "众数",
+  "四分位距"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "均值对异常敏感, 中位数稳健"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA011-002",
+ "source_node_id": "DA-011",
+ "type": "choice",
+ "question": "检测到异常值后正确的处理是？",
+ "options": [
+  "一律删除",
+  "核实来源后再决定修正/保留/剔除",
+  "一律替换为均值",
+  "忽略不管"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "先核实来源, 异常可能是真实业务信号"
+}

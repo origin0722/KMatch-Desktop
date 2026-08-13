@@ -63,12 +63,16 @@ def load_json_files(base_dir: Path) -> list[dict]:
 
 
 def load_questions(base_dir: Path) -> list[dict]:
-    """加载 questions/ 目录下所有题目 (独立 :Question 节点数据源)"""
+    """加载 questions/ 目录下所有题目 (独立 :Question 节点数据源)
+
+    递归 rglob: 支持分域子目录 (questions/ML|DA|WD|DB/EN/)。
+    兼容 list(一文件多题, PY 惯例) 与单 dict(一文件一题, ML 惯例) 两种形态。
+    """
     questions_dir = base_dir / "questions"
     if not questions_dir.is_dir():
         return []
     all_q = []
-    for file_path in sorted(questions_dir.glob("*.json")):
+    for file_path in sorted(questions_dir.rglob("*.json")):
         # 跳过 questions/schema.json (题目结构规范文档, 非题目数据)
         if file_path.name == "schema.json":
             continue
@@ -76,6 +80,8 @@ def load_questions(base_dir: Path) -> list[dict]:
             data = json.loads(file_path.read_text(encoding="utf-8"))
             if isinstance(data, list):
                 all_q.extend(data)
+            elif isinstance(data, dict) and "qid" in data:
+                all_q.append(data)
         except Exception as e:
             print(f"⚠️  跳过题目文件 {file_path}: {e}")
     return all_q

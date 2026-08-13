@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN012-002",
+ "source_node_id": "EN-012",
+ "type": "choice",
+ "question": "「过早优化是万恶之源」意味着？",
+ "options": [
+  "不优化热点外的代码",
+  "永不优化",
+  "只换硬件",
+  "只加缓存"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "避免优化非热点"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA016-002",
+ "source_node_id": "DA-016",
+ "type": "choice",
+ "question": "EDA 阶段查看数值列线性关系用？",
+ "options": [
+  "相关性矩阵",
+  "词云",
+  "饼图",
+  "条形图"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "相关性矩阵概览线性关系"
+}

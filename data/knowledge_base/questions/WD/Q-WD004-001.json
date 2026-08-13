@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD004-001",
+ "source_node_id": "WD-004",
+ "type": "choice",
+ "question": "FastAPI 的自动校验与文档基于？",
+ "options": [
+  "dataclasses",
+  "Pydantic 模型 + 类型注解",
+  "手写 schema",
+  "XML 配置"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "Pydantic + 类型注解驱动校验与 OpenAPI 文档"
+}

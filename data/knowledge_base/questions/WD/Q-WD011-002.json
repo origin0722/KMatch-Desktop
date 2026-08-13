@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD011-002",
+ "source_node_id": "WD-011",
+ "type": "choice",
+ "question": "Alembic 迁移的 downgrade 用于？",
+ "options": [
+  "升级数据库",
+  "回滚到上一版本结构",
+  "删除数据库",
+  "创建索引"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "downgrade 支持回滚"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN002-001",
+ "source_node_id": "EN-002",
+ "type": "choice",
+ "question": "Git 的四个工作区不包括？",
+ "options": [
+  "工作区",
+  "暂存区",
+  "本地仓库",
+  "云服务器(非Git概念)"
+ ],
+ "answer": "D",
+ "difficulty": 1,
+ "explanation": "四区: 工作区/暂存区/本地库/远程库"
+}

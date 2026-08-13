@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB022-001",
+ "source_node_id": "DB-022",
+ "type": "choice",
+ "question": "数据仓库面向的是？",
+ "options": [
+  "OLAP 分析",
+  "OLTP 事务",
+  "实时写入",
+  "文件存储"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "仓库面向 OLAP 分析"
+}

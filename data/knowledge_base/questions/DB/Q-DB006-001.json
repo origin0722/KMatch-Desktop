@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB006-001",
+ "source_node_id": "DB-006",
+ "type": "choice",
+ "question": "「脏读」指？",
+ "options": [
+  "读到未提交的数据",
+  "同行两次读不同",
+  "行数变化",
+  "读到已提交数据"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "脏读读未提交数据"
+}

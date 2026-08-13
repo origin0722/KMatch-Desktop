@@ -45,6 +45,8 @@ const pathResult = ref(null)
 const COLORS = {
   '基础语法': '#5b8ff9', '数据结构与算法': '#5ad8a6', '面向对象编程': '#f6bd16',
   'Python进阶': '#6dc8ec', '常用库与工具': '#e86452', '项目实战': '#945fb9',
+  '机器学习': '#61c0bf', '数据分析与可视化': '#f25f9e', 'Web后端开发': '#ff9d6c',
+  '数据库与缓存': '#4253a4', '工程化实践': '#82b366',
 }
 
 const nodeLabel = (id) => props.nodes.find((n) => n.id === id)?.data?.label || id

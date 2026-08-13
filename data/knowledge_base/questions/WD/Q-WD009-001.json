@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD009-001",
+ "source_node_id": "WD-009",
+ "type": "choice",
+ "question": "RBAC 的三层结构是？",
+ "options": [
+  "用户-角色-权限",
+  "用户-用户组-密码",
+  "角色-密码-权限",
+  "权限-日志-用户"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "用户归属角色, 角色拥有权限"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB006-002",
+ "source_node_id": "DB-006",
+ "type": "choice",
+ "question": "隔离级别最高的是？",
+ "options": [
+  "读未提交",
+  "读已提交",
+  "可重复读",
+  "串行化"
+ ],
+ "answer": "D",
+ "difficulty": 3,
+ "explanation": "串行化最高一致但并发最低"
+}

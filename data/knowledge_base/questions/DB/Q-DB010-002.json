@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB010-002",
+ "source_node_id": "DB-010",
+ "type": "choice",
+ "question": "优化查询应遵循的原则是？",
+ "options": [
+  "先看执行计划再改",
+  "直接加索引",
+  "重写所有 SQL",
+  "换数据库"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "看计划定位问题再优化"
+}

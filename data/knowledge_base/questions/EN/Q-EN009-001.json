@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN009-001",
+ "source_node_id": "EN-009",
+ "type": "choice",
+ "question": "Python 项目隔离依赖用的是？",
+ "options": [
+  "全局 site-packages",
+  "虚拟环境(venv)",
+  "系统 Python",
+  "不用隔离"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "虚拟环境隔离项目依赖"
+}

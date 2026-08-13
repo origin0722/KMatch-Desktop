@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN003-001",
+ "source_node_id": "EN-003",
+ "type": "choice",
+ "question": "持续部署产品适合的分支策略是？",
+ "options": [
+  "Git Flow",
+  "主干开发(trunk-based)",
+  "永久长分支",
+  "无分支"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "主干开发适合持续部署"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN008-002",
+ "source_node_id": "EN-008",
+ "type": "choice",
+ "question": "更能反映测试有效性的方法是？",
+ "options": [
+  "行覆盖率",
+  "突变测试(mutation)",
+  "代码行数",
+  "测试数量"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "突变测试评估测试能否抓变异"
+}

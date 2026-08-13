@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA018-002",
+ "source_node_id": "DA-018",
+ "type": "choice",
+ "question": "「相关不等于因果」的关键原因是？",
+ "options": [
+  "样本量不够",
+  "可能存在混淆变量驱动表面相关",
+  "相关计算错误",
+  "数据不干净"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "混淆变量可造成虚假相关"
+}

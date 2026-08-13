@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN016-002",
+ "source_node_id": "EN-016",
+ "type": "choice",
+ "question": "重构与加功能应？",
+ "options": [
+  "混在一次提交",
+  "分开提交",
+  "从不重构",
+  "只重构不加功能"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "分开提交便于审查与回滚"
+}

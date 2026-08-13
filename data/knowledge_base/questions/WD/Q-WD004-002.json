@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD004-002",
+ "source_node_id": "WD-004",
+ "type": "choice",
+ "question": "FastAPI 应用通常由哪个服务器运行？",
+ "options": [
+  "uvicorn",
+  "nginx",
+  "gunicorn(仅 WSGI)",
+  "apache"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "FastAPI 是 ASGI, 用 uvicorn 运行"
+}

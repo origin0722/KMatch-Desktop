@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN007-002",
+ "source_node_id": "EN-007",
+ "type": "choice",
+ "question": "TDD 的主要价值是？",
+ "options": [
+  "追求 100% 覆盖",
+  "用测试引导设计与回归保护",
+  "替代需求分析",
+  "加速写代码"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "TDD 重设计引导非覆盖率"
+}

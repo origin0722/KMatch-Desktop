@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN011-002",
+ "source_node_id": "EN-011",
+ "type": "choice",
+ "question": "日志中不应出现？",
+ "options": [
+  "请求 ID",
+  "时间戳",
+  "密码/敏感信息",
+  "错误级别"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "日志禁含敏感信息"
+}

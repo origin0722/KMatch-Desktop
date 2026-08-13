@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD019-002",
+ "source_node_id": "WD-019",
+ "type": "choice",
+ "question": "测试应使用？",
+ "options": [
+  "生产数据库",
+  "独立测试库+fixture",
+  "无数据库",
+  "内存泄漏"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "独立测试库防污染"
+}

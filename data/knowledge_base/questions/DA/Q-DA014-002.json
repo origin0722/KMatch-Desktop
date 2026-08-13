@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA014-002",
+ "source_node_id": "DA-014",
+ "type": "choice",
+ "question": "子图共享 x 轴便于对比应使用？",
+ "options": [
+  "figsize 参数",
+  "sharex=True",
+  "tight_layout()",
+  "legend()"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "sharex/sharey 共享轴"
+}

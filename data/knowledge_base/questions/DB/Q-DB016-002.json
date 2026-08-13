@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB016-002",
+ "source_node_id": "DB-016",
+ "type": "choice",
+ "question": "防缓存雪崩的有效手段是？",
+ "options": [
+  "过期时间加随机抖动",
+  "所有 key 同时过期",
+  "关闭缓存",
+  "加大 key"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "随机过期时间避免同时失效"
+}

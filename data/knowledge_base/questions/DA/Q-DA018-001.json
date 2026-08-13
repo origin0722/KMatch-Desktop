@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA018-001",
+ "source_node_id": "DA-018",
+ "type": "choice",
+ "question": "Pearson 相关系数 r=0 说明？",
+ "options": [
+  "两变量无任何关系",
+  "无线性关系, 不排除非线性",
+  "两变量独立",
+  "相关系数失效"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "r=0 只排除线性关系"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA008-001",
+ "source_node_id": "DA-008",
+ "type": "choice",
+ "question": "pivot_table 的默认聚合函数是？",
+ "options": [
+  "sum",
+  "mean",
+  "count",
+  "max"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "aggfunc 默认 mean"
+}

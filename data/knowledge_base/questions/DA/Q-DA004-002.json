@@ -1,0 +1,10 @@
+{
+ "qid": "Q-DA004-002",
+ "source_node_id": "DA-004",
+ "type": "fill",
+ "question": "Pandas 一维带标签数组的类名是 ____。",
+ "options": [],
+ "answer": "Series",
+ "difficulty": 1,
+ "explanation": "Series 是一维, DataFrame 是二维"
+}

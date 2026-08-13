@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA020-001",
+ "source_node_id": "DA-020",
+ "type": "choice",
+ "question": "交互式可视化适合的场景是？",
+ "options": [
+  "报告定稿打印",
+  "数据探索与仪表盘",
+  "论文插图",
+  "静态文档"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "交互适合探索与仪表盘"
+}

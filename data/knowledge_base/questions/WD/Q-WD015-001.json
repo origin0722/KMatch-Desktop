@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD015-001",
+ "source_node_id": "WD-015",
+ "type": "choice",
+ "question": "XSS 攻击的主要防御是？",
+ "options": [
+  "输出转义 + CSP",
+  "增加服务器内存",
+  "关闭防火墙",
+  "改端口"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "输出转义防止脚本注入页面"
+}

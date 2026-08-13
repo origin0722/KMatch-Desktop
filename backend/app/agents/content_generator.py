@@ -69,6 +69,14 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -
         "lecture": (
             "生成【分层讲义】: 含标题(带难度标签)、3-5条可检验学习目标、"
             "核心概念讲解(缩进≤3层)、带注释代码示例、常见误区提醒、小节总结。"
+            "\n【内容丰富度要求(只用节点已有事实, 禁编造新事实)】"
+            "①覆盖全部key_points, 每条至少独立展开; "
+            "②难度≥3且key_points含可比概念时, 用Markdown表格对比(≥3行); "
+            "③每条key_point配一个边界/反例(优先取自common_mistakes); "
+            "④开头1-2句衔接prerequisites(已提供), 无前置则点明基础地位; "
+            "⑤难度≥4增设「工程权衡」小节(只用已有信息, 不编造数值/版本号); "
+            "⑥每条common_mistakes展开为「错误做法->正确做法」对照。"
+            "信息不足以支撑某条则该条可缺省, 但不得编造填充。"
         ),
         "practice_guide": (
             "生成【阶梯式实操指南】: 含任务目标、环境准备、步骤1-N(每步含目标/提示/检查点)、"
@@ -105,6 +113,8 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -
         "——这些是图谱外实现细节，节点未提供即不得写入。"
         "\n正向要求: 每条技术断言须能在给定的 key_points/summary 中找到依据；"
         "讲解用类比、结构、示例阐释已有事实，而非编造新事实。"
+        "\n【内容丰富度】讲义须在只用节点已有事实前提下充分展开: 逐条覆盖key_points、"
+        "配边界反例、衔接前置知识(prerequisites)、误区全转化为对照(详见type_spec)。"
         "\n严格输出 JSON 对象: "
         '{"content_type": "' + content_type + '", "target_node_id": "PY-xxx", '
         '"adaptation_profile": "beginner|intermediate|advanced", '
@@ -120,7 +130,8 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -
         f"- 难度: {node.get('difficulty',1)}\n"
         f"- summary: {node.get('summary','')}\n"
         f"- key_points: {json.dumps(kps, ensure_ascii=False)}\n"
-        f"- common_mistakes: {json.dumps(mistakes, ensure_ascii=False)}\n\n"
+        f"- common_mistakes: {json.dumps(mistakes, ensure_ascii=False)}\n"
+        f"- prerequisites: {json.dumps(node.get('prerequisites', []), ensure_ascii=False)}\n\n"
         f"{type_spec}"
     ))
     return [system, user]
@@ -398,7 +409,10 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
     label = _adaptation_label(theory_level)
 
     type_spec = {
-        "lecture": "生成【降维/补基础讲义】" if content_type == "lecture" else "",
+        "lecture": (
+            "生成【降维/补基础讲义】: 覆盖全部key_points每条展开, 配边界反例(取自common_mistakes), "
+            "开头衔接prerequisites, 每条common_mistakes展开为「错误做法->正确做法」对照; 只用节点已有事实, 禁编造。"
+        ) if content_type == "lecture" else "",
         "test": (
             "生成【进阶挑战题】含跨知识点推理题 + 测试用例。"
             "\n【答案自检--消除答案幻觉】每道题答案/预期输出写入前须逐步心算执行验证, "
@@ -427,7 +441,9 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         f"知识图谱节点:\n"
         f"- node_id: {node['node_id']}\n- 名称: {node.get('name','')}\n"
         f"- 难度: {node.get('difficulty',1)}\n- summary: {node.get('summary','')}\n"
-        f"- key_points: {json.dumps(kps, ensure_ascii=False)}\n\n{type_spec}"
+        f"- key_points: {json.dumps(kps, ensure_ascii=False)}\n"
+        f"- common_mistakes: {json.dumps(node.get('common_mistakes', []), ensure_ascii=False)}\n"
+        f"- prerequisites: {json.dumps(node.get('prerequisites', []), ensure_ascii=False)}\n\n{type_spec}"
     ))
     resp = model.invoke([system, user])
     data = parse_llm_json(resp.content)

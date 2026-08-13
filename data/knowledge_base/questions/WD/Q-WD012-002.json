@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD012-002",
+ "source_node_id": "WD-012",
+ "type": "choice",
+ "question": "CORS 中间件解决的是？",
+ "options": [
+  "服务端性能",
+  "跨域浏览器安全限制",
+  "SQL 注入",
+  "序列化"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "CORS 处理浏览器跨域访问"
+}

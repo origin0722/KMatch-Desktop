@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB009-001",
+ "source_node_id": "DB-009",
+ "type": "choice",
+ "question": "ORM 的主要优势是？",
+ "options": [
+  "性能最高",
+  "类型安全+防注入+少样板",
+  "替代所有 SQL",
+  "无需数据库"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "ORM 提供安全与生产力"
+}

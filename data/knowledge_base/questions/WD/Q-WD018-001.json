@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD018-001",
+ "source_node_id": "WD-018",
+ "type": "choice",
+ "question": "文件上传防路径穿越的方法是？",
+ "options": [
+  "使用用户原文件名",
+  "服务端重命名(随机/自增ID)",
+  "放任意目录",
+  "关闭上传"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "重命名防 ../ 路径穿越"
+}

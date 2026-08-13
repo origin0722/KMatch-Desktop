@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN014-001",
+ "source_node_id": "EN-014",
+ "type": "choice",
+ "question": "asyncio 适合的场景是？",
+ "options": [
+  "CPU 密集计算",
+  "高 IO 并发",
+  "单次计算",
+  "无并发"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "事件循环适合高 IO 并发"
+}

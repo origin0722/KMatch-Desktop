@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB014-002",
+ "source_node_id": "DB-014",
+ "type": "choice",
+ "question": "Redis Cluster 分片解决的问题是？",
+ "options": [
+  "突破单机内存与吞吐",
+  "数据备份",
+  "防穿透",
+  "加速单命令"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "分片水平扩展突破单机限制"
+}

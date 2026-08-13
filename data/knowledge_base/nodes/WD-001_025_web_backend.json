@@ -1,0 +1,961 @@
+[
+ {
+  "id": "WD-001",
+  "name": "Web 后端开发概述",
+  "difficulty": 1,
+  "category": "Web后端开发",
+  "summary": "Web 后端是服务器端逻辑, 负责处理请求、业务逻辑、数据存取与接口提供, 与前端分离。技术栈分层: Web 框架(FastAPI/Django/Flask) → 业务逻辑 → 数据层 → 部署基础设施。后端职责: 接口设计、权限控制、数据校验、性能与安全。",
+  "prerequisites": [],
+  "key_points": [
+   "后端处理请求并返回响应, 前端负责展示",
+   "分层: 路由层/业务层/数据层/基础设施",
+   "接口契约(URL/方法/数据结构)是先行的设计产物",
+   "安全性从接口设计阶段就要考虑",
+   "状态管理: 无状态服务 + 外部存储(DB/缓存)更易扩展"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Web 后端开发概述核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把业务逻辑全堆在路由函数里",
+   "接口没有数据契约导致前后端联调返工"
+  ],
+  "tags": [
+   "Web后端",
+   "Web 后端开发概述"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "WD-002",
+  "name": "HTTP 协议基础",
+  "difficulty": 1,
+  "category": "Web后端开发",
+  "summary": "HTTP 是 Web 后端的基础协议: 请求由方法(GET/POST/PUT/DELETE)、URL、请求头与可选请求体组成, 响应含状态码、响应头与响应体。状态码分类: 2xx 成功、3xx 重定向、4xx 客户端错误、5xx 服务端错误。HTTP 无状态: 每次请求独立, 状态靠 Cookie/Token 等机制维系。",
+  "prerequisites": [
+   "WD-001"
+  ],
+  "key_points": [
+   "方法语义: GET 读 / POST 写 / PUT 整体更新 / DELETE 删",
+   "状态码: 200/201/204/400/401/403/404/500 常用",
+   "请求头: Content-Type/Authorization/Cookie",
+   "无状态协议, 会话状态需显式维系",
+   "幂等性: GET/PUT/DELETE 幂等, POST 不幂等"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "HTTP 协议基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用 GET 传敏感数据或做修改操作",
+   "混淆 401(未认证)与 403(无权限)"
+  ],
+  "tags": [
+   "Web后端",
+   "HTTP 协议基础"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "WD-003",
+  "name": "RESTful API 设计",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "REST 用资源 + 统一接口组织 API: URL 表示资源(名词复数), 方法表示动作, 状态码表达结果。资源嵌套用路径层级(/users/1/orders), 筛选/分页/排序用查询参数。设计要点: 资源命名一致、版本化(/v1)、错误体结构统一、响应格式统一(JSON)。",
+  "prerequisites": [
+   "WD-002",
+   "PY-080"
+  ],
+  "key_points": [
+   "URL 用名词复数表示资源集合",
+   "方法语义对应 CRUD 操作",
+   "分页/筛选/排序走查询参数",
+   "API 版本化避免破坏性变更",
+   "统一错误响应结构 {error, message, code}"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "RESTful API 设计核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "URL 用动词(如 /getUser)而非名词",
+   "状态码一律 200 靠响应体区分成功失败"
+  ],
+  "tags": [
+   "Web后端",
+   "RESTful API 设计"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "WD-004",
+  "name": "FastAPI 应用入门",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "FastAPI 是基于类型注解的异步 Web 框架: 装饰器注册路由, Pydantic 自动做请求/响应校验与文档生成。启动: uvicorn 作为 ASGI 服务器; 自动生成 OpenAPI 文档(/docs)。async def 路由支持原生异步, 同步路由在线程池执行。",
+  "prerequisites": [
+   "WD-002",
+   "PY-072"
+  ],
+  "key_points": [
+   "@app.get/post 装饰器注册路由",
+   "Pydantic 模型自动校验与序列化",
+   "uvicorn 运行: ASGI 服务器",
+   "自动文档: /docs + OpenAPI schema",
+   "async def 异步路由 / def 同步路由(线程池)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "FastAPI 应用入门核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "同步阻塞调用放 async def 里拖垮事件循环",
+   "把业务逻辑全写在路由函数内"
+  ],
+  "tags": [
+   "Web后端",
+   "FastAPI 应用入门"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "WD-005",
+  "name": "路由与请求参数",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "请求参数获取: 路径参数(/{user_id})、查询参数(?page=1)、请求体(Body 模型)、请求头(Header)。FastAPI 中 Pydantic 声明即可获得类型校验与错误提示。参数命名与类型一致性是常见 bug 源。路径参数应做类型约束(int/uuid), 查询参数可带默认值。",
+  "prerequisites": [
+   "WD-004"
+  ],
+  "key_points": [
+   "路径/查询/请求体/请求头四类参数",
+   "Pydantic 模型做请求体校验",
+   "路径参数类型约束(非 int 直接 422)",
+   "查询参数默认值与可选性声明",
+   "参数顺序: 有默认值参数在后"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "路由与请求参数核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "路径参数不校验类型导致异常",
+   "把敏感数据放 URL 查询参数(会进日志)"
+  ],
+  "tags": [
+   "Web后端",
+   "路由与请求参数"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "WD-006",
+  "name": "响应模型与序列化",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "响应模型(response_model)声明接口返回结构: 自动过滤多余字段、序列化嵌套模型、文档化。Pydantic 模型既做校验又做序列化, 是 FastAPI 前后端契约的载体。注意: 数据库对象需显式转为响应模型, 避免泄漏敏感字段(如密码哈希)。",
+  "prerequisites": [
+   "WD-004"
+  ],
+  "key_points": [
+   "response_model 声明返回契约",
+   "自动过滤未声明字段防泄漏",
+   "嵌套模型与列表模型序列化",
+   "敏感字段(密码哈希)必须排除",
+   "from_attributes 从 ORM 对象构造模型"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "响应模型与序列化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把 ORM 对象直接返回泄漏内部字段",
+   "响应与请求共用一个模型导致校验混乱"
+  ],
+  "tags": [
+   "Web后端",
+   "响应模型与序列化"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "WD-007",
+  "name": "依赖注入",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "FastAPI 依赖注入(DI)通过声明参数类型自动解析依赖: 数据库会话、认证信息、配置等。yield 依赖支持清理(关闭会话), 复用逻辑抽成可测试的依赖函数。DI 让路由简洁、依赖可替换、便于单元测试。",
+  "prerequisites": [
+   "WD-004"
+  ],
+  "key_points": [
+   "参数类型声明即自动注入依赖",
+   "yield 依赖做资源获取/释放",
+   "依赖可嵌套组合",
+   "依赖按需复用(缓存依赖)",
+   "提升可测试性: 依赖可 mock"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "依赖注入核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "在每个路由里手动建数据库连接",
+   "依赖函数里写死外部状态难测试"
+  ],
+  "tags": [
+   "Web后端",
+   "依赖注入"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "WD-008",
+  "name": "用户认证与 JWT",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "认证(Authentication)确认身份, 授权(Authorization)决定权限。JWT 是无状态令牌: 三段式(header.payload.signature), 签名保证防篡改, 服务端无需存会话。密码存储必须加盐哈希(如 bcrypt), 绝不明文。JWT 过期时间(exp)与刷新令牌机制需设计。",
+  "prerequisites": [
+   "WD-005",
+   "PY-082"
+  ],
+  "key_points": [
+   "认证(你是谁) vs 授权(你能干什么)",
+   "JWT: header.payload.signature 三段",
+   "签名验签保证完整性, 防篡改",
+   "密码用加盐哈希存储, 不明文",
+   "exp 过期 + refresh token 刷新策略"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "用户认证与 JWT核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把敏感信息放 JWT payload 不加密(仅签名非加密)",
+   "密码明文存储或使用弱哈希"
+  ],
+  "tags": [
+   "Web后端",
+   "用户认证与 JWT"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "WD-009",
+  "name": "用户授权与 RBAC",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "RBAC(基于角色的访问控制)通过角色(role)关联权限(permission), 用户归属角色获得权限。实现: 权限表/角色表/用户角色关联 + 路由级权限校验(依赖注入检查)。粒度: 角色级足够时不必上权限级; 细粒度(按资源归属)用对象级检查。",
+  "prerequisites": [
+   "WD-008"
+  ],
+  "key_points": [
+   "RBAC 三层: 用户-角色-权限",
+   "权限校验放依赖注入, 路由声明即受保护",
+   "对象级授权: 检查资源归属(own 资源)",
+   "最小权限原则: 角色只给所需权限",
+   "权限变更需即时生效(查库而非缓存死值)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "用户授权与 RBAC核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "只做认证不做授权(登录即可访问一切)",
+   "权限判断逻辑散落在各路由难以审计"
+  ],
+  "tags": [
+   "Web后端",
+   "用户授权与 RBAC"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "WD-010",
+  "name": "数据库集成 (SQLAlchemy)",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "SQLAlchemy 是 Python ORM: 用类映射表结构, 会话(Session)管理事务, 查询走表达式/Query API。FastAPI 中会话按请求注入, yield 依赖自动关闭。ORM 隐藏 SQL, 但联表/性能敏感处仍需理解底层 SQL。",
+  "prerequisites": [
+   "WD-005",
+   "PY-074"
+  ],
+  "key_points": [
+   "声明式模型: 类即表, 字段即列",
+   "Session 管理事务与对象状态",
+   "按请求创建会话, 请求结束关闭",
+   "查询过滤/排序/分页封装",
+   "关联关系(relationship)与懒加载陷阱"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据库集成 (SQLAlchemy)核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "一个全局 Session 跨请求复用(线程安全问题)",
+   "N+1 查询: 循环内逐条查关联"
+  ],
+  "tags": [
+   "Web后端",
+   "数据库集成 (SQLAlchemy)"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "WD-011",
+  "name": "ORM 模型与迁移",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "模型定义表结构, 迁移(migration)管理表结构变更: 新增/修改/删除字段、索引、关联。Alembic 是 SQLAlchemy 迁移工具: 自动生成迁移脚本(revision), 升级/降级回放。迁移必须在版本控制内, 团队共享结构演进历史。",
+  "prerequisites": [
+   "WD-010"
+  ],
+  "key_points": [
+   "迁移: 结构变更的版本化脚本",
+   "Alembic autogenerate 生成 revision",
+   "upgrade/downgrade 双向可回滚",
+   "迁移文件进版本控制",
+   "数据迁移与结构迁移要分开处理"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "ORM 模型与迁移核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "生产库直接改表结构不写迁移",
+   "迁移脚本手改后不回放验证"
+  ],
+  "tags": [
+   "Web后端",
+   "ORM 模型与迁移"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "WD-012",
+  "name": "中间件",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "中间件在请求进入路由前后统一处理: 日志、跨域(CORS)、请求 ID、限流、压缩等横切关注点。FastAPI 用 @app.middleware('http') 注册, 包一层调用链。中间件顺序即执行顺序, 需注意与异常处理的配合。",
+  "prerequisites": [
+   "WD-005"
+  ],
+  "key_points": [
+   "横切关注点: 日志/CORS/请求ID/限流",
+   "中间件链: 请求下行+响应上行",
+   "CORS: 跨域白名单与预检 OPTIONS",
+   "请求 ID 贯穿日志便于排查",
+   "中间件异常须兜底返回统一错误"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "中间件核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把所有横切逻辑塞进每个路由",
+   "中间件顺序颠倒导致日志缺上下文"
+  ],
+  "tags": [
+   "Web后端",
+   "中间件"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "WD-013",
+  "name": "错误处理与日志",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "后端错误处理: 自定义异常 → 全局异常处理器 → 统一错误响应, 客户端可见信息与内部日志分离。日志分级: DEBUG/INFO/WARNING/ERROR, 结构化日志(JSON)便于检索。错误码设计: 稳定、可枚举、业务码与 HTTP 状态码分离。",
+  "prerequisites": [
+   "WD-005"
+  ],
+  "key_points": [
+   "全局异常处理器统一兜底",
+   "对外响应不泄漏堆栈/内部细节",
+   "结构化日志: 时间/级别/请求ID/消息",
+   "业务错误码: 稳定可枚举",
+   "异常要记录堆栈但响应只给摘要"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "错误处理与日志核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把堆栈细节直接返回给客户端(泄漏)",
+   "日志写 print 无级别无结构难排查"
+  ],
+  "tags": [
+   "Web后端",
+   "错误处理与日志"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "WD-014",
+  "name": "输入校验与纵深防御",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "所有外部输入都不可信: 长度/类型/格式校验(白名单优先), 越界与畸形输入在入口拦截。纵深防御: 校验 + 参数化查询 + 输出转义 + 最小权限多层叠加。FastAPI 的 Pydantic 校验是入口第一道, 但不能替代业务层校验。",
+  "prerequisites": [
+   "WD-005",
+   "WD-013"
+  ],
+  "key_points": [
+   "输入校验: 类型/长度/格式/枚举",
+   "白名单优于黑名单",
+   "参数化查询防 SQL 注入",
+   "纵深防御: 多层防线而非单点",
+   "上传文件校验类型与大小"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "输入校验与纵深防御核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "只依赖框架校验不做业务层校验",
+   "黑名单过滤(可绕过)替代白名单"
+  ],
+  "tags": [
+   "Web后端",
+   "输入校验与纵深防御"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "WD-015",
+  "name": "后端安全基础",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "常见 Web 漏洞与防御: SQL 注入(参数化查询)、XSS(输出转义/CSP)、CSRF(令牌/同源检查)、敏感信息泄漏(日志/错误信息)。安全是贯穿开发的设计约束而非事后补丁。依赖库需定期更新(漏洞补丁), 密钥用环境变量/密钥管理服务。",
+  "prerequisites": [
+   "WD-014"
+  ],
+  "key_points": [
+   "SQL 注入: 参数化查询根治",
+   "XSS: 输出转义 + CSP 头",
+   "CSRF: 令牌验证/同源检查",
+   "敏感信息不入日志不返回响应",
+   "密钥不进代码库, 用环境变量管理"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "后端安全基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "字符串拼接 SQL(注入风险)",
+   "把密钥写死在代码里进版本控制"
+  ],
+  "tags": [
+   "Web后端",
+   "后端安全基础"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "WD-016",
+  "name": "缓存策略",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "缓存提升读性能: 热点数据放内存缓存(Redis), 接口响应可加 HTTP 缓存(ETag/有效期)。缓存策略: 先查缓存命中即返回, 未命中查库并回填; 更新时先更新库再失效/更新缓存。一致性是缓存最大难点, 需权衡最终一致与强一致。",
+  "prerequisites": [
+   "WD-010",
+   "DB-019"
+  ],
+  "key_points": [
+   "Cache Aside: 读查缓存, 写更新库后失效缓存",
+   "热点/读多写少数据才值得缓存",
+   "缓存过期时间(ttl)控制新鲜度",
+   "缓存击穿/雪崩要有兜底(见 DB-016)",
+   "一致性: 先更库后失效缓存, 避免并发窗口"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "缓存策略核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "所有数据都缓存导致一致性问题",
+   "只写缓存不更库(数据丢失)"
+  ],
+  "tags": [
+   "Web后端",
+   "缓存策略"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "WD-017",
+  "name": "后台任务与异步",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "耗时操作(发邮件/生成报表/调用外部 API)不应阻塞请求: 用后台任务(Celery/RQ)、FastAPI BackgroundTasks 或消息队列异步消费。同步等待外部调用会拖垮吞吐。任务需幂等、可重试、有状态追踪(任务表)。",
+  "prerequisites": [
+   "WD-007",
+   "PY-057"
+  ],
+  "key_points": [
+   "BackgroundTasks: 轻量响应后执行",
+   "Celery: 分布式任务队列(重任务)",
+   "任务幂等 + 失败重试 + 去重",
+   "任务状态入表可追踪",
+   "请求内避免同步阻塞外部调用"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "后台任务与异步核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "请求里同步发邮件/调外部 API 等响应",
+   "任务不设重试与幂等导致重复执行"
+  ],
+  "tags": [
+   "Web后端",
+   "后台任务与异步"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "WD-018",
+  "name": "文件上传与静态资源",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "文件上传需校验类型/大小/内容, 重命名防路径穿越, 存对象存储或磁盘并记录元数据。静态资源(前端包/图片)由 Web 服务器或对象存储托管, 配缓存头与 CDN。下载接口注意文件名与 Content-Disposition 转义。",
+  "prerequisites": [
+   "WD-005"
+  ],
+  "key_points": [
+   "上传校验: 类型白名单/大小限制/内容嗅探",
+   "文件重命名防路径穿越(../)",
+   "存对象存储或专用目录, 记录元数据",
+   "静态资源加缓存头 + CDN 加速",
+   "下载用 Content-Disposition 防 XSS 文件名"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "文件上传与静态资源核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "信任用户上传文件名直接存(路径穿越)",
+   "上传不校验大小耗尽磁盘"
+  ],
+  "tags": [
+   "Web后端",
+   "文件上传与静态资源"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "WD-019",
+  "name": "接口文档与测试",
+  "difficulty": 2,
+  "category": "Web后端开发",
+  "summary": "后端接口需文档化与自动化测试: OpenAPI 文档 + pytest 测试覆盖路由逻辑。测试分层: 单元(函数)/集成(路由+DB)/契约(前后端对齐)。测试用独立测试库与 fixture, 断言状态码/响应结构/错误分支。",
+  "prerequisites": [
+   "WD-004",
+   "PY-059"
+  ],
+  "key_points": [
+   "OpenAPI 自动文档 + 手写补充说明",
+   "pytest 分层: 单元/集成/契约",
+   "TestClient 模拟请求断言响应",
+   "独立测试数据库, 测试后清理",
+   "覆盖正常流 + 边界 + 错误分支"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "接口文档与测试核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "只测正常路径不测错误分支",
+   "测试连生产库(污染数据)"
+  ],
+  "tags": [
+   "Web后端",
+   "接口文档与测试"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "WD-020",
+  "name": "WebSocket 实时通信",
+  "difficulty": 3,
+  "category": "Web后端开发",
+  "summary": "WebSocket 在单 TCP 连接上做全双工通信, 适合实时推送: 聊天、通知、实时协作。FastAPI 支持原生 WebSocket 路由, 需管理连接集合并处理断线重连。广播、心跳保活、消息顺序与并发安全是工程要点。",
+  "prerequisites": [
+   "WD-006",
+   "PY-057"
+  ],
+  "key_points": [
+   "WebSocket: 单连接全双工长连接",
+   "连接管理: 客户端集合 + 广播",
+   "心跳保活: ping/pong 检测死连接",
+   "断线重连与消息补偿机制",
+   "并发安全: 多协程写连接需串行"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "WebSocket 实时通信核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用 WebSocket 做一次性请求(杀鸡用牛刀)",
+   "连接集合不加锁导致并发写异常"
+  ],
+  "tags": [
+   "Web后端",
+   "WebSocket 实时通信"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "WD-021",
+  "name": "API 网关与限流",
+  "difficulty": 4,
+  "category": "Web后端开发",
+  "summary": "网关统一入口: 路由转发、认证校验、限流、熔断、日志与监控, 隔离后端服务细节。限流算法: 令牌桶/漏桶/固定窗口, 保护后端免受突发流量。网关层做全局策略, 业务服务保持专注。",
+  "prerequisites": [
+   "WD-012",
+   "WD-016"
+  ],
+  "key_points": [
+   "网关职责: 路由/认证/限流/熔断/日志",
+   "令牌桶: 突发缓冲+平均限速",
+   "熔断: 下游故障快速失败防雪崩",
+   "限流维度: IP/用户/接口",
+   "网关配置变更需灰度与回滚"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "API 网关与限流核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "限流只在应用层做(网关缺失)",
+   "熔断不配置恢复探测导致永久不可用"
+  ],
+  "tags": [
+   "Web后端",
+   "API 网关与限流"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "WD-022",
+  "name": "后端架构演进",
+  "difficulty": 5,
+  "category": "Web后端开发",
+  "summary": "后端架构随规模演进: 单体 → 模块化单体 → 微服务。演进不是一步到位, 而是响应组织/流量/团队的结构变化。架构决策权衡: 一致性、可用性、成本、团队认知复杂度(如 CAP/分布式陷阱)。演进原则: 接缝先行(模块边界清晰), 数据分界先行(服务划分依据), 渐进式拆分。",
+  "prerequisites": [
+   "WD-021",
+   "EN-014"
+  ],
+  "key_points": [
+   "单体→模块化单体→微服务演进路径",
+   "服务划分以业务边界/数据边界为准",
+   "架构演进是组织与规模驱动的渐进过程",
+   "分布式引入一致性/运维复杂度成本",
+   "接缝与模块边界先行, 拆分才低成本"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "后端架构演进核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "一上来就拆微服务(复杂度暴增)",
+   "服务划分按团队技术栈而非业务边界"
+  ],
+  "tags": [
+   "Web后端",
+   "后端架构演进"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "WD-023",
+  "name": "高并发设计",
+  "difficulty": 5,
+  "category": "Web后端开发",
+  "summary": "高并发设计围绕吞吐与延迟: 无状态水平扩展、缓存抗读、队列削峰、数据库读写分离。瓶颈定位先于优化: 压测找热点, 从存储/网络/锁逐层排查。一致性权衡: 强一致→可扩展性受限; 允许最终一致换吞吐是常见取舍。",
+  "prerequisites": [
+   "WD-022"
+  ],
+  "key_points": [
+   "无状态服务 + 水平扩容",
+   "缓存抗热点读, 队列削峰写",
+   "读写分离/分库分表扩展存储",
+   "压测先行: 定位瓶颈再优化",
+   "最终一致 vs 强一致的工程权衡"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "高并发设计核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "先优化再压测(方向错误)",
+   "为高并发堆机器忽略应用层瓶颈"
+  ],
+  "tags": [
+   "Web后端",
+   "高并发设计"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "WD-024",
+  "name": "微服务基础",
+  "difficulty": 4,
+  "category": "Web后端开发",
+  "summary": "微服务将系统拆为独立部署的小服务, 各自拥有数据与生命周期, 通过 API/消息通信。配套治理: 服务发现、配置中心、API 网关、链路追踪、容器编排。代价: 分布式事务、调试复杂、运维成本高——先评估必要性。",
+  "prerequisites": [
+   "WD-021"
+  ],
+  "key_points": [
+   "服务独立部署/独立数据/独立生命周期",
+   "通信: 同步(REST) + 异步(消息)",
+   "服务发现与注册中心",
+   "链路追踪贯穿调用链排障",
+   "分布式事务与数据一致性是主要代价"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "微服务基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "微服务间共享数据库(边界被破坏)",
+   "没有链路追踪就拆服务(排障地狱)"
+  ],
+  "tags": [
+   "Web后端",
+   "微服务基础"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "WD-025",
+  "name": "后端性能调优",
+  "difficulty": 4,
+  "category": "Web后端开发",
+  "summary": "性能调优遵循「先测量后优化」: 压测/链路分析定位热点, 从应用层(算法/查询)、数据层(索引/缓存)、基础设施(连接池/网络)逐层治理。连接池、批量查询、懒加载规避是常见速胜项。性能目标要量化(如 P95 延迟), 优化后回归验证防回退。",
+  "prerequisites": [
+   "WD-023"
+  ],
+  "key_points": [
+   "先测量: 压测/剖析定位瓶颈",
+   "数据库: 索引/慢查询/批量写",
+   "连接池配置与复用",
+   "规避 N+1 与懒加载陷阱",
+   "P95/P99 延迟量化目标 + 回归对比"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "后端性能调优核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "凭直觉改代码不看压测数据",
+   "只优化数据库忽略应用层查询写法"
+  ],
+  "tags": [
+   "Web后端",
+   "后端性能调优"
+  ],
+  "estimated_minutes": 50
+ }
+]

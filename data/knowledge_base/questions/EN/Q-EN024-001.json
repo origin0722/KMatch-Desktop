@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN024-001",
+ "source_node_id": "EN-024",
+ "type": "choice",
+ "question": "能控制发布风险与快速回滚的策略是？",
+ "options": [
+  "全量直接发布",
+  "蓝绿/金丝雀/滚动发布",
+  "从不回滚",
+  "随机发布"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "蓝绿/金丝雀/滚动控风险"
+}

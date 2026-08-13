@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD021-002",
+ "source_node_id": "WD-021",
+ "type": "choice",
+ "question": "熔断机制的作用是？",
+ "options": [
+  "下游故障时快速失败防雪崩",
+  "加速请求",
+  "绕过认证",
+  "缓存所有数据"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "熔断切断对故障下游的调用"
+}

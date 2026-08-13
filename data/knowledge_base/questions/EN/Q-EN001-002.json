@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN001-002",
+ "source_node_id": "EN-001",
+ "type": "choice",
+ "question": "工程化的底线要求是？",
+ "options": [
+  "可复现与可追溯",
+  "用最贵工具",
+  "流程越复杂越好",
+  "无需文档"
+ ],
+ "answer": "A",
+ "difficulty": 1,
+ "explanation": "可复现可追溯是工程底线"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA019-001",
+ "source_node_id": "DA-019",
+ "type": "choice",
+ "question": "以下哪种做法会误导读者？",
+ "options": [
+  "标注数据来源",
+  "截断坐标轴夸大差异",
+  "用清晰标签",
+  "说明样本量"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "截断轴放大差异是常见误导手法"
+}

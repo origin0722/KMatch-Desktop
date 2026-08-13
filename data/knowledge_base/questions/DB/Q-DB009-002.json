@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB009-002",
+ "source_node_id": "DB-009",
+ "type": "choice",
+ "question": "N+1 查询问题的规避方法是？",
+ "options": [
+  "预加载(eager load)",
+  "删除关联",
+  "禁用 ORM",
+  "加更多查询"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "预加载一次性取出关联"
+}

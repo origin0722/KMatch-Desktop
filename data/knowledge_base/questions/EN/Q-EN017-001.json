@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN017-001",
+ "source_node_id": "EN-017",
+ "type": "choice",
+ "question": "爬虫工程化的去重应基于？",
+ "options": [
+  "仅时间",
+  "URL/内容指纹",
+  "随机",
+  "不去重"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "URL/内容指纹去重防重复落库"
+}

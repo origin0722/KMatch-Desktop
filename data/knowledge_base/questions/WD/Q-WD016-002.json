@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD016-002",
+ "source_node_id": "WD-016",
+ "type": "choice",
+ "question": "适合缓存的数据特征是？",
+ "options": [
+  "读多写少的热点数据",
+  "频繁变更的写数据",
+  "一次性数据",
+  "超大未压缩数据"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "读多写少缓存收益最大"
+}

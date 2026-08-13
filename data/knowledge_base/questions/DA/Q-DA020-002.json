@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA020-002",
+ "source_node_id": "DA-020",
+ "type": "choice",
+ "question": "Python 生成交互式 HTML 图的库是？",
+ "options": [
+  "matplotlib.pyplot",
+  "plotly",
+  "seaborn",
+  "pandas.plot"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "Plotly 生成交互 HTML"
+}

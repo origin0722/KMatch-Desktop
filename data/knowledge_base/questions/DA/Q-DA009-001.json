@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA009-001",
+ "source_node_id": "DA-009",
+ "type": "choice",
+ "question": "按月重采样聚合时间序列使用？",
+ "options": [
+  "df.rolling(7).mean()",
+  "df.resample('M').mean()",
+  "df.shift(1)",
+  "df.sort_index()"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "resample 按频率聚合"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN005-002",
+ "source_node_id": "EN-005",
+ "type": "choice",
+ "question": "便于审查的 PR 应？",
+ "options": [
+  "巨型一次提交",
+  "小而频繁",
+  "无描述",
+  "混合多功能"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "小 PR 易审透"
+}

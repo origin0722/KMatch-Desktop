@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA005-001",
+ "source_node_id": "DA-005",
+ "type": "choice",
+ "question": "df.loc 与 df.iloc 的区别是？",
+ "options": [
+  "loc 按标签, iloc 按位置",
+  "loc 按位置, iloc 按标签",
+  "两者完全相同",
+  "loc 只能选列"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "loc 标签 / iloc 位置"
+}

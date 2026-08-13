@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB023-001",
+ "source_node_id": "DB-023",
+ "type": "choice",
+ "question": "读写分离主要扩展的是？",
+ "options": [
+  "读吞吐",
+  "写吞吐",
+  "存储容量",
+  "一致性"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "主写从读扩读吞吐"
+}

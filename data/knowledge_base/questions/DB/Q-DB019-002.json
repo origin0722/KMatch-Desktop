@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB019-002",
+ "source_node_id": "DB-019",
+ "type": "choice",
+ "question": "Write-Behind 策略的风险是？",
+ "options": [
+  "异步写库可能丢数据",
+  "吞吐太低",
+  "一致性太强",
+  "无法缓存"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "异步写库宕机有丢数据风险"
+}

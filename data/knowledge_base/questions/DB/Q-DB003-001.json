@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB003-001",
+ "source_node_id": "DB-003",
+ "type": "choice",
+ "question": "LEFT JOIN 的语义是？",
+ "options": [
+  "只保留两表都匹配的行",
+  "保留左表所有行, 右表无匹配补 NULL",
+  "只保留右表所有行",
+  "笛卡尔积"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "LEFT JOIN 保留左表全部"
+}

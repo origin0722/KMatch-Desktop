@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB020-002",
+ "source_node_id": "DB-020",
+ "type": "choice",
+ "question": "Saga 模式的特点是？",
+ "options": [
+  "长事务拆补偿步骤, 最终一致",
+  "强一致阻塞",
+  "无需补偿",
+  "单库事务"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "Saga 拆步+补偿最终一致"
+}

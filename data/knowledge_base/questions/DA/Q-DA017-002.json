@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA017-002",
+ "source_node_id": "DA-017",
+ "type": "choice",
+ "question": "右偏分布下均值与中位数关系是？",
+ "options": [
+  "均值<中位数",
+  "均值>中位数",
+  "两者相等",
+  "无法比较"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "右偏(正偏)均值被长尾拉高, 均值>中位数"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB017-002",
+ "source_node_id": "DB-017",
+ "type": "choice",
+ "question": "NoSQL 相比关系库通常？",
+ "options": [
+  "放宽关系约束换扩展性与灵活性",
+  "完全无约束",
+  "不支持任何查询",
+  "更慢"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "NoSQL 用弱约束换扩展性"
+}

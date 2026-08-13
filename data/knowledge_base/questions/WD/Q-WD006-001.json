@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD006-001",
+ "source_node_id": "WD-006",
+ "type": "choice",
+ "question": "response_model 的作用是？",
+ "options": [
+  "定义数据库表",
+  "声明接口返回结构并过滤多余字段",
+  "加速渲染",
+  "管理缓存"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "响应模型声明契约+字段过滤"
+}

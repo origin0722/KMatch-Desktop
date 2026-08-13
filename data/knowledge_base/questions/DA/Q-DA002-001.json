@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA002-001",
+ "source_node_id": "DA-002",
+ "type": "choice",
+ "question": "read_csv 读取含中文数据最常见的坑是？",
+ "options": [
+  "编码未显式指定(UTF-8/GBK 混乱)",
+  "列名必须英文",
+  "不支持 JSON",
+  "会自动丢失数据"
+ ],
+ "answer": "A",
+ "difficulty": 1,
+ "explanation": "中文数据需显式指定 encoding"
+}

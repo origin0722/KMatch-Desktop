@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA012-001",
+ "source_node_id": "DA-012",
+ "type": "choice",
+ "question": "Z-score 标准化保留的信息是？",
+ "options": [
+  "取值范围",
+  "分布形状与相对位置",
+  "最小值",
+  "原始单位"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "标准化去均值除标准差, 保留分布形状"
+}

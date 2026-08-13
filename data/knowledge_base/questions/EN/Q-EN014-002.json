@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN014-002",
+ "source_node_id": "EN-014",
+ "type": "choice",
+ "question": "async 函数中应避免？",
+ "options": [
+  "await 异步调用",
+  "同步阻塞调用阻塞事件循环",
+  "异常捕获",
+  "超时控制"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "同步阻塞调用拖垮事件循环"
+}

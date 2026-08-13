@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA024-002",
+ "source_node_id": "DA-024",
+ "type": "choice",
+ "question": "分析完成后正确的收尾是？",
+ "options": [
+  "直接交图表",
+  "写结论+留痕+复盘沉淀模板",
+  "删除中间代码",
+  "不写文档"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "结论与复盘沉淀可复用资产"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB001-001",
+ "source_node_id": "DB-001",
+ "type": "choice",
+ "question": "数据库区别于普通文件存储的核心能力不包括？",
+ "options": [
+  "事务保证",
+  "索引加速查询",
+  "并发控制",
+  "磁盘顺序读写"
+ ],
+ "answer": "D",
+ "difficulty": 1,
+ "explanation": "磁盘读写是底层共性, 非数据库独有能力"
+}

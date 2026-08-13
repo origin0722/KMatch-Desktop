@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN017-002",
+ "source_node_id": "EN-017",
+ "type": "choice",
+ "question": "爬虫应遵守？",
+ "options": [
+  "无限制高频抓取",
+  "robots.txt 与法规, 控频不影响目标",
+  "伪造身份绕限制",
+  "无视目标站点"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "合规控频是爬虫底线"
+}

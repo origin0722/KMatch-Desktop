@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN020-001",
+ "source_node_id": "EN-020",
+ "type": "choice",
+ "question": "策略模式属于哪类设计模式？",
+ "options": [
+  "创建型",
+  "结构型",
+  "行为型",
+  "无分类"
+ ],
+ "answer": "C",
+ "difficulty": 3,
+ "explanation": "策略模式属行为型"
+}

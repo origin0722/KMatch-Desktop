@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA007-002",
+ "source_node_id": "DA-007",
+ "type": "choice",
+ "question": "对分组后的各列应用不同聚合函数的写法是？",
+ "options": [
+  "groupby('c').agg({'a':'mean','b':'sum'})",
+  "groupby('c').mean()",
+  "groupby('c').sum()",
+  "groupby('c').agg(['mean']) 无法指定列"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "agg 传字典可对每列指定不同聚合"
+}

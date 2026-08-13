@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA025-002",
+ "source_node_id": "DA-025",
+ "type": "choice",
+ "question": "对比精确数值时, 哪种编码感知误差最大？",
+ "options": [
+  "条形长度",
+  "饼图角度",
+  "柱状高度",
+  "散点位置"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "角度比长度感知误差大, 面积更大"
+}

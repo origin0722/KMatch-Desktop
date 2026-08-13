@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN018-001",
+ "source_node_id": "EN-018",
+ "type": "choice",
+ "question": "十二要素应用的配置应存？",
+ "options": [
+  "代码中",
+  "环境变量",
+  "前端",
+  "注释里"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "配置走环境变量与代码分离"
+}

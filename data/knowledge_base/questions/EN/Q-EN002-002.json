@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN002-002",
+ "source_node_id": "EN-002",
+ "type": "choice",
+ "question": "良好的 commit 习惯是？",
+ "options": [
+  "一次提交多个无关变更",
+  "原子化提交+清晰消息",
+  "随意写消息",
+  "从不提交"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "原子提交+清晰消息便于回溯"
+}

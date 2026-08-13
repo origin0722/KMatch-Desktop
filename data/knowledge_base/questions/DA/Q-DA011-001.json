@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA011-001",
+ "source_node_id": "DA-011",
+ "type": "choice",
+ "question": "IQR 法判定异常值的边界是？",
+ "options": [
+  "[Q1, Q3]",
+  "[Q1-1.5IQR, Q3+1.5IQR]",
+  "[Q1-2IQR, Q3+2IQR]",
+  "[Q1-0.5IQR, Q3+0.5IQR]"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "IQR 法用 1.5 倍四分位距"
+}

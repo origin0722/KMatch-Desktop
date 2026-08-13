@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB025-001",
+ "source_node_id": "DB-025",
+ "type": "choice",
+ "question": "数据库架构演进的正确驱动是？",
+ "options": [
+  "瓶颈驱动渐进演进",
+  "流行度驱动",
+  "一步到位分布式",
+  "永不演进"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "瓶颈到再演进避免过度设计"
+}

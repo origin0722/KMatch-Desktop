@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA022-002",
+ "source_node_id": "DA-022",
+ "type": "choice",
+ "question": "Polars/Dask 相比 pandas 的主要差异是？",
+ "options": [
+  "接口完全不同",
+  "面向大数据的并行/惰性计算",
+  "无法读取 CSV",
+  "不支持分组"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "两者提供类 pandas 的大数据接口"
+}

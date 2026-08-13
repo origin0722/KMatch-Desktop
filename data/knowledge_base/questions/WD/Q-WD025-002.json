@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD025-002",
+ "source_node_id": "WD-025",
+ "type": "choice",
+ "question": "性能目标应如何设定？",
+ "options": [
+  "量化(P95 延迟)并回归对比",
+  "凭感觉",
+  "越高越好无约束",
+  "无需验证"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "量化目标+回归验证防回退"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN005-001",
+ "source_node_id": "EN-005",
+ "type": "choice",
+ "question": "代码审查应？",
+ "options": [
+  "对事不对人, 建设性反馈",
+  "人身攻击",
+  "只点赞不看",
+  "拒绝一切"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "对事不对人建设性反馈"
+}

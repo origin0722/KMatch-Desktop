@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB024-001",
+ "source_node_id": "DB-024",
+ "type": "choice",
+ "question": "数据库运维监控不应缺少？",
+ "options": [
+  "慢查询与连接数",
+  "页面颜色",
+  "前端样式",
+  "代码注释"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "慢查询/连接数等是核心指标"
+}

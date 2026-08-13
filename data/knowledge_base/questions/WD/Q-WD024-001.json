@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD024-001",
+ "source_node_id": "WD-024",
+ "type": "choice",
+ "question": "微服务间应如何管理数据？",
+ "options": [
+  "共享一个数据库",
+  "各服务独立数据",
+  "数据放前端",
+  "无数据"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "服务独立数据保持边界"
+}

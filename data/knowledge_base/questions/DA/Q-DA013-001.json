@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA013-001",
+ "source_node_id": "DA-013",
+ "type": "choice",
+ "question": "Matplotlib 中散点图使用？",
+ "options": [
+  "plt.plot()",
+  "plt.scatter()",
+  "plt.bar()",
+  "plt.hist()"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "scatter 散点, plot 折线"
+}

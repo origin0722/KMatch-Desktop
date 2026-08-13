@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB019-001",
+ "source_node_id": "DB-019",
+ "type": "choice",
+ "question": "LRU 淘汰算法淘汰的是？",
+ "options": [
+  "最近最少使用",
+  "最不常用",
+  "最先进入",
+  "随机"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "LRU = Least Recently Used"
+}

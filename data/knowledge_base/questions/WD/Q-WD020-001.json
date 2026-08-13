@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD020-001",
+ "source_node_id": "WD-020",
+ "type": "choice",
+ "question": "WebSocket 相比 HTTP 的特点？",
+ "options": [
+  "单连接全双工长连接",
+  "无状态短连接",
+  "只能单向",
+  "不支持文本"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "WebSocket 全双工长连接"
+}

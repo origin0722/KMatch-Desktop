@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA012-002",
+ "source_node_id": "DA-012",
+ "type": "choice",
+ "question": "防止数据泄漏的正确预处理方式是？",
+ "options": [
+  "全量 fit 再划分",
+  "只在训练集 fit, 同一参数 transform 训练与测试",
+  "测试集单独 fit",
+  "不做预处理"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "fit/transform 分离, 测试集不得参与 fit"
+}

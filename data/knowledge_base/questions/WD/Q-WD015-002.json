@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD015-002",
+ "source_node_id": "WD-015",
+ "type": "choice",
+ "question": "密钥的正确管理方式是？",
+ "options": [
+  "写死在代码里",
+  "环境变量/密钥管理服务",
+  "提交到公开仓库",
+  "放进前端代码"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "密钥不进代码库"
+}

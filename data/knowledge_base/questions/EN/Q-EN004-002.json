@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN004-002",
+ "source_node_id": "EN-004",
+ "type": "choice",
+ "question": "Python 静态类型检查工具是？",
+ "options": [
+  "black",
+  "mypy",
+  "pytest",
+  "git"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "mypy 做静态类型检查"
+}

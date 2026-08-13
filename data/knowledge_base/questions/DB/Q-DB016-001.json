@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB016-001",
+ "source_node_id": "DB-016",
+ "type": "choice",
+ "question": "缓存穿透指？",
+ "options": [
+  "查不存在的 key 直击 DB",
+  "热点 key 过期",
+  "大量 key 同过期",
+  "缓存写满"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "穿透=查不存在 key 打穿到 DB"
+}

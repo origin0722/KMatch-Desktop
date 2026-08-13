@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA021-001",
+ "source_node_id": "DA-021",
+ "type": "choice",
+ "question": "仪表盘布局的合理顺序是？",
+ "options": [
+  "明细→概览→钻取",
+  "概览→钻取→明细",
+  "随机排列",
+  "只放图表"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "从上到下 概览→钻取→明细"
+}

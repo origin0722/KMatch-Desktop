@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA009-002",
+ "source_node_id": "DA-009",
+ "type": "choice",
+ "question": "移动平均(滑动窗口统计)使用？",
+ "options": [
+  "df.resample('M')",
+  "df.rolling(7).mean()",
+  "df.diff()",
+  "df.groupby()"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "rolling 是滑动窗口"
+}

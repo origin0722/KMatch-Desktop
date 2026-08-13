@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA006-002",
+ "source_node_id": "DA-006",
+ "type": "choice",
+ "question": "键列有重复值直接 merge 的后果是？",
+ "options": [
+  "行数不变",
+  "可能产生行数爆炸(多对多)",
+  "自动去重",
+  "报错无法执行"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "一多/多多连接会放大行数, 合并前应检查唯一性"
+}

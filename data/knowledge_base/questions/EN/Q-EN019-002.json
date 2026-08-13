@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN019-002",
+ "source_node_id": "EN-019",
+ "type": "choice",
+ "question": "工程脚本应？",
+ "options": [
+  "各自维护不共享",
+  "进版本管理团队共享",
+  "写完即删",
+  "不测试"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "脚本进版本管理共享"
+}

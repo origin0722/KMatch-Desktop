@@ -187,7 +187,7 @@ def validate_questions_dir(questions_dir: str, known_node_ids: set | None = None
         return 0, {}
     all_errors = {}
     total = 0
-    for f in sorted(qpath.glob("*.json")):
+    for f in sorted(qpath.rglob("*.json")):
         # 跳过 questions/schema.json (题目结构规范文档, 非题目数据)
         if f.name == "schema.json":
             continue
@@ -196,8 +196,11 @@ def validate_questions_dir(questions_dir: str, known_node_ids: set | None = None
         except Exception as e:
             all_errors[f.name] = [f"JSON 解析失败: {e}"]
             continue
+        # 递归后兼容一文件一题 (单 dict, ML 惯例) 与一文件多题 (list, PY 惯例)
+        if isinstance(data, dict) and "qid" in data:
+            data = [data]
         if not isinstance(data, list):
-            all_errors[f.name] = ["题目文件必须是数组"]
+            all_errors[f.name] = ["题目文件必须是数组或含 qid 的对象"]
             continue
         total += len(data)
         errs = []

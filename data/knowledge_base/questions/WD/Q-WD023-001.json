@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD023-001",
+ "source_node_id": "WD-023",
+ "type": "choice",
+ "question": "高并发优化的正确顺序是？",
+ "options": [
+  "先压测定位瓶颈再优化",
+  "先加机器",
+  "先改代码",
+  "先上缓存"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "测量先行, 避免盲目优化"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN013-001",
+ "source_node_id": "EN-013",
+ "type": "choice",
+ "question": "CPU 密集任务适合？",
+ "options": [
+  "多线程",
+  "多进程(绕 GIL)",
+  "协程",
+  "单线程"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "多进程绕 GIL 跑 CPU 密集"
+}

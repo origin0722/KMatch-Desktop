@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB012-002",
+ "source_node_id": "DB-012",
+ "type": "choice",
+ "question": "读写分离中「写后立即读」应？",
+ "options": [
+  "走从库",
+  "走主库(避免主从延迟读旧值)",
+  "随机选库",
+  "不读"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "主从延迟, 写后读走主库"
+}

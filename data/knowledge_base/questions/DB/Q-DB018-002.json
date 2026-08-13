@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB018-002",
+ "source_node_id": "DB-018",
+ "type": "choice",
+ "question": "MongoDB 高可用方案是？",
+ "options": [
+  "副本集(replica set)",
+  "单机",
+  "只读",
+  "无高可用"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "副本集提供高可用"
+}

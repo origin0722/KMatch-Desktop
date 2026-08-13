@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA022-001",
+ "source_node_id": "DA-022",
+ "type": "choice",
+ "question": "数据量超出单机内存时的通用手法是？",
+ "options": [
+  "加大内存",
+  "分块读取+惰性计算",
+  "抽样一半数据",
+  "改用 Excel"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "分块与惰性计算突破内存瓶颈"
+}

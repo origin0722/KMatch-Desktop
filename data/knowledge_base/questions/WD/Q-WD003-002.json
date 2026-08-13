@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD003-002",
+ "source_node_id": "WD-003",
+ "type": "choice",
+ "question": "API 版本化的目的是？",
+ "options": [
+  "让代码更短",
+  "避免破坏性变更影响已有调用方",
+  "加快响应",
+  "绕过认证"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "版本化隔离破坏性变更"
+}

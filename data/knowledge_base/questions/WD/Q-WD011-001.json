@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD011-001",
+ "source_node_id": "WD-011",
+ "type": "choice",
+ "question": "数据库迁移工具的作用是？",
+ "options": [
+  "管理表结构变更的版本化脚本",
+  "加速查询",
+  "备份数据",
+  "生成测试数据"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "迁移版本化结构变更"
+}

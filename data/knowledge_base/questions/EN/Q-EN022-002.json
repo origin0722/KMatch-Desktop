@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN022-002",
+ "source_node_id": "EN-022",
+ "type": "choice",
+ "question": "CI 反馈速度应？",
+ "options": [
+  "分钟级快速反馈",
+  "数小时",
+  "不反馈",
+  "按月"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "快速反馈才有意义"
+}

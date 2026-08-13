@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN015-002",
+ "source_node_id": "EN-015",
+ "type": "choice",
+ "question": "ADR 记录的是？",
+ "options": [
+  "架构决策与背景",
+  "代码行数",
+  "测试结果",
+  "用户数据"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "ADR 记录架构决策"
+}

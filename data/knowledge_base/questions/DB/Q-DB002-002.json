@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB002-002",
+ "source_node_id": "DB-002",
+ "type": "choice",
+ "question": "主键的作用是？",
+ "options": [
+  "唯一标识一行且非空",
+  "加速所有查询",
+  "建立外键",
+  "存储大对象"
+ ],
+ "answer": "A",
+ "difficulty": 1,
+ "explanation": "主键唯一非空标识行"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD014-002",
+ "source_node_id": "WD-014",
+ "type": "choice",
+ "question": "输入校验优先采用哪种策略？",
+ "options": [
+  "黑名单过滤",
+  "白名单(允许已知合法值)",
+  "不校验",
+  "仅前端校验"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "白名单更安全, 黑名单可绕过"
+}

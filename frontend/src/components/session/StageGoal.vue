@@ -43,6 +43,8 @@ const form = reactive({ targetDirection: '' })
 const presetDirections = [
   'Python 基础语法入门', '数据结构与算法', '面向对象编程',
   'Python 进阶', '常用库与工具', '项目实战',
+  '机器学习入门', '数据分析与可视化', 'Web 后端开发',
+  '数据库与缓存', '工程化实践',
 ]
 const canStart = computed(() => form.targetDirection.trim().length > 0)
 

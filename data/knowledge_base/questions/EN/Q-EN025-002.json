@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN025-002",
+ "source_node_id": "EN-025",
+ "type": "choice",
+ "question": "效能指标用于？",
+ "options": [
+  "考核个人(催生造假)",
+  "改进而非考核",
+  "惩罚团队",
+  "无用途"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "古德哈特定律: 成考核目标即失效"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN024-002",
+ "source_node_id": "EN-024",
+ "type": "choice",
+ "question": "上云必备能力不包括？",
+ "options": [
+  "可观测性",
+  "弹性(限流/熔断/扩缩)",
+  "回滚预案",
+  "关闭所有监控"
+ ],
+ "answer": "D",
+ "difficulty": 4,
+ "explanation": "监控是上云必备"
+}

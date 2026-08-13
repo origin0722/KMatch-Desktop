@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN013-002",
+ "source_node_id": "EN-013",
+ "type": "choice",
+ "question": "防死锁的常见做法是？",
+ "options": [
+  "随机加锁",
+  "固定加锁顺序",
+  "不加锁",
+  "锁越多越好"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "固定加锁顺序防死锁"
+}

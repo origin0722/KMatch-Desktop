@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB023-002",
+ "source_node_id": "DB-023",
+ "type": "choice",
+ "question": "水平分片的常见问题是？",
+ "options": [
+  "跨片查询与分布式 ID 复杂度",
+  "无法扩展",
+  "无需中间件",
+  "数据丢失"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "分片引入跨片查询等复杂度"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB020-001",
+ "source_node_id": "DB-020",
+ "type": "choice",
+ "question": "CAP 定理中分布式系统必须容忍？",
+ "options": [
+  "一致性 C",
+  "可用性 A",
+  "分区容错 P",
+  "以上都不"
+ ],
+ "answer": "C",
+ "difficulty": 4,
+ "explanation": "分布式必容分区, C 与 A 权衡"
+}

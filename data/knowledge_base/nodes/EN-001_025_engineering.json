@@ -1,0 +1,965 @@
+[
+ {
+  "id": "EN-001",
+  "name": "工程化开发概述",
+  "difficulty": 1,
+  "category": "工程化实践",
+  "summary": "软件工程化是把个人编码实践提升为可协作、可维护、可持续交付的工程活动。核心维度: 版本控制、自动化测试、持续集成、代码规范、文档与监控。工程化的目标是降低协作摩擦、控制质量与风险, 而非堆砌工具。",
+  "prerequisites": [],
+  "key_points": [
+   "版本控制/测试/CI/规范/文档/监控 六维度",
+   "目标: 降协作摩擦、控质量与风险",
+   "工具服务流程而非相反",
+   "可复现与可追溯是工程底线",
+   "渐进引入, 避免一刀切套模板"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "工程化开发概述核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "堆工具不管流程(形式工程化)",
+   "跳过测试与审查追求速度"
+  ],
+  "tags": [
+   "工程化",
+   "工程化开发概述"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "EN-002",
+  "name": "Git 版本控制基础",
+  "difficulty": 1,
+  "category": "工程化实践",
+  "summary": "Git 是分布式版本控制系统: 工作区/暂存区/本地仓库/远程仓库四区, commit 记录快照历史。基本操作: add 暂存、commit 提交、push 推送、pull 拉取、log 查看。commit 应原子化、消息清晰, 一次提交一个逻辑变更。",
+  "prerequisites": [
+   "EN-001",
+   "PY-075"
+  ],
+  "key_points": [
+   "四区: 工作区/暂存区/本地库/远程库",
+   "add 暂存 / commit 提交 / push 推送 / pull 拉取",
+   "commit 原子化 + 清晰消息",
+   "分支是廉价的指针, 鼓励多用",
+   ".gitignore 忽略不该入库的文件"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Git 版本控制基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "commit 巨大杂糅多个变更难回溯",
+   "把构建产物/密钥提交进仓库"
+  ],
+  "tags": [
+   "工程化",
+   "Git 版本控制基础"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "EN-003",
+  "name": "Git 分支与协作工作流",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "分支策略组织团队协作: 主干开发(trunk-based)适合持续部署, Git Flow 适合版本发布产品。Pull/Merge Request 是代码评审与集成的入口。合并前 rebase/merge 主干保持线性或显式历史。冲突解决需理解三方合并语义。",
+  "prerequisites": [
+   "EN-002"
+  ],
+  "key_points": [
+   "主干开发 vs Git Flow 按发布模式选",
+   "PR/MR 是评审+集成入口",
+   "rebase 线性历史 / merge 保留分支历史",
+   "三方合并与冲突解决",
+   "长期分支易冲突, 频繁同步主干"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Git 分支与协作工作流核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "长期不合并分支积累巨量冲突",
+   "直接推主干不经评审"
+  ],
+  "tags": [
+   "工程化",
+   "Git 分支与协作工作流"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "EN-004",
+  "name": "代码规范与格式化",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "统一代码风格降低阅读与协作成本: 命名、缩进、行长、导入顺序、类型注解。工具自动执行: 格式化器(black/autopep8)、检查器(flake8/pylint/ruff)、类型检查(mypy)。规范应在项目初期定下并用工具强制, 而非靠口头约定。",
+  "prerequisites": [
+   "EN-002"
+  ],
+  "key_points": [
+   "命名/缩进/行长/导入顺序/类型注解 统一",
+   "格式化器(black)自动统一风格",
+   "检查器(ruff/flake8)拦截问题",
+   "mypy 静态类型检查",
+   "工具强制优于口头约定"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "代码规范与格式化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "靠口头约定规范(无人遵守)",
+   "规范与格式化工具脱节"
+  ],
+  "tags": [
+   "工程化",
+   "代码规范与格式化"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "EN-005",
+  "name": "代码审查",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "代码审查(Code Review)在合并前由他人评审: 发现缺陷、传播知识、保持质量一致性。审查关注: 正确性、可读性、边界与异常、安全、测试覆盖。评审应对事不对人, 小而频繁的 PR 更易审; 作者应提供上下文与自测说明。",
+  "prerequisites": [
+   "EN-004",
+   "EN-002"
+  ],
+  "key_points": [
+   "审查: 正确性/可读性/边界/安全/测试",
+   "对事不对人, 建设性反馈",
+   "小而频繁的 PR 更易审",
+   "作者提供上下文与自测说明",
+   "审查传播知识, 避免单点认知"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "代码审查核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "审查流于形式只点赞不看",
+   "巨型 PR 无人能审透"
+  ],
+  "tags": [
+   "工程化",
+   "代码审查"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "EN-006",
+  "name": "单元测试 pytest",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "单元测试验证最小代码单元(函数/类)行为正确。pytest 是 Python 主流框架: assert 原生断言、fixture 管理测试前置、parametrize 参数化、marker 标记分组。好测试: 快、独立、可重复、自验证(AAARR 或 Given-When-Then)。",
+  "prerequisites": [
+   "EN-001",
+   "PY-059"
+  ],
+  "key_points": [
+   "assert 原生断言, 简洁",
+   "fixture 管理测试前置与清理",
+   "parametrize 参数化批量用例",
+   "marker 标记分组(如 slow)",
+   "好测试: 快/独立/可重复/自验证"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "单元测试 pytest核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "测试依赖执行顺序或共享状态",
+   "断言含糊(只检查不抛异常)"
+  ],
+  "tags": [
+   "工程化",
+   "单元测试 pytest"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "EN-007",
+  "name": "测试驱动开发 TDD",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "TDD 红-绿-重构循环: 先写失败测试(红), 再写最小实现使其通过(绿), 然后重构。测试驱动设计: 从调用方视角定义接口, 倒逼可测试设计(依赖注入、单一职责)。TDD 不是追求 100% 覆盖, 而是用测试引导设计与回归保护。",
+  "prerequisites": [
+   "EN-006"
+  ],
+  "key_points": [
+   "红-绿-重构三步循环",
+   "先写测试倒逼接口设计",
+   "最小实现通过再重构",
+   "依赖注入让代码可测试",
+   "TDD 重在设计引导非覆盖率"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "测试驱动开发 TDD核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "跳过红直接写实现(失去设计引导)",
+   "为覆盖率写无意义测试"
+  ],
+  "tags": [
+   "工程化",
+   "测试驱动开发 TDD"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "EN-008",
+  "name": "测试覆盖与质量",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "覆盖率(行/分支/路径)衡量测试执行到的代码比例, 是质量信号而非目标。高覆盖率不等于高质量: 关键分支与边界必须测, 无意义代码覆盖无价值。突变测试(mutation)更能反映测试有效性。质量还需静态分析与审查补充。",
+  "prerequisites": [
+   "EN-006"
+  ],
+  "key_points": [
+   "覆盖率: 行/分支/路径 三种粒度",
+   "覆盖率是信号非目标",
+   "关键分支与边界必须覆盖",
+   "突变测试评估测试有效性",
+   "静态分析+审查补充覆盖盲区"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "测试覆盖与质量核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "盲目追求 100% 覆盖率写水测试",
+   "高覆盖率就认为无 bug"
+  ],
+  "tags": [
+   "工程化",
+   "测试覆盖与质量"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "EN-009",
+  "name": "虚拟环境与依赖管理",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "Python 项目用虚拟环境隔离依赖: venv/virtualenv 创建独立环境, requirements.txt/poetry/uv 锁定版本。依赖锁定保证可复现: 开发/测试/生产环境一致。依赖应定期更新(安全补丁)但需评估兼容性。",
+  "prerequisites": [
+   "EN-001"
+  ],
+  "key_points": [
+   "venv/virtualenv 隔离项目依赖",
+   "requirements/poetry/uv 锁定版本",
+   "锁文件保证环境可复现",
+   "依赖更新评估兼容性与安全",
+   "区分开发依赖与运行依赖"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "虚拟环境与依赖管理核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "全局装依赖污染系统环境",
+   "不锁版本导致环境漂移踩坑"
+  ],
+  "tags": [
+   "工程化",
+   "虚拟环境与依赖管理"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "EN-010",
+  "name": "打包与发布",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "Python 打包: 把项目构建为可分发产物(wheel/sdist)或可执行文件(PyInstaller)。发布到 PyPI 或内部仓库, 版本号遵循语义化版本(major.minor.patch)。发布流程自动化(构建+测试+签名+上传)保证一致与可追溯。",
+  "prerequisites": [
+   "EN-009",
+   "EN-002"
+  ],
+  "key_points": [
+   "wheel/sdist 分发产物",
+   "语义化版本 major.minor.patch",
+   "PyInstaller 打可执行文件(含依赖)",
+   "发布流程自动化: 构建+测试+签名+上传",
+   "变更日志(CHANGELOG)记录每版变更"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "打包与发布核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "版本号随意(破坏兼容不升主版本)",
+   "手工发布漏步骤导致产物不一致"
+  ],
+  "tags": [
+   "工程化",
+   "打包与发布"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "EN-011",
+  "name": "日志与监控",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "生产系统靠日志与监控观测运行状态: 结构化日志(JSON, 含时间/级别/请求ID)、指标(计数/延迟/错误率)、追踪(链路)。告警基于业务影响分级, 避免噪声。日志不含敏感信息。",
+  "prerequisites": [
+   "EN-004"
+  ],
+  "key_points": [
+   "结构化日志: 时间/级别/请求ID/消息",
+   "指标: 计数/延迟/错误率",
+   "追踪: 调用链关联排障",
+   "告警按业务影响分级",
+   "日志禁含密码/个人敏感信息"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "日志与监控核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "日志用 print 无级别无结构",
+   "告警泛滥导致麻木漏报"
+  ],
+  "tags": [
+   "工程化",
+   "日志与监控"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "EN-012",
+  "name": "性能分析与优化",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "性能优化遵循「测量-定位-优化-验证」: 用 profiler(cProfile/line_profiler)找热点, 针对性优化(算法/数据结构/缓存/IO), 再回归验证。常见瓶颈: 算法复杂度、IO(磁盘/网络)、锁竞争、内存分配。过早优化是万恶之源。",
+  "prerequisites": [
+   "EN-011"
+  ],
+  "key_points": [
+   "测量先行: profiler 找热点",
+   "瓶颈: 算法/IO/锁/内存",
+   "优化后回归验证防回退",
+   "过早优化是万恶之源",
+   "量化目标(P95 延迟)驱动优化"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "性能分析与优化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "凭直觉优化不测量",
+   "过度优化非热点代码"
+  ],
+  "tags": [
+   "工程化",
+   "性能分析与优化"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-013",
+  "name": "并发与多线程工程实践",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "并发提升吞吐: 多线程适合 IO 密集(GIL 限制 CPU 并行)、多进程绕过 GIL 适合 CPU 密集。工程要点: 共享状态用锁/队列保护、避免死锁(固定加锁顺序)、线程池复用控制并发数。可观测性: 异常捕获与传播、任务取消与超时。",
+  "prerequisites": [
+   "EN-004",
+   "PY-055",
+   "PY-056"
+  ],
+  "key_points": [
+   "多线程 IO 密集 / 多进程 CPU 密集(绕 GIL)",
+   "GIL 限制线程真并行",
+   "共享状态用锁/队列保护",
+   "固定加锁顺序防死锁",
+   "线程池复用控制并发数"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "并发与多线程工程实践核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "多线程跑 CPU 密集任务(GIL 无收益)",
+   "加锁顺序不一致导致死锁"
+  ],
+  "tags": [
+   "工程化",
+   "并发与多线程工程实践"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-014",
+  "name": "异步编程工程实践",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "asyncio 单线程协程并发: 事件循环调度协程, await 让出执行权。适合高 IO 并发(网络服务)。工程要点: 避免同步阻塞调用阻塞事件循环、用 asyncio.gather 并发、超时与取消、异步上下文管理(aiohttp/httpx 异步客户端)。",
+  "prerequisites": [
+   "EN-013",
+   "PY-057"
+  ],
+  "key_points": [
+   "事件循环调度协程, await 让出",
+   "适合高 IO 并发",
+   "禁阻塞调用阻塞事件循环(放线程池)",
+   "gather 并发 + 超时/取消控制",
+   "异步客户端与上下文管理"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "异步编程工程实践核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "async 函数里调同步阻塞 IO(拖垮循环)",
+   "不设超时导致协程永久挂起"
+  ],
+  "tags": [
+   "工程化",
+   "异步编程工程实践"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-015",
+  "name": "文档与知识沉淀",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "文档是工程资产: README(快速上手)、API 文档(自动生成)、架构决策记录(ADR)、运维手册与事故复盘。文档随代码演进, 过期文档比没有更糟。知识沉淀避免单点依赖, 团队认知可传承。",
+  "prerequisites": [
+   "EN-004"
+  ],
+  "key_points": [
+   "README/API 文档/ADR/运维手册 分层",
+   "文档随代码演进保持同步",
+   "ADR 记录架构决策与背景",
+   "事故复盘沉淀经验防重犯",
+   "知识沉淀避免单点依赖"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "文档与知识沉淀核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "文档写完不更新(过期误导)",
+   "关键知识只在某人脑中(单点风险)"
+  ],
+  "tags": [
+   "工程化",
+   "文档与知识沉淀"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "EN-016",
+  "name": "重构技术",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "重构是在不改变外部行为下改善内部结构: 提取函数/变量、内联、搬移、重命名等。前提是有测试保护, 小步重构频繁提交。代码异味(长函数/重复/大类/特性依恋)是重构信号, 重构与加功能分开进行。",
+  "prerequisites": [
+   "EN-005"
+  ],
+  "key_points": [
+   "重构不改外部行为只改结构",
+   "前提: 有测试保护",
+   "小步重构频繁提交",
+   "代码异味: 长函数/重复/大类/特性依恋",
+   "重构与加功能分开提交"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "重构技术核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "无测试就大改(引入回归)",
+   "重构与功能混在一次提交难审查"
+  ],
+  "tags": [
+   "工程化",
+   "重构技术"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-017",
+  "name": "爬虫工程化",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "爬虫工程化把脚本爬取升级为可靠系统: 请求调度、去重(URL/内容指纹)、反爬应对(限速/代理/UA 轮换/重试)、数据清洗与落库、分布式调度。遵守 robots.txt 与法规, 控制抓取频率不影响目标站点。",
+  "prerequisites": [
+   "EN-013",
+   "PY-069"
+  ],
+  "key_points": [
+   "请求调度 + 去重(URL/内容指纹)",
+   "反爬: 限速/代理/UA轮换/重试",
+   "数据清洗与落库",
+   "分布式调度突破单机",
+   "遵守 robots.txt 与法规, 控频不影响目标"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "爬虫工程化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "无限制高频抓取被封 IP/影响目标",
+   "不去重导致重复落库与重复请求"
+  ],
+  "tags": [
+   "工程化",
+   "爬虫工程化"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-018",
+  "name": "配置管理与环境隔离",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "配置(数据库连接/密钥/特性开关)与代码分离, 按环境(dev/test/prod)注入。十二要素应用: 配置存环境变量。敏感配置用密钥管理服务, 不进代码库。特性开关(feature flag)解耦部署与发布。",
+  "prerequisites": [
+   "EN-009",
+   "EN-011"
+  ],
+  "key_points": [
+   "配置与代码分离, 按环境注入",
+   "十二要素: 配置走环境变量",
+   "密钥用密钥管理服务不进库",
+   "特性开关解耦部署与发布",
+   "配置变更可审计可回滚"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "配置管理与环境隔离核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "配置写死代码难切环境",
+   "密钥进代码库泄漏"
+  ],
+  "tags": [
+   "工程化",
+   "配置管理与环境隔离"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "EN-019",
+  "name": "自动化脚本与工具链",
+  "difficulty": 2,
+  "category": "工程化实践",
+  "summary": "重复任务自动化: 构建、测试、部署、数据迁移用脚本/Makefile/任务 runner 封装。工具链一致性: 团队共享同一套命令与脚本, 避免「我这能跑」。脚本本身也需版本管理与测试。",
+  "prerequisites": [
+   "EN-002"
+  ],
+  "key_points": [
+   "构建/测试/部署/迁移 重复任务自动化",
+   "Makefile/任务 runner 封装命令",
+   "团队共享工具链避免环境差异",
+   "脚本进版本管理",
+   "一键命令降低上手成本"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "自动化脚本与工具链核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "重复操作靠手工(易错)",
+   "脚本不进版本管理各自维护"
+  ],
+  "tags": [
+   "工程化",
+   "自动化脚本与工具链"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "EN-020",
+  "name": "软件设计模式基础",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "设计模式是经验性解决方案模板: 创建型(工厂/单例)、结构型(适配器/装饰器)、行为型(策略/观察者/模板方法)。模式解决特定问题, 但不可滥用--简单问题别套复杂模式。理解模式背后的设计原则(高内聚低耦合)比记模式更重要。",
+  "prerequisites": [
+   "EN-004"
+  ],
+  "key_points": [
+   "创建型: 工厂/单例",
+   "结构型: 适配器/装饰器",
+   "行为型: 策略/观察者/模板方法",
+   "模式解决特定问题不可滥用",
+   "高内聚低耦合原则比记模式更重要"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "软件设计模式基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "简单问题硬套复杂模式(过度设计)",
+   "记模式名不懂适用场景"
+  ],
+  "tags": [
+   "工程化",
+   "软件设计模式基础"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-021",
+  "name": "架构设计原则",
+  "difficulty": 5,
+  "category": "工程化实践",
+  "summary": "架构原则指导系统设计: 单一职责、关注点分离、依赖倒置、按变更轴分解、为演进设计(接缝与边界)。权衡是架构核心: 一致性/可用性/性能/成本/复杂度不可兼得。好架构让决策可逆、边界清晰、团队可并行。",
+  "prerequisites": [
+   "EN-020",
+   "EN-016"
+  ],
+  "key_points": [
+   "单一职责/关注点分离/依赖倒置",
+   "按变更轴分解(康威定律)",
+   "为演进设计: 接缝与边界先行",
+   "权衡是核心: 一致/可用/性能/成本不可兼得",
+   "好架构让决策可逆、边界清晰、可并行"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "架构设计原则核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "追求满足所有非功能需求(无取舍)",
+   "边界不清导致耦合蔓延"
+  ],
+  "tags": [
+   "工程化",
+   "架构设计原则"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "EN-022",
+  "name": "CI/CD 持续集成",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "CI 持续集成: 每次提交自动构建+测试, 快速发现集成问题。CD 持续交付/部署: 自动化发布流水线(构建->测试->部署), 可一键或自动上线。流水线快速反馈(分钟级), 失败优先修复。制品不可变, 环境差异靠配置注入。",
+  "prerequisites": [
+   "EN-010",
+   "PY-077"
+  ],
+  "key_points": [
+   "CI: 每次提交自动构建+测试",
+   "CD: 自动化发布流水线",
+   "快速反馈(分钟级), 失败优先修",
+   "制品不可变 + 配置注入",
+   "门禁: 测试/lint/安全扫描拦截"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "CI/CD 持续集成核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "CI 跑十几分钟反馈慢(失去意义)",
+   "手工部署不一致易出错"
+  ],
+  "tags": [
+   "工程化",
+   "CI/CD 持续集成"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-023",
+  "name": "Docker 容器化",
+  "difficulty": 3,
+  "category": "工程化实践",
+  "summary": "Docker 把应用与依赖打包为镜像, 容器化实现「一次构建处处运行」。Dockerfile 描述构建步骤, 镜像分层缓存加速构建。实践: 最小基础镜像、.dockerignore、非 root 用户、多阶段构建减小体积。",
+  "prerequisites": [
+   "EN-010",
+   "PY-076"
+  ],
+  "key_points": [
+   "镜像打包应用+依赖, 容器可移植",
+   "Dockerfile 描述构建, 分层缓存",
+   "最小基础镜像减小攻击面",
+   "多阶段构建分离构建与运行",
+   ".dockerignore + 非 root 用户安全实践"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Docker 容器化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "镜像含构建工具与密钥(臃肿+不安全)",
+   "用 latest 标签导致不可复现"
+  ],
+  "tags": [
+   "工程化",
+   "Docker 容器化"
+  ],
+  "estimated_minutes": 40
+ },
+ {
+  "id": "EN-024",
+  "name": "服务部署与上云",
+  "difficulty": 4,
+  "category": "工程化实践",
+  "summary": "部署策略: 蓝绿/金丝雀/滚动发布, 控制发布风险与回滚速度。云上部署用编排(Kubernetes)管理容器生命周期与扩缩容。可观测性(日志/指标/追踪)与弹性(限流/熔断/自动扩缩)是上云必备能力。",
+  "prerequisites": [
+   "EN-022",
+   "EN-023",
+   "WD-024"
+  ],
+  "key_points": [
+   "蓝绿/金丝雀/滚动发布控风险",
+   "Kubernetes 编排容器与扩缩容",
+   "可观测性: 日志/指标/追踪",
+   "弹性: 限流/熔断/自动扩缩",
+   "回滚预案是部署标配"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "服务部署与上云核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "直接全量发布无灰度(风险大)",
+   "上云无可观测性故障黑盒"
+  ],
+  "tags": [
+   "工程化",
+   "服务部署与上云"
+  ],
+  "estimated_minutes": 50
+ },
+ {
+  "id": "EN-025",
+  "name": "工程效能度量与改进",
+  "difficulty": 5,
+  "category": "工程化实践",
+  "summary": "工程效能用指标驱动改进: 部署频率、变更前置时间、变更失败率、恢复时间(DORA 四指标)。度量用于改进而非考核, 避免古德哈特定律(指标一旦成考核目标就失效)。改进闭环: 度量->定位瓶颈->实验改进->再度量, 持续优化价值流。",
+  "prerequisites": [
+   "EN-021",
+   "EN-022"
+  ],
+  "key_points": [
+   "DORA 四指标: 部署频率/前置时间/失败率/恢复时间",
+   "度量用于改进非考核",
+   "古德哈特定律: 指标成考核目标即失效",
+   "改进闭环: 度量->定位->实验->再度量",
+   "优化端到端价值流而非局部"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "工程效能度量与改进核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用效能指标考核个人(催生造假)",
+   "只度量不改进(数据摆设)"
+  ],
+  "tags": [
+   "工程化",
+   "工程效能度量与改进"
+  ],
+  "estimated_minutes": 50
+ }
+]

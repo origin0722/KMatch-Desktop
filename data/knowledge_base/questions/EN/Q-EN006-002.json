@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN006-002",
+ "source_node_id": "EN-006",
+ "type": "choice",
+ "question": "好的单元测试特征不包括？",
+ "options": [
+  "快速",
+  "独立",
+  "依赖执行顺序",
+  "可重复"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "好测试不依赖执行顺序"
+}

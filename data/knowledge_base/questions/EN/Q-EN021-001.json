@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN021-001",
+ "source_node_id": "EN-021",
+ "type": "choice",
+ "question": "架构设计的核心是？",
+ "options": [
+  "满足所有非功能需求",
+  "权衡取舍",
+  "用最新技术",
+  "最大化复杂度"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "权衡是架构核心"
+}

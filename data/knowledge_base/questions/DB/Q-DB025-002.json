@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB025-002",
+ "source_node_id": "DB-025",
+ "type": "choice",
+ "question": "数据库架构设计应避免？",
+ "options": [
+  "过度设计(未到瓶颈就分库分表)",
+  "容量规划",
+  "容灾方案",
+  "架构文档化"
+ ],
+ "answer": "A",
+ "difficulty": 4,
+ "explanation": "过度设计增加无谓复杂度"
+}

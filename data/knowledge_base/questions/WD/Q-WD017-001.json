@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD017-001",
+ "source_node_id": "WD-017",
+ "type": "choice",
+ "question": "耗时任务(如发邮件)的正确处理是？",
+ "options": [
+  "请求内同步等待",
+  "后台任务/消息队列异步执行",
+  "丢弃任务",
+  "阻塞事件循环"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "异步执行不阻塞请求"
+}

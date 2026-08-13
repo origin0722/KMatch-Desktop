@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB008-001",
+ "source_node_id": "DB-008",
+ "type": "choice",
+ "question": "第三范式(3NF)消除的是？",
+ "options": [
+  "部分依赖",
+  "传递依赖",
+  "非原子值",
+  "冗余"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "3NF 消除传递依赖"
+}

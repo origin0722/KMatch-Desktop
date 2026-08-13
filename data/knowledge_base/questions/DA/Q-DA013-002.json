@@ -1,0 +1,10 @@
+{
+ "qid": "Q-DA013-002",
+ "source_node_id": "DA-013",
+ "type": "fill",
+ "question": "Matplotlib 中显示图形的函数是 ____。",
+ "options": [],
+ "answer": "plt.show()",
+ "difficulty": 1,
+ "explanation": "show 显示, savefig 保存"
+}

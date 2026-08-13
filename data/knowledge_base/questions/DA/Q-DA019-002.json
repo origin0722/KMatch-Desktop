@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA019-002",
+ "source_node_id": "DA-019",
+ "type": "choice",
+ "question": "「数据墨水比」高意味着？",
+ "options": [
+  "装饰越多越好",
+  "用最少墨水传递最多信息",
+  "图表越花哨越好",
+  "使用 3D 效果"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "数据墨水比: 去掉无关装饰"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB021-001",
+ "source_node_id": "DB-021",
+ "type": "choice",
+ "question": "消息队列在数据库场景的核心作用是？",
+ "options": [
+  "削峰填谷与异步解耦",
+  "替代数据库",
+  "加速查询",
+  "删除数据"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "队列削峰+解耦"
+}

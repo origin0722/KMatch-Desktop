@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB004-001",
+ "source_node_id": "DB-004",
+ "type": "choice",
+ "question": "复合索引遵循的原则是？",
+ "options": [
+  "最左前缀原则",
+  "最右前缀",
+  "随机匹配",
+  "全列同时匹配"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "复合索引按最左前缀生效"
+}

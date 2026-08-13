@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB008-002",
+ "source_node_id": "DB-008",
+ "type": "choice",
+ "question": "适度反范式的目的是？",
+ "options": [
+  "消除所有冗余",
+  "用冗余换读取性能",
+  "增加更新异常",
+  "提升规范化"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "反范式冗余换查询性能"
+}

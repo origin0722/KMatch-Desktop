@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB024-002",
+ "source_node_id": "DB-024",
+ "type": "choice",
+ "question": "异常故障处理的正确顺序是？",
+ "options": [
+  "先止血再根治",
+  "先根治再止血",
+  "只观察",
+  "重启了事"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "先限流切流止血再根治"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB010-001",
+ "source_node_id": "DB-010",
+ "type": "choice",
+ "question": "查看查询执行计划的命令是？",
+ "options": [
+  "EXPLAIN",
+  "DESCRIBE",
+  "SHOW",
+  "DEBUG"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "EXPLAIN 展示执行计划"
+}

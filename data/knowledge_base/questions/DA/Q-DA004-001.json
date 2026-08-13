@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA004-001",
+ "source_node_id": "DA-004",
+ "type": "choice",
+ "question": "Pandas 运算中「标签对齐」指的是？",
+ "options": [
+  "两表按行号逐行对应",
+  "运算时按索引自动对齐, 缺失位置补 NaN",
+  "自动丢弃所有 NaN",
+  "强制类型转换"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "标签对齐是 Pandas 核心语义, 缺失补 NaN"
+}

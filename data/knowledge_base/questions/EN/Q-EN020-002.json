@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN020-002",
+ "source_node_id": "EN-020",
+ "type": "choice",
+ "question": "使用设计模式应？",
+ "options": [
+  "所有问题都套模式",
+  "匹配适用场景, 简单问题不滥用",
+  "越多越好",
+  "不用模式"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "模式匹配场景, 避免过度设计"
+}

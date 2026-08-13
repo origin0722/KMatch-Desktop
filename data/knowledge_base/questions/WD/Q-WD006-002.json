@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD006-002",
+ "source_node_id": "WD-006",
+ "type": "choice",
+ "question": "返回 ORM 对象前必须？",
+ "options": [
+  "直接返回即可",
+  "转换为响应模型并排除敏感字段",
+  "转成字符串",
+  "删除对象"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "防泄漏内部字段(如密码哈希)"
+}

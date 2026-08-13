@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA015-001",
+ "source_node_id": "DA-015",
+ "type": "choice",
+ "question": "Seaborn 中按第三维分组着色的参数是？",
+ "options": [
+  "style",
+  "hue",
+  "size",
+  "palette"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "hue 按第三维分组着色"
+}

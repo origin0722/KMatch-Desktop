@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB001-002",
+ "source_node_id": "DB-001",
+ "type": "choice",
+ "question": "关系型数据库与非关系型的主要区别是？",
+ "options": [
+  "关系型用表与SQL, NoSQL放宽关系约束",
+  "关系型更快",
+  "NoSQL不能用",
+  "无区别"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "SQL 用表/SQL/强事务; NoSQL 放宽约束换扩展性"
+}

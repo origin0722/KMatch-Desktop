@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN009-002",
+ "source_node_id": "EN-009",
+ "type": "choice",
+ "question": "依赖锁定的目的是？",
+ "options": [
+  "加速安装",
+  "保证环境可复现一致",
+  "减少代码量",
+  "绕过测试"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "锁文件保证可复现"
+}

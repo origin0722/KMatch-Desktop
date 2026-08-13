@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD014-001",
+ "source_node_id": "WD-014",
+ "type": "choice",
+ "question": "防御 SQL 注入的根本手段是？",
+ "options": [
+  "过滤关键词",
+  "参数化查询",
+  "限制长度",
+  "加密字段"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "参数化查询让 SQL 与数据分离"
+}

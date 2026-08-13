@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD010-001",
+ "source_node_id": "WD-010",
+ "type": "choice",
+ "question": "SQLAlchemy 中管理事务与对象状态的组件是？",
+ "options": [
+  "Session",
+  "Engine",
+  "Model",
+  "MetaData"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "Session 管理事务与对象状态"
+}

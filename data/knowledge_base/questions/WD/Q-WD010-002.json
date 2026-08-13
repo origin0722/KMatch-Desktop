@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD010-002",
+ "source_node_id": "WD-010",
+ "type": "choice",
+ "question": "N+1 查询问题指？",
+ "options": [
+  "一条主查询+循环内逐条查关联",
+  "查询返回 N+1 列",
+  "索引失效",
+  "缓存击穿"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "循环内懒加载关联导致大量查询"
+}

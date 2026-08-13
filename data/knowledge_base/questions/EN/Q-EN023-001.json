@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN023-001",
+ "source_node_id": "EN-023",
+ "type": "choice",
+ "question": "Docker 容器化的核心价值是？",
+ "options": [
+  "一次构建处处运行",
+  "替代数据库",
+  "加速 CPU",
+  "无需网络"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "镜像可移植"
+}

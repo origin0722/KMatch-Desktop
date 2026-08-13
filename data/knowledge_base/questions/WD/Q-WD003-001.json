@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD003-001",
+ "source_node_id": "WD-003",
+ "type": "choice",
+ "question": "REST 风格中 URL 表示什么？",
+ "options": [
+  "动词动作(如 /getUser)",
+  "名词资源(如 /users)",
+  "SQL 语句",
+  "页面模板"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "URL 用名词复数表示资源"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD002-001",
+ "source_node_id": "WD-002",
+ "type": "choice",
+ "question": "HTTP 状态码 401 表示？",
+ "options": [
+  "服务器内部错误",
+  "未认证(需要登录)",
+  "权限不足",
+  "资源不存在"
+ ],
+ "answer": "B",
+ "difficulty": 1,
+ "explanation": "401 未认证, 403 无权限"
+}

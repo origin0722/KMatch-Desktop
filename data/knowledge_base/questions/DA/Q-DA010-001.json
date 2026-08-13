@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA010-001",
+ "source_node_id": "DA-010",
+ "type": "choice",
+ "question": "缺失值处理前应首先？",
+ "options": [
+  "直接 fillna 均值",
+  "诊断缺失比例与模式",
+  "删除所有含 NaN 的行",
+  "填 0"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "先诊断缺失机制再选策略"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB004-002",
+ "source_node_id": "DB-004",
+ "type": "choice",
+ "question": "以下哪种情况不适合建索引？",
+ "options": [
+  "高频过滤列",
+  "主键",
+  "写多读少的列",
+  "外键"
+ ],
+ "answer": "C",
+ "difficulty": 2,
+ "explanation": "写多读少建索引拖慢写且收益低"
+}

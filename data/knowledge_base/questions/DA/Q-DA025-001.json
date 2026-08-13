@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA025-001",
+ "source_node_id": "DA-025",
+ "type": "choice",
+ "question": "前注意属性中最优先用于编码数值的是？",
+ "options": [
+  "颜色饱和度",
+  "位置/长度",
+  "面积",
+  "角度"
+ ],
+ "answer": "B",
+ "difficulty": 4,
+ "explanation": "位置/长度感知最准确"
+}

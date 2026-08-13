@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN011-001",
+ "source_node_id": "EN-011",
+ "type": "choice",
+ "question": "结构化日志应包含？",
+ "options": [
+  "时间/级别/请求ID/消息",
+  "仅 print 文本",
+  "用户密码",
+  "无格式"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "结构化字段便于检索关联"
+}

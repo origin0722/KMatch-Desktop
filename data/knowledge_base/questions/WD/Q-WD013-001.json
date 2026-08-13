@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD013-001",
+ "source_node_id": "WD-013",
+ "type": "choice",
+ "question": "后端异常返回给客户端时应？",
+ "options": [
+  "附完整堆栈",
+  "只给摘要且不泄漏内部细节",
+  "返回空",
+  "返回密码"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "对外隐藏内部实现细节"
+}

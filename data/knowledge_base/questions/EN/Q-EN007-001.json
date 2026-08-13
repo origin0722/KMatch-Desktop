@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN007-001",
+ "source_node_id": "EN-007",
+ "type": "choice",
+ "question": "TDD 的三步循环是？",
+ "options": [
+  "红-绿-重构",
+  "设计-编码-测试",
+  "测试-设计-编码",
+  "编码-调试-提交"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "红(失败测试)-绿(实现)-重构"
+}

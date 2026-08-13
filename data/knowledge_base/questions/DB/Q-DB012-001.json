@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB012-001",
+ "source_node_id": "DB-012",
+ "type": "choice",
+ "question": "主从复制的典型用途是？",
+ "options": [
+  "主写从读提升读吞吐与容灾",
+  "只备份",
+  "加速写",
+  "替代索引"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "主写从读扩读+容灾"
+}

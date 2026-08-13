@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD008-002",
+ "source_node_id": "WD-008",
+ "type": "choice",
+ "question": "密码存储的正确方式是？",
+ "options": [
+  "明文",
+  "加盐哈希(如 bcrypt)",
+  "Base64 编码",
+  "MD5 不加盐"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "加盐哈希防彩虹表与撞库"
+}

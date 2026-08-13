@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD016-001",
+ "source_node_id": "WD-016",
+ "type": "choice",
+ "question": "Cache Aside 模式更新数据的正确顺序是？",
+ "options": [
+  "先删缓存再更库",
+  "先更库再删/失效缓存",
+  "只删缓存",
+  "只更缓存"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "先更库再失效缓存, 减少并发窗口"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB022-002",
+ "source_node_id": "DB-022",
+ "type": "choice",
+ "question": "维度建模的核心是？",
+ "options": [
+  "事实表+维度表",
+  "单表存储",
+  "无维度",
+  "纯关系"
+ ],
+ "answer": "A",
+ "difficulty": 3,
+ "explanation": "事实表+维度表"
+}

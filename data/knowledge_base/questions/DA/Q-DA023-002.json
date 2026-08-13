@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA023-002",
+ "source_node_id": "DA-023",
+ "type": "choice",
+ "question": "分析结论应如何呈现？",
+ "options": [
+  "只给图表",
+  "图表+结论+可落地行动建议",
+  "只给代码",
+  "给原始数据"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "结论回应问题并给行动建议"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN023-002",
+ "source_node_id": "EN-023",
+ "type": "choice",
+ "question": "Docker 安全实践不包括？",
+ "options": [
+  "最小基础镜像",
+  "非 root 用户",
+  "镜像含密钥与构建工具",
+  ".dockerignore"
+ ],
+ "answer": "C",
+ "difficulty": 3,
+ "explanation": "镜像不应含密钥与多余工具"
+}

@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB007-002",
+ "source_node_id": "DB-007",
+ "type": "choice",
+ "question": "SQLite 并发写的局限是？",
+ "options": [
+  "写串行靠文件锁",
+  "完全不支持写",
+  "无限并发",
+  "无锁无竞争"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "文件锁导致写串行"
+}

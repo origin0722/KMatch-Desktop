@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN015-001",
+ "source_node_id": "EN-015",
+ "type": "choice",
+ "question": "过期文档的问题在于？",
+ "options": [
+  "比没有文档更误导",
+  "完全无害",
+  "比新文档好",
+  "无需更新"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "过期文档误导读者"
+}

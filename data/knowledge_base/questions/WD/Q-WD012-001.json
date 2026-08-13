@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD012-001",
+ "source_node_id": "WD-012",
+ "type": "choice",
+ "question": "以下哪项适合放在中间件处理？",
+ "options": [
+  "核心业务计算",
+  "日志与 CORS 等横切关注点",
+  "数据库 schema 设计",
+  "前端渲染"
+ ],
+ "answer": "B",
+ "difficulty": 2,
+ "explanation": "中间件处理横切关注点"
+}

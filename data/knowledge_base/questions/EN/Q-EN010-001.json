@@ -1,0 +1,15 @@
+{
+ "qid": "Q-EN010-001",
+ "source_node_id": "EN-010",
+ "type": "choice",
+ "question": "语义化版本 1.4.2 中 minor 升级表示？",
+ "options": [
+  "破坏性不兼容变更",
+  "向后兼容的新功能",
+  "仅修 bug",
+  "重写"
+ ],
+ "answer": "B",
+ "difficulty": 3,
+ "explanation": "minor 向后兼容新功能, major 才破坏"
+}

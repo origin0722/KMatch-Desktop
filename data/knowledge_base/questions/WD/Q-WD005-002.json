@@ -1,0 +1,15 @@
+{
+ "qid": "Q-WD005-002",
+ "source_node_id": "WD-005",
+ "type": "choice",
+ "question": "敏感数据不应放在 URL 中的原因是？",
+ "options": [
+  "URL 会被日志记录与缓存",
+  "URL 长度太短",
+  "URL 无法编码",
+  "无影响"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "URL 参数会进访问日志, 易泄漏"
+}

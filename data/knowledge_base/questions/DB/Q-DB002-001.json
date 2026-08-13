@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB002-001",
+ "source_node_id": "DB-002",
+ "type": "choice",
+ "question": "SQL 中 DDL 指的是？",
+ "options": [
+  "数据定义(建表/改结构)",
+  "数据查询",
+  "数据增删改",
+  "权限控制"
+ ],
+ "answer": "A",
+ "difficulty": 1,
+ "explanation": "DDL 数据定义语言"
+}

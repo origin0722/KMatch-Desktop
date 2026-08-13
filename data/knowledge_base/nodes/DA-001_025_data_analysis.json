@@ -1,0 +1,968 @@
+[
+ {
+  "id": "DA-001",
+  "name": "数据分析概述",
+  "difficulty": 1,
+  "category": "数据分析与可视化",
+  "summary": "数据分析是从数据中提取信息与洞察以支撑决策的过程, 涵盖数据采集、清洗、探索、建模与可视化呈现。与机器学习偏重预测模型不同, 数据分析更强调描述与解释: 回答「发生了什么、为什么、该做什么」。典型产出包括报表、仪表盘与专项分析报告, 是数据驱动决策的基础。",
+  "prerequisites": [],
+  "key_points": [
+   "数据分析回答描述与解释问题, 机器学习侧重预测",
+   "流程: 采集→清洗→探索→分析→可视化→决策",
+   "描述性分析(发生了什么) vs 诊断性(为什么) vs 预测性(将发生) vs 规范性(该怎么办)",
+   "业务理解先行: 问题定义决定分析方向与指标",
+   "可复现性: 脚本化+版本管理是专业分析底线"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据分析概述核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把数据分析等同于写图表, 忽略结论提炼",
+   "上来就建模, 跳过探索性分析与业务对齐"
+  ],
+  "tags": [
+   "数据分析",
+   "数据分析概述"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DA-002",
+  "name": "数据采集与导入",
+  "difficulty": 1,
+  "category": "数据分析与可视化",
+  "summary": "数据来源多样: 文件(CSV/Excel/JSON)、数据库、API 接口与网页爬取。Python 中 pandas 提供 read_csv/read_excel/read_json 等统一读取接口, 数据进入 DataFrame 后即可分析。采集要点: 明确数据范围、处理编码与分隔符、保留原始数据副本供追溯。",
+  "prerequisites": [
+   "DA-001",
+   "PY-016"
+  ],
+  "key_points": [
+   "read_csv/read_excel/read_json 统一入口",
+   "编码(UTF-8/GBK)与分隔符易错, 需显式指定",
+   "保留原始副本, 清洗在副本上进行",
+   "CSV 无类型信息, 读入后需检查 dtypes",
+   "数据来源需记录出处与抓取时间(可追溯)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据采集与导入核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "read_csv 后不检查 dtype 直接运算(类型推断错)",
+   "直接用原文件做清洗污染原始数据"
+  ],
+  "tags": [
+   "数据分析",
+   "数据采集与导入"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DA-003",
+  "name": "数据清洗基础",
+  "difficulty": 1,
+  "category": "数据分析与可视化",
+  "summary": "真实数据常含缺失、重复、格式错误与异常值。数据清洗是删除或修正这些问题数据的过程, 质量决定分析结论可信度。清洗动作包括: 去重、补缺失、统一格式、修正类型、处理异常值。清洗原则: 保留清洗记录、可回滚、按业务规则决策而非凭感觉删行。",
+  "prerequisites": [
+   "DA-002"
+  ],
+  "key_points": [
+   "清洗顺序: 去重→缺失→格式→类型→异常",
+   "去重用 drop_duplicates 按关键列判定",
+   "清洗决策须有业务依据并留痕",
+   "类型转换 astype 前先诊断脏值来源",
+   "清洗前后行数/列数对比是质量校验手段"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据清洗基础核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "发现脏数据直接删行, 不做原因分析",
+   "清洗逻辑写在分析代码里无法复用/回滚"
+  ],
+  "tags": [
+   "数据分析",
+   "数据清洗基础"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DA-004",
+  "name": "Pandas Series 与 DataFrame",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "Pandas 两大核心结构: Series 是一维带标签数组, DataFrame 是二维表结构(行索引+多列)。DataFrame 支持面向列的操作, 是数据分析的主要载体。标签对齐是 Pandas 的核心语义: 运算自动按索引对齐, 缺失位置补 NaN。向量化操作远快于逐行循环。",
+  "prerequisites": [
+   "DA-001",
+   "PY-065"
+  ],
+  "key_points": [
+   "Series: 一维+索引; DataFrame: 二维行×列",
+   "标签对齐: 运算按索引自动对齐补 NaN",
+   "列是 Series, 可整列向量化运算",
+   "loc 按标签 / iloc 按位置",
+   "dtypes 决定运算语义, 检查后再操作"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Pandas Series 与 DataFrame核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用循环逐行处理而非向量化(慢且啰嗦)",
+   "忽略索引对齐, 误以为按位置逐行对应"
+  ],
+  "tags": [
+   "数据分析",
+   "Pandas Series 与 DataFrame"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-005",
+  "name": "DataFrame 索引与选择",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "DataFrame 数据选择需区分按标签(loc)与按位置(iloc): loc 用行列标签, iloc 用整数位置, 均为左闭右开切片。布尔索引(条件筛选)是数据分析最高频的选择方式, 返回满足条件的行子集。链式索引 [] 连续用易触发 SettingWithCopyWarning, 应改用单一 .loc 赋值。",
+  "prerequisites": [
+   "DA-004"
+  ],
+  "key_points": [
+   "df.loc[行标签, 列标签] / df.iloc[位置, 位置]",
+   "布尔条件筛选: df[df['col'] > 阈值]",
+   "多条件用 & | ~ 且必须加括号",
+   "链式索引赋值会改副本触发警告",
+   "选择列返回 Series, 选择多列返回 DataFrame"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "DataFrame 索引与选择核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把 df[df.a>1] 误写为 df[df.a>1 & df.b<2](运算符优先级)",
+   "用链式索引赋值导致修改不生效"
+  ],
+  "tags": [
+   "数据分析",
+   "DataFrame 索引与选择"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-006",
+  "name": "数据合并与连接",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "多表数据需合并: pd.concat 沿轴拼接(默认纵向堆叠), pd.merge 按键连接(类似 SQL JOIN)。merge 的 how 参数控制连接方式: inner/left/right/outer, 决定保留哪些行。合并前需确认键的唯一性与类型一致, 否则产生笛卡尔积或错配。",
+  "prerequisites": [
+   "DA-005"
+  ],
+  "key_points": [
+   "concat: 按行/列堆叠, 默认 outer 轴对齐",
+   "merge: 按键连接, how 决定行保留",
+   "on 指定键; left_on/right_on 处理键名不同",
+   "一多/多多关系会放大行数, 先检查唯一性",
+   "连接前统一键类型(对象 vs 数值)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据合并与连接核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "键列有重复仍直接 merge 导致行爆炸",
+   "merge 后不校验行数变化, 静默错配"
+  ],
+  "tags": [
+   "数据分析",
+   "数据合并与连接"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-007",
+  "name": "分组聚合 groupby",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "groupby 按某列分组, 对每组执行聚合函数, 是「分组-应用-合并」范式(Split-Apply-Combine)。常用聚合: mean/sum/count/min/max/nunique; 多列可各用不同聚合(agg 传入字典)。分组后可再变换(transform 保持原行数)或过滤(filter 按组条件筛组)。",
+  "prerequisites": [
+   "DA-005"
+  ],
+  "key_points": [
+   "df.groupby('cat').agg({'a':'mean','b':'sum'})",
+   "Split-Apply-Combine 三步范式",
+   "transform 保持原形状, 用于组内标准化/填充",
+   "filter 按组级条件过滤整组",
+   "groupby 后默认分组列为索引, 可 reset_index"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "分组聚合 groupby核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "agg 用字符串 'mean' 与函数 mean 混用报错",
+   "误以为 groupby 后行数与原始一致(已分组合并)"
+  ],
+  "tags": [
+   "数据分析",
+   "分组聚合 groupby"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-008",
+  "name": "数据透视表",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "pivot_table 实现类似 Excel 透视表: 以行列维度重组数据, 值字段做聚合。参数: index(行维度)、columns(列维度)、values(值列)、aggfunc(聚合函数, 默认 mean)。透视是把长表转宽表、从多维度看聚合结果的核心工具。",
+  "prerequisites": [
+   "DA-007"
+  ],
+  "key_points": [
+   "pivot_table(index, columns, values, aggfunc)",
+   "默认 aggfunc=mean, 计数用 len 或 count",
+   "NaN 用 fill_value 填充或 dropna",
+   "长表↔宽表: melt 与 pivot 互为逆",
+   "多级行列索引可再 stack/unstack"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据透视表核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "透视后忘记处理 NaN 直接画图",
+   "用 pivot(严格唯一键) 处理需聚合的重复数据报错"
+  ],
+  "tags": [
+   "数据分析",
+   "数据透视表"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DA-009",
+  "name": "时间序列分析",
+  "difficulty": 3,
+  "category": "数据分析与可视化",
+  "summary": "时间序列是带时间索引的数据列, pandas 用 DatetimeIndex 支持日期切片、重采样与移动窗口。核心操作: set_index/to_datetime 建时间索引, resample 按频率聚合(日/月/周), rolling 移动窗口统计(均线), shift 滞后对齐。时间序列需处理时区、缺失时间点与趋势季节性。",
+  "prerequisites": [
+   "DA-007",
+   "PY-053"
+  ],
+  "key_points": [
+   "to_datetime 统一解析时间字符串",
+   "resample('M').mean() 按月重采样聚合",
+   "rolling(7).mean() 滑动窗口(移动平均)",
+   "shift/diff 做滞后差分",
+   "缺失时间点需重采样对齐或前向填充"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "时间序列分析核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把时间列当普通字符串列操作",
+   "对未排序时间索引做 rolling 得到错误窗口"
+  ],
+  "tags": [
+   "数据分析",
+   "时间序列分析"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DA-010",
+  "name": "缺失值处理",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "缺失值(NaN)处理是清洗核心: 先诊断缺失比例与模式(随机/系统), 再选策略——删除、填充或建模估计。isna()/notna() 定位缺失, dropna 删行删列, fillna 填充(常数/前后向/均值/分组均值)。填充决策取决于缺失机制与业务, 需评估填充对结论的稳健性。",
+  "prerequisites": [
+   "DA-005",
+   "PY-066"
+  ],
+  "key_points": [
+   "isna().sum() 查看各列缺失量",
+   "dropna 删行/删列(阈值 thresh)",
+   "fillna: 常数/ffill/bfill/均值/分组均值",
+   "区分「缺失」与「数值 0」(语义不同)",
+   "高缺失列(>阈值)需评估是否保留"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "缺失值处理核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把所有缺失都填 0(混语义)",
+   "不做缺失模式分析就 fillna 均值"
+  ],
+  "tags": [
+   "数据分析",
+   "缺失值处理"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-011",
+  "name": "异常值检测",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "异常值是偏离正常范围的数据点, 可能因录入错误或真实稀有事件。检测方法: 箱线图 IQR 法(超过 Q3+1.5IQR)、3σ 法则(正态假设)、z-score、以及领域规则。异常值处理: 核实来源、修正、保留或剔除——不可无脑删除, 异常常是业务信号。",
+  "prerequisites": [
+   "DA-003",
+   "DA-017"
+  ],
+  "key_points": [
+   "IQR 法: 超出 [Q1-1.5IQR, Q3+1.5IQR] 判异常",
+   "3σ 法则适合近似正态分布",
+   "先核实异常值来源再决定去留",
+   "异常可能是真实极端事件(业务价值)",
+   "可视化(散点/箱线)辅助异常识别"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "异常值检测核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "对所有列无脑套 3σ(分布非正态)",
+   "异常值直接删掉不做核实"
+  ],
+  "tags": [
+   "数据分析",
+   "异常值检测"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-012",
+  "name": "数据变换与标准化",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "数据变换使特征适应模型或分析需求: 标准化(Z-score 去均值除标准差)、归一化(Min-Max 映射到区间)、对数变换(压缩长尾/右偏分布)。标准化保留分布形状, 归一化改变分布范围。注意: 变换统计量(均值/标准差/极值)须只在训练集/全量上 fit, 测试用同一参数 transform, 防数据泄漏。",
+  "prerequisites": [
+   "DA-005",
+   "ML-016"
+  ],
+  "key_points": [
+   "Z-score: (x-μ)/σ, 无量纲",
+   "Min-Max: (x-min)/(max-min) 映射 [0,1]",
+   "对数变换压缩右偏长尾",
+   "fit 与 transform 分离防泄漏",
+   "树模型对尺度不敏感, 距离模型必须标准化"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据变换与标准化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "归一化与标准化混为一谈",
+   "测试集单独 fit 统计量导致泄漏"
+  ],
+  "tags": [
+   "数据分析",
+   "数据变换与标准化"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-013",
+  "name": "Matplotlib 基础绘图",
+  "difficulty": 1,
+  "category": "数据分析与可视化",
+  "summary": "Matplotlib 是 Python 最基础的绘图库, pyplot 提供命令式接口: plot(折线)、scatter(散点)、bar(柱状)、hist(直方图)。图由 Figure(画布)+Axes(坐标系)构成, 支持标题、轴标签、图例、网格。默认样式偏学术, 是 Seaborn/交互可视化的底层。",
+  "prerequisites": [
+   "DA-001",
+   "PY-067"
+  ],
+  "key_points": [
+   "plt.figure() 建画布, add_subplot 建坐标系",
+   "plot/scatter/bar/hist 常用类型",
+   "xlabel/ylabel/title/legend 完善图元素",
+   "plt.show() 显示, savefig 保存",
+   "一个 Axes 可叠加多组数据, 用 label+legend 区分"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Matplotlib 基础绘图核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "绘图后不 savefig 直接 show 导致保存空图",
+   "散点图误用 plot(连线) 造成误导"
+  ],
+  "tags": [
+   "数据分析",
+   "Matplotlib 基础绘图"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DA-014",
+  "name": "多子图与样式定制",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "复杂分析常需多图对比: plt.subplots(nrows, ncols) 生成子图网格, 返回 Figure 与 Axes 数组。样式定制: figsize 控制尺寸、colors 调色、grid/alpha/tick 参数化。共享坐标轴(sharex/sharey)便于对齐比较, 紧凑布局 tight_layout 防重叠。",
+  "prerequisites": [
+   "DA-013"
+  ],
+  "key_points": [
+   "plt.subplots(2,2) 生成 2×2 子图",
+   "sharex/sharey 共享轴便于横向对比",
+   "figsize=(w,h) 控制输出尺寸",
+   "tight_layout 自动整理布局防重叠",
+   "统一风格: rcParams 或 seaborn.set_theme"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "多子图与样式定制核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "子图很多仍用默认尺寸导致挤成一团",
+   "共享轴对比时用不同 y 范围误导"
+  ],
+  "tags": [
+   "数据分析",
+   "多子图与样式定制"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-015",
+  "name": "Seaborn 统计绘图",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "Seaborn 基于 Matplotlib 提供统计图形高级接口: 分布(displot/kdeplot)、关系(relplot/scatterplot)、分类(catplot/boxplot)。它自动处理分组着色、误差带与统计变换, 代码更短、默认更美观。hue 参数按第三维分组, 是探索多变量关系的高效工具。",
+  "prerequisites": [
+   "DA-013",
+   "PY-068"
+  ],
+  "key_points": [
+   "hue= 按第三维分组着色",
+   "catplot(kind='box'/'violin') 分类分布",
+   "relplot(kind='scatter'/'line') 关系图",
+   "sns.set_theme() 统一主题",
+   "统计图自动带置信区间/误差带"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "Seaborn 统计绘图核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把 seaborn 当普通绘图库逐点手绘",
+   "hue 分组过多导致图不可读仍硬画"
+  ],
+  "tags": [
+   "数据分析",
+   "Seaborn 统计绘图"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-016",
+  "name": "探索性数据分析 EDA",
+  "difficulty": 3,
+  "category": "数据分析与可视化",
+  "summary": "EDA 是分析前期系统探索数据的过程: 单变量看分布、双变量看关系、多变量找模式。工具组合: describe 描述统计、直方图/箱线图看分布、散点/相关性矩阵看关系、分组聚合看差异。EDA 的目的不是验证假设, 而是发现数据特征、异常与潜在问题, 指导后续建模与分析方向。",
+  "prerequisites": [
+   "DA-009",
+   "DA-017",
+   "ML-030"
+  ],
+  "key_points": [
+   "单变量: 分布/缺失/类型先看",
+   "双变量: 散点/分组对比看关系",
+   "相关性矩阵: 数值列线性关系概览",
+   "EDA 发现驱动建模与分析方向",
+   "EDA 结论须可复现(脚本化)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "探索性数据分析 EDA核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "跳过 EDA 直接建模",
+   "EDA 只看单一统计量, 不看分布与异常"
+  ],
+  "tags": [
+   "数据分析",
+   "探索性数据分析 EDA"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DA-017",
+  "name": "描述性统计",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "描述性统计用指标概括数据: 集中趋势(均值/中位数/众数)、离散程度(方差/标准差/极差/四分位距)、分布形态(偏度/峰度)。均值受异常值影响, 中位数稳健; 右偏分布均值>中位数。describe() 一键输出常用描述统计, 是数据体检的第一步。",
+  "prerequisites": [
+   "DA-005",
+   "PY-064"
+  ],
+  "key_points": [
+   "mean/median/mode 集中趋势三件套",
+   "std/IQR 衡量离散, 异常影响均值更甚",
+   "偏度>0 右偏, 均值>中位数",
+   "describe() 输出 count/mean/std/min/分位数",
+   "分组 describe 对比各组分布差异"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "描述性统计核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "均值代表一切(忽略异常与分布)",
+   "把样本标准差当总体标准差用(分母 n vs n-1)"
+  ],
+  "tags": [
+   "数据分析",
+   "描述性统计"
+  ],
+  "estimated_minutes": 20
+ },
+ {
+  "id": "DA-018",
+  "name": "相关性与假设检验入门",
+  "difficulty": 3,
+  "category": "数据分析与可视化",
+  "summary": "相关性衡量两变量线性关联程度: Pearson 相关系数 r∈[-1,1], r=0 只说明无线性关系, 不排除非线性。相关≠因果: 混淆变量可能驱动表面相关。假设检验为结论提供显著性依据: 原假设 H0、p 值、显著性水平 α。p<α 拒绝 H0, 但显著不等于效应重要(样本大时微小差异也显著)。",
+  "prerequisites": [
+   "DA-017"
+  ],
+  "key_points": [
+   "Pearson r 衡量线性相关, 对异常敏感",
+   "相关≠因果, 需警惕混淆变量",
+   "p<α 拒绝原假设, α 常用 0.05",
+   "效应量与 p 值互补, 大样本 p 易显著",
+   "Spearman 秩相关对非线性单调关系更稳健"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "相关性与假设检验入门核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "把相关系数高直接当因果结论",
+   "只看 p 值不看效应量(大样本陷阱)"
+  ],
+  "tags": [
+   "数据分析",
+   "相关性与假设检验入门"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DA-019",
+  "name": "数据可视化叙事原则",
+  "difficulty": 3,
+  "category": "数据分析与可视化",
+  "summary": "可视化不止画图, 而是用图讲故事: 明确读者与结论、选择匹配的图表类型、突出关键信息、避免误导。常见误导: 截断坐标轴夸大差异、3D 图失真、双 y 轴混淆、颜色过度。好图原则: 数据墨水比高、标签清晰、诚实呈现不确定性、图自解释。",
+  "prerequisites": [
+   "DA-014",
+   "DA-015"
+  ],
+  "key_points": [
+   "先定结论再选图, 图随叙事变",
+   "避免截断轴/双 y 轴等误导手法",
+   "数据墨水比: 去掉无关装饰",
+   "颜色用于编码信息而非装饰",
+   "标注来源与样本量, 图自解释"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据可视化叙事原则核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "为了好看用 3D 饼图/双 y 轴",
+   "截断坐标轴放大差异误导读者"
+  ],
+  "tags": [
+   "数据分析",
+   "数据可视化叙事原则"
+  ],
+  "estimated_minutes": 30
+ },
+ {
+  "id": "DA-020",
+  "name": "交互式可视化",
+  "difficulty": 2,
+  "category": "数据分析与可视化",
+  "summary": "静态图表达有限信息, 交互式可视化支持悬停、缩放、筛选与联动, 便于探索与演示。Python 方案: Plotly(生成 HTML 交互图)、Bokeh; 或前端 ECharts 对接。交互适合数据探索与仪表盘, 静态图适合报告定稿。",
+  "prerequisites": [
+   "DA-014"
+  ],
+  "key_points": [
+   "Plotly/Bokeh 生成交互 HTML 图",
+   "悬停提示/缩放/框选/联动筛选",
+   "交互图适合探索, 静态图适合报告",
+   "导出: HTML 嵌入 / PNG 定稿",
+   "交互需考虑数据量(大数组要聚合)"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "交互式可视化核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "报告用交互图代替定稿静态图(依赖环境)",
+   "超大数组直接交互渲染卡死"
+  ],
+  "tags": [
+   "数据分析",
+   "交互式可视化"
+  ],
+  "estimated_minutes": 25
+ },
+ {
+  "id": "DA-021",
+  "name": "报表与仪表盘",
+  "difficulty": 3,
+  "category": "数据分析与可视化",
+  "summary": "仪表盘把多张关键图表组织成单一视图, 面向业务监控与决策: 核心指标(KPI)卡片 + 趋势图 + 占比图 + 明细表。设计原则: 从上到下按「概览→钻取→明细」布局、一屏聚焦有限指标、标注数据周期与口径。技术栈: pandas 计算 + 图表库渲染, 或对接 BI 工具。",
+  "prerequisites": [
+   "DA-019",
+   "DA-020",
+   "PY-085"
+  ],
+  "key_points": [
+   "KPI 卡片+趋势+占比+明细 四件套",
+   "布局: 概览→钻取→明细",
+   "一屏聚焦, 指标过多反而失焦",
+   "标注数据周期与统计口径",
+   "刷新频率与数据更新策略要明确"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "报表与仪表盘核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "仪表盘堆满图表无重点",
+   "口径不标注导致多图互相矛盾"
+  ],
+  "tags": [
+   "数据分析",
+   "报表与仪表盘"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DA-022",
+  "name": "大数据分析工具",
+  "difficulty": 4,
+  "category": "数据分析与可视化",
+  "summary": "数据量超出单机内存时需分布式分析工具: Dask/Polars 提供类 pandas 的分块与并行接口, Spark 面向大规模集群。分块(chunked)读取与惰性计算(lazy)是突破内存瓶颈的通用手法。选型权衡: 数据量、实时性、团队技术栈与运维成本。",
+  "prerequisites": [
+   "DA-012",
+   "ML-016"
+  ],
+  "key_points": [
+   "分块读取: 流式处理超内存数据",
+   "惰性计算: Dask/Spark 延迟执行图优化",
+   "Polars 列式内存高效, 单机大表",
+   "Spark 面向集群与超大规模",
+   "先评估数据量再选工具, 避免过度设计"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "大数据分析工具核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "小数据也上 Spark(杀鸡用牛刀)",
+   "分块分析忽略跨块聚合(如全局排序)"
+  ],
+  "tags": [
+   "数据分析",
+   "大数据分析工具"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "DA-023",
+  "name": "数据分析流程与业务理解",
+  "difficulty": 3,
+  "category": "数据分析与可视化",
+  "summary": "专业分析遵循结构化流程: 业务理解(定义问题与成功标准)→ 数据理解 → 数据准备 → 分析建模 → 评估 → 汇报。问题定义决定一切: 用可量化指标(SMART)锚定目标, 明确分析范围、假设与交付物。过程留痕(代码/文档/结论)保证可复现与可追溯, 结论须回应对业务价值。",
+  "prerequisites": [
+   "DA-016",
+   "DA-021"
+  ],
+  "key_points": [
+   "流程: 业务→数据→准备→分析→评估→汇报",
+   "问题定义用可量化指标锚定",
+   "明确交付物与时间线",
+   "结论回应业务问题并给行动建议",
+   "过程可复现: 代码+数据+参数留档"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据分析流程与业务理解核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "问题没定义清楚就冲去写代码",
+   "结论只给图表不给行动建议"
+  ],
+  "tags": [
+   "数据分析",
+   "数据分析流程与业务理解"
+  ],
+  "estimated_minutes": 35
+ },
+ {
+  "id": "DA-024",
+  "name": "数据分析实战案例",
+  "difficulty": 4,
+  "category": "数据分析与可视化",
+  "summary": "综合运用全流程完成真实分析: 某业务数据集 → 清洗(缺失/异常/类型) → EDA → 构建关键指标 → 分组对比 → 可视化呈现 → 结论与建议。实战强调: 结论有数据支撑、口径一致、图表辅助论证、建议可落地。复盘: 记录踩坑(脏数据形态/口径歧义), 沉淀为可复用模板。",
+  "prerequisites": [
+   "DA-023",
+   "DA-010"
+  ],
+  "key_points": [
+   "端到端: 数据→洞察→建议全链路",
+   "清洗决策有依据并留痕",
+   "指标口径在报告中明确定义",
+   "图表服务论证而非装饰",
+   "复盘沉淀可复用分析模板"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据分析实战案例核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "结论与图表不一致(图表展示与结论无关)",
+   "分析完不写结论直接交图表"
+  ],
+  "tags": [
+   "数据分析",
+   "数据分析实战案例"
+  ],
+  "estimated_minutes": 45
+ },
+ {
+  "id": "DA-025",
+  "name": "数据可视化设计进阶",
+  "difficulty": 5,
+  "category": "数据分析与可视化",
+  "summary": "进阶可视化设计关注感知与认知: 前注意属性(位置/长度/颜色)编码信息, 颜色用感知均匀色板(色盲安全), 多视图联动(linked highlighting)探索多维数据。面对海量数据用聚合与抽样保持可读性。设计决策基于认知科学而非审美直觉: 条形长度优于面积, 面积优于角度(饼图)。",
+  "prerequisites": [
+   "DA-019",
+   "DA-021"
+  ],
+  "key_points": [
+   "前注意属性: 位置/长度/方向/颜色 优先编码",
+   "感知均匀色板+色盲安全配色",
+   "条形长度优于饼图角度(感知准确)",
+   "多视图联动探索多维",
+   "大数据聚合/抽样保可读性"
+  ],
+  "practice_questions": [
+   {
+    "type": "choice",
+    "question": "数据可视化设计进阶核心要点确认",
+    "options": [
+     "已理解",
+     "需复习"
+    ],
+    "answer": "A",
+    "difficulty": 1
+   }
+  ],
+  "common_mistakes": [
+   "用彩虹色板/面积图编码精确数值",
+   "无视色盲安全硬用红绿对比"
+  ],
+  "tags": [
+   "数据分析",
+   "数据可视化设计进阶"
+  ],
+  "estimated_minutes": 50
+ }
+]

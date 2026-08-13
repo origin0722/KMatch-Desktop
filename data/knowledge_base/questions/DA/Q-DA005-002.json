@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DA005-002",
+ "source_node_id": "DA-005",
+ "type": "choice",
+ "question": "多个布尔条件组合时正确的写法是？",
+ "options": [
+  "df[(df.a>1) & (df.b<2)]",
+  "df[df.a>1 & df.b<2]",
+  "df[df.a>1 and df.b<2]",
+  "df[df.a>1 || df.b<2]"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "& 需给每个条件加括号, and/|| 不适用于数组"
+}

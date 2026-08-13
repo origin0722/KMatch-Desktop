@@ -1,0 +1,15 @@
+{
+ "qid": "Q-DB014-001",
+ "source_node_id": "DB-014",
+ "type": "choice",
+ "question": "Redis AOF 持久化的特点是？",
+ "options": [
+  "追加日志, 更安全体积大",
+  "周期快照恢复快",
+  "不持久化",
+  "只在集群用"
+ ],
+ "answer": "A",
+ "difficulty": 2,
+ "explanation": "AOF 追加命令日志更安全"
+}
