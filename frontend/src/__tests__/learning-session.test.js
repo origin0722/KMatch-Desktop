@@ -70,4 +70,23 @@ describe('LearningSession', () => {
     await nextTick()
     expect(session.showCollab).toBe(true)
   })
+  it('loading 文案按 phase 区分: 出题/判分/取反馈不混用 (修"没答题就说生成学习内容")', async () => {
+    // 出题中 (idle): 应说"定制题目", 不应出现反馈阶段的"针对性学习内容"
+    mockAssessment.loading = true; mockAssessment.phase = 'idle'
+    let w = mount(LearningSession, { global: { plugins: [pinia], ...GLOBAL } })
+    let txt = w.find('.quiz-loading').attributes('element-loading-text')
+    expect(txt).toContain('定制题目')
+    expect(txt).not.toContain('针对性学习内容')
+    w.unmount()
+    // 判分中 (answering): 遮罩不再消失 (修阶段②白屏)
+    mockAssessment.phase = 'answering'
+    w = mount(LearningSession, { global: { plugins: [pinia], ...GLOBAL } })
+    expect(w.find('.quiz-loading').attributes('element-loading-text')).toContain('判分')
+    w.unmount()
+    // 取反馈 (feedback): 原文案保留
+    mockAssessment.phase = 'feedback'
+    w = mount(LearningSession, { global: { plugins: [pinia], ...GLOBAL } })
+    expect(w.find('.quiz-loading').attributes('element-loading-text')).toContain('针对性学习内容')
+    w.unmount()
+  })
 })
