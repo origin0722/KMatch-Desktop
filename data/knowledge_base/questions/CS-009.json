@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS009-001",
+    "source_node_id": "CS-009",
+    "type": "choice",
+    "question": "关于响应式设计与媒体查询，下列说法正确的是？",
+    "options": [
+      "A. 使用 viewport meta 会阻止移动端缩放，与响应式无关",
+      "B. 媒体查询只能根据视口宽度应用不同样式",
+      "C. 移动优先通常先写大屏样式，再用 max-width 断点覆盖小屏",
+      "D. 断点应基于内容需要而非具体设备型号硬编码"
+    ],
+    "answer": "D",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "断点应基于内容需要而非具体设备型号硬编码。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS009-002",
+    "source_node_id": "CS-009",
+    "type": "fill",
+    "question": "移动优先策略通常先写____屏基础样式，再用 min-width 断点增强大屏布局。",
+    "options": [],
+    "answer": "小",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "移动优先先写小屏基础样式。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

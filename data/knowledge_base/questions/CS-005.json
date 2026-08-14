@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS005-001",
+    "source_node_id": "CS-005",
+    "type": "choice",
+    "question": "以下哪种写法不是 CSS 中表示颜色的合法形式？",
+    "options": [
+      "A. #ff0000",
+      "B. rgb(255,0,0)",
+      "C. red",
+      "D. url(red.png)"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "url() 用于引用图像，不是颜色表示形式。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS005-002",
+    "source_node_id": "CS-005",
+    "type": "fill",
+    "question": "在 CSS 中，使用 background 简写属性时会______此前单独设置的背景属性。",
+    "options": [],
+    "answer": "覆盖",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "background 简写会覆盖此前单独设置的背景属性。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

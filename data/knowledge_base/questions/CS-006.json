@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS006-001",
+    "source_node_id": "CS-006",
+    "type": "choice",
+    "question": "关于 position: absolute，下列说法正确的是？",
+    "options": [
+      "A. 相对自身原始位置偏移",
+      "B. 相对最近的已定位祖先定位，且脱离文档流",
+      "C. 相对视口定位",
+      "D. 仍保留原占位空间"
+    ],
+    "answer": "B",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "absolute 相对于最近的已定位祖先定位并脱离文档流。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS006-002",
+    "source_node_id": "CS-006",
+    "type": "fill",
+    "question": "position: fixed 的元素相对______定位，常用于弹窗和悬浮导航。",
+    "options": [],
+    "answer": "视口",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "fixed 相对视口定位。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

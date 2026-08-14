@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV004-001",
+    "source_node_id": "JV-004",
+    "type": "choice",
+    "question": "关于 do-while 循环，以下说法正确的是？",
+    "options": [
+      "A. 先判断条件再执行循环体",
+      "B. 先执行循环体再判断条件",
+      "C. 与 while 循环执行顺序完全相同",
+      "D. 条件为 false 时循环体一定会执行两次"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "do-while 先执行一次循环体，然后再判断条件是否继续。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV004-002",
+    "source_node_id": "JV-004",
+    "type": "fill",
+    "question": "在 switch 语句中，为防止 case 穿透，通常在每个 case 分支末尾使用______语句。",
+    "options": [],
+    "answer": "break",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "break 可以跳出 switch，避免继续执行后续 case 分支。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

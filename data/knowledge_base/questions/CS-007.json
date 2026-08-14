@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS007-001",
+    "source_node_id": "CS-007",
+    "type": "choice",
+    "question": "在 Flexbox 中，决定主轴方向的属性是什么？",
+    "options": [
+      "A. justify-content",
+      "B. align-items",
+      "C. flex-direction",
+      "D. gap"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "flex-direction 决定主轴方向，默认值是 row。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS007-002",
+    "source_node_id": "CS-007",
+    "type": "fill",
+    "question": "在 Flexbox 中，justify-content 沿______对齐，而 align-items 沿交叉轴对齐。",
+    "options": [],
+    "answer": "主轴",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "justify-content 沿主轴对齐。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

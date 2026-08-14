@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV010-001",
+    "source_node_id": "JV-010",
+    "type": "choice",
+    "question": "关于 finally 块的描述，下列哪项是正确的？",
+    "options": [
+      "无论是否发生异常都会执行",
+      "只在发生异常时执行",
+      "只在没有异常时执行",
+      "用于捕获异常"
+    ],
+    "answer": "A",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "finally 块中的代码无论是否异常都会执行，通常用于释放资源。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV010-002",
+    "source_node_id": "JV-010",
+    "type": "fill",
+    "question": "在方法声明中用于声明该方法可能抛出异常的关键字是____。",
+    "options": [],
+    "answer": "throws",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "throws 用于声明方法可能抛出的异常，throw 用于抛出异常对象。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

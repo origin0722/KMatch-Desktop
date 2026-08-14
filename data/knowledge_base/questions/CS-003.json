@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS003-001",
+    "source_node_id": "CS-003",
+    "type": "choice",
+    "question": "在 box-sizing: border-box 下，width 属性包含哪些部分？",
+    "options": [
+      "A. 仅内容宽度",
+      "B. 内容、padding 和 border",
+      "C. 内容、padding、border 和 margin",
+      "D. 仅 padding 和 border"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "border-box 下 width 包含内容、内边距和边框，不包含外边距。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS003-002",
+    "source_node_id": "CS-003",
+    "type": "fill",
+    "question": "上下相邻的两个块级元素，其上下外边距可能发生____。",
+    "options": [],
+    "answer": "外边距折叠（margin 折叠）",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "上下相邻的块级元素可能发生外边距折叠。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

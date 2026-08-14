@@ -1,0 +1,1003 @@
+[
+  {
+    "id": "JV-001",
+    "name": "Java 开发环境与第一个程序",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "介绍 Java 的开发与运行流程，包含 JDK、JVM、JRE 的作用，以及编写、编译和运行第一个 Java 程序。学习者需要理解源文件、字节码和类名的基本关系，并能够独立完成 Hello World。",
+    "prerequisites": [],
+    "key_points": [
+      "JDK 包含编译器和运行工具，是开发 Java 程序的基础环境",
+      "JVM 负责运行编译后的字节码，使 Java 具有跨平台能力",
+      "Java 源文件以 .java 结尾，编译后生成 .class 字节码文件",
+      "使用 javac 编译源代码，使用 java 运行程序",
+      "公共类名必须与文件名一致，main 方法是程序入口",
+      "System.out.println 用于向控制台输出一行内容"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-001",
+        "type": "choice",
+        "question": "在 Java 开发环境中，哪个命令用于将 .java 源文件编译成 .class 字节码文件？",
+        "options": [
+          "A. javac",
+          "B. java",
+          "C. JVM",
+          "D. JDK"
+        ],
+        "answer": "A",
+        "difficulty": 1,
+        "explanation": "javac 是 Java 编译器命令，用于编译源代码生成字节码。"
+      }
+    ],
+    "common_mistakes": [
+      "把 JDK 和 JRE 混为一谈，认为安装 JRE 就能编译程序",
+      "文件名与 public 类名不一致导致编译错误",
+      "忘记 main 方法签名或写错为 Main",
+      "手动输入代码时遗漏分号或花括号"
+    ],
+    "tags": [
+      "环境搭建",
+      "Hello World",
+      "JDK",
+      "JVM",
+      "编译运行"
+    ],
+    "estimated_minutes": 40,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-002",
+    "name": "变量与基本数据类型",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "讲解 Java 中的变量声明、命名规则以及八种基本数据类型。学习者需要掌握整型、浮点型、字符型和布尔型的适用范围与默认字面量写法，并理解局部变量必须先初始化再使用。",
+    "prerequisites": [
+      "JV-001"
+    ],
+    "key_points": [
+      "变量必须先声明类型再使用，例如 int age = 20;",
+      "基本数据类型包括 byte、short、int、long、float、double、char、boolean",
+      "int 是常用整数类型，double 是常用浮点类型",
+      "char 表示单个字符，boolean 只有 true 和 false",
+      "变量命名应使用有意义的驼峰式名称，不能以数字开头",
+      "局部变量在使用前必须赋值"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-002",
+        "type": "choice",
+        "question": "以下哪个是 Java 中合法的 boolean 类型值？",
+        "options": [
+          "A. 0",
+          "B. true",
+          "C. “true”",
+          "D. 1"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "explanation": "boolean 类型只有 true 和 false，0、1 或字符串都不是合法值。"
+      }
+    ],
+    "common_mistakes": [
+      "把 String 当作基本数据类型",
+      "给 float 变量赋值时省略 f 后缀导致类型不匹配",
+      "给 long 变量赋值超大整数时省略 L 后缀导致编译错误",
+      "使用未初始化的局部变量"
+    ],
+    "tags": [
+      "变量",
+      "数据类型",
+      "基本类型",
+      "命名规范"
+    ],
+    "estimated_minutes": 50,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-003",
+    "name": "运算符与表达式",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "介绍算术、赋值、比较、逻辑和三元运算符，以及表达式求值与类型转换规则。学习者需要理解整数除法、取模、自增自减、短路逻辑和运算符优先级，并能写出清晰的条件表达式。",
+    "prerequisites": [
+      "JV-002"
+    ],
+    "key_points": [
+      "算术运算符包括 +、-、*、/、%，其中 / 对整数执行整除",
+      "取模运算 % 用于获得余数，常用于判断奇偶和周期",
+      "比较运算符返回 boolean 类型结果",
+      "逻辑与 && 和逻辑或 || 具有短路特性",
+      "三元运算符 条件 ? 值1 : 值2 可简化简单分支",
+      "表达式中的自动类型提升和强制类型转换需要关注数据范围"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-003",
+        "type": "choice",
+        "question": "在 Java 中，表达式 7 / 2 的值是多少？",
+        "options": [
+          "A. 3.5",
+          "B. 3",
+          "C. 4",
+          "D. 2"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "explanation": "两个 int 相除时 / 执行整除，结果只保留整数部分 3。"
+      }
+    ],
+    "common_mistakes": [
+      "认为整数除法会得到小数结果",
+      "混淆 = 赋值和 == 相等比较",
+      "使用 & 或 | 时忽略短路差异",
+      "强制类型转换时丢失精度却未察觉"
+    ],
+    "tags": [
+      "运算符",
+      "表达式",
+      "类型转换",
+      "短路逻辑"
+    ],
+    "estimated_minutes": 55,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-004",
+    "name": "控制流程：条件与循环",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "讲解 if、switch、for、while 和 do-while 等控制结构，帮助学习者根据条件控制程序分支和重复执行。需要重点理解代码块作用域、循环条件更新，以及 break 和 continue 的区别。",
+    "prerequisites": [
+      "JV-003"
+    ],
+    "key_points": [
+      "if 和 if-else 用于根据布尔条件选择执行分支",
+      "switch 适合多值匹配，需注意 case 穿透与 break",
+      "for 循环适合已知次数或遍历序列的场景",
+      "while 先判断后执行，do-while 先执行后判断",
+      "break 结束整个循环，continue 跳过本次循环进入下一次",
+      "循环体内部需要正确更新循环变量，避免死循环"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-004",
+        "type": "choice",
+        "question": "关于 do-while 循环，以下说法正确的是？",
+        "options": [
+          "A. 先判断条件再执行循环体",
+          "B. 先执行循环体再判断条件",
+          "C. 与 while 循环执行顺序完全相同",
+          "D. 条件为 false 时循环体一定会执行两次"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "explanation": "do-while 先执行一次循环体，然后再判断条件是否继续。"
+      }
+    ],
+    "common_mistakes": [
+      "在 if 条件中使用 = 而不是 ==",
+      "switch 忘记写 break 导致 case 穿透",
+      "循环变量忘记更新造成无限循环",
+      "误以为 do-while 和 while 只是写法不同而没有执行顺序差异"
+    ],
+    "tags": [
+      "条件分支",
+      "循环",
+      "if",
+      "for",
+      "while"
+    ],
+    "estimated_minutes": 60,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-005",
+    "name": "数组",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "介绍一维数组和二维数组的声明、初始化、遍历与常见操作。学习者需要理解数组是定长对象、下标从 0 开始，并能够使用 for 循环或增强 for 遍历元素，同时注意越界问题。",
+    "prerequisites": [
+      "JV-004"
+    ],
+    "key_points": [
+      "数组用于存储同一类型的多个元素，长度创建后固定",
+      "声明数组可以使用 int[] arr 或 int arr[]，推荐前者",
+      "数组下标从 0 开始，最后一个元素下标为 length-1",
+      "可以使用数组初始化器，如 int[] arr = {1, 2, 3};",
+      "增强 for 循环可以简化遍历，但不能直接修改元素或获取下标",
+      "二维数组可理解为数组的数组，行和列长度可以不同"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-005",
+        "type": "choice",
+        "question": "关于数组下标，以下说法正确的是？",
+        "options": [
+          "A. 数组下标从0开始，最后一个元素下标为 length-1",
+          "B. 数组下标从1开始，最后一个元素下标为 length",
+          "C. 数组下标从0开始，最后一个元素下标为 length",
+          "D. 数组下标从1开始，最后一个元素下标为 length-1"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "数组下标从0开始，最后一个元素下标为 length-1。"
+      }
+    ],
+    "common_mistakes": [
+      "访问数组时下标越界，抛出 ArrayIndexOutOfBoundsException",
+      "创建数组时使用 int[5] arr 的写法导致编译错误",
+      "试图改变数组长度来实现动态增删",
+      "增强 for 循环中误以为可以修改原数组元素"
+    ],
+    "tags": [
+      "数组",
+      "一维数组",
+      "二维数组",
+      "遍历"
+    ],
+    "estimated_minutes": 60,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-006",
+    "name": "方法与参数传递",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "讲解方法的定义、调用、返回值和参数传递机制。学习者需要掌握形参与实参、方法重载、return 的作用，以及 Java 中基本类型和引用类型参数在调用时的不同表现。",
+    "prerequisites": [
+      "JV-005"
+    ],
+    "key_points": [
+      "方法封装可复用的代码块，格式包含访问修饰符、返回类型、方法名和参数列表",
+      "return 用于返回结果并结束方法，void 方法可以省略 return 或直接 return;",
+      "形参是方法定义时的参数，实参是调用时传入的值",
+      "Java 中基本类型参数传递的是值的副本，方法内修改不影响原变量",
+      "引用类型参数传递的是引用的副本，通过引用修改对象内容会影响原对象",
+      "方法重载要求方法名相同但参数列表不同，返回类型不作为重载依据"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-006",
+        "type": "choice",
+        "question": "关于基本类型参数传递，以下说法正确的是？",
+        "options": [
+          "A. 基本类型参数传递的是值的副本，方法内修改不影响原变量",
+          "B. 基本类型参数传递的是原变量本身，方法内修改影响原变量",
+          "C. 基本类型参数传递的是副本，方法内修改会影响原变量",
+          "D. 基本类型参数不会传递任何值"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "Java 中基本类型参数传递值的副本，方法内修改不影响原变量。"
+      }
+    ],
+    "common_mistakes": [
+      "认为 Java 中基本类型参数按引用传递",
+      "在 void 方法中写 return 值导致编译错误",
+      "仅修改返回类型来重载方法",
+      "忘记调用方法时传入实参或实参类型不匹配"
+    ],
+    "tags": [
+      "方法",
+      "参数传递",
+      "重载",
+      "返回值"
+    ],
+    "estimated_minutes": 65,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-007",
+    "name": "面向对象基础：类与对象",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "介绍类、对象、属性、方法和对象创建过程，帮助学习者从面向过程转向面向对象。需要理解类是模板、对象是实例，并能够通过 new 创建对象、访问成员变量和调用成员方法。",
+    "prerequisites": [
+      "JV-006"
+    ],
+    "key_points": [
+      "类是对一类对象共同特征和行为的抽象描述",
+      "对象是类的具体实例，通过 new 关键字创建",
+      "成员变量描述对象状态，成员方法描述对象行为",
+      "点号 . 用于访问对象的成员变量和成员方法",
+      "同一个类可以创建多个相互独立的对象",
+      "对象的成员变量有默认值，而局部变量没有"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-007",
+        "type": "choice",
+        "question": "关于类和对象，以下说法正确的是？",
+        "options": [
+          "A. 类是对一类对象共同特征和行为的抽象描述，对象是类的具体实例，通过 new 创建",
+          "B. 对象是对一类对象共同特征和行为的抽象描述，类是具体实例",
+          "C. 类和对象完全等价，都可以通过 new 创建",
+          "D. 类通过 new 创建，对象是类的抽象描述"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "类描述共同特征和行为，对象是类的具体实例，通过 new 创建。"
+      }
+    ],
+    "common_mistakes": [
+      "把类和对象混为一谈，认为类就是对象",
+      "忘记使用 new 创建对象就直接访问成员",
+      "将成员变量和局部变量重名时作用范围混淆",
+      "误以为不同对象共享普通成员变量的值"
+    ],
+    "tags": [
+      "面向对象",
+      "类",
+      "对象",
+      "new",
+      "成员"
+    ],
+    "estimated_minutes": 60,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-008",
+    "name": "封装与构造方法",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "讲解构造方法、private 封装、getter/setter 和 this 关键字。学习者需要理解如何保护对象内部状态，并通过构造方法在创建对象时完成初始化，从而写出更安全、更清晰的类。",
+    "prerequisites": [
+      "JV-007"
+    ],
+    "key_points": [
+      "构造方法名称与类名相同，没有返回类型，用于初始化对象",
+      "如果没有定义构造方法，编译器会提供默认无参构造方法",
+      "private 修饰的成员变量只能在本类内部访问",
+      "通过 getter 读取私有属性，通过 setter 修改私有属性",
+      "this 关键字用于区分成员变量和局部变量，或调用本类其他构造方法",
+      "封装可以隐藏实现细节，降低外部误操作风险"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-008",
+        "type": "choice",
+        "question": "关于构造方法，以下说法正确的是？",
+        "options": [
+          "A. 构造方法名称与类名相同，没有返回类型",
+          "B. 构造方法名称与类名相同，必须写 void 作为返回类型",
+          "C. 构造方法名称可以自定义，没有返回类型",
+          "D. 构造方法名称与类名相同，返回类型为 int"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "构造方法名称与类名相同，且没有返回类型。"
+      }
+    ],
+    "common_mistakes": [
+      "给构造方法写 void 或返回类型，使其变成普通方法",
+      "在 setter 中忘记给成员变量赋值或赋值给局部变量",
+      "认为 private 成员无法通过任何方式访问",
+      "定义带参构造方法后仍使用默认无参构造创建对象"
+    ],
+    "tags": [
+      "封装",
+      "构造方法",
+      "private",
+      "getter/setter",
+      "this"
+    ],
+    "estimated_minutes": 65,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-009",
+    "name": "字符串与常用类",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "介绍 String 的不可变特性、常用操作方法，以及 StringBuilder 和基础包装类。学习者需要理解字符串比较、拼接、替换、截取等常见场景，并区分 String 与 StringBuilder 的使用时机。",
+    "prerequisites": [
+      "JV-008"
+    ],
+    "key_points": [
+      "String 是不可变对象，每次拼接或修改都会产生新的字符串对象",
+      "equals 用于比较字符串内容，== 比较的是引用地址",
+      "常用方法包括 length、charAt、substring、indexOf、replace、split 等",
+      "StringBuilder 是可变的字符序列，适合频繁拼接场景",
+      "基本类型都有对应包装类，如 Integer、Double、Boolean",
+      "包装类提供 parseXxx 等方法用于字符串与基本类型转换"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-009",
+        "type": "choice",
+        "question": "在 Java 中，比较两个字符串的内容是否相等应该使用以下哪个方法或运算符？",
+        "options": [
+          "equals",
+          "==",
+          "length",
+          "charAt"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "equals 用于比较字符串内容，== 比较的是引用地址。"
+      }
+    ],
+    "common_mistakes": [
+      "用 == 比较字符串内容",
+      "认为 String 的 replace 或 substring 会修改原字符串",
+      "误以为 String 拼接不会创建新对象",
+      "把包装类和基本类型完全等同，忽略自动装箱拆箱的差异"
+    ],
+    "tags": [
+      "字符串",
+      "String",
+      "StringBuilder",
+      "包装类"
+    ],
+    "estimated_minutes": 65,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "JV-010",
+    "name": "异常处理与基础调试",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "介绍异常的概念、try-catch-finally 处理结构、常见异常类型以及基础调试思路。学习者需要能够捕获和处理运行时错误，理解 throws 与 throw 的区别，并通过阅读堆栈信息定位问题。",
+    "prerequisites": [
+      "JV-009"
+    ],
+    "key_points": [
+      "异常是程序运行中发生的非正常情况，处理后可避免程序直接崩溃",
+      "try 块放置可能抛出异常的代码，catch 块捕获并处理对应异常",
+      "finally 块中的代码通常用于释放资源，无论是否异常都会执行",
+      "throw 用于抛出异常对象，throws 用于声明方法可能抛出的异常",
+      "常见异常包括 NullPointerException、ArrayIndexOutOfBoundsException、ArithmeticException",
+      "阅读异常堆栈信息可以从最上层定位到出错位置"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "JV-010",
+        "type": "choice",
+        "question": "关于 finally 块的描述，下列哪项是正确的？",
+        "options": [
+          "无论是否发生异常都会执行",
+          "只在发生异常时执行",
+          "只在没有异常时执行",
+          "用于捕获异常"
+        ],
+        "answer": "A",
+        "difficulty": 3,
+        "explanation": "finally 块中的代码无论是否异常都会执行，通常用于释放资源。"
+      }
+    ],
+    "common_mistakes": [
+      "捕获异常后完全不处理，导致问题被隐藏",
+      "把正常流程控制当作异常处理使用",
+      "混淆 throw 和 throws 的用途",
+      "认为 finally 一定会执行，而忽略程序提前退出或系统级错误等极端情况"
+    ],
+    "tags": [
+      "异常",
+      "try-catch",
+      "finally",
+      "调试",
+      "堆栈"
+    ],
+    "estimated_minutes": 70,
+    "source": "llm_generated",
+    "domain_label": "Java 入门",
+    "created_at": "2026-08-14T11:43:13.421732Z"
+  },
+  {
+    "id": "CS-001",
+    "name": "CSS 语法与基础选择器",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "CSS 通过选择器匹配 HTML 元素，并在声明块中用属性与值描述样式。基础选择器包括元素选择器、类选择器、ID 选择器与通配选择器，还可以用分组和后代选择器组合作用范围。掌握语法结构和选择器命中的对象，是编写任何样式规则的前提。",
+    "prerequisites": [],
+    "key_points": [
+      "CSS 规则由选择器、声明块、属性与值组成，属性和值之间用冒号分隔。",
+      "类选择器以点号开头，可复用于多个元素；ID 选择器以井号开头，通常应唯一。",
+      "多个选择器可用逗号分组，共用同一组声明。",
+      "后代选择器通过空格表示层级关系，只匹配指定祖先内部的后代。",
+      "选择器区分大小写，需与 HTML 类名、ID 保持一致。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-001",
+        "type": "choice",
+        "question": "关于 CSS 基础选择器，以下哪项说法正确？",
+        "options": [
+          "A. 类选择器以 # 开头，ID 选择器以 . 开头",
+          "B. 类选择器以 . 开头，ID 选择器以 # 开头，类选择器可复用于多个元素",
+          "C. 多个选择器分组使用空格分隔",
+          "D. 后代选择器通过逗号表示层级关系"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "explanation": "类选择器以点号开头且可复用，ID 选择器以井号开头通常唯一。"
+      }
+    ],
+    "common_mistakes": [
+      "忘记在每条声明结尾写分号，导致后续规则失效。",
+      "混淆类选择器和 ID 选择器的前缀，用点号表示 ID 或井号表示类。",
+      "在 HTML 中给多个元素使用相同 ID，并在样式中假设唯一性。",
+      "认为选择器越长就越精确，忽略了选择器类型对优先级的影响。"
+    ],
+    "tags": [
+      "CSS",
+      "选择器",
+      "语法",
+      "基础"
+    ],
+    "estimated_minutes": 40,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-002",
+    "name": "层叠、优先级与继承",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "CSS 的“层叠”决定了多条规则作用于同一元素时谁的声明胜出，核心因素包括来源、选择器优先级和源码顺序。继承则让部分属性自动从父元素传递给子元素，例如字体和颜色相关属性。理解这些规则可以避免大量“为什么样式不生效”的调试。",
+    "prerequisites": [
+      "CS-001"
+    ],
+    "key_points": [
+      "层叠顺序通常考虑重要性、来源与特异性，普通顺序中作者样式优先于用户代理默认样式。",
+      "选择器优先级可简化为 ID 数量、类/属性/伪类数量、元素/伪元素数量的比较。",
+      "内联样式优先级高于外部样式表中的普通选择器规则。",
+      "继承只适用于部分属性，如 color 和 font-family；盒模型相关属性通常不继承。",
+      "当优先级相同时，后出现的规则会覆盖先出现的规则。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-002",
+        "type": "choice",
+        "question": "以下哪个 CSS 属性通常会从父元素继承？",
+        "options": [
+          "A. margin",
+          "B. padding",
+          "C. color",
+          "D. border"
+        ],
+        "answer": "C",
+        "difficulty": 2,
+        "explanation": "color 和 font-family 等属性会继承，盒模型相关属性通常不继承。"
+      }
+    ],
+    "common_mistakes": [
+      "把“后出现的规则总是赢”绝对化，忽略了优先级和 !important。",
+      "误以为所有 CSS 属性都会自动继承。",
+      "为了覆盖样式滥用 !important，导致后续维护困难。",
+      "用类选择器覆盖 ID 选择器失败，却继续增加类名来补偿。"
+    ],
+    "tags": [
+      "CSS",
+      "层叠",
+      "优先级",
+      "继承"
+    ],
+    "estimated_minutes": 45,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-003",
+    "name": "盒模型与尺寸",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "盒模型将每个元素视为由内容、内边距、边框和外边距组成的矩形，是理解尺寸与间距的基础。通过 box-sizing 可以在 content-box 与 border-box 之间切换，从而改变 width 和 height 的计算方式。盒模型也影响行内元素和块级元素的表现。",
+    "prerequisites": [
+      "CS-001"
+    ],
+    "key_points": [
+      "标准盒模型由 content、padding、border、margin 四层组成。",
+      "content-box 下 width 只表示内容宽度；border-box 下 width 包含内容、padding 和 border。",
+      "margin 可以取负值，padding 通常不能取负值。",
+      "上下相邻的块级元素可能发生外边距折叠。",
+      "行内元素的宽高、上下 margin 等行为与块级元素不同。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-003",
+        "type": "choice",
+        "question": "在 box-sizing: border-box 下，width 属性包含哪些部分？",
+        "options": [
+          "A. 仅内容宽度",
+          "B. 内容、padding 和 border",
+          "C. 内容、padding、border 和 margin",
+          "D. 仅 padding 和 border"
+        ],
+        "answer": "B",
+        "difficulty": 2,
+        "explanation": "border-box 下 width 包含内容、内边距和边框，不包含外边距。"
+      }
+    ],
+    "common_mistakes": [
+      "默认情况下误以为 width 包含 padding 和 border。",
+      "把 margin 的上下值加总后当作实际间距，忽略外边距折叠。",
+      "给行内元素设置 width 和 height 后期待其像块级元素一样生效。",
+      "忘记 border 也会占用空间，除非使用 border-box。"
+    ],
+    "tags": [
+      "CSS",
+      "盒模型",
+      "布局",
+      "尺寸"
+    ],
+    "estimated_minutes": 50,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-004",
+    "name": "文本与字体样式",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "文本与字体样式控制网页内容的可读性和视觉节奏，包括 font-family、font-size、line-height、text-align 等属性。合理设置字体回退栈和行高可以显著提升排版质量。该模块不涉及网络字体加载细节，重点在常用样式属性。",
+    "prerequisites": [
+      "CS-001"
+    ],
+    "key_points": [
+      "color 设置前景文本颜色，而不是 text-color。",
+      "font-family 应提供多个回退字体，最后以通用字体族结尾。",
+      "line-height 影响行间距，单位数字通常表示相对于 font-size 的倍数。",
+      "text-align 控制文本在内容块内的水平对齐。",
+      "font-weight、font-style 和 text-decoration 用于强调、斜体与装饰线。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-004",
+        "type": "choice",
+        "question": "关于 CSS 文本与字体样式，以下哪项说法正确？",
+        "options": [
+          "A. 设置文本颜色应使用 text-color 属性",
+          "B. font-family 只需提供一个字体名称即可",
+          "C. line-height 的数字值表示相对于 font-size 的倍数",
+          "D. text-align 控制文本在内容块内的垂直对齐"
+        ],
+        "answer": "C",
+        "difficulty": 1,
+        "explanation": "line-height 数字通常相对于 font-size 的倍数；文本颜色用 color；font-family 应提供多个回退字体；text-align 是水平对齐。"
+      }
+    ],
+    "common_mistakes": [
+      "只设置 font-size 而忽略 line-height，导致行距过紧。",
+      "字体名称含空格时未加引号，导致 font-family 解析异常。",
+      "认为 text-align 可以对齐所有元素，其实是控制行内内容对齐。",
+      "把 text-decoration 当作可继承属性，在子元素上忘记单独 reset。"
+    ],
+    "tags": [
+      "CSS",
+      "排版",
+      "字体",
+      "文本"
+    ],
+    "estimated_minutes": 35,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-005",
+    "name": "颜色与背景",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "颜色与背景模块介绍如何用关键字、十六进制、RGB/RGBA、HSL 等方式声明颜色，以及 background 系列属性如何设置纯色、渐变和背景图片。背景层的重复、定位和尺寸控制常用于卡片、首屏和装饰性视觉。",
+    "prerequisites": [
+      "CS-001"
+    ],
+    "key_points": [
+      "颜色可以使用命名颜色、十六进制、rgb()、rgba()、hsl() 和 hsla() 等形式。",
+      "background-color 设置背景色，background-image 设置一层或多层背景图像或渐变。",
+      "background-repeat、background-position 和 background-size 控制背景的平铺、定位与缩放。",
+      "使用简写 background 时要注意它会覆盖此前单独设置的背景属性。",
+      "渐变通过 background-image 声明，而不是 background-color。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-005",
+        "type": "choice",
+        "question": "以下哪种写法不是 CSS 中表示颜色的合法形式？",
+        "options": [
+          "A. #ff0000",
+          "B. rgb(255,0,0)",
+          "C. red",
+          "D. url(red.png)"
+        ],
+        "answer": "D",
+        "difficulty": 1,
+        "explanation": "url() 用于引用图像，不是颜色表示形式。"
+      }
+    ],
+    "common_mistakes": [
+      "给文本设置颜色时使用 background-color，导致背景而不是文字变色。",
+      "使用简写 background 后覆盖了先前的 background-size 等设置却不自知。",
+      "认为 linear-gradient 是颜色属性，没意识到它属于背景图像层。",
+      "背景图与内容对比度不足，影响可读性。"
+    ],
+    "tags": [
+      "CSS",
+      "颜色",
+      "背景",
+      "视觉"
+    ],
+    "estimated_minutes": 40,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-006",
+    "name": "显示类型与定位",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "显示类型决定元素在文档流中的基本表现，常见值有 block、inline、inline-block、none 等。定位则通过 static、relative、absolute、fixed 和 sticky 改变元素的位置参照与是否脱离文档流。它们是传统布局和叠加层效果的基础。",
+    "prerequisites": [
+      "CS-001",
+      "CS-003"
+    ],
+    "key_points": [
+      "块级元素默认占满可用宽度并换行，行内元素不换行且宽高表现不同。",
+      "position: relative 相对自身原始位置偏移，仍保留原占位空间。",
+      "position: absolute 相对于最近的已定位祖先定位，并脱离文档流。",
+      "position: fixed 相对视口定位，弹窗和悬浮导航常用。",
+      "position: sticky 是相对与固定行为的结合，需在滚动容器内使用。",
+      "display: none 移除元素渲染，visibility: hidden 则保留占位但不可见。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-006",
+        "type": "choice",
+        "question": "关于 position: absolute，下列说法正确的是？",
+        "options": [
+          "A. 相对自身原始位置偏移",
+          "B. 相对最近的已定位祖先定位，且脱离文档流",
+          "C. 相对视口定位",
+          "D. 仍保留原占位空间"
+        ],
+        "answer": "B",
+        "difficulty": 3,
+        "explanation": "absolute 相对于最近的已定位祖先定位并脱离文档流。"
+      }
+    ],
+    "common_mistakes": [
+      "以为 absolute 一定相对浏览器窗口定位，忽略已定位祖先的影响。",
+      "把 fixed 和 absolute 混为一谈，导致滚动时位置不符合预期。",
+      "给元素设置 position: sticky 后没有正确设置滚动容器，导致不粘附。",
+      "认为 display: none 与 visibility: hidden 效果完全一样。"
+    ],
+    "tags": [
+      "CSS",
+      "显示",
+      "定位",
+      "布局"
+    ],
+    "estimated_minutes": 60,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-007",
+    "name": "Flexbox 弹性布局",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "Flexbox 是一种一维布局系统，通过在容器上设置 display: flex，可沿主轴或交叉轴分配子项空间。常用属性包括 justify-content、align-items、gap、flex-grow、flex-shrink 和 flex-basis。它适合导航栏、卡片排列和居中对齐等场景。",
+    "prerequisites": [
+      "CS-003",
+      "CS-006"
+    ],
+    "key_points": [
+      "display: flex 设置在容器上，使其直接子项成为弹性项。",
+      "flex-direction 决定主轴方向，默认值是 row。",
+      "justify-content 沿主轴对齐，align-items 沿交叉轴对齐。",
+      "gap 可以在弹性项之间创建一致间距，而不必依赖 margin。",
+      "flex-grow、flex-shrink 和 flex-basis 控制弹性项的伸缩与基础尺寸。",
+      "margin: auto 在弹性容器中也能用于主轴或交叉轴居中。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-007",
+        "type": "choice",
+        "question": "在 Flexbox 中，决定主轴方向的属性是什么？",
+        "options": [
+          "A. justify-content",
+          "B. align-items",
+          "C. flex-direction",
+          "D. gap"
+        ],
+        "answer": "C",
+        "difficulty": 2,
+        "explanation": "flex-direction 决定主轴方向，默认值是 row。"
+      }
+    ],
+    "common_mistakes": [
+      "把 justify-content 和 align-items 的轴线方向搞反。",
+      "忘记在父容器上设置 display: flex，只给子元素添加 flex 相关属性。",
+      "误以为 align-items 在主轴上生效。",
+      "使用过多嵌套 flex 而忽略 grid 更适合二维布局。"
+    ],
+    "tags": [
+      "CSS",
+      "Flexbox",
+      "弹性布局",
+      "布局"
+    ],
+    "estimated_minutes": 65,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-008",
+    "name": "Grid 网格布局",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "Grid 是二维布局系统，通过行和列同时控制元素在水平和垂直方向的排列。核心属性包括 grid-template-columns、grid-template-rows、fr 单位、gap 以及子项的 grid-column 和 grid-row。它适合整体页面框架和复杂组件布局。",
+    "prerequisites": [
+      "CS-006",
+      "CS-007"
+    ],
+    "key_points": [
+      "display: grid 设置在容器上，使其直接子项成为网格项。",
+      "grid-template-columns 和 grid-template-rows 定义列轨道与行轨道，可使用 fr 分配剩余空间。",
+      "grid-column 和 grid-row 控制网格项跨越的起始线或结束线。",
+      "gap 同时控制行间距和列间距。",
+      "repeat() 和 minmax() 可帮助创建简洁且更具弹性的轨道。",
+      "命名区域可用 grid-template-areas 让整体布局更直观。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-008",
+        "type": "choice",
+        "question": "在 Grid 布局中，以下哪个属性用于定义列轨道并可使用 fr 分配剩余空间？",
+        "options": [
+          "A. grid-template-columns",
+          "B. grid-column",
+          "C. grid-row",
+          "D. gap"
+        ],
+        "answer": "A",
+        "difficulty": 3,
+        "explanation": "grid-template-columns 定义列轨道，可使用 fr 分配剩余空间。"
+      }
+    ],
+    "common_mistakes": [
+      "把 Grid 与 Flexbox 看成完全互斥的工具，实际可按场景配合使用。",
+      "不理解 fr 单位，误以为它表示固定像素。",
+      "忘记轨道数量与实际项目数量不匹配时会产生隐式行或列。",
+      "用 margin 手动推间距，而不是使用 gap。"
+    ],
+    "tags": [
+      "CSS",
+      "Grid",
+      "网格布局",
+      "布局"
+    ],
+    "estimated_minutes": 70,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.920472Z"
+  },
+  {
+    "id": "CS-009",
+    "name": "响应式设计与媒体查询",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "响应式设计让页面在不同屏幕尺寸和视口条件下保持可用和可读。媒体查询可按视口宽度、方向等条件覆盖样式，移动优先策略通常从最小屏默认样式开始逐步增强。流式网格、弹性图片和断点选择是常见手段。",
+    "prerequisites": [
+      "CS-006",
+      "CS-007",
+      "CS-008"
+    ],
+    "key_points": [
+      "响应式设计需配合 HTML 中的 viewport meta，以避免移动端按桌面宽度缩放。",
+      "媒体查询使用 @media 根据视口宽度、方向等条件应用不同样式。",
+      "移动优先通常先写小屏基础样式，再用 min-width 断点增强大屏布局。",
+      "断点应基于内容需要而非具体设备型号硬编码。",
+      "图片和媒体元素可使用 max-width: 100% 等规则避免溢出容器。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-009",
+        "type": "choice",
+        "question": "关于响应式设计与媒体查询，下列说法正确的是？",
+        "options": [
+          "A. 使用 viewport meta 会阻止移动端缩放，与响应式无关",
+          "B. 媒体查询只能根据视口宽度应用不同样式",
+          "C. 移动优先通常先写大屏样式，再用 max-width 断点覆盖小屏",
+          "D. 断点应基于内容需要而非具体设备型号硬编码"
+        ],
+        "answer": "D",
+        "difficulty": 2,
+        "explanation": "断点应基于内容需要而非具体设备型号硬编码。"
+      }
+    ],
+    "common_mistakes": [
+      "只针对某几个手机型号设置断点，而不是根据内容断裂点调整。",
+      "忘记 viewport meta，导致移动端页面异常缩小。",
+      "在桌面端写好所有样式后，用 max-width 反向覆盖，使移动端规则难维护。",
+      "设置固定宽度布局后依赖缩放适配，而非使用流式或弹性布局。"
+    ],
+    "tags": [
+      "CSS",
+      "响应式",
+      "媒体查询",
+      "RWD"
+    ],
+    "estimated_minutes": 70,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.922454Z"
+  },
+  {
+    "id": "CS-010",
+    "name": "CSS 过渡与动画",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "CSS 过渡与动画用于为状态变化和关键帧过程添加视觉反馈。transition 适合在属性值变化时产生平滑过渡，animation 与 @keyframes 则可定义多阶段动画。优先使用 transform 和 opacity 可以避免部分布局抖动并提高动画流畅度。",
+    "prerequisites": [
+      "CS-001",
+      "CS-006"
+    ],
+    "key_points": [
+      "transition 需要指定属性、时长、缓动函数等，触发条件是属性值发生变化。",
+      "@keyframes 定义动画各阶段样式，animation 相关属性控制时长、次数、方向和填充模式。",
+      "transform 可进行平移、缩放、旋转，常与 transition、animation 配合使用。",
+      "对 top、left、width 等布局属性做动画可能触发重排，transform 和 opacity 通常更平滑。",
+      "animation-fill-mode 控制动画开始前和结束后的样式保持。",
+      "应尊重用户的减弱动态偏好，可通过 prefers-reduced-motion 降低或关闭动画。"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "CS-010",
+        "type": "choice",
+        "question": "关于 CSS 过渡与动画，下列说法正确的是？",
+        "options": [
+          "A. transition 不需要属性值发生变化就能触发",
+          "B. 对 width 做动画通常比 transform 更平滑",
+          "C. @keyframes 定义动画各阶段样式，animation 属性控制时长、次数等",
+          "D. transform 只能进行平移，不能缩放或旋转"
+        ],
+        "answer": "C",
+        "difficulty": 2,
+        "explanation": "@keyframes 定义关键帧，animation 属性控制时长、次数等。"
+      }
+    ],
+    "common_mistakes": [
+      "把 transition 写在目标状态而不是基础状态，导致过渡不生效。",
+      "混淆 transition 与 animation，过度使用 animation 实现简单状态变化。",
+      "忽略 animation-fill-mode，导致动画结束后跳回初始样式。",
+      "未考虑 prefers-reduced-motion，对晕动用户不友好。"
+    ],
+    "tags": [
+      "CSS",
+      "过渡",
+      "动画",
+      "transform"
+    ],
+    "estimated_minutes": 70,
+    "source": "llm_generated",
+    "domain_label": "CSS",
+    "created_at": "2026-08-14T11:54:48.922454Z"
+  }
+]

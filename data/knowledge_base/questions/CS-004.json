@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS004-001",
+    "source_node_id": "CS-004",
+    "type": "choice",
+    "question": "关于 CSS 文本与字体样式，以下哪项说法正确？",
+    "options": [
+      "A. 设置文本颜色应使用 text-color 属性",
+      "B. font-family 只需提供一个字体名称即可",
+      "C. line-height 的数字值表示相对于 font-size 的倍数",
+      "D. text-align 控制文本在内容块内的垂直对齐"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "line-height 数字通常相对于 font-size 的倍数；文本颜色用 color；font-family 应提供多个回退字体；text-align 是水平对齐。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS004-002",
+    "source_node_id": "CS-004",
+    "type": "fill",
+    "question": "在 CSS 中，设置前景文本颜色的属性是____。",
+    "options": [],
+    "answer": "color",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "应使用 color 属性设置前景文本颜色，而不是 text-color。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

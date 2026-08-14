@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV007-001",
+    "source_node_id": "JV-007",
+    "type": "choice",
+    "question": "关于类和对象，以下说法正确的是？",
+    "options": [
+      "A. 类是对一类对象共同特征和行为的抽象描述，对象是类的具体实例，通过 new 创建",
+      "B. 对象是对一类对象共同特征和行为的抽象描述，类是具体实例",
+      "C. 类和对象完全等价，都可以通过 new 创建",
+      "D. 类通过 new 创建，对象是类的抽象描述"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "类描述共同特征和行为，对象是类的具体实例，通过 new 创建。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV007-002",
+    "source_node_id": "JV-007",
+    "type": "fill",
+    "question": "在 Java 中，使用 ______ 关键字创建对象。",
+    "options": [],
+    "answer": "new",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "对象通过 new 关键字创建。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

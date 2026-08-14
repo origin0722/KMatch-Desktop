@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV009-001",
+    "source_node_id": "JV-009",
+    "type": "choice",
+    "question": "在 Java 中，比较两个字符串的内容是否相等应该使用以下哪个方法或运算符？",
+    "options": [
+      "equals",
+      "==",
+      "length",
+      "charAt"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "equals 用于比较字符串内容，== 比较的是引用地址。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV009-002",
+    "source_node_id": "JV-009",
+    "type": "fill",
+    "question": "String 对象每次拼接或修改都会产生新的字符串对象，这说明 String 是____对象。",
+    "options": [],
+    "answer": "不可变",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "String 是不可变对象，拼接或修改会产生新字符串对象。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

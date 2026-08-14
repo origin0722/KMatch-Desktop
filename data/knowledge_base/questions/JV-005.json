@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV005-001",
+    "source_node_id": "JV-005",
+    "type": "choice",
+    "question": "关于数组下标，以下说法正确的是？",
+    "options": [
+      "A. 数组下标从0开始，最后一个元素下标为 length-1",
+      "B. 数组下标从1开始，最后一个元素下标为 length",
+      "C. 数组下标从0开始，最后一个元素下标为 length",
+      "D. 数组下标从1开始，最后一个元素下标为 length-1"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "数组下标从0开始，最后一个元素下标为 length-1。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV005-002",
+    "source_node_id": "JV-005",
+    "type": "fill",
+    "question": "int[] arr = {10, 20, 30}; 则 arr[1] 的值是 ______。",
+    "options": [],
+    "answer": "20",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "数组下标从0开始，arr[1] 是第二个元素 20。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

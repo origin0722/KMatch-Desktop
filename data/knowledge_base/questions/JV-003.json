@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV003-001",
+    "source_node_id": "JV-003",
+    "type": "choice",
+    "question": "在 Java 中，表达式 7 / 2 的值是多少？",
+    "options": [
+      "A. 3.5",
+      "B. 3",
+      "C. 4",
+      "D. 2"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "两个 int 相除时 / 执行整除，结果只保留整数部分 3。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV003-002",
+    "source_node_id": "JV-003",
+    "type": "fill",
+    "question": "判断整数 num 是否为偶数的表达式可以写为 num % 2 == ______。",
+    "options": [],
+    "answer": "0",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "偶数对 2 取模的余数为 0，因此用 num % 2 == 0 判断。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

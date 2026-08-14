@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS010-001",
+    "source_node_id": "CS-010",
+    "type": "choice",
+    "question": "关于 CSS 过渡与动画，下列说法正确的是？",
+    "options": [
+      "A. transition 不需要属性值发生变化就能触发",
+      "B. 对 width 做动画通常比 transform 更平滑",
+      "C. @keyframes 定义动画各阶段样式，animation 属性控制时长、次数等",
+      "D. transform 只能进行平移，不能缩放或旋转"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "@keyframes 定义关键帧，animation 属性控制时长、次数等。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS010-002",
+    "source_node_id": "CS-010",
+    "type": "fill",
+    "question": "对 top、left、width 等布局属性做动画可能触发____，而 transform 和 opacity 通常更平滑。",
+    "options": [],
+    "answer": "重排",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "布局属性动画可能触发重排。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

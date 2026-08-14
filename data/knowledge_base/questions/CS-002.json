@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS002-001",
+    "source_node_id": "CS-002",
+    "type": "choice",
+    "question": "以下哪个 CSS 属性通常会从父元素继承？",
+    "options": [
+      "A. margin",
+      "B. padding",
+      "C. color",
+      "D. border"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "color 和 font-family 等属性会继承，盒模型相关属性通常不继承。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS002-002",
+    "source_node_id": "CS-002",
+    "type": "fill",
+    "question": "在选择器优先级比较中，首先比较的是____选择器的数量。",
+    "options": [],
+    "answer": "ID（或 ID 选择器）",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "优先级顺序先比较 ID 选择器数量，再比较类/属性/伪类，再比较元素/伪元素。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

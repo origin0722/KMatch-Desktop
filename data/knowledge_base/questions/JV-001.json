@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV001-001",
+    "source_node_id": "JV-001",
+    "type": "choice",
+    "question": "在 Java 开发环境中，哪个命令用于将 .java 源文件编译成 .class 字节码文件？",
+    "options": [
+      "A. javac",
+      "B. java",
+      "C. JVM",
+      "D. JDK"
+    ],
+    "answer": "A",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "javac 是 Java 编译器命令，用于编译源代码生成字节码。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV001-002",
+    "source_node_id": "JV-001",
+    "type": "fill",
+    "question": "Java 源文件编译后生成的字节码文件扩展名是______。",
+    "options": [],
+    "answer": ".class",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "Java 源代码编译后生成 .class 字节码文件。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]

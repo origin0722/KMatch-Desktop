@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-CS001-001",
+    "source_node_id": "CS-001",
+    "type": "choice",
+    "question": "关于 CSS 基础选择器，以下哪项说法正确？",
+    "options": [
+      "A. 类选择器以 # 开头，ID 选择器以 . 开头",
+      "B. 类选择器以 . 开头，ID 选择器以 # 开头，类选择器可复用于多个元素",
+      "C. 多个选择器分组使用空格分隔",
+      "D. 后代选择器通过逗号表示层级关系"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "类选择器以点号开头且可复用，ID 选择器以井号开头通常唯一。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  },
+  {
+    "qid": "Q-CS001-002",
+    "source_node_id": "CS-001",
+    "type": "fill",
+    "question": "在 CSS 声明块中，属性名与属性值之间使用什么符号分隔？",
+    "options": [],
+    "answer": "冒号（:）",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "CSS 规则中属性和值之间用冒号分隔。",
+    "created_at": "2026-08-14T11:55:49.187102Z"
+  }
+]

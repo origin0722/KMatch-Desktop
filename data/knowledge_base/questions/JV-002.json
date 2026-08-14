@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-JV002-001",
+    "source_node_id": "JV-002",
+    "type": "choice",
+    "question": "以下哪个是 Java 中合法的 boolean 类型值？",
+    "options": [
+      "A. 0",
+      "B. true",
+      "C. “true”",
+      "D. 1"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "boolean 类型只有 true 和 false，0、1 或字符串都不是合法值。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  },
+  {
+    "qid": "Q-JV002-002",
+    "source_node_id": "JV-002",
+    "type": "fill",
+    "question": "在 Java 中，声明一个整数变量 age 并初始化为 20 的语句是______。",
+    "options": [],
+    "answer": "int age = 20;",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "变量必须先声明类型再使用，int age = 20; 是合法的声明并初始化。",
+    "created_at": "2026-08-14T11:44:15.152639Z"
+  }
+]
