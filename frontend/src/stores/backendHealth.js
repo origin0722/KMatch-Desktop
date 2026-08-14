@@ -9,6 +9,7 @@
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import http from '@/api/index'
 
 export const useBackendHealthStore = defineStore('backendHealth', () => {
   // null=未知, true=就绪, false=宕机
@@ -26,10 +27,19 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
 
   async function check() {
     try {
-      const res = await window.api.http.request('GET', '/api/health')
-      status.value = !!res.ok
-      if (res.ok) lastError.value = ''
-      else lastError.value = `HTTP ${res.status}`
+      if (window.api?.http) {
+        // Electron: 经 IPC 代理 (主进程 → 后端)
+        const res = await window.api.http.request('GET', '/api/health')
+        status.value = !!res.ok
+        if (res.ok) lastError.value = ''
+        else lastError.value = `HTTP ${res.status}`
+      } else {
+        // 浏览器 dev: 走 axios → Vite proxy。原实现无条件走 window.api,
+        // 浏览器下直接 TypeError → 永远显示"后端未起" (实测)
+        await http.get('/api/health')
+        status.value = true
+        lastError.value = ''
+      }
     } catch (e) {
       status.value = false
       lastError.value = e?.message || '连接失败'

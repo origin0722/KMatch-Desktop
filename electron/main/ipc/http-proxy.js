@@ -1,13 +1,15 @@
 /**
  * HTTP 代理 IPC (阶段1)
- * 统一转发渲染层 → localhost:8000, 绕过 CORS + 单一审计点。
+ * 统一转发渲染层 → 后端 8000, 绕过 CORS + 单一审计点。
  * stream() 处理 SSE (POST + text/event-stream), 逐块转发给渲染层。
  *
  * 阶段1 实现 request; stream 供 SSE 测评用 (assess/stream)。
  */
 import { ipcMain, BrowserWindow } from 'electron'
 
-const BACKEND_URL = 'http://localhost:8000'
+// 127.0.0.1 而非 localhost: 本机 localhost 优先解析 ::1, 后端只绑 IPv4,
+// 走 localhost 会随机撞 ::1 连接拒绝 → 渲染层 API 间歇性失败 (实测)
+const BACKEND_URL = 'http://127.0.0.1:8000'
 
 export function registerHttpProxyIpc() {
   ipcMain.handle('http:request', async (_e, method, urlPath, body, params, opts) => {

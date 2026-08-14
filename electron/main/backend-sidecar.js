@@ -12,7 +12,9 @@ import { fileURLToPath } from 'url'
 import { app } from 'electron'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const BACKEND_URL = 'http://localhost:8000'
+// 127.0.0.1 而非 localhost: 本机 localhost 优先解析 ::1, 后端只绑 IPv4 (uvicorn --host 127.0.0.1),
+// Node fetch 走 localhost 会随机撞 ::1 连接拒绝 → 健康检查误判后端未起 (实测)
+const BACKEND_URL = 'http://127.0.0.1:8000'
 const HEALTH_PATH = '/api/health'
 
 let backendProc = null
