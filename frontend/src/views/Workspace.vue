@@ -16,7 +16,8 @@
         <NavSidebar />
       </ResizablePanel>
       <MainArea />
-      <ResizablePanel v-if="sidebar.aiPanelVisible" panel-key="km.ai-w" :min="280" :max="560" :initial="340" side="left">
+      <!-- T4 双形态: chat 视图本身就是 AI 对话, 侧栏不重复挂载 (chat store 共享, 切回即恢复) -->
+      <ResizablePanel v-if="sidebar.aiPanelVisible && sidebar.activeView !== 'chat'" panel-key="km.ai-w" :min="280" :max="560" :initial="340" side="left">
         <AssistantPanel />
       </ResizablePanel>
     </div>

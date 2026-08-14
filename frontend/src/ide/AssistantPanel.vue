@@ -1,5 +1,5 @@
 <template>
-  <div class="assistant-panel">
+  <div class="assistant-panel" :class="{ wide: variant === 'wide' }">
     <!-- 头部 -->
     <div class="assistant-header">
       <span class="assistant-title">
@@ -10,7 +10,7 @@
         <el-icon class="icon-btn" title="清空对话" @click="chat.clearMessages()" v-if="chat.hasMessages">
           <Delete />
         </el-icon>
-        <el-icon class="icon-btn" title="收起" @click="sidebar.toggleAiPanel()"><Close /></el-icon>
+        <el-icon class="icon-btn" title="收起" @click="sidebar.toggleAiPanel()" v-if="variant === 'side'"><Close /></el-icon>
       </div>
     </div>
 
@@ -34,6 +34,12 @@
           <div class="feat">🐛 帮助调试 & 分析错误</div>
           <div class="feat">📝 生成代码片段 & 单元测试</div>
           <div class="feat">📖 解读项目架构 & 依赖关系</div>
+        </div>
+        <!-- T4 wide 形态: Codex 式建议 chip (点击直接发送) -->
+        <div v-if="variant === 'wide'" class="ph-chips">
+          <button class="ph-chip" @click="quickAction('根据我的学情画像, 我现在最该学什么?')">🎯 我该学什么</button>
+          <button class="ph-chip" @click="quickAction('给我出一道 Python 基础练习题, 我做完你帮我批改')">📝 来道练习题</button>
+          <button class="ph-chip" @click="quickAction('结合知识图谱, 给我规划一条从零到爬虫的学习路径')">🕸️ 规划学习路径</button>
         </div>
       </div>
 
@@ -520,6 +526,12 @@ import SegmentedControl from '@/ide/settings/SegmentedControl.vue'
 const sidebar = useSidebarStore()
 const chat = useChatStore()
 const ws = useWorkspaceStore()
+
+// T4 双形态: side = 右侧可折叠分栏 (默认, 行为不变); wide = 主区 chat 视图 (Codex 式居中对话)
+// 仅影响模板分支与样式层, 对话逻辑 (chat store) 两形态共享零改动
+const props = defineProps({
+  variant: { type: String, default: 'side' },
+})
 
 // 场景二快捷引导: 一键发消息
 function quickAction(text) { chat.sendMessage(text) }
@@ -1428,4 +1440,48 @@ html.dark .user-text {
 /* ---- 厂商下拉图标 (Task 22) ---- */
 .provider-icon { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; }
 .provider-row { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- T4 wide 形态 (主区 chat 视图, Codex 式居中大留白对话; 逻辑零改动纯样式层) ---- */
+.assistant-panel.wide {
+  border-left: 0;
+  background: transparent;
+  margin: 0 auto;
+  max-width: 760px;
+}
+.assistant-panel.wide .assistant-header { background: transparent; }
+.assistant-panel.wide .quick-actions { background: transparent; border-bottom: 0; padding: 10px 4px 0; }
+.assistant-panel.wide .assistant-body { padding: 24px 8px; gap: 16px; }
+.assistant-panel.wide .placeholder { padding: 48px 20px; }
+.assistant-panel.wide .ph-features { max-width: 440px; margin: 0 auto; }
+/* 建议 chip */
+.ph-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.ph-chip {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: var(--km-gray-700);
+  background: var(--km-bg-layer-1);
+  border: 1px solid var(--km-border);
+  border-radius: 16px; /* 胶囊 */
+  cursor: pointer;
+  transition: all 0.18s var(--km-ease);
+}
+.ph-chip:hover {
+  color: var(--km-primary-active);
+  border-color: var(--km-primary);
+  background: var(--km-primary-light);
+  transform: translateY(-1px);
+}
+/* 气泡: user 右对齐收窄, assistant 加大内边距 */
+.assistant-panel.wide .user-msg .msg-content { max-width: 72%; }
+.assistant-panel.wide .user-text { border-radius: var(--km-radius); padding: 10px 14px; font-size: 13.5px; }
+.assistant-panel.wide .assistant-msg .msg-content { font-size: 14px; }
+/* 输入区: 融入主区, 胶囊化 */
+.assistant-panel.wide .assistant-input { background: transparent; border-top: 0; padding: 12px 4px 20px; }
+.assistant-panel.wide .assistant-input :deep(.el-textarea__inner) {
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  box-shadow: var(--km-shadow-sm);
+}
 </style>

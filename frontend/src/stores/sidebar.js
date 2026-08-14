@@ -1,7 +1,7 @@
 /**
  * IDE 布局状态 store — VS Code 风格单一指示模型
  *
- * 活动栏指示同一时间只亮一个 = activeView (code/learning-session/graph/learning/dashboard/settings)
+ * 活动栏指示同一时间只亮一个 = activeView (code/learning-session/chat/graph/learning/dashboard/settings)
  * 文件树显隐由 sidebarVisible 控制, 点击已激活视图可折叠 (VS Code 行为)
  */
 import { ref } from 'vue'
@@ -11,6 +11,7 @@ import { defineStore } from 'pinia'
 export const ACTIVITY_ITEMS = [
   { id: 'code', icon: 'Document', title: '代码' },
   { id: 'learning-session', icon: 'ChatDotRound', title: '学习会话' },
+  { id: 'chat', icon: 'ChatLineRound', title: 'AI 助手' },
   { id: 'graph', icon: 'Share', title: '知识图谱' },
   { id: 'project-graph', icon: 'Connection', title: '项目图谱' },
   { id: 'learning', icon: 'Reading', title: '学习资源' },

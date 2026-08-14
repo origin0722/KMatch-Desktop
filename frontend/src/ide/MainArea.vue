@@ -17,9 +17,11 @@
     <!-- 其他视图: 全宽装载 (导航由左侧活动栏统一, 无顶部 Tab)
          套浅色卡片: 赛题视图原为浅色设计, 暗色主题下作为嵌入式浅色面板 -->
     <div v-if="sidebar.activeView !== 'code'" class="view-host">
-      <div class="view-card" :class="{ 'no-pad': ['learning-session', 'settings', 'project-graph'].includes(sidebar.activeView) }">
+      <div class="view-card" :class="{ 'no-pad': ['learning-session', 'settings', 'project-graph', 'chat'].includes(sidebar.activeView) }">
         <SettingsView v-if="sidebar.activeView === 'settings'" />
         <LearningSession v-else-if="sidebar.activeView === 'learning-session'" />
+        <!-- T4 双形态: chat 视图 = 居中大留白对话 (chat store 与右侧侧栏共享) -->
+        <AssistantPanel v-else-if="sidebar.activeView === 'chat'" variant="wide" />
         <KnowledgeGraph v-else-if="sidebar.activeView === 'graph'" />
         <ProjectGraphView v-else-if="sidebar.activeView === 'project-graph'" />
         <Learning v-else-if="sidebar.activeView === 'learning'" />
@@ -36,6 +38,7 @@ import FileExplorer from './FileExplorer.vue'
 import ResizablePanel from './ResizablePanel.vue'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
+import AssistantPanel from './AssistantPanel.vue'
 import SettingsView from '@/ide/settings/SettingsView.vue'
 import KnowledgeGraph from '@/views/KnowledgeGraph.vue'
 import ProjectGraphView from '@/views/ProjectGraphView.vue'

@@ -25,15 +25,16 @@
 
     <!-- 底部: AI 面板开关 + 主题切换 + 设置 (聚拢, 去重状态栏) -->
     <div class="nav-foot">
+      <!-- T4 双形态后此开关只控制右侧并排侧栏 (主区 chat 视图才是 AI 助手本体) -->
       <div
         class="nav-item"
         :class="{ on: sidebar.aiPanelVisible }"
-        title="AI 助手"
+        title="并排显示 AI 助手侧栏 (在其他视图边学边问)"
         data-test="ai-toggle-button"
         @click="sidebar.toggleAiPanel()"
       >
         <el-icon :size="18"><ChatDotRound /></el-icon>
-        <span class="nav-item-label">AI 助手</span>
+        <span class="nav-item-label">AI 分屏</span>
       </div>
       <div
         class="nav-item"
