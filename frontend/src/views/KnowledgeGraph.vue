@@ -159,7 +159,7 @@
           <div ref="graphContainer" class="g6-container"></div>
         </div>
 
-        <!-- 侧边面板 (浮层融合 + 可折叠, 画布避让不压节点) -->
+        <!-- 侧边面板 (split 分栏 + 可折叠, flex 推挤画布不压节点; T3 由浮层改占位) -->
         <div class="side-panel" :class="{ collapsed: panelCollapsed }">
           <button class="panel-toggle" @click="panelCollapsed = !panelCollapsed"
                   :title="panelCollapsed ? '展开详情面板' : '收起详情面板'">
@@ -179,11 +179,12 @@
             <span class="bc-item bc-current">{{ selectedNode.name || selectedNode.node_id }}</span>
           </div>
 
-          <!-- 学习路径摘要 -->
+          <!-- 图谱详情单卡 (T3: 路径摘要 + 节点详情两段融合, 减一层卡壳) -->
           <el-card shadow="never" class="panel-card">
             <template #header>
-              <span>学习路径摘要</span>
+              <span>图谱详情</span>
             </template>
+            <div class="panel-section-title">学习路径摘要</div>
             <div class="path-summary">
               <div class="summary-row">
                 <span class="label">路径节点</span>
@@ -212,13 +213,11 @@
                 <span>加载前置依赖…</span>
               </div>
             </div>
-          </el-card>
 
-          <!-- 节点详情 -->
-          <el-card shadow="never" class="panel-card" v-if="selectedNode">
-            <template #header>
-              <span>节点详情</span>
-            </template>
+            <el-divider class="panel-divider" />
+
+            <!-- 节点详情段 -->
+            <template v-if="selectedNode">
             <div class="node-detail">
               <h4>{{ selectedNode.name || selectedNode.node_id }}</h4>
               <div class="detail-row">
@@ -266,14 +265,8 @@
                 </div>
               </div>
             </div>
-          </el-card>
-
-          <!-- 未选中节点 -->
-          <el-card v-else shadow="never" class="panel-card">
-            <template #header>
-              <span>节点详情</span>
             </template>
-            <el-empty description="点击图谱节点查看详情" :image-size="60" />
+            <el-empty v-else description="点击图谱节点查看详情" :image-size="60" />
           </el-card>
         </div>
       </div>
@@ -512,9 +505,8 @@ function initGraph() {
 
   // BUG-049: 异常保护
   try {
-    // 侧栏展开时画布逻辑宽度避让右侧 300px, dagre 在剩余区布局, 侧栏浮于空白处不压节点
-    const panelGap = panelCollapsed.value ? 0 : 300
-    const containerWidth = (graphContainer.value.offsetWidth || 800) - panelGap
+    // T3 split 分栏: 侧栏 flex 占位推挤画布, offsetWidth 已是剩余宽, 不再做 panelGap 避让
+    const containerWidth = graphContainer.value.offsetWidth || 800
     const containerHeight = graphContainer.value.offsetHeight || 600
 
     // 单一布局: dagre 层次 (借鉴 Understand-Anything ELK layered); 间距加大治"还是挤", nodeSize 随 persona
@@ -825,7 +817,8 @@ onBeforeUnmount(() => {
 watch(() => sidebar.persona, () => { rebuildGraph() })
 
 // 侧栏折叠 -> 重建图谱 (画布避让宽度变化)
-watch(panelCollapsed, () => { rebuildGraph() })
+// T3 split: 折叠切换 -> 侧栏宽度过渡 (0.2s) 结束后再重建, 避免 dagre 读到过渡中的中间宽度
+watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 </script>
 
 <style scoped>
@@ -892,13 +885,13 @@ watch(panelCollapsed, () => { rebuildGraph() })
   background: var(--km-bg-layer-3);
 }
 
-/* ---- 侧边面板 (浮层融合 + 可折叠, 不挤占画布) ---- */
+/* ---- 侧边面板 (split 分栏 + 可折叠, flex 推挤画布不压节点; T3 由浮层改占位) ---- */
 .side-panel {
-  position: absolute; top: 12px; right: 12px;
-  width: 280px; max-height: calc(100% - 24px);
+  position: relative; /* 锚定折叠按钮 */
+  width: 300px; flex-shrink: 0;
+  max-height: 100%;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
-  z-index: 5;
   transition: width 0.2s ease;
 }
 .side-panel.collapsed { width: 36px; overflow: hidden; }
@@ -922,6 +915,9 @@ watch(panelCollapsed, () => { rebuildGraph() })
   --el-card-bg-color: var(--km-bg-layer-2);
   --el-card-border-color: var(--km-border-light);
 }
+/* T3 单卡两段: 段标题 + 段间分隔 */
+.panel-section-title { font-size: 13px; font-weight: 600; color: var(--km-gray-800); margin-bottom: 10px; }
+.panel-divider { margin: 14px 0; }
 .panel-card :deep(.el-card__header) {
   padding: 10px 16px; font-weight: 600; font-size: 14px;
   color: var(--km-gray-800);
