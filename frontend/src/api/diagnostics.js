@@ -9,7 +9,7 @@
  * 对齐 backend/app/api/diagnostics.py
  */
 import http from './index'
-import { withOverrides } from '@/stores/agentLlm'
+import { withOverrides, withFeedbackOverrides } from '@/stores/agentLlm'
 
 /**
  * 发起学情测评
@@ -107,7 +107,8 @@ export function submitAnswers({ sessionId, answers }, signal) {
  */
 export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, signal) {
   // timeout 150s: feedback 逐节点 LLM 再生 + 可选 Tavily 联网, 常超默认 60s
-  return http.post('/api/diagnostics/feedback', withOverrides({
+  // withFeedbackOverrides: 反馈走「快模型」(设置页反馈快模型), 交互式等待敏感
+  return http.post('/api/diagnostics/feedback', withFeedbackOverrides({
     session_id: sessionId,
     strategy,
     profile,

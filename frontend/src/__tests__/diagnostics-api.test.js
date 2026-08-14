@@ -89,7 +89,7 @@ describe('api/diagnostics', () => {
   })
 
   describe('requestFeedback (W5)', () => {
-    it('打到 /api/diagnostics/feedback，三字段全部直传', () => {
+    it('打到 /api/diagnostics/feedback，三字段直传 + 默认反馈快模型 (deepseek-v4-flash)', () => {
       http.post.mockResolvedValueOnce({})
       const profile = { profile_id: 'P1', theory_level: 3 }
       requestFeedback({
@@ -104,6 +104,8 @@ describe('api/diagnostics', () => {
           session_id: 'sess-001',
           strategy: 'remediate',
           profile,
+          // 反馈快模型: 独立配置关时部分覆写仅 model, key/baseUrl 走后端 .env
+          llm_overrides: { model: 'deepseek-v4-flash' },
         },
         // #30 反馈: timeout 150s (逐节点 LLM 再生常超默认 60s, 经 axios config.timeout 透传主进程代理)
         { signal: undefined, timeout: 150000 },

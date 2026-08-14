@@ -29,6 +29,7 @@ function defaultState() {
     apiKey: '',
     baseUrl: providerBaseUrl('deepseek'),
     model: 'deepseek-v4-pro',
+    feedbackModel: 'deepseek-v4-flash', // 反馈专用快模型; 留空 = 跟随引擎模型
     protocol: 'openai',
   }
 }
@@ -61,11 +62,16 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
       const cp = useCustomProvidersStore().get(customProviderUuid(pid))
       state.value.apiKey = cp?.apiKey || ''
     }
+    // 防脚枪: 换非 DeepSeek 厂商时清掉默认的 deepseek flash, 避免模型/端点不匹配
+    if (pid !== 'deepseek' && state.value.feedbackModel === 'deepseek-v4-flash') {
+      state.value.feedbackModel = ''
+    }
     persist()
   }
   function setApiKey(key) { state.value.apiKey = key; persist() }
   function setBaseUrl(url) { state.value.baseUrl = url; persist() }
   function setModel(m) { state.value.model = m; persist() }
+  function setFeedbackModel(m) { state.value.feedbackModel = m; persist() }
 
   /** 返回供请求体注入的 overrides；关闭/无 key 时返回 null（走后端 .env 默认）。 */
   function buildOverrides() {
@@ -79,7 +85,25 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
     }
   }
 
-  return { state, setUseOverrides, setProvider, setApiKey, setBaseUrl, setModel, buildOverrides }
+  /**
+   * 反馈专用 overrides（仅「获取针对性反馈」请求注入，交互式等待敏感）：
+   * - feedbackModel 留空 → 跟随引擎（buildOverrides 结果，可能 null）
+   * - 独立配置开 → 全量覆写，仅 model 换成快模型
+   * - 独立配置关 → 部分覆写仅 model，api_key/base_url 走后端 .env
+   *   （后端 get_chat_model 逐字段回退 settings，实测可用）
+   */
+  function buildFeedbackOverrides() {
+    const engine = buildOverrides()
+    const fm = state.value.feedbackModel?.trim()
+    if (!fm) return engine
+    if (!engine) return { model: fm }
+    return { ...engine, model: fm }
+  }
+
+  return {
+    state, setUseOverrides, setProvider, setApiKey, setBaseUrl, setModel, setFeedbackModel,
+    buildOverrides, buildFeedbackOverrides,
+  }
 })
 
 /**
@@ -89,6 +113,16 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
  */
 export function withOverrides(body) {
   const overrides = useAgentLlmStore().buildOverrides()
+  if (!overrides) return body
+  return { ...(body || {}), llm_overrides: overrides }
+}
+
+/**
+ * 反馈专用注入 helper：仅「获取针对性反馈」请求用它（等待敏感，换快模型减等待）。
+ * 其余 Agent 调用仍走 withOverrides（引擎模型）。
+ */
+export function withFeedbackOverrides(body) {
+  const overrides = useAgentLlmStore().buildFeedbackOverrides()
   if (!overrides) return body
   return { ...(body || {}), llm_overrides: overrides }
 }

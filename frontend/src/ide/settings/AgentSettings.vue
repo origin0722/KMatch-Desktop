@@ -35,6 +35,12 @@
         <span v-if="testResult" :class="testResult.ok ? 'conn-ok' : 'conn-err'">{{ testResult.message }}</span>
       </SettingCard>
     </template>
+
+    <!-- 反馈快模型: 独立于独立配置开关, 未开时部分覆写仅 model, key/baseUrl 走后端 .env -->
+    <SettingCard title="反馈快模型" info="仅「获取针对性反馈」请求生效：先跑此快模型减等待；留空 = 跟随引擎模型。换厂商时请确认模型属于该厂商">
+      <el-input :model-value="agent.state.feedbackModel" size="small" style="width: 280px"
+                placeholder="如 deepseek-v4-flash（留空跟随引擎）" @change="agent.setFeedbackModel" />
+    </SettingCard>
   </div>
 </template>
 
