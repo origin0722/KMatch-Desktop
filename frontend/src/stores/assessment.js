@@ -193,10 +193,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
     feedbackContent.value = null
 
     try {
+      // 动态建域 (阶段16): 新领域联网检索资料用, 与 feedback 阶段同源 (aiSettings, 懒加载避循环依赖)
+      const { useAiSettingsStore } = await import('@/stores/aiSettings')
       const data = await submitAssessment({
         targetDirection,
         mode: 'interactive',
         scene,
+        tavilyKey: useAiSettingsStore().tavilyKey,
       }, abortController.value.signal)
 
       // interactive 出题阶段: 拿到 questions 进入答题, 不调 _applyResult (它会因空 profile 误报)

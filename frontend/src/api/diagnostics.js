@@ -20,6 +20,7 @@ import { withOverrides, withFeedbackOverrides } from '@/stores/agentLlm'
  * @param {Array<{node_id: string, mastery: number}>} [params.knownTopics=[]] - 已知知识点
  * @param {'no_project'|'with_project'} [params.scene='no_project'] - 场景类型
  * @param {number} [params.maxRetries=3] - 审核打回最大轮数 (1-5)
+ * @param {string} [params.tavilyKey] - Tavily key (目标未收录时动态建域联网检索)
  * @returns {Promise<{
  *   session_id: string,
  *   profile: Object,
@@ -34,14 +35,21 @@ export function submitAssessment({
   knownTopics = [],
   scene = 'no_project',
   maxRetries = 3,
+  tavilyKey,
 }, signal) {
+  // interactive timeout 300s: 目标未命中既有域时后端会动态建域
+  // (Tavily 检索 + LLM 生成 ~10 节点/20 题, 常超默认 60s, 含一轮重试余量)
+  const opts = {}
+  if (mode === 'interactive') opts.timeout = 300_000
+  if (signal) opts.signal = signal
   return http.post('/api/diagnostics/assess', withOverrides({
     target_direction: targetDirection,
     mode,
     known_topics: knownTopics,
     scene,
     max_retries: maxRetries,
-  }), signal ? { signal } : undefined)
+    tavily_key: tavilyKey || undefined,
+  }), Object.keys(opts).length ? opts : undefined)
 }
 
 /**

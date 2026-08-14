@@ -86,11 +86,11 @@ const session = useSessionStore()
 const isActive = computed(() => session.activeStage === 'quiz')
 
 const answeredCount = computed(() => store.userAnswers.filter((a) => a && String(a).trim()).length)
-// loading 文案按阶段: 出题(idle) / 判分(answering) / 取反馈(feeddown) -- 内容生成只在提交答题之后
+// loading 文案按阶段: 出题(idle, 新领域含建域) / 判分(answering) / 取反馈(feeddown) -- 内容生成只在提交答题之后
 const loadingText = computed(() => {
   if (store.phase === 'answering') return '正在判分并生成学情画像…'
   if (store.phase === 'feedback') return '正在生成针对性学习内容（约 1 分钟，含联网搜索）…'
-  return '正在根据学习目标定制题目（约 1 分钟）…'
+  return '正在根据学习目标定制题目（若为新领域将检索资料并构建知识图谱，最长约 3 分钟）…'
 })
 const progressPct = computed(() => store.pendingQuestions.length ? (answeredCount.value / store.pendingQuestions.length) * 100 : 0)
 function isAnswered(idx) { const a = store.userAnswers[idx]; return !!(a && String(a).trim()) }

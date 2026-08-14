@@ -29,10 +29,14 @@ def _build_app(monkeypatch):
     # 清空会话缓存，避免测试间污染
     diag_api._INTERACTIVE_SESSIONS.clear()
 
-    # mock prepare_questions: 不调 LLM
+    # mock resolve_direction (阶段16 域判定): unknown → 走旧选点行为, 不碰 LLM/向量
+    monkeypatch.setattr(
+        diag_api, "resolve_direction", lambda kg, target, known: ("unknown", []),
+    )
+    # mock prepare_questions: 不调 LLM (nodes kwarg 对齐阶段16 域命中/建域传参)
     monkeypatch.setattr(
         diag_api, "prepare_questions",
-        lambda kg, target, known: (_FAKE_QUESTIONS, _FAKE_NODES),
+        lambda kg, target, known, nodes=None: (_FAKE_QUESTIONS, _FAKE_NODES),
     )
     # mock _grade: 第1题对第2题错
     def _fake_grade(questions, answers):
@@ -163,10 +167,16 @@ def test_submit_llm_not_configured_503(monkeypatch):
 def _build_feedback_app(monkeypatch, regen_result=None, prereqs=None):
     """构造测 feedback 接口的 app。"""
     diag_api._INTERACTIVE_SESSIONS.clear()
-    # assess interactive 出题 mock (复用 _build_app 的 mock 不便，单独构造)
+    # Tavily 隔离: 开发机 .env 常有真实 key (阶段16 起), 不隔离会走真联网搜索
+    monkeypatch.setattr(diag_api.settings, "TAVILY_API_KEY", "")
+    # 域判定走 unknown (阶段16): 不碰 LLM/向量
+    monkeypatch.setattr(
+        diag_api, "resolve_direction", lambda kg, target, known: ("unknown", []),
+    )
+    # assess interactive 出题 mock (复用 _build_app 的 mock 不便，单独构造; nodes kwarg 对齐阶段16)
     monkeypatch.setattr(
         diag_api, "prepare_questions",
-        lambda kg, target, known: (_FAKE_QUESTIONS, _FAKE_NODES),
+        lambda kg, target, known, nodes=None: (_FAKE_QUESTIONS, _FAKE_NODES),
     )
     monkeypatch.setattr(diag_api, "llm_configured", lambda: True)
     # mock regenerate_for_feedback
@@ -238,8 +248,11 @@ def test_feedback_llm_not_configured_503(monkeypatch):
     """LLM 未配置 → 503。"""
     diag_api._INTERACTIVE_SESSIONS.clear()
     monkeypatch.setattr(
+        diag_api, "resolve_direction", lambda kg, target, known: ("unknown", []),
+    )
+    monkeypatch.setattr(
         diag_api, "prepare_questions",
-        lambda kg, target, known: (_FAKE_QUESTIONS, _FAKE_NODES),
+        lambda kg, target, known, nodes=None: (_FAKE_QUESTIONS, _FAKE_NODES),
     )
     monkeypatch.setattr(diag_api, "llm_configured", lambda: False)
     app = FastAPI()

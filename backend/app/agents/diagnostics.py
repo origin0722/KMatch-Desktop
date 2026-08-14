@@ -84,7 +84,7 @@ def _demo_answer(questions: list[dict], target_direction: str) -> list:
             f"{i+1}. [难度{diff}] [{q.get('type')}] {q.get('question')}{opt_text}"
         )
     system = SystemMessage(content=(
-        "你是一个正在学习 Python 的初学者，理论水平约 1-2 级。"
+        f"你是一个正在学习「{target_direction}」的初学者，理论水平约 1-2 级。"
         "请按以下正确率作答：难度1~2的题约 70% 正确、难度3的题约 50% 正确、难度4~5的题约 30% 正确。"
         "答错的题应选择看似合理但实际错误的选项（模拟典型初学者的误解）。"
         "严格输出 JSON 数组，元素为作答字符串(选择题给选项内容如'A'或'B',判断题给'对'或'错')。"
@@ -395,7 +395,7 @@ def _build_supplement_prompt(
     uncovered = [n for n in nodes if (n.get("node_id") or n.get("id")) not in covered_node_ids]
     fact_nodes = uncovered if len(uncovered) >= 2 else nodes
     system = SystemMessage(content=(
-        "你是 KMatch 学情检测 Agent。基于知识图谱节点事实补充 Python 理论测评题。"
+        f"你是 KMatch 学情检测 Agent。基于知识图谱节点事实补充「{target_direction}」相关理论测评题。"
         f"题型限定选择题(choice)和填空题(fill),共 {shortfall} 道。"
         "严格输出 JSON 数组,每个元素: "
         '{"type":"choice|fill","node_id":"PY-xxx","question":"题干",'

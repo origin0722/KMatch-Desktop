@@ -1,0 +1,51 @@
+# 08 Domain Bootstrap Agent — 动态建域
+
+> 状态: v0.1 (阶段16, 2026-08-14)。提示词内联于 backend/app/agents/domain_bootstrap.py，
+> 本文件是对齐文档（与其余 7 个 Agent 提示词同约定：代码为源，文件为基准）。
+
+## 职责
+
+学习目标不命中既有知识域（内置 6 域 PY/DA/DB/EN/WD/ML + 已建动态域）时，
+为该领域当场构建迷你知识图谱并落库，让测评/学习路径/内容生成/图谱可视化
+全链路对动态节点自动复用。
+
+## 工作流
+
+1. **域判定**（resolve_direction）：LLM 单次分类学习目标到域注册表
+   （跨语言目标如 Java vs Python 的向量相似度天然偏高，LLM 判域比纯向量可靠；
+   建域本身依赖 LLM，主判据与兜底能力一致）。未配置 LLM 时降级向量启发式
+   （top 相似度 ≥ 0.55 视为命中），两者皆无则回退旧选点行为。
+2. **联网检索**（Tavily）："{领域} 学习路线 核心概念 入门" 取 5 条作事实锚；
+   无 key/失败静默降级纯 LLM 生成（幻觉风险已知并记录日志）。
+3. **域蓝图生成**：恰好 10 节点，按学习顺序由浅入深；每节点 name/difficulty(1-3)/
+   summary(30-500 字)/key_points(3-8)/common_mistakes(1-6)/tags/estimated_minutes/
+   prerequisite_names（仅可引用排列更早的节点）。严禁编造版本号/性能数字等易幻细节。
+4. **出题**：每节点 2 道 choice/fill（4 选项含干扰项），并发 5 路（对齐
+   CONTENT_GEN_CONCURRENCY），只依据节点要点与误区，不引入节点以外事实。
+5. **代码级校验**（不调 LLM）：id/前缀分配（LLM 提案优先，冲突从领域名推导，
+   再按字母表扫描）、前置引用仅保留更早节点（天然无环）、节点/题目过
+   scripts/validate_data 同套校验（category=动态领域 + source=llm_generated +
+   domain_label 标记）。两轮生成→校验重试后仍不合规则 503。
+6. **落库**：与 KB CRUD 同通道——JSON 真相源（nodes/_manual_nodes.json +
+   questions/<node_id>.json）→ Neo4j 同步（upsert_knowledge_node 重建 REQUIRES/
+   BELONGS_TO + upsert_question 建 HAS_QUESTION）→ 批量 embedding（未配置 client
+   时内部跳过，语义检索对该域降级，图检索不受影响）。
+
+## 质量口径（重要）
+
+动态域的事实基准来自 LLM（Tavily 检索缓解），存在"作者自评循环"——
+reviewer/裁判的对照事实也是 LLM 写的。因此：
+
+- 动态域**不纳入 M5 质检指标**（固定 10 画像 × 内置 6 域口径不变，见
+  docs/质量检测报告.md）
+- 出题 prompt 明令"不引入节点以外的事实"，题面对节点事实的忠实度仍受
+  reviewer 约束
+- 节点带 source=llm_generated 标记，可整体识别与清理
+
+## 消费方
+
+- POST /api/diagnostics/assess (interactive)：域未命中时同步触发（30-60s，
+  前端 timeout 放宽 300s + loading 文案提示建域）；LLM 未配置且未命中 →
+  503 明确文案（不再静默给错域题）
+- 二次学习同领域：domain_registry 收录动态域前缀 → resolve_direction 命中
+  复用，不重复建域

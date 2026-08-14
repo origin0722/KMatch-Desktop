@@ -66,6 +66,22 @@ describe('api/diagnostics', () => {
       submitAssessment({ targetDirection: 'x' })
       expect(http.post.mock.calls[0][2]).toBeUndefined()
     })
+
+    it('interactive 模式放宽 timeout 至 300s (动态建域) 且透传 tavily_key', () => {
+      http.post.mockResolvedValueOnce({})
+      submitAssessment({ targetDirection: 'Java 入门', mode: 'interactive', tavilyKey: 'tvly-x' })
+      expect(http.post.mock.calls[0][2]).toEqual({ timeout: 300_000 })
+      expect(http.post.mock.calls[0][1]).toMatchObject({
+        mode: 'interactive',
+        tavily_key: 'tvly-x',
+      })
+    })
+
+    it('demo 模式不放宽 timeout (SSE 流式另有通道)', () => {
+      http.post.mockResolvedValueOnce({})
+      submitAssessment({ targetDirection: 'x', mode: 'demo' })
+      expect(http.post.mock.calls[0][2]).toBeUndefined()
+    })
   })
 
   describe('submitAnswers (W5)', () => {

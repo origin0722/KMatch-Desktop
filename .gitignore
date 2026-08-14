@@ -48,3 +48,6 @@ backend-dist/
 .superpowers/
 .agents/ 
 AGENTS.md
+
+# --- agent 会话/本地测试产物 (阶段16) ---
+.zcode/

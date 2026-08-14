@@ -17,6 +17,15 @@
 
 Neo4j 中的四层结构：**领域元知识 → 项目框架 → 代码实体 → 演化扩展**。原生向量索引（cosine, 1536 维，千问 text-embedding-v2）。后端 `KnowledgeGraph` 引擎见 `backend/app/graph/engine.py`。
 
+## 动态建域（domain_bootstrap，阶段16）
+
+学习目标不命中既有域时的兜底链路，`backend/app/agents/domain_bootstrap.py`：
+
+- **域注册表** — 内置 6 域前缀（PY/DA/DB/EN/WD/ML）+ 扫描 JSON 真相源收集的动态域前缀。
+- **resolve_direction** — 域判定：LLM 分类为主判据（跨语言目标向量相似度天然偏高，LLM 判域更可靠），LLM 未配置降级向量启发（top 相似度 ≥ 0.55），皆无回退旧选点。返回 `hit / miss / unknown`。
+- **bootstrap_domain** — 动态建域：Tavily 检索作事实锚 → LLM 生成 10 节点 DAG + 每节点 2 题 → validate 同套校验 → KB CRUD 同通道落库。
+- **llm_generated 节点** — 动态域节点标记：`source="llm_generated"` + `domain_label` + `category="动态领域"`；与手工节点同库同链路，二次同域学习命中复用不重建。事实基准来自 LLM，**不纳入 M5 质检口径**。
+
 ## 学情画像（profile v3）
 
 `assessment.profile` 的结构（对齐 `profile_schema.json`）：
@@ -76,7 +85,7 @@ chat 的 `buildSystemPrompt` 注入这些字段做因材施教；导学模式下
 | `code_review` | 四维度代码审查（需 Neo4j） | ask |
 | `code_test` | LLM 生成测试 + 沙箱 pytest（需 Neo4j） | ask |
 
-工具**定义**（`TOOLS`）与**权限默认**当前分散在 `chat.js` 与 `aiSettings.js`，是已知耦合点（见重构方案 C1）。
+工具**定义**（`TOOLS`）与**权限默认**已收编至单一源 `frontend/src/ide/tools/registry.js`（C1.2 解耦完成）。
 
 ## write_file 审批门
 
@@ -100,10 +109,19 @@ chat 的 `buildSystemPrompt` 注入这些字段做因材施教；导学模式下
 - **toolPermissions** — 每工具 `allow | ask | deny`。
 - **memories** — 注入系统提示的持久记忆条目。
 
+## M5 独立裁判（quality_judge）
+
+赛题 M5 三指标（幻觉率<5% / 适配率≥85% / 覆盖率≥90%）的判定升级（阶段15）：
+
+- **独立裁判** — `backend/app/agents/quality_judge.py`，LLM-as-Judge 逐资源判定 `grounded|hallucinated|unverifiable`。裁判只拿资源内容 + 图谱事实（summary/key_points），**不拿**生成过程与 reviewer 结论，打破"作者自评"循环验证。
+- **双口径** — `quality_metrics.py` 自评（reviewer 维度分）与独立裁判双列并存；**幻觉率达标以独立裁判为主口径**（口径决策见 `docs/质量检测报告.md`）。
+- **JUDGE_LLM_*** — `.env` 独立配置裁判模型（可异源），未配置回退主 LLM（标注同源裁判）。
+- **反馈快模型** — `agentLlm.feedbackModel`（默认 deepseek-v4-flash），仅针对性反馈请求经 `buildFeedbackOverrides` 换快模型，主引擎模型不变。
+
 ## 赛题功能锚点（重构不可破坏）
 
 - 场景一全流程闭环、场景二全链路
 - 赛题(3)① 知识图谱可视化
 - 赛题(4)② 动态追问与启发式导学
-- M5 质量指标：幻觉率<5% / 适配率≥85% / 覆盖率≥90%
+- M5 质量指标：幻觉率<5% / 适配率≥85% / 覆盖率≥90%（主口径：独立裁判）
 - 四层图谱契约

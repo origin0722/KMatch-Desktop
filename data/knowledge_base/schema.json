@@ -24,7 +24,7 @@
     },
     "category": {
       "type": "string",
-      "enum": ["基础语法","数据结构与算法","面向对象编程","Python进阶","常用库与工具","项目实战","机器学习","数据分析与可视化","Web后端开发","数据库与缓存","工程化实践"]
+      "enum": ["基础语法","数据结构与算法","面向对象编程","Python进阶","常用库与工具","项目实战","机器学习","数据分析与可视化","Web后端开发","数据库与缓存","工程化实践","动态领域"]
     },
     "summary": {
       "type": "string",
@@ -81,6 +81,16 @@
       "minimum": 5,
       "maximum": 240,
       "description": "预估学习时长（分钟）"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["manual", "llm_generated"],
+      "description": "节点来源标记：manual=人工编写，llm_generated=动态建域 Agent 生成（领域未收录时 LLM 当场构建，事实基准来自 Tavily 检索+LLM，不纳入 M5 质检口径）"
+    },
+    "domain_label": {
+      "type": "string",
+      "maxLength": 40,
+      "description": "动态域领域名（source=llm_generated 时记录，如 Java/Rust，供域命中复用与清理）"
     }
   },
   "additionalProperties": false

@@ -451,9 +451,13 @@ def test_demo_assess_inlines_learning_report(monkeypatch):
 def test_interactive_assess_learning_report_empty(monkeypatch):
     """interactive 出题阶段 learning_report 为 {} (回归)。"""
     diag_api._INTERACTIVE_SESSIONS.clear()
+    # 域判定走 unknown (阶段16): 不碰 LLM/向量, 直接旧选点行为
+    monkeypatch.setattr(
+        diag_api, "resolve_direction", lambda kg, target, known: ("unknown", []),
+    )
     monkeypatch.setattr(
         diag_api, "prepare_questions",
-        lambda kg, target, known: (
+        lambda kg, target, known, nodes=None: (
             [{"node_id": "PY-005", "question": "q", "answer": "A", "type": "choice", "difficulty": 2}],
             [{"node_id": "PY-005", "name": "循环", "difficulty": 2}],
         ),

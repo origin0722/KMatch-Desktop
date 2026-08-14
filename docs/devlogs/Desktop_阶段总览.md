@@ -1,6 +1,18 @@
-# Desktop 开发阶段总览（阶段0–11 + Spec B）
+# Desktop 开发阶段总览（阶段0–16 + Spec B）
 
 > 从 CLAUDE.md 迁出的历史阶段日志。详细 devlog 见同目录按端分类的日期文件。架构决策见 [../adr/](../adr/)。
+
+## 阶段16 (2026/08/14): 动态建域 — 领域未收录时 LLM 当场构建知识图谱 ✅
+
+用户想学的领域不在 6 域知识库内时的兜底链路（详见 [A_后端/2026-08-14_动态建域.md](A_后端/2026-08-14_动态建域.md) + [../../data/prompts/08_domain_bootstrap_agent.txt](../../data/prompts/08_domain_bootstrap_agent.txt)）：
+
+- **修静默错域**：`target_direction` 原先不参与选点（想学 Java 会静默拿到 PY 基础题）；现 LLM 分类到域注册表（内置 6 域 + 动态域），命中→方向子图出题，未命中→动态建域，LLM/向量皆无→回退旧行为
+- **动态建域落库**：[domain_bootstrap.py](../../backend/app/agents/domain_bootstrap.py)（Tavily 检索作事实锚 → LLM 生成 10 节点 DAG + 每节点 2 题 → validate 同套校验 → JSON 真相源/Neo4j/embedding 同通道落库，`source=llm_generated` 打标）；二次同域学习命中复用不重建
+- **schema 扩字段**：category 加"动态领域" + 可选 source/domain_label（additionalProperties:false 需显式扩）
+- **接线**：/assess interactive miss→同步建域（前端 timeout 300s + loading 文案"构建知识图谱"）；LLM 未配置且 miss→503 明确文案；出题 prompt 去硬编码 Python；demo 选点不动（M5 基线稳定）
+- **口径**：动态域事实基准来自 LLM（Tavily 缓解），不纳入 M5 质检指标
+- **测试**：504 后端（+16）/ 281 前端（+2）全过
+
 
 ## 阶段0 (6/19): 迁移现有 Vue 前端 + 双场景路由骨架 ✅
 
@@ -77,7 +89,7 @@
 - 459 后端 + 223 前端测试全过；feature/settings FF 合并 main
 - **Deferred**: Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入)；Task 20 全量收尾
 
-## 阶段13 (2026/07/29): 学情报告组件回填（KMatch 源仓借鉴）⏳
+## 阶段13 (2026/07/29): 学情报告组件回填（KMatch 源仓借鉴）✅
 > 源仓 `D:\Origin_jerry\KMatch` 的 B 端报告/引导组件，Desktop 迁移时只取了 GraphDemo/MarkdownViewer/ProfileRadar，三个高价值组件被内联或丢弃。后端数据已就绪，纯前端补全。逐任务推进。
 
 **借鉴来源对比结论**：Desktop 后端已是 KMatch 超集（多 code_safety/chat.py/agents.py/search.py），故借鉴全部集中在前端可视化/报告组件。
@@ -119,6 +131,31 @@
 - http-proxy body 防双重序列化修复（axios adapter 场景 422）
 
 **测试**：248 前端 + 471 后端（459+12）全过。已知限制：联网资源 store 纯内存不持久化（重启清空，UI 无清空入口）；Tavily 搜索词硬编码 `Python {name} 教程`（平台定位 Python，可接受）。
+
+## 阶段15 (2026/08/10-08/14): M5 质检升级 + Codex 化 UI 收官 + 反馈快模型 + 后端去重 ✅
+
+赛题冲刺批：M5 三指标从"作者自评"升级为独立裁判双口径（经得起评委追问），同时完成 UI Codex 化收尾与性能/代码质量打磨。
+
+**M1 M5 质检升级（独立裁判 LLM-as-Judge）**：
+- 新增 [quality_judge.py](../../backend/app/agents/quality_judge.py)（逐资源判定 grounded/hallucinated/unverifiable，只拿资源内容+图谱事实，不拿生成过程/reviewer 结论）+ [quality_metrics.py](../../backend/app/agents/quality_metrics.py) 双口径指标（自评 + 独立裁判双列）
+- 裁判 LLM 经 `.env JUDGE_LLM_*` 独立配置（可异源）；`--judge-only` 只跑裁判；三批迭代收官（标准修正 + 真实错误证据链）
+- 扩样本：3 画像 → 10 画像（`data/user_profiles/`），单领域 → ML 第二领域；终报 10 画像 × 83 资源：裁判幻觉率 2.4%（达标 <5%，主口径）/ 适配率 94% / 覆盖率 100%；见 [../质量检测报告.md](../质量检测报告.md) + [../M5质量检测方法论升级.md](../M5质量检测方法论升级.md)
+
+**M2 图谱扩域**：4 新域 100 节点（DA/DB/EN/WD 各 25 + ML 30）→ 222 节点 6 域（`data/knowledge_base/nodes/` 11 文件）；内容生成丰富度升级（针对性反馈产物落学习资源视图：知识点入 generatedContent + 网址入联网资源 tab + 自动开分屏）。
+
+**M3 Codex 化 UI V2 收官**（5 提交，详见 [B_前端/2026-08-14_Codex化UI收官.md](B_前端/2026-08-14_Codex化UI收官.md)）：
+- T1 删 ActivityBar.vue 死代码（NavSidebar 完全替代）；T2 设置页「通用」段重新引导入口（onboardingActive 收口 sidebar store）
+- T3 图谱详情侧栏浮层 → split 分栏（flex 推挤画布，删 panelGap 避让，折叠延迟 220ms 重建）
+- T4 AI 助手双形态：主区 `chat` 视图（760px 居中 + 建议 chip，`variant="wide"` 纯样式层）+ 右侧分栏共存，chat 视图下侧栏不重复挂载
+- T5 引导收尾：走完自动落 chat 视图（跳过保持 code）+ Key 过短软提示不阻断
+
+**M4 反馈快模型**（详见 [B_前端/2026-08-14_反馈快模型落地.md](B_前端/2026-08-14_反馈快模型落地.md)）：agentLlm `feedbackModel`（默认 deepseek-v4-flash）+ `buildFeedbackOverrides` 三态 + `withFeedbackOverrides` 注入；纯前端（后端 `use_llm_overrides` 部分覆写逐字段回退）；针对性反馈 22s → ~8s，主引擎模型不变。
+
+**M5 后端去重 R1-R4**（详见 [A_后端/2026-08-14_后端重构R1-R4.md](A_后端/2026-08-14_后端重构R1-R4.md)）：`@with_state_overrides` 装饰器 + `safe_llm_call`（llm.py，3 agent 节点/worker 复用）；`knowledge_context.py` 共享（code_reviewer/code_tester）；graph_controller `_empty_kg_result`；`CONTENT_GEN_CONCURRENCY` 入 settings。净减 30 行，行为零变化。
+
+**M6 学习会话修复**：阶段② loading 文案按 phase 区分（出题不再误称"生成学习内容"，判分期遮罩补上修白屏）+ Agent 协同面板重做 + 针对性反馈超时纵深修复（主进程默认 120s + chat 委派 150s）+ AI 厂商模型名线上核实更新（新增智谱 GLM）。
+
+**测试**：279 前端 + 488 后端全过。已知 flaky：chat-attachments 满负载并发偶发超时（隔离 7/7 过）。
 
 ## 已知待修
 - Apix 审查 S1–S9 全部已修（见各阶段 + ADR-0005）

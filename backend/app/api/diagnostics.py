@@ -26,6 +26,7 @@ from app.agents.diagnostics import (
     decide_feedback,
     prepare_questions,
 )
+from app.agents.domain_bootstrap import bootstrap_domain, resolve_direction
 from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.report_builder import build_learning_report
@@ -61,6 +62,7 @@ class AssessRequest(BaseModel):
     scene: str = Field("no_project", description="no_project | with_project")
     max_retries: int = Field(3, description="审核打回最大轮数", ge=1, le=5)
     llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
+    tavily_key: str = Field(default=None, description="Tavily API key (动态建域联网检索资料, 缺省回落 env)")
 
 
 class AssessResponse(BaseModel):
@@ -148,7 +150,21 @@ def assess(req: AssessRequest, request: Request):
     # --- interactive 模式: 仅出题，不走工作流 ---
     if req.mode == "interactive":
         try:
-            questions, nodes = prepare_questions(kg, req.target_direction, req.known_topics)
+            # 域判定 (阶段16): 目标命中既有域 → 方向相关选点; 未命中 → 动态建域;
+            # LLM/向量都不可用 → 回退旧选点行为 (零基础难度入口)。
+            nodes = None
+            resolution, dir_nodes = resolve_direction(kg, req.target_direction, req.known_topics)
+            if resolution == "miss":
+                if not llm_configured():
+                    raise ValueError(
+                        f"学习领域「{req.target_direction}」暂未收录, 且未配置 LLM 无法动态建域; "
+                        "请在设置中配置 AI 后重试, 或选择已收录方向 (Python/数据分析/机器学习等)")
+                logger.info("学习目标未命中既有域, 触发动态建域: %s", req.target_direction)
+                nodes = bootstrap_domain(
+                    kg, req.target_direction, tavily_key=req.tavily_key or settings.TAVILY_API_KEY)
+            elif resolution == "hit" and dir_nodes:
+                nodes = dir_nodes
+            questions, nodes = prepare_questions(kg, req.target_direction, req.known_topics, nodes=nodes)
         except ValueError as e:
             raise HTTPException(status_code=503, detail=str(e))
         except Exception as e:
