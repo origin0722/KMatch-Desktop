@@ -24,6 +24,16 @@
             <h2 class="section-title">供应商管理</h2>
             <ProvidersSettings />
           </section>
+          <section id="sec-general" class="settings-section">
+            <h2 class="section-title">通用</h2>
+            <div class="general-row">
+              <div class="general-info">
+                <b>重新查看首次引导</b>
+                <span>API Key / 学习方向配置向导, 当前配置不会被重置。</span>
+              </div>
+              <el-button data-test="re-onboard" @click="sidebar.startOnboarding()">重新引导</el-button>
+            </div>
+          </section>
         </div>
       </div>
       <aside class="settings-anchors">
@@ -52,6 +62,7 @@ const anchors = [
   { id: 'sec-assistant', label: 'AI 助手' },
   { id: 'sec-agent', label: 'Agent 学习引擎' },
   { id: 'sec-providers', label: '供应商管理' },
+  { id: 'sec-general', label: '通用' },
 ]
 
 const mainEl = ref(null)
@@ -136,6 +147,19 @@ onBeforeUnmount(() => observer?.disconnect())
   padding: 24px 28px 60px;
 }
 .settings-section { margin-bottom: 8px; scroll-margin-top: 16px; }
+/* 通用段行 (T2 重新引导入口): 左说明右按钮, 视觉对齐其他段的列表行 */
+.general-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--km-bg-layer-2);
+  border: 1px solid var(--km-border-light);
+}
+.general-info b { display: block; font-size: 13.5px; font-weight: 600; color: var(--km-gray-700); }
+.general-info span { font-size: 12px; color: var(--km-gray-500); }
 .section-title {
   font-size: 18px;
   font-weight: 700;

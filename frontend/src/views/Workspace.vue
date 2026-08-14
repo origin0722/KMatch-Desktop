@@ -23,13 +23,13 @@
 
     <StatusBar />
 
-    <!-- 首次引导 (脚本式多步, Codex 风格) -->
-    <OnboardingOverlay :visible="onboardingVisible" @done="finishOnboarding" />
+    <!-- 首次引导 (脚本式多步, Codex 风格; 显隐收口 sidebar store, 设置页可重新触发) -->
+    <OnboardingOverlay :visible="sidebar.onboardingActive" @done="sidebar.finishOnboarding" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -43,12 +43,8 @@ import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
 const ws = useWorkspaceStore()
 const sidebar = useSidebarStore()
 
-// 首次引导 (借鉴 Understand-Anything OnboardingOverlay): 首次打开显示功能介绍
-const onboardingVisible = ref(!localStorage.getItem('kmatch-onboarded'))
-function finishOnboarding() {
-  localStorage.setItem('kmatch-onboarded', '1')
-  onboardingVisible.value = false
-}
+// 首次使用 (无 onboarded 标记) 自动弹引导; 重新触发入口在设置页「通用」段
+if (!localStorage.getItem('kmatch-onboarded')) sidebar.startOnboarding()
 
 onMounted(() => ws.loadRecent())
 </script>

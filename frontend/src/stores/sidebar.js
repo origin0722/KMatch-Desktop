@@ -23,6 +23,7 @@ export const useSidebarStore = defineStore('sidebar', () => {
   const sidebarVisible = ref(true) // 文件树显隐 (代码视图内)
   const aiPanelVisible = ref(true) // AI 助手面板
   const persona = ref('beginner') // 学习角色: beginner/intermediate/advanced, 调整图谱节点详略
+  const onboardingActive = ref(false) // 首次引导覆盖层 (设置页「重新引导」可再触发)
 
   function setView(id) {
     if (id !== activeView.value) prevView.value = activeView.value
@@ -43,5 +44,12 @@ export const useSidebarStore = defineStore('sidebar', () => {
 
   function setPersona(p) { persona.value = p }
 
-  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, setView, back, setPersona, toggleSidebar, toggleAiPanel }
+  // 首次引导: 完成时写 onboarded 标记 (OnboardingOverlay emit done -> 此处收口)
+  function startOnboarding() { onboardingActive.value = true }
+  function finishOnboarding() {
+    localStorage.setItem('kmatch-onboarded', '1')
+    onboardingActive.value = false
+  }
+
+  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, onboardingActive, setView, back, setPersona, toggleSidebar, toggleAiPanel, startOnboarding, finishOnboarding }
 })
