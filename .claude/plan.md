@@ -1,4 +1,7 @@
-# Codex 化 UI 改造 - 剩余工作 V2（2026-08-14）
+# Codex 化 UI 改造 - 剩余工作 V2（2026-08-14）✅ 已全部完成
+
+> T1-T5 五任务已逐个完成并独立提交（94155bb / 6dc7917 / 9df5781 / 21b7e90 / 0626bd8），详见 [docs/devlogs/B_前端/2026-08-14_Codex化UI收官.md](../docs/devlogs/B_前端/2026-08-14_Codex化UI收官.md)。剩手测验收。
+> 以下为原决策记录存档。
 
 > V1 方案（完整 5 阶段）大部分已落地并提交。本文档只覆盖**剩余工作**，决策已与用户确认。
 > 已完成部分存档见 git 历史（NavSidebar / OnboardingOverlay / view-card / PERSONA 尺寸 + nodesep/ranksep 均已在 main）。
