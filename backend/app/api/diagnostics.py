@@ -11,6 +11,7 @@ POST /api/diagnostics/submit
 """
 
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Literal
 
@@ -444,17 +445,33 @@ def feedback(req: FeedbackRequest, request: Request):
     # 出题候选节点即当前学习范围)
     learning_path = session.get("nodes", [])
 
+    # Tavily 联网搜索与 LLM 再生并行: Tavily 不依赖 LLM/override, 后台线程先行,
+    # 主线程并行做 LLM 再生 (二者串行则 +7s, 并行后 wall-clock ≈ LLM 耗时)。
+    tavily_key = req.tavily_key or settings.TAVILY_API_KEY
+    tavily_future = None
+    tavily_pool = None
+    if tavily_key:
+        tavily_pool = ThreadPoolExecutor(max_workers=1)
+        tavily_future = tavily_pool.submit(
+            search_weak_topics, req.profile, tavily_key, nodes=session.get("nodes"))
+
     try:
         with use_llm_overrides(req.llm_overrides):
             result = regenerate_for_feedback(req.strategy, req.profile, learning_path, kg)
     except Exception as e:
         logger.error("feedback 再生失败 session=%s", req.session_id, exc_info=True)
+        if tavily_pool is not None:
+            tavily_pool.shutdown(wait=False)
         raise HTTPException(status_code=500, detail=f"内容再生失败: {e}")
 
-    # 联网搜索薄弱知识点相关网站 (Tavily, 可选; 无 key 静默跳过)
-    tavily_key = req.tavily_key or settings.TAVILY_API_KEY
-    if tavily_key:
-        web_resources = search_weak_topics(req.profile, tavily_key, nodes=session.get("nodes"))
+    # 收 Tavily 结果 (LLM 耗时 ~15-30s > Tavily ~7s, 此处通常已就绪)
+    if tavily_future is not None:
+        try:
+            web_resources = tavily_future.result(timeout=30)
+        except Exception:
+            logger.warning("feedback Tavily 搜索异常", exc_info=True)
+            web_resources = []
+        tavily_pool.shutdown(wait=False)
         if web_resources:
             result.setdefault("resources", []).extend(web_resources)
 

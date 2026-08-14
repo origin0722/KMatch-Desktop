@@ -270,7 +270,8 @@ def test_select_scaffold_with_kg():
         def get_prerequisites(self, wid):
             return [{"node_id": "PY-001", "name": "变量"}, {"node_id": "PY-003", "name": "条件"}]
     nodes = select_feedback_nodes("scaffold", _WEAK, _PATH, kg=_FakeKG())
-    assert {n["node_id"] for n in nodes} == {"PY-001", "PY-003"}
+    assert len(nodes) == 1
+    assert nodes[0]["node_id"] == "PY-001"
 
 
 def test_select_remediate_weak_not_in_path_returns_empty():
@@ -354,3 +355,123 @@ def test_generate_feedback_one_forces_difficulty_to_node(monkeypatch):
     node = _make_node(difficulty=2)
     result = _generate_feedback_one(node, 2, "lecture", "换角度重讲")
     assert result["difficulty_level"] == 2, "反馈路径难度须被节点难度强制覆盖, 非 LLM 自填的 5"
+
+
+# ============================================================
+# regenerate_for_feedback: 并行再生 + Spec B ContextVar 跨线程透传 + 单节点失败容错
+# (串行->并行改造: target_nodes 并发再生, wall-clock ≈ 单次而非 N×;
+#  worker 线程不继承 ContextVar, 须在 worker 内 re-set overrides -- 与主生成路径同模式)
+# ============================================================
+
+def _fake_model_recording(seen):
+    """假 LLM 工厂: invoke 时从 user 消息解析 node_id, 记录调用的 node_id 与 worker 内 override 快照。"""
+    from app.agents.llm import _current_overrides
+
+    class _Model:
+        def invoke(self, messages):
+            uid = ""
+            for m in messages:
+                txt = getattr(m, "content", "")
+                if "node_id:" in txt:
+                    uid = txt.split("node_id:")[1].split("\n")[0].strip()
+                    break
+            seen["node_ids"].append(uid)
+            seen["worker_overrides"].append(_current_overrides.get())
+            payload = {
+                "content_type": "lecture", "target_node_id": uid or "PY-005",
+                "adaptation_profile": "beginner",
+                "source_nodes": [f"{uid or 'PY-005'}.summary"], "content": f"# {uid} 讲义",
+            }
+
+            class _Resp:
+                content = json.dumps(payload, ensure_ascii=False)
+            return _Resp()
+    return _Model()
+
+
+def test_regenerate_for_feedback_parallel_generates_all_nodes(monkeypatch):
+    """并行再生: 多个目标节点全部生成资源 (不因并发丢漏)。"""
+    from app.agents.content_generator import regenerate_for_feedback
+
+    seen = {"node_ids": [], "worker_overrides": []}
+    monkeypatch.setattr(
+        "app.agents.content_generator.get_default_chat_model",
+        lambda: _fake_model_recording(seen),
+    )
+    monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
+
+    nodes = [_make_node("DA-001", "数据分析流程", 1), _make_node("DA-003", "数据清洗", 2)]
+    profile = {"theory_level": 2, "weak_topics": [
+        {"node_id": "DA-001", "mastery": 0.0, "error_patterns": []},
+        {"node_id": "DA-003", "mastery": 0.0, "error_patterns": []},
+    ]}
+    result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
+    assert result["strategy"] == "remediate"
+    assert result["node_count"] == 1
+    assert len(result["resources"]) == 1
+    assert result["resources"][0]["target_node_id"] == "DA-001"
+    assert seen["node_ids"] == ["DA-001"]
+
+
+def test_regenerate_for_feedback_overrides_propagate_to_workers(monkeypatch):
+    """Spec B: 主线程 use_llm_overrides 设的 ContextVar 须透传到 worker 线程
+    (并行改造关键: worker 内 _current_overrides.set(overrides) 后 invoke 才能读到)。"""
+    from app.agents.content_generator import regenerate_for_feedback
+    from app.agents.llm import use_llm_overrides
+
+    seen = {"node_ids": [], "worker_overrides": []}
+    monkeypatch.setattr(
+        "app.agents.content_generator.get_default_chat_model",
+        lambda: _fake_model_recording(seen),
+    )
+    monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
+
+    overrides = {"api_key": "sk-agent-independent", "model": "agent-llm"}
+    nodes = [_make_node("PY-005", "循环", 2), _make_node("PY-006", "函数", 2)]
+    profile = {"theory_level": 2, "weak_topics": [
+        {"node_id": "PY-005", "mastery": 0.0, "error_patterns": []},
+        {"node_id": "PY-006", "mastery": 0.0, "error_patterns": []},
+    ]}
+    with use_llm_overrides(overrides):
+        result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
+    assert len(result["resources"]) == 1
+    assert all(o == overrides for o in seen["worker_overrides"]), \
+        f"worker 线程未读到主线程 overrides: {seen['worker_overrides']}"
+
+
+def test_regenerate_for_feedback_partial_failure_tolerated(monkeypatch):
+    """单节点 LLM 失败不阻断其他节点 (per-node try/except, 失败计入 failures 不外抛)。"""
+    from app.agents.content_generator import regenerate_for_feedback
+
+    class _Model:
+        def invoke(self, messages):
+            uid = ""
+            for m in messages:
+                txt = getattr(m, "content", "")
+                if "node_id:" in txt:
+                    uid = txt.split("node_id:")[1].split("\n")[0].strip()
+                    break
+            if uid == "PY-005":
+                raise RuntimeError("模拟 PY-005 LLM 失败")
+            payload = {
+                "content_type": "lecture", "target_node_id": uid,
+                "adaptation_profile": "beginner",
+                "source_nodes": [f"{uid}.summary"], "content": f"# {uid} 讲义",
+            }
+
+            class _Resp:
+                content = json.dumps(payload, ensure_ascii=False)
+            return _Resp()
+    monkeypatch.setattr(
+        "app.agents.content_generator.get_default_chat_model", lambda: _Model(),
+    )
+    monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
+
+    nodes = [_make_node("PY-005", "循环", 2), _make_node("PY-006", "函数", 2)]
+    profile = {"theory_level": 2, "weak_topics": [
+        {"node_id": "PY-005", "mastery": 0.0, "error_patterns": []},
+        {"node_id": "PY-006", "mastery": 0.0, "error_patterns": []},
+    ]}
+    result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
+    assert result["node_count"] == 1
+    assert len(result["resources"]) == 0, "失败节点跳过, 0 资源, 不外抛"

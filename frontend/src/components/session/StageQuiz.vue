@@ -9,10 +9,13 @@
       <!-- answering 阶段 -->
       <template v-if="store.phase === 'answering' && !store.loading">
         <div class="quiz-header">
-          <span>共 {{ store.pendingQuestions.length }} 题</span>
+          <div class="quiz-progress">
+            <span class="progress-text">已答 {{ answeredCount }} / {{ store.pendingQuestions.length }} 题</span>
+            <div class="progress-track"><div class="progress-fill" :style="{ width: progressPct + '%' }" /></div>
+          </div>
           <el-button size="small" @click="store.backToInput()">← 返回</el-button>
         </div>
-        <div v-for="(q, idx) in store.pendingQuestions" :key="idx" class="quiz-item">
+        <div v-for="(q, idx) in store.pendingQuestions" :key="idx" class="quiz-item" :class="{ answered: isAnswered(idx) }">
           <div class="quiz-question">
             <el-tag size="small" type="info">{{ idx + 1 }}</el-tag>
             <el-tag size="small">{{ typeLabel(q.type) }}</el-tag>
@@ -25,7 +28,7 @@
           <el-input v-else v-model="store.userAnswers[idx]" type="textarea" :rows="3" placeholder="请输入答案" />
         </div>
         <div class="quiz-submit">
-          <el-button type="primary" size="large" @click="handleSubmitAnswers">提交答题 →</el-button>
+          <el-button type="primary" size="large" :disabled="answeredCount === 0" @click="handleSubmitAnswers">提交答题 →</el-button>
         </div>
       </template>
 
@@ -82,6 +85,10 @@ const store = useAssessmentStore()
 const session = useSessionStore()
 const isActive = computed(() => session.activeStage === 'quiz')
 
+const answeredCount = computed(() => store.userAnswers.filter((a) => a && String(a).trim()).length)
+const progressPct = computed(() => store.pendingQuestions.length ? (answeredCount.value / store.pendingQuestions.length) * 100 : 0)
+function isAnswered(idx) { const a = store.userAnswers[idx]; return !!(a && String(a).trim()) }
+
 function typeLabel(t) { return { choice: '选择题', fill: '填空题', code: '代码题', judge: '判断题' }[t] || t || '题' }
 function optLabel(opt) { const m = String(opt).match(/^([A-Z])[.、．]/); return m ? m[1] : String(opt) }
 function levelLabel(l) { return { 1: '零基础', 2: '入门', 3: '进阶', 4: '高级', 5: '专家' }[l] ?? `Lv.${l}` }
@@ -107,8 +114,18 @@ function openLearning() {
 .stage-head h4 { margin: 0; font-size: 14px; color: var(--km-gray-800); }
 .stage-done { margin-left: auto; color: var(--km-success); font-size: 12px; }
 .stage-body { padding: 16px; }
-.quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.quiz-item { padding: 12px 0; border-bottom: 1px solid var(--km-border-light); }
+.quiz-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.quiz-progress { flex: 1; display: flex; align-items: center; gap: 10px; }
+.progress-text { font-size: 12px; color: var(--km-gray-600); white-space: nowrap; }
+.progress-track { flex: 1; height: 6px; border-radius: 3px; background: var(--km-bg-layer-3); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; background: var(--km-primary); transition: width 0.3s var(--km-ease); }
+.quiz-item {
+  padding: 14px 16px; margin-bottom: 10px;
+  border: 1px solid var(--km-border-light); border-left: 3px solid var(--km-border-light);
+  border-radius: var(--km-radius-sm); background: var(--km-bg-layer-2);
+  transition: border-color 0.2s var(--km-ease), background 0.2s var(--km-ease);
+}
+.quiz-item.answered { border-left-color: var(--km-success); background: color-mix(in srgb, var(--km-success) 5%, var(--km-bg-layer-2)); }
 .quiz-question { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 13px; }
 .q-text { flex: 1; }
 .quiz-options { display: flex; flex-direction: column; gap: 8px; padding-left: 28px; }

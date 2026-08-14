@@ -130,21 +130,85 @@ export function useAgentStatus() {
 
   const logs = computed(() => store.orchestrationLog || [])
 
+  // ---------------------------------------------------------------
+  // 每 Agent 产出概览 (store 实数据, ground truth) - 先于 agentNodes, 供 done 判定
+  // interactive 模式 submit 仅跑 学情检测+画像+图谱管控; 内容生成/审核按需触发。
+  // 故产出自适应: 有数据则展示具体产出, 无则 undefined (组件回落到 role 描述)。
+  // ---------------------------------------------------------------
+  const productions = computed(() => {
+    const out = {}
+    // 主控调度: 有结果即编排完成
+    if (store.hasResults) out.orchestrator = '流程编排完成 · 各 Agent 产出已就绪'
+    // 学情检测: 判分 + 画像维度
+    const asm = store.assessment
+    const p = store.profile
+    if (asm && p) {
+      out.diagnostics = `判分 ${asm.correct_count}/${asm.total_count} · 理论 L${p.theory_level ?? '?'}/实操 L${p.practical_level ?? '?'} · 薄弱 ${p.weak_topics?.length ?? 0} 点`
+    }
+    // 图谱管控: 学习路径节点数 + 预估时长
+    const kg = store.knowledgeGraph
+    if (kg) {
+      const n = kg.learning_path?.length ?? kg.path_node_ids?.length ?? 0
+      const h = kg.estimated_total_hours
+      out.graph_controller = `${n} 节点学习路径` + (h ? ` · 预估 ${h}h` : '')
+    }
+    // 内容生成: 优先 generatedContent, 回落 针对性反馈 feedbackContent
+    const gc = store.generatedContent
+    const fc = store.feedbackContent
+    if (gc?.resources?.length) {
+      out.content_generator = `已生成 ${gc.resources.length} 段资源` + (gc.node_count ? ` · 覆盖 ${gc.node_count} 节点` : '')
+    } else if (fc?.resources?.length) {
+      out.content_generator = `针对性反馈 · ${fc.strategy ?? ''} 策略 · ${fc.resources.length} 段`
+    }
+    // 内容审核: 通过/打回 + 评分 + 轮次
+    const rr = store.reviewResults
+    if (rr) {
+      const parts = [rr.passed ? '通过' : '打回']
+      if (rr.overall_score != null) parts.push(`评分 ${rr.overall_score}`)
+      out.reviewer = parts.join(' · ')
+    }
+    return out
+  })
+
+  // ---------------------------------------------------------------
+  // agentNodes: 状态 = 日志推导(running/failed) + 产出覆盖(done)
+  // 日志措辞在 interactive(判分/路径组装完成) 与 demo(开始/✅完成) 间不一致, 单靠正则不可靠;
+  // 产出是 ground truth--有产出即完成, 覆盖日志推导的 running/idle。
+  // 日志仅保留 running(demo 实时流) + failed(❌不通过) + retryCount(第N轮) 的探测。
+  // ---------------------------------------------------------------
   const agentNodes = computed(() => {
     const states = deriveAgentStates(logs.value)
-    return AGENT_DEFS.map((def) => ({
-      ...def,
-      status: states[def.key]?.status || 'idle',
-      retryCount: states[def.key]?.retryCount || 0,
-    }))
+    const prod = productions.value
+    return AGENT_DEFS.map((def) => {
+      let status = states[def.key]?.status || 'idle'
+      const retryCount = states[def.key]?.retryCount || 0
+      if (prod[def.key]) status = 'done'
+      return { ...def, status, retryCount }
+    })
   })
 
-  const pipelineRunning = computed(() => {
+  // 运行中: 仅在请求 in flight (loading) 且有日志时为真。
+  // 旧逻辑看最后一条日志是否含"流程结束"--interactive submit 无此标记, 会误判为一直运行中。
+  const pipelineRunning = computed(() => !!store.loading && logs.value.length > 0)
+
+  // 实时动作: pipelineRunning 时取最后一条日志的 agent + 去时间戳/emoji 的消息
+  const currentAction = computed(() => {
+    if (!pipelineRunning.value) return null
     const all = logs.value
-    if (all.length === 0) return false
+    if (!all.length) return null
     const last = all[all.length - 1]
-    return !/✅.*流程结束/.test(last)
+    const key = resolveAgentKey(last)
+    const label = AGENT_DEFS.find((d) => d.key === key)?.label || '协同'
+    // 去时间戳 [..] + 去行首 emoji/符号 (剥到首个中文/字母)。
+    // emoji 是代理对, 不能用枚举字符类 (无 u flag 会只剥高位代理 -> 乱码)。
+    const msg = String(last)
+      .replace(/^\[[^\]]*\]\s*/, '')
+      .replace(/^[^一-龥a-zA-Z]+/, '')
+    return { label, action: msg || '执行中' }
   })
 
-  return { agentNodes, pipelineRunning }
+  const completedCount = computed(() => agentNodes.value.filter((n) => n.status === 'done').length)
+  const pendingCount = computed(() => agentNodes.value.filter((n) => n.status === 'idle').length)
+
+  return { agentNodes, pipelineRunning, productions, currentAction, completedCount, pendingCount }
 }

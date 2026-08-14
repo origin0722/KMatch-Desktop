@@ -304,10 +304,13 @@ def select_feedback_nodes(
 ) -> list[dict]:
     """根据 strategy 选择再生内容的目标节点 (纯函数, kg 仅 scaffold 取前置时用)。
 
-    - remediate: 弱项节点本身 (最多2个)
-    - scaffold:  弱项节点的前置依赖节点 (去重, 最多2个)
-    - advance:   学习路径中弱项之后的下一节点 (最多1个)
+    - remediate: 弱项节点本身 (1 个)
+    - scaffold:  弱项节点的前置依赖节点 (1 个)
+    - advance:   学习路径中弱项之后的下一节点 (1 个)
     返回节点对象列表 (含 node_id/name/difficulty 等)。
+
+    每策略 1 节点: 反馈是交互式按需触发, 用户等待敏感; 单节点 LLM 调用 ≈30s,
+    多节点并发不降 wall-clock(瓶颈在单次生成), 徒增成本与超时风险。
     """
     spec = FEEDBACK_STRATEGY_SPEC.get(strategy)
     if spec is None:
@@ -318,7 +321,7 @@ def select_feedback_nodes(
     if spec["node_source"] == "weak":
         # 弱项节点本身: 从 learning_path 中取 (含完整字段)
         path_by_id = {n["node_id"]: n for n in learning_path if isinstance(n, dict) and n.get("node_id")}
-        return [path_by_id[wid] for wid in weak_ids[:2] if wid in path_by_id]
+        return [path_by_id[wid] for wid in weak_ids[:1] if wid in path_by_id]
 
     if spec["node_source"] == "prereq":
         if kg is None:
@@ -331,9 +334,9 @@ def select_feedback_nodes(
                 if nid and nid not in seen:
                     seen.add(nid)
                     result.append(pr)
-                if len(result) >= 2:
+                if len(result) >= 1:
                     break
-            if len(result) >= 2:
+            if len(result) >= 1:
                 break
         return result
 
@@ -377,14 +380,40 @@ def regenerate_for_feedback(
     theory_level = profile.get("theory_level", 2) or 2
     content_type = FEEDBACK_STRATEGY_SPEC[strategy]["content_type"]
     resources = []
-    for node in target_nodes:
+    failures = 0
+    overrides = _current_overrides.get()  # Spec B: 捕获主线程 override, worker 内重设 (ContextVar 不跨线程)
+
+    def _safe_feedback(node):
+        """单节点反馈再生包装: 异常不外抛, 避免 ThreadPool 终止其他任务。
+
+        Spec B: ContextVar 不跨线程传播; 工作线程内重设 overrides,
+        使 _generate_feedback_one -> get_default_chat_model() 读到 overrides
+        (与主生成路径 _safe_generate 同模式)。
+        """
+        wtoken = _current_overrides.set(overrides) if overrides else None
         try:
-            res = _generate_feedback_one(node, theory_level, content_type, log_hint)
-            resources.append(res)
+            return True, _generate_feedback_one(node, theory_level, content_type, log_hint)
         except Exception:
             logger.warning("feedback 再生失败 node=%s", node.get("node_id"), exc_info=True)
+            return False, None
+        finally:
+            if wtoken is not None:
+                _current_overrides.reset(wtoken)
 
-    logger.info("feedback 再生: strategy=%s resources=%d", strategy, len(resources))
+    # 并行再生: target_nodes 通常 1-2 个, 全并发即可 (wall-clock ≈ 单次调用, 而非 N×串行)。
+    # 串行模式下 2 节点 × 富 prompt(单次可达 60s+) 易超 150s 前端超时; 并行后 ≈ 单次耗时。
+    # _generate_feedback_one 是无共享状态的纯 LLM 调用 (LangChain ChatModel 线程安全)。
+    with ThreadPoolExecutor(max_workers=len(target_nodes)) as pool:
+        results = list(pool.map(_safe_feedback, target_nodes))
+
+    for ok, res in results:
+        if ok and res is not None:
+            resources.append(res)
+        else:
+            failures += 1
+
+    logger.info("feedback 再生: strategy=%s resources=%d failures=%d",
+                strategy, len(resources), failures)
     return {
         "strategy": strategy,
         "resources": resources,
@@ -410,15 +439,12 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
 
     type_spec = {
         "lecture": (
-            "生成【降维/补基础讲义】: 覆盖全部key_points每条展开, 配边界反例(取自common_mistakes), "
-            "开头衔接prerequisites, 每条common_mistakes展开为「错误做法->正确做法」对照; 只用节点已有事实, 禁编造。"
+            "生成【降维/补基础讲义】: 针对该节点用类比简明重讲 1 个核心 key_point, 并纠正 1 个 common_mistake; "
+            "正文 250 字内, 只用节点已有事实, 禁编造。"
         ) if content_type == "lecture" else "",
         "test": (
-            "生成【进阶挑战题】含跨知识点推理题 + 测试用例。"
-            "\n【答案自检--消除答案幻觉】每道题答案/预期输出写入前须逐步心算执行验证, "
-            "重点复核: pop(i)删索引i元素/ remove/sort返回None/ sorted返回新列表; "
-            "find返回-1非None/ join由分隔符串调用/ 字符串方法返回新串不改原; "
-            "切片 s[a:b] 不含 b。无法确定则改出题方式。"
+            "生成【进阶挑战题】1 道跨知识点进阶选择题, 附答案字母与一句解析; "
+            "200 字内, 只用节点已有事实, 禁编造。"
         ),
     }.get(content_type, "")
 

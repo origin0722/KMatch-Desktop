@@ -63,7 +63,7 @@ async function handleStart() {
 .stage-body { padding: 16px; }
 
 /* #30: 单行方向 — 胶囊 + 输入同行, 溢出横向滚动 (隐藏滚动条) */
-.direction-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 4px; }
+.direction-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 2px; margin-bottom: 4px; }
 .direction-row::-webkit-scrollbar { display: none; }
 .preset-tag { cursor: pointer; font-size: 13px; user-select: none; flex-shrink: 0; margin: 0 !important; }
 .preset-tag:hover { opacity: 0.85; }
