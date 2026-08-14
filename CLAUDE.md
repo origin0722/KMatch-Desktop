@@ -78,7 +78,7 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [electron/main/ipc/http-proxy.js](electron/main/ipc/http-proxy.js) — HTTP 代理 IPC (渲染进程→主进程→backend)
 - [electron/preload/index.js](electron/preload/index.js) — Preload 脚本，暴露 window.api
 - [frontend/src/views/Workspace.vue](frontend/src/views/Workspace.vue) — IDE 壳布局
-- [frontend/src/ide/ActivityBar.vue](frontend/src/ide/ActivityBar.vue) — 活动栏 (视图切换 + 工具开关, 单一指示模型)
+- [frontend/src/ide/NavSidebar.vue](frontend/src/ide/NavSidebar.vue) — 左侧文字导航栏 (Codex 化, 替代 ActivityBar)
 - [frontend/src/ide/FileExplorer.vue](frontend/src/ide/FileExplorer.vue) — 文件资源管理器 (code 视图内)
 - [frontend/src/ide/MainArea.vue](frontend/src/ide/MainArea.vue) — 主区视图装载 (code/graph/assessment/learning/agents/dashboard)
 - [frontend/src/ide/EditorTabs.vue](frontend/src/ide/EditorTabs.vue) — 多标签页
