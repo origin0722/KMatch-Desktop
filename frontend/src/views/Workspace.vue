@@ -25,7 +25,7 @@
     <StatusBar />
 
     <!-- 首次引导 (脚本式多步, Codex 风格; 显隐收口 sidebar store, 设置页可重新触发) -->
-    <OnboardingOverlay :visible="sidebar.onboardingActive" @done="sidebar.finishOnboarding" />
+    <OnboardingOverlay :visible="sidebar.onboardingActive" @done="onOnboardDone" />
   </div>
 </template>
 
@@ -46,6 +46,12 @@ const sidebar = useSidebarStore()
 
 // 首次使用 (无 onboarded 标记) 自动弹引导; 重新触发入口在设置页「通用」段
 if (!localStorage.getItem('kmatch-onboarded')) sidebar.startOnboarding()
+
+// T5: 真正走完引导 -> 落到 chat 视图开始体验; 跳过则保持 code 视图
+function onOnboardDone(skipped) {
+  sidebar.finishOnboarding()
+  if (!skipped) sidebar.setView('chat')
+}
 
 onMounted(() => ws.loadRecent())
 </script>

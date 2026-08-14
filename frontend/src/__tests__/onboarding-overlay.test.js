@@ -18,7 +18,11 @@ vi.mock('@/stores/aiSettings', () => ({
 const global = {
   stubs: {
     'el-button': { template: '<button v-bind="$attrs"><slot /></button>' },
-    'el-input': { template: '<input v-bind="$attrs" />' },
+    'el-input': {
+      props: ['modelValue'],
+      emits: ['update:modelValue'],
+      template: `<input :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" v-bind="$attrs" />`,
+    },
   },
 }
 
@@ -51,6 +55,7 @@ describe('OnboardingOverlay', () => {
     expect(w.text()).toContain('一切就绪')
     await clickByText('进入'); await flushPromises()   // finish
     expect(w.emitted('done')).toBeTruthy()
+    expect(w.emitted('done')[0]).toEqual([false]) // T5: 走完引导带 skipped=false
     expect(localStorage.getItem('kmatch-onboarded')).toBe('1')
   })
 
@@ -59,7 +64,16 @@ describe('OnboardingOverlay', () => {
     const skip = w.findAll('button').find((b) => b.text().includes('跳过'))
     await skip.trigger('click')
     expect(w.emitted('done')).toBeTruthy()
+    expect(w.emitted('done')[0]).toEqual([true]) // T5: 跳过带 skipped=true
     expect(localStorage.getItem('kmatch-onboarded')).toBe('1')
+  })
+
+  it('T5: Key 输入过短时出现软提示 (不阻断)', async () => {
+    const w = mount(OnboardingOverlay, { props: { visible: true }, global })
+    const clickByText = (sub) => w.findAll('button').find((b) => b.text().includes(sub)).trigger('click')
+    await clickByText('继续') // 0 -> 1
+    await w.find('input').setValue('sk-short')
+    expect(w.text()).toContain('看起来偏短')
   })
 
   it('visible=false 时不渲染', () => {

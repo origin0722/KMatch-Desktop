@@ -40,6 +40,7 @@
                 <template #prefix><span class="ob-input-prefix">🔑</span></template>
               </el-input>
               <p class="ob-hint" v-if="aiSettings.apiKey && !keyInput">已配置 API Key, 留空保持不变。可在「设置」页随时更换厂商。</p>
+              <p class="ob-hint ob-hint-warn" v-else-if="keyInput.trim() && keyInput.trim().length < 20">这个 Key 看起来偏短, 请确认已完整粘贴 (可继续, 保存后可测试连接)。</p>
               <p class="ob-hint" v-else>可在「设置」页随时更换厂商或修改 Key。</p>
             </template>
 
@@ -65,7 +66,7 @@
             <!-- Step 3: 就绪 -->
             <template v-else>
               <h2 class="ob-title">一切就绪</h2>
-              <p class="ob-sub">从左侧「学习会话」开始, 或直接在右侧 AI 助手提问。你的学习图谱会随进度生长。</p>
+              <p class="ob-sub">马上为你打开 AI 助手。也可以从左侧「学习会话」开始, 你的学习图谱会随进度生长。</p>
               <div class="ob-ready-list">
                 <div class="ob-check">✓ AI 助手 {{ aiSettings.apiKey ? '已连接' : '稍后配置' }}</div>
                 <div class="ob-check">✓ 学习方向: {{ goalLabel }}</div>
@@ -88,7 +89,7 @@
             <el-button v-if="step < 3" type="primary" @click="next">
               {{ step === 1 ? (keyInput.trim() ? '保存并继续' : '继续') : '继续' }}
             </el-button>
-            <el-button v-else type="primary" @click="finish">进入 KMatch</el-button>
+            <el-button v-else type="primary" @click="finish()">进入 KMatch</el-button>
           </div>
         </div>
       </div>
@@ -144,14 +145,14 @@ function prev() {
   if (step.value > 0) step.value--
 }
 
-function finish() {
+function finish(skipped = false) {
   localStorage.setItem('kmatch-onboarded', '1')
   localStorage.removeItem('kmatch-onboard-step')
-  emit('done')
+  emit('done', skipped)
 }
 
 function skipAll() {
-  finish()
+  finish(true)
 }
 </script>
 
@@ -211,6 +212,7 @@ function skipAll() {
   margin: 0 0 22px;
 }
 .ob-hint { font-size: 12px; color: var(--km-gray-500); margin: 10px 2px 0; line-height: 1.6; }
+.ob-hint-warn { color: var(--km-warning, #b88230); }
 
 /* 特性列表 */
 .ob-feat-list { display: flex; flex-direction: column; gap: 10px; }
