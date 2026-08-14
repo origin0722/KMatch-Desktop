@@ -9,14 +9,16 @@ LLM 调用封装
 
 Spec B: per-request LLM overrides 通过 ContextVar 承载。
 - 路由层从请求体 llm_overrides 字段提取，用 use_llm_overrides(overrides) 上下文管理器 set。
-- 工作流路径：节点入口从 state["llm_overrides"] set/reset。
-- content_generator 的 ThreadPoolExecutor 工作线程不继承 ContextVar，需在 _safe_generate 内重新 set。
+- 工作流路径：节点用 @with_state_overrides 装饰器自动从 state["llm_overrides"] set/reset。
+- content_generator 的 ThreadPoolExecutor 工作线程不继承 ContextVar，用 safe_llm_call 包装。
 - 无 override 时 get_default_chat_model() 走 lru_cache 默认实例（行为不变，单测兼容）。
 """
 
 import contextvars
+import functools
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
-from typing import Optional, TypedDict
+from typing import Callable, Optional, TypedDict
 
 from langchain_openai import ChatOpenAI
 
@@ -132,3 +134,47 @@ def llm_configured() -> bool:
     if ovr and ovr.get("api_key"):
         return True
     return settings.LLM_API_KEY not in ("", "sk-placeholder")
+
+
+# ============================================================
+# Spec B 工作流节点 / 线程池复用 helpers
+# ============================================================
+
+def with_state_overrides(fn: Callable) -> Callable:
+    """装饰器：从 state["llm_overrides"] set ContextVar，节点退出自动 reset。
+
+    用于 LangGraph 工作流节点的 _node 函数（签名 (state) -> dict）。
+    无 overrides 时为 no-op（不设 ContextVar）。
+    """
+    @functools.wraps(fn)
+    def wrapper(state):
+        overrides = state.get("llm_overrides")
+        token = _current_overrides.set(overrides) if overrides else None
+        try:
+            return fn(state)
+        finally:
+            if token is not None:
+                _current_overrides.reset(token)
+    return wrapper
+
+
+def safe_llm_call(fn: Callable, *args, overrides: dict = None,
+                   logger=None, label: str = "") -> tuple[bool, Optional[dict]]:
+    """线程池 worker 包装：在 worker 线程内重设 ContextVar，异常不外抛。
+
+    ContextVar 不跨线程传播；ThreadPoolExecutor 的工作线程需显式 set，
+    使 fn 内的 get_default_chat_model() 读到 overrides。
+
+    Returns:
+        (ok, result_or_None): 成功返回 (True, result)；失败返回 (False, None)。
+    """
+    token = _current_overrides.set(overrides) if overrides else None
+    try:
+        return True, fn(*args)
+    except Exception:
+        if logger is not None:
+            logger.warning("LLM 调用失败 %s", label, exc_info=True)
+        return False, None
+    finally:
+        if token is not None:
+            _current_overrides.reset(token)

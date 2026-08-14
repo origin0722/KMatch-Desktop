@@ -91,6 +91,20 @@ def _strip_node(node: dict) -> dict:
     return {k: v for k, v in node.items() if not k.startswith("_")}
 
 
+def _empty_kg_result(log: list) -> dict:
+    """空图谱结果 (画像空/组装异常时复用, 字段与正常分支对齐 F7)。"""
+    return {
+        "knowledge_graph": {
+            "learning_path": [],
+            "path_node_ids": [],
+            "estimated_total_hours": 0.0,
+            "node_status_updates": {},
+            "assembled_at": datetime.utcnow().isoformat() + "Z",
+        },
+        "orchestration_log": log,
+    }
+
+
 def graph_controller_node(kg: KnowledgeGraph):
     """返回 LangGraph 节点函数。闭包注入 KnowledgeGraph 实例。"""
 
@@ -101,16 +115,7 @@ def graph_controller_node(kg: KnowledgeGraph):
         # 画像为空 (审核未通过/降级) → 跳过组装，写空图谱 (字段与正常分支对齐，F7)
         if not profile:
             log.append("⚠️ 画像为空，跳过路径组装")
-            return {
-                "knowledge_graph": {
-                    "learning_path": [],
-                    "path_node_ids": [],
-                    "estimated_total_hours": 0.0,
-                    "node_status_updates": {},
-                    "assembled_at": datetime.utcnow().isoformat() + "Z",
-                },
-                "orchestration_log": log,
-            }
+            return _empty_kg_result(log)
 
         known_ids = [t["node_id"] for t in profile.get("known_topics", []) if isinstance(t, dict) and t.get("node_id")]
         weak_ids = [t["node_id"] for t in profile.get("weak_topics", []) if isinstance(t, dict) and t.get("node_id")]
@@ -132,16 +137,7 @@ def graph_controller_node(kg: KnowledgeGraph):
         except Exception:
             logger.error("学习路径组装失败", exc_info=True)
             log.append("❌ 学习路径组装异常，写空路径")
-            return {
-                "knowledge_graph": {
-                    "learning_path": [],
-                    "path_node_ids": [],
-                    "estimated_total_hours": 0.0,
-                    "node_status_updates": {},
-                    "assembled_at": datetime.utcnow().isoformat() + "Z",
-                },
-                "orchestration_log": log,
-            }
+            return _empty_kg_result(log)
 
         clean_path = [_strip_node(n) for n in path]
         path_ids = [n["node_id"] for n in clean_path if n.get("node_id")]

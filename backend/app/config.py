@@ -46,6 +46,7 @@ class Settings:
     LLM_TIMEOUT: int = 60
     LLM_TEMPERATURE: float = 0.3
     REVIEW_PASS_THRESHOLD: float = float(os.getenv("REVIEW_PASS_THRESHOLD", "0.85"))
+    CONTENT_GEN_CONCURRENCY: int = int(os.getenv("CONTENT_GEN_CONCURRENCY", "5"))
 
     # --- 联网搜索 (Tavily, 学情反馈搜薄弱知识点相关网站) ---
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")

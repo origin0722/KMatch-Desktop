@@ -30,6 +30,7 @@ from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from app.agents.knowledge_context import build_knowledge_context
 from app.agents.llm import get_default_chat_model, llm_configured, use_llm_overrides
 from app.config import settings
 from app.graph.engine import KnowledgeGraph
@@ -74,24 +75,6 @@ from app.agents.code_safety import (  # noqa: F401
 # LLM 语义审查 (对照领域规范)
 # ============================================================
 
-def _build_knowledge_context(knowledge_nodes: list[dict]) -> str:
-    """把相关领域知识点 (key_points/common_mistakes) 组织成 LLM 上下文。"""
-    if not knowledge_nodes:
-        return "(未检索到相关领域知识点，仅按通用 Python 规范审查)"
-    lines = []
-    for n in knowledge_nodes:
-        nid = n.get("node_id") or n.get("id", "")
-        name = n.get("name", "")
-        kps = n.get("key_points", [])
-        mistakes = n.get("common_mistakes", [])
-        lines.append(f"- [{nid}] {name}")
-        if kps:
-            lines.append(f"  key_points: {json.dumps(kps, ensure_ascii=False)}")
-        if mistakes:
-            lines.append(f"  common_mistakes: {json.dumps(mistakes, ensure_ascii=False)}")
-    return "\n".join(lines)
-
-
 def llm_review_code(code: str, target_direction: str, knowledge_nodes: list[dict],
                     llm_overrides: dict = None) -> dict:
     """LLM 对照领域规范审查代码，返回四维度评分。
@@ -122,7 +105,7 @@ def llm_review_code(code: str, target_direction: str, knowledge_nodes: list[dict
         code_payload = code if len(code) <= 6000 else code[:6000] + "\n# ...(截断)"
         user = HumanMessage(content=(
             f"开发目标: {target_direction}\n\n"
-            f"相关领域知识规范:\n{_build_knowledge_context(knowledge_nodes)}\n\n"
+            f"相关领域知识规范:\n{build_knowledge_context(knowledge_nodes, empty_hint="(未检索到相关领域知识点，仅按通用 Python 规范审查)")}\n\n"
             f"待审代码:\n```python\n{code_payload}\n```\n\n"
             "审查要点: 逻辑是否正确(边界/类型/控制流)；是否存在安全隐患(注入/危险操作/敏感信息)；"
             "代码规范(命名/结构/可读性)；是否符合领域规范(common_mistakes 提到的误区是否触犯)。"

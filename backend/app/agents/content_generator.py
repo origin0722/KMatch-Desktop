@@ -22,8 +22,9 @@ from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured
+from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured, safe_llm_call, with_state_overrides
 from app.graph.engine import KnowledgeGraph
+from app.config import settings
 from app.utils.json_utils import parse_llm_json
 from app.utils.logging import get_logger
 
@@ -168,22 +169,15 @@ def _generate_one(node: dict, theory_level: int, content_type: str) -> dict:
 def content_generator_node(kg: KnowledgeGraph):
     """返回 LangGraph 节点函数。闭包注入 KnowledgeGraph 实例。"""
 
+    @with_state_overrides
     def _node(state) -> dict:
         profile = state.get("user_profile", {})
         kg_state = state.get("knowledge_graph", {}) or {}
         log = [f"[{datetime.utcnow().isoformat()}] 📚 领域知识生成: 开始"]
 
-        # Spec B: 工作流路径 set ContextVar；content_generator 的 ThreadPoolExecutor
-        # 工作线程不继承 ContextVar，_safe_generate 内闭包捕获 overrides 重新 set。
-        overrides = state.get("llm_overrides")
-        ctx_token = _current_overrides.set(overrides) if overrides else None
-        try:
-            return _node_body(state, profile, kg_state, log, overrides)
-        finally:
-            if ctx_token is not None:
-                _current_overrides.reset(ctx_token)
+        return _node_body(state, profile, kg_state, log)
 
-    def _node_body(state, profile, kg_state, log, overrides) -> dict:
+    def _node_body(state, profile, kg_state, log) -> dict:
         # 无学习路径 (图谱未组装/降级) → 跳过生成 (字段结构与正常分支对齐)
         # 仍标记 content_phase_entered=True: 防止 reviewer 回退画像模式 (BUG-031)
         learning_path = kg_state.get("learning_path", [])
@@ -215,22 +209,8 @@ def content_generator_node(kg: KnowledgeGraph):
         # 但稳定顺序便于调试与回归比对)。
         tasks = [(node, ctype) for node in target_nodes for ctype in CONTENT_TYPES]
 
-        def _safe_generate(node, ctype):
-            """单任务包装: 返回 (ok, result_or_None)。异常不外抛，避免 ThreadPool 终止其他任务。
-
-            Spec B: ContextVar 不跨线程传播；工作线程内闭包捕获 overrides 重新 set，
-            使 _generate_one → get_default_chat_model() 读到 overrides。
-            """
-            wtoken = _current_overrides.set(overrides) if overrides else None
-            try:
-                return True, _generate_one(node, theory_level, ctype)
-            except Exception:
-                logger.warning("生成失败 node=%s type=%s",
-                               node.get("node_id"), ctype, exc_info=True)
-                return False, None
-            finally:
-                if wtoken is not None:
-                    _current_overrides.reset(wtoken)
+        # Spec B: ContextVar 不跨线程传播；safe_llm_call 在 worker 内重设 overrides。
+        overrides = _current_overrides.get()
 
         resources = []
         failures = 0
@@ -238,11 +218,15 @@ def content_generator_node(kg: KnowledgeGraph):
         # 实测 (DeepSeek V4 Pro API, 9 次生成): 并发5 内容生成 137s, 并发3 反而 190s。
         # 降并发未能减少 429 退避 (DeepSeek 对并发5 限流不严重), 却多了轮次 (2轮 vs 3轮) 更慢。
         # 故默认 5; 仅在确认重度限流时调低, 或换更快模型/减资源数 (减 LLM 调用) 才能真降耗时。
-        import os
-        _concurrency = int(os.environ.get("CONTENT_GEN_CONCURRENCY", "5"))
-        max_workers = min(_concurrency, len(tasks)) if tasks else 1
+        max_workers = min(settings.CONTENT_GEN_CONCURRENCY, len(tasks)) if tasks else 1
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            results = list(pool.map(lambda args: _safe_generate(*args), tasks))
+            results = list(pool.map(
+                lambda args: safe_llm_call(
+                    _generate_one, args[0], theory_level, args[1],
+                    overrides=overrides, logger=logger,
+                    label=f"node={args[0].get('node_id')} type={args[1]}"),
+                tasks,
+            ))
 
         for ok, res in results:
             if ok and res is not None:
@@ -383,28 +367,18 @@ def regenerate_for_feedback(
     failures = 0
     overrides = _current_overrides.get()  # Spec B: 捕获主线程 override, worker 内重设 (ContextVar 不跨线程)
 
-    def _safe_feedback(node):
-        """单节点反馈再生包装: 异常不外抛, 避免 ThreadPool 终止其他任务。
-
-        Spec B: ContextVar 不跨线程传播; 工作线程内重设 overrides,
-        使 _generate_feedback_one -> get_default_chat_model() 读到 overrides
-        (与主生成路径 _safe_generate 同模式)。
-        """
-        wtoken = _current_overrides.set(overrides) if overrides else None
-        try:
-            return True, _generate_feedback_one(node, theory_level, content_type, log_hint)
-        except Exception:
-            logger.warning("feedback 再生失败 node=%s", node.get("node_id"), exc_info=True)
-            return False, None
-        finally:
-            if wtoken is not None:
-                _current_overrides.reset(wtoken)
-
     # 并行再生: target_nodes 通常 1-2 个, 全并发即可 (wall-clock ≈ 单次调用, 而非 N×串行)。
     # 串行模式下 2 节点 × 富 prompt(单次可达 60s+) 易超 150s 前端超时; 并行后 ≈ 单次耗时。
     # _generate_feedback_one 是无共享状态的纯 LLM 调用 (LangChain ChatModel 线程安全)。
+    # safe_llm_call 在 worker 内重设 ContextVar (Spec B overrides 不跨线程传播)。
     with ThreadPoolExecutor(max_workers=len(target_nodes)) as pool:
-        results = list(pool.map(_safe_feedback, target_nodes))
+        results = list(pool.map(
+            lambda node: safe_llm_call(
+                _generate_feedback_one, node, theory_level, content_type, log_hint,
+                overrides=overrides, logger=logger,
+                label=f"feedback node={node.get('node_id')}"),
+            target_nodes,
+        ))
 
     for ok, res in results:
         if ok and res is not None:

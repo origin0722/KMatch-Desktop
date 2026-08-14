@@ -38,6 +38,7 @@ from typing import Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agents.code_reviewer import hard_check_code_safety
+from app.agents.knowledge_context import build_knowledge_context
 from app.agents.llm import get_default_chat_model, llm_configured, use_llm_overrides
 from app.agents.sandbox import (
     SandboxExecutor,
@@ -95,21 +96,6 @@ def _build_signature_context(entities: list[CodeEntity], module_name: str) -> st
     return "\n".join(lines) if lines else "(无函数)"
 
 
-def _build_knowledge_context(knowledge_nodes: list[dict]) -> str:
-    """领域节点 key_points/common_mistakes → LLM 上下文 (策略2)。"""
-    if not knowledge_nodes:
-        return "(未检索到相关领域知识点)"
-    lines = []
-    for n in knowledge_nodes:
-        nid = n.get("node_id") or n.get("id", "")
-        name = n.get("name", "")
-        mistakes = n.get("common_mistakes", [])
-        lines.append(f"- [{nid}] {name}")
-        if mistakes:
-            lines.append(f"  common_mistakes: {json.dumps(mistakes, ensure_ascii=False)}")
-    return "\n".join(lines)
-
-
 def _retrieve_knowledge(kg: KnowledgeGraph, target_direction: str,
                         knowledge_node_ids: Optional[list[str]] = None,
                         top_k: int = 5) -> list[dict]:
@@ -157,7 +143,7 @@ def llm_generate_tests(entities: list[CodeEntity], knowledge_nodes: list[dict],
             f"模块名: {module_name}\n"
             f"开发目标: {target_direction}\n\n"
             f"待测函数（来自知识图谱接口定义）:\n{_build_signature_context(entities, module_name)}\n\n"
-            f"相关领域知识（common_mistakes 用于针对性测试）:\n{_build_knowledge_context(knowledge_nodes)}\n\n"
+            f"相关领域知识（common_mistakes 用于针对性测试）:\n{build_knowledge_context(knowledge_nodes, include_key_points=False)}\n\n"
             "输出格式:\n"
             "```python\n# 完整测试代码，from " + module_name + " import ...\n```\n"
             "```json\n{\"tests\":[{\"test_name\":\"test_xxx_happy_path\","
