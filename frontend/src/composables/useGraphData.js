@@ -57,28 +57,38 @@ export function useGraphData() {
   // ---------------------------------------------------------------
   // G6 v5 节点数组
   // ---------------------------------------------------------------
-  const g6Nodes = computed(() =>
-    rawNodes.value.map((n) => {
-      // BUG-051: 优先画像 mastery，其次节点 mastery，再次 mastery_status 兜底
-      const fromProfile = masteryMap.value[n.node_id]
-      const m = fromProfile != null
-        ? fromProfile
-        : (n.mastery ?? (n.mastery_status === 'mastered' ? 1.0 : 0))
-      return {
-        id: n.node_id,
-        data: {
-          label: n.name || n.node_id,
-          summary: n.summary || '',
-          key_points: Array.isArray(n.key_points) ? n.key_points : [],
-          mastery: m,
-          nodeColor: masteryColor(m),
-          nodeSize: masterySize(m),
-          category: n.category || '',
-          difficulty: n.difficulty || 1,
-        },
-      }
-    }),
-  )
+  // 按 node_id 去重 (保首个): G6 graphlib 对重复节点 id 直接抛 "Node already
+  // exists" 整图渲染失败, 后端 BFS 曾实测返回同节点多入口重复行 (2026-08-15
+  // AI 域 42 行/9 唯一, 已在 engine 侧 Cypher 二次聚合修复), 此处兜底防回归。
+  const g6Nodes = computed(() => {
+    const seen = new Set()
+    return rawNodes.value
+      .filter((n) => {
+        if (!n.node_id || seen.has(n.node_id)) return false
+        seen.add(n.node_id)
+        return true
+      })
+      .map((n) => {
+        // BUG-051: 优先画像 mastery，其次节点 mastery，再次 mastery_status 兜底
+        const fromProfile = masteryMap.value[n.node_id]
+        const m = fromProfile != null
+          ? fromProfile
+          : (n.mastery ?? (n.mastery_status === 'mastered' ? 1.0 : 0))
+        return {
+          id: n.node_id,
+          data: {
+            label: n.name || n.node_id,
+            summary: n.summary || '',
+            key_points: Array.isArray(n.key_points) ? n.key_points : [],
+            mastery: m,
+            nodeColor: masteryColor(m),
+            nodeSize: masterySize(m),
+            category: n.category || '',
+            difficulty: n.difficulty || 1,
+          },
+        }
+      })
+  })
 
   // ---------------------------------------------------------------
   // G6 v5 边数组（从 prereqMap 重建——BUG-045）
@@ -86,19 +96,22 @@ export function useGraphData() {
   const g6Edges = computed(() => {
     const edges = []
     const nodeIdSet = new Set(rawNodes.value.map((n) => n.node_id))
+    const edgeSet = new Set() // source>target 去重, 防重复前置画叠边
     let idx = 0
     for (const n of rawNodes.value) {
       const prereqs = prereqMap.value[n.node_id] || []
       for (const p of prereqs) {
         // 仅当前置节点也在当前路径中时才画边（避免孤立连接线）
-        if (nodeIdSet.has(p)) {
-          edges.push({
-            id: `edge-${idx++}`,
-            source: p,
-            target: n.node_id,
-            data: {},
-          })
+        if (!nodeIdSet.has(p) || edgeSet.has(`${p}>${n.node_id}`)) {
+          continue
         }
+        edgeSet.add(`${p}>${n.node_id}`)
+        edges.push({
+          id: `edge-${idx++}`,
+          source: p,
+          target: n.node_id,
+          data: {},
+        })
       }
     }
     return edges
