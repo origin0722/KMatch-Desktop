@@ -54,6 +54,19 @@ export function getProjectGraph(projectId) {
 }
 
 /**
+ * LLM 深度分析项目图谱 + 联网搜索技术栈学习资源 (按需)
+ * @param {string} projectId
+ * @param {string} [tavilyKey] Tavily API Key (空时后端用 settings)
+ * @returns {Promise<Object>} {summary, architecture, complexity, recommendations, tech_stack, web_resources}
+ */
+export function analyzeProject(projectId, tavilyKey) {
+  return http.post('/api/project/analyze', {
+    project_id: projectId,
+    tavily_key: tavilyKey || undefined,
+  })
+}
+
+/**
  * 后端 ProjectGraphResponse -> projectGraph store setGraph 入参格式
  * (nodes G6 -> entities 扁平, 字段名驼峰化; chat 工具与 store 自动解析共用)
  * @param {Object} data 后端响应 {project_id, nodes, edges, stats, written_to_neo4j}
@@ -62,20 +75,54 @@ export function getProjectGraph(projectId) {
  */
 export function normalizeGraphResponse(data, sourcePath = '') {
   const d = data || {}
-  const entities = (d.nodes || []).map((n) => ({
-    id: n.id,
-    name: n.label,
-    kind: n.group,
-    qualified_name: n.properties?.qualified_name || n.label,
-    line_start: n.properties?.line_start,
-    line_end: n.properties?.line_end,
-  }))
+  const entities = (d.nodes || []).map((n) => {
+    const p = n.properties || {}
+    return {
+      id: n.id,
+      name: n.label,
+      kind: n.group,
+      qualified_name: p.qualified_name || n.label,
+      line_start: p.line_start,
+      line_end: p.line_end,
+      module_name: p.module_name,
+      docstring: p.docstring || '',
+      params: _parseJsonField(p.params, []),
+      return_type: p.return_type || '',
+      bases: _parseJsonField(p.bases, []),
+      decorators: _parseJsonField(p.decorators, []),
+      external_calls: _parseJsonField(p.external_calls, []),
+      source_code: p.source_code || '',
+      is_method: !!p.is_method,
+    }
+  })
   return {
     projectId: d.project_id,
-    stats: d.stats || {},
+    stats: _mapStats(d.stats),
     entities,
     relations: d.edges || [],
     sourcePath,
     written: !!d.written_to_neo4j,
   }
+}
+
+/** Neo4j 存 JSON 字符串的列表字段安全解析 */
+function _parseJsonField(v, fallback) {
+  if (Array.isArray(v)) return v
+  if (typeof v === 'string') { try { return JSON.parse(v) } catch { return fallback } }
+  return fallback
+}
+
+/** 后端 stats key (function_count) -> 前端期望的短 key (function) */
+function _mapStats(stats) {
+  if (!stats || typeof stats !== 'object') return {}
+  const map = {
+    module_count: 'module', class_count: 'class',
+    function_count: 'function', method_count: 'method',
+    contains_count: 'contains', call_count: 'call',
+    inheritance_count: 'inheritance', external_call_count: 'external_call',
+    relation_count: 'relation',
+  }
+  const out = {}
+  for (const [k, v] of Object.entries(stats)) out[map[k] || k] = v
+  return out
 }

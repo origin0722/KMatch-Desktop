@@ -28,6 +28,7 @@ from app.code_parser import (
 )
 from app.agents.code_reviewer import review_code
 from app.agents.code_tester import run_tests
+from app.agents.project_analyzer import analyze_project
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -233,6 +234,39 @@ def test_project_code_api(req: TestRequest, request: Request):
     except Exception as e:
         logger.error("代码测试失败", exc_info=True)
         raise HTTPException(status_code=500, detail=f"代码测试失败: {e}")
+    return result
+
+
+# ============================================================
+# POST /analyze - LLM 深度分析 + 联网搜索 (按需)
+# ============================================================
+
+class AnalyzeRequest(BaseModel):
+    project_id: str
+    tavily_key: Optional[str] = None    # None 时用 settings.TAVILY_API_KEY
+
+
+@router.post("/analyze", summary="LLM 深度分析项目图谱 + 联网搜索技术栈学习资源")
+def analyze_project_api(req: AnalyzeRequest, request: Request):
+    """按需触发: 从 Neo4j 取项目图谱 -> LLM 分析架构 -> 联网搜技术栈教程。
+
+    不在自动解析流程中, 需用户手动点击"深度分析"按钮。
+    返回 {summary, architecture, complexity, recommendations, tech_stack, web_resources}。
+    """
+    if not req.project_id or not req.project_id.strip():
+        raise HTTPException(status_code=422, detail="project_id 必填")
+
+    kg = _get_kg(request)
+    try:
+        result = analyze_project(kg, req.project_id, tavily_key=req.tavily_key)
+    except ValueError as e:
+        msg = str(e)
+        if "不存在" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=503, detail=msg)
+    except Exception as e:
+        logger.error("项目深度分析失败 project=%s", req.project_id, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"项目深度分析失败: {e}")
     return result
 
 

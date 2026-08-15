@@ -11,7 +11,9 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse } from '@/api/project'
+import { useLearningResourcesStore } from '@/stores/learningResources'
+import { useAiSettingsStore } from '@/stores/aiSettings'
+import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse, analyzeProject } from '@/api/project'
 
 const LS_KEY = 'kmatch-last-project-id'
 
@@ -122,6 +124,38 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     }
   }
 
+  // ---- P3: LLM 深度分析 + 联网搜索 (按需) ----
+  const analyzing = ref(false)
+  const analysis = ref(null) // {summary, architecture, complexity, recommendations, tech_stack, web_resources}
+
+  /** 按需深度分析: LLM 分析架构 + 联网搜技术栈教程, 结果流入 learningResources */
+  async function analyze() {
+    const g = graph.value
+    if (!g?.projectId) {
+      ElMessage.warning('请先解析项目图谱')
+      return
+    }
+    analyzing.value = true
+    try {
+      const aiSettings = useAiSettingsStore()
+      const { data } = await analyzeProject(g.projectId, aiSettings.tavilyKey)
+      analysis.value = data
+      // web_resources 流入 learningResources store (学习视图可查看)
+      const lr = useLearningResourcesStore()
+      if (data.web_resources?.length) {
+        lr.addWebResources('项目深度分析', data.web_resources.map((r) => ({
+          title: r.title, url: r.url, snippet: r.snippet,
+        })))
+      }
+      ElMessage.success('项目深度分析完成')
+    } catch (e) {
+      const msg = e?.response?.data?.detail || e?.message || '深度分析失败'
+      ElMessage.error(msg)
+    } finally {
+      analyzing.value = false
+    }
+  }
+
   // P2: 订阅 workspace 项目打开事件 -> 后台自动解析 (只订阅一次)
   let _unsubscribeProjectOpen = null
   function _ensureProjectOpenSubscription() {
@@ -140,6 +174,8 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     stale.value = false
     parsing.value = false
     parseError.value = null
+    analyzing.value = false
+    analysis.value = null
   }
 
   /** chat 实体点击 -> 触发 Monaco 跳转 */
@@ -169,8 +205,9 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   return {
     graph, stale, parsing, parseError, revealTarget, activeLine, activeEntityId,
+    analyzing, analysis,
     setGraph, clear, clearStale, markStale,
-    parseCurrentProject, restorePersisted,
+    parseCurrentProject, restorePersisted, analyze,
     requestReveal, setActiveLine, consumeReveal,
   }
 })

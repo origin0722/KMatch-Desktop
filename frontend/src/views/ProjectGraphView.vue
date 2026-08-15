@@ -14,6 +14,18 @@
       </div>
     </div>
 
+    <!-- 技术栈自动检测 (AST 数据驱动, 零 LLM) -->
+    <div v-if="techStack.length" class="pg-tech-bar">
+      <span class="pg-tech-label">技术栈</span>
+      <el-tag
+        v-for="t in techStack"
+        :key="t.name"
+        size="small"
+        class="pg-tech-tag"
+        @click="searchTechResource(t.name)"
+      >{{ t.name }} <span class="pg-tech-cat">{{ t.category }}</span></el-tag>
+    </div>
+
     <!-- 过期提示 (源文件被外部改动, 行号漂移) -->
     <el-alert v-if="pg.stale" type="warning" :closable="false" show-icon class="pg-stale">
       项目图谱已过期 (源文件被外部改动, 行号可能漂移), 建议在 AI 助手中重新解析
@@ -70,6 +82,13 @@
           </el-select>
           <el-button :icon="RefreshRight" @click="resetGraph">重置</el-button>
           <el-button :icon="RefreshRight" :loading="pg.parsing" @click="handleParse">重新解析</el-button>
+          <el-button
+            type="warning"
+            plain
+            :loading="pg.analyzing"
+            :disabled="!pg.graph?.projectId"
+            @click="handleAnalyze"
+          >深度分析</el-button>
 
           <el-popover placement="bottom" :width="180" trigger="click">
             <template #reference>
@@ -119,9 +138,46 @@
                 <span class="label">全名</span>
                 <code>{{ selectedEntity.qualified_name }}</code>
               </div>
+              <div class="detail-row" v-if="selectedEntity.module_name">
+                <span class="label">模块</span>
+                <code>{{ selectedEntity.module_name }}</code>
+              </div>
               <div class="detail-row" v-if="selectedEntity.line_start != null">
                 <span class="label">行范围</span>
                 <code>{{ selectedEntity.line_start }}-{{ selectedEntity.line_end }}</code>
+              </div>
+              <!-- docstring (折叠展示) -->
+              <div v-if="selectedEntity.docstring" class="rel-section">
+                <span class="label">文档字符串</span>
+                <pre class="entity-docstring" @click="docstringExpanded = !docstringExpanded">{{ docstringExpanded ? selectedEntity.docstring : selectedEntity.docstring.slice(0, 120) + (selectedEntity.docstring.length > 120 ? '…' : '') }}</pre>
+              </div>
+              <!-- 参数列表 -->
+              <div v-if="entityParams.length" class="rel-section">
+                <span class="label">参数 ({{ entityParams.length }})</span>
+                <div class="param-list">
+                  <code v-for="p in entityParams" :key="p.name" class="param-item">{{ p.name }}<span v-if="p.annotation" class="param-type">: {{ p.annotation }}</span></code>
+                </div>
+              </div>
+              <!-- 继承基类 -->
+              <div v-if="selectedEntity.bases?.length" class="rel-section">
+                <span class="label">继承</span>
+                <div class="rel-list">
+                  <el-tag v-for="b in selectedEntity.bases" :key="b" size="small" type="warning" class="rel-tag">{{ b }}</el-tag>
+                </div>
+              </div>
+              <!-- 装饰器 -->
+              <div v-if="selectedEntity.decorators?.length" class="rel-section">
+                <span class="label">装饰器</span>
+                <div class="rel-list">
+                  <el-tag v-for="d in selectedEntity.decorators" :key="d" size="small" type="danger" class="rel-tag">{{ d }}</el-tag>
+                </div>
+              </div>
+              <!-- 外部依赖 -->
+              <div v-if="entityExternalDeps.length" class="rel-section">
+                <span class="label">外部依赖 ({{ entityExternalDeps.length }})</span>
+                <div class="rel-list">
+                  <el-tag v-for="dep in entityExternalDeps" :key="dep" size="small" type="info" class="rel-tag">{{ dep }}</el-tag>
+                </div>
               </div>
               <div v-if="callsOut.length" class="rel-section">
                 <span class="label">调用 ({{ callsOut.length }})</span>
@@ -171,6 +227,62 @@
             <template #header><span>实体详情</span></template>
             <el-empty description="点击图谱节点查看详情" :image-size="60" />
           </el-card>
+
+          <!-- P3: 深度分析结果 -->
+          <el-card v-if="pg.analysis" shadow="never" class="panel-card analysis-card">
+            <template #header>
+              <div class="analysis-header">
+                <span>项目分析</span>
+                <el-button text size="small" @click="pg.analysis = null">关闭</el-button>
+              </div>
+            </template>
+            <div class="analysis-body">
+              <!-- 概要 -->
+              <p v-if="pg.analysis.summary" class="analysis-summary">{{ pg.analysis.summary }}</p>
+
+              <!-- 架构 -->
+              <div v-if="pg.analysis.architecture" class="analysis-section">
+                <div class="analysis-label">架构模式</div>
+                <el-tag size="small">{{ pg.analysis.architecture.pattern || '未知' }}</el-tag>
+                <div v-if="pg.analysis.architecture.entry_points?.length" class="analysis-sub">
+                  <span class="analysis-label-sm">入口点</span>
+                  <el-tag v-for="ep in pg.analysis.architecture.entry_points" :key="ep" size="small" type="info" class="analysis-tag">{{ ep }}</el-tag>
+                </div>
+                <div v-if="pg.analysis.architecture.key_modules?.length" class="analysis-sub">
+                  <span class="analysis-label-sm">关键模块</span>
+                  <div v-for="m in pg.analysis.architecture.key_modules" :key="m" class="analysis-module">{{ m }}</div>
+                </div>
+              </div>
+
+              <!-- 复杂度 -->
+              <div v-if="pg.analysis.complexity" class="analysis-section">
+                <div class="analysis-label">复杂度</div>
+                <el-tag size="small" :type="pg.analysis.complexity.level === '高' ? 'danger' : pg.analysis.complexity.level === '中' ? 'warning' : 'success'">
+                  {{ pg.analysis.complexity.level || '未知' }}
+                </el-tag>
+                <p v-if="pg.analysis.complexity.note" class="analysis-note">{{ pg.analysis.complexity.note }}</p>
+              </div>
+
+              <!-- 学习建议 -->
+              <div v-if="pg.analysis.recommendations?.length" class="analysis-section">
+                <div class="analysis-label">学习建议</div>
+                <ul class="analysis-recs">
+                  <li v-for="(r, i) in pg.analysis.recommendations" :key="i">{{ r }}</li>
+                </ul>
+              </div>
+
+              <!-- 联网资源 -->
+              <div v-if="pg.analysis.web_resources?.length" class="analysis-section">
+                <div class="analysis-label">联网资源 ({{ pg.analysis.web_resources.length }})</div>
+                <div v-for="(r, i) in pg.analysis.web_resources" :key="i" class="analysis-resource">
+                  <a :href="r.url" target="_blank" rel="noopener" class="analysis-link" :title="r.url">
+                    <span class="analysis-res-tech">[{{ r.tech }}]</span> {{ r.title }}
+                  </a>
+                  <p v-if="r.snippet" class="analysis-snippet">{{ r.snippet }}</p>
+                </div>
+              </div>
+            </div>
+          </el-card>
         </div>
       </div>
     </template>
@@ -193,17 +305,24 @@
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { Search, RefreshRight, ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { Graph } from '@antv/g6'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore } from '@/stores/chat'
 import { buildEntityQuestion } from '@/utils/askAi'
+import { detectTechStack } from '@/utils/techStack'
+import http from '@/api'
+import { useLearningResourcesStore } from '@/stores/learningResources'
+import { useAiSettingsStore } from '@/stores/aiSettings'
 
 const pg = useProjectGraphStore()
 const sidebar = useSidebarStore()
 const ws = useWorkspaceStore()
 const chat = useChatStore()
+const lr = useLearningResourcesStore()
+const aiSettings = useAiSettingsStore()
 const containerRef = ref(null)
 let g6 = null
 
@@ -223,6 +342,56 @@ const searchQuery = ref('')
 const kindFilter = ref('')
 const selectedEntity = ref(null)
 const panelCollapsed = ref(false)
+const docstringExpanded = ref(false)
+
+// 实体详情: 参数列表 (从 params 数组格式化)
+const entityParams = computed(() => {
+  const e = selectedEntity.value
+  if (!e?.params) return []
+  return e.params.filter((p) => p && p.name).slice(0, 12)
+})
+
+// 实体详情: 外部依赖 (external_calls 去重, 取 top-level 模块名)
+const entityExternalDeps = computed(() => {
+  const e = selectedEntity.value
+  if (!e?.external_calls) return []
+  const mods = new Set()
+  for (const c of e.external_calls) {
+    const name = typeof c === 'string' ? c : c?.name
+    if (!name) continue
+    mods.add(name.split('.')[0])
+  }
+  return [...mods].sort().slice(0, 15)
+})
+
+// 技术栈自动检测 (扫描所有实体 external_calls, 零 LLM)
+const techStack = computed(() => {
+  const g = pg.graph
+  if (!g?.entities) return []
+  return detectTechStack(g.entities)
+})
+
+// 搜索中标志 (技术栈 badge 点击触发联网搜索)
+const searchingTech = ref(false)
+
+// 技术栈 badge 点击 -> 联网搜该技术的学习资源 -> 流入 learningResources store
+async function searchTechResource(techName) {
+  if (searchingTech.value) return
+  searchingTech.value = true
+  try {
+    const { data } = await http.post('/api/search/web', {
+      query: `${techName} Python 教程 入门`,
+      max_results: 5,
+      tavily_key: aiSettings.tavilyKey || undefined,
+    })
+    lr.addWebResources(techName, data?.results || [])
+    ElMessage.success(`已搜索 ${techName} 学习资源, 请到学习视图查看`)
+  } catch (e) {
+    ElMessage.warning('联网搜索失败, 请检查 Tavily Key 配置')
+  } finally {
+    searchingTech.value = false
+  }
+}
 
 // 过滤后的实体 (按 kind + 名称子串)
 const filteredEntities = computed(() => {
@@ -406,6 +575,10 @@ function goCode() { sidebar.setView('code') }
 function handleParse() {
   pg.parseCurrentProject()
 }
+
+function handleAnalyze() {
+  pg.analyze()
+}
 </script>
 
 <style scoped>
@@ -420,6 +593,13 @@ function handleParse() {
 .pg-stats span { white-space: nowrap; }
 .pg-stale { margin-bottom: 12px; }
 .pg-hint { font-size: 12px; color: var(--km-gray-500); margin: 0 0 8px; }
+
+/* ---- 技术栈 badges ---- */
+.pg-tech-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pg-tech-label { font-size: 12px; color: var(--km-gray-500); flex-shrink: 0; }
+.pg-tech-tag { cursor: pointer; transition: opacity 0.15s; }
+.pg-tech-tag:hover { opacity: 0.8; }
+.pg-tech-cat { font-size: 10px; opacity: 0.7; margin-left: 2px; }
 .pg-empty-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
 .pg-empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .pg-empty-state .pg-spin { color: var(--km-primary, #6c7ce0); }
@@ -510,10 +690,44 @@ function handleParse() {
 }
 .rel-section { margin-top: 10px; }
 .entity-actions { display: flex; gap: 8px; margin-top: 12px; }
+.entity-docstring {
+  margin: 4px 0 0; padding: 8px 10px; border-radius: 6px;
+  background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light);
+  font-size: 12px; line-height: 1.6; color: var(--km-gray-600);
+  white-space: pre-wrap; word-break: break-word; cursor: pointer; max-height: 200px; overflow-y: auto;
+}
+.param-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.param-item {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light);
+}
+.param-type { color: var(--km-gray-500); }
 .rel-section > .label {
   display: block; color: var(--km-gray-500); font-size: 13px; margin-bottom: 6px;
 }
 .rel-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .rel-tag { cursor: pointer; }
 .rel-tag:hover { opacity: 0.8; }
+
+/* ---- 深度分析结果面板 ---- */
+.analysis-card { margin-top: 12px; }
+.analysis-header { display: flex; align-items: center; justify-content: space-between; }
+.analysis-body { font-size: 13px; color: var(--km-gray-700); }
+.analysis-summary { margin: 0 0 12px; line-height: 1.6; }
+.analysis-section { margin-bottom: 12px; }
+.analysis-label { font-size: 12px; color: var(--km-gray-500); margin-bottom: 4px; }
+.analysis-label-sm { font-size: 11px; color: var(--km-gray-500); margin-right: 4px; }
+.analysis-sub { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.analysis-tag { margin: 2px 0; }
+.analysis-module { font-size: 12px; color: var(--km-gray-600); padding: 2px 0; }
+.analysis-note { font-size: 12px; color: var(--km-gray-500); margin: 4px 0 0; }
+.analysis-recs { margin: 0; padding-left: 16px; font-size: 12px; color: var(--km-gray-600); line-height: 1.8; }
+.analysis-resource { margin-bottom: 8px; }
+.analysis-link {
+  font-size: 12px; color: var(--km-primary, #6c7ce0); text-decoration: none;
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.analysis-link:hover { text-decoration: underline; }
+.analysis-res-tech { font-size: 10px; color: var(--km-gray-500); }
+.analysis-snippet { font-size: 11px; color: var(--km-gray-500); margin: 2px 0 0; line-height: 1.4; }
 </style>

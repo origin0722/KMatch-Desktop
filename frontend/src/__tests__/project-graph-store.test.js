@@ -14,12 +14,13 @@ vi.mock('@/api/project', async (importOriginal) => {
     readProjectPyFiles: vi.fn(),
     parseProjectFiles: vi.fn(),
     getProjectGraph: vi.fn(),
+    analyzeProject: vi.fn(),
   }
 })
 
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse } from '@/api/project'
+import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse, analyzeProject } from '@/api/project'
 
 const FAKE_RESPONSE = {
   project_id: 'files-abc123',
@@ -47,6 +48,72 @@ describe('normalizeGraphResponse (纯函数)', () => {
     const r = normalizeGraphResponse(null)
     expect(r.entities).toEqual([])
     expect(r.projectId).toBeUndefined()
+  })
+
+  it('传递完整丰富属性 (docstring/params/external_calls/bases/decorators)', () => {
+    const r = normalizeGraphResponse({
+      project_id: 'p1',
+      nodes: [{
+        id: 'n1', label: 'foo', group: 'function',
+        properties: {
+          qualified_name: 'mod.foo',
+          docstring: 'doc',
+          params: [{ name: 'x', type: 'int' }],
+          return_type: 'str',
+          bases: ['Base'],
+          decorators: ['@app.route'],
+          external_calls: ['requests.get'],
+          module_name: 'mod',
+          source_code: 'def foo(): pass',
+          is_method: true,
+        },
+      }],
+      edges: [],
+      stats: {},
+    })
+    const e = r.entities[0]
+    expect(e.docstring).toBe('doc')
+    expect(e.params).toEqual([{ name: 'x', type: 'int' }])
+    expect(e.return_type).toBe('str')
+    expect(e.bases).toEqual(['Base'])
+    expect(e.decorators).toEqual(['@app.route'])
+    expect(e.external_calls).toEqual(['requests.get'])
+    expect(e.module_name).toBe('mod')
+    expect(e.is_method).toBe(true)
+  })
+
+  it('stats key 映射: function_count -> function', () => {
+    const r = normalizeGraphResponse({
+      project_id: 'p1', nodes: [], edges: [],
+      stats: {
+        function_count: 5, class_count: 2, method_count: 3,
+        module_count: 1, call_count: 10, relation_count: 15,
+      },
+    })
+    expect(r.stats.function).toBe(5)
+    expect(r.stats.class).toBe(2)
+    expect(r.stats.method).toBe(3)
+    expect(r.stats.module).toBe(1)
+    expect(r.stats.call).toBe(10)
+    expect(r.stats.relation).toBe(15)
+  })
+
+  it('JSON 字符串字段安全解析', () => {
+    const r = normalizeGraphResponse({
+      project_id: 'p1',
+      nodes: [{
+        id: 'n1', label: 'f', group: 'function',
+        properties: {
+          params: '[{"name":"a"}]',
+          external_calls: '["requests.get"]',
+          bases: '[]',
+        },
+      }],
+      edges: [], stats: {},
+    })
+    expect(r.entities[0].params).toEqual([{ name: 'a' }])
+    expect(r.entities[0].external_calls).toEqual(['requests.get'])
+    expect(r.entities[0].bases).toEqual([])
   })
 })
 
@@ -162,5 +229,52 @@ describe('projectGraph store - restorePersisted', () => {
     const pg = useProjectGraphStore()
     await pg.restorePersisted()
     expect(getProjectGraph).not.toHaveBeenCalled()
+  })
+})
+
+describe('projectGraph store - analyze (P3 深度分析)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it('成功: 调 analyzeProject -> analysis 填充 + web_resources 流入 learningResources', async () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'demo', entities: [], relations: [], stats: {}, sourcePath: '', written: true }, '/p')
+
+    analyzeProject.mockResolvedValue({
+      data: {
+        summary: '一个爬虫项目',
+        architecture: { pattern: '单体脚本', entry_points: ['crawl'], key_modules: [] },
+        complexity: { level: '低', note: '简单' },
+        recommendations: ['学 requests'],
+        tech_stack: ['requests', 'bs4'],
+        web_resources: [{ title: '教程', url: 'https://ex.com', snippet: '示例', tech: 'requests' }],
+      },
+    })
+
+    await pg.analyze()
+
+    expect(pg.analyzing).toBe(false)
+    expect(pg.analysis).toBeTruthy()
+    expect(pg.analysis.summary).toBe('一个爬虫项目')
+    expect(analyzeProject).toHaveBeenCalledWith('demo', '')
+  })
+
+  it('无图谱 -> 提示, 不调 API', async () => {
+    const pg = useProjectGraphStore()
+    await pg.analyze()
+    expect(analyzeProject).not.toHaveBeenCalled()
+  })
+
+  it('API 报错 -> analyzing 复位, analysis 不变', async () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'demo', entities: [], relations: [], stats: {}, sourcePath: '', written: true }, '/p')
+    analyzeProject.mockRejectedValue({ message: 'LLM 未配置' })
+
+    await pg.analyze()
+    expect(pg.analyzing).toBe(false)
+    expect(pg.analysis).toBe(null)
   })
 })
