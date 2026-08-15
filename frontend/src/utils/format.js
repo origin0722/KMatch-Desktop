@@ -58,6 +58,18 @@ export function difficultyTagType(d) {
 }
 
 /**
+ * 难度 → 图谱节点填充色 (阈值对齐 difficultyTagType)
+ * hex 值镜像 styles/theme.css 的 --km-* token (canvas/G6 不能读 CSS 变量)
+ * @param {number} d 1..5
+ * @returns {string} hex 颜色
+ */
+export function difficultyColor(d) {
+  if (d <= 2) return '#34b37e'  // 入门 — km-success
+  if (d <= 3) return '#f0a040'  // 进阶 — km-warning
+  return '#e05555'              // 高级 — km-danger
+}
+
+/**
  * content_type → 中文名
  * @param {string} type
  * @returns {string}

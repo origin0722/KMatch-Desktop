@@ -109,14 +109,19 @@
               <el-button class="legend-btn">图例</el-button>
             </template>
             <div class="legend-popover">
-              <div class="legend-title">分类</div>
-              <div v-for="cat in categories" :key="cat" class="legend-item">
-                <span class="dot" :style="{ background: categoryColor(cat) }"></span> {{ cat }}
+              <div class="legend-title">节点颜色 · 难度</div>
+              <div class="legend-item">
+                <span class="dot" :style="{ background: difficultyColor(1) }"></span> ⭐ 入门 (1-2)
               </div>
-              <div class="legend-title">难度</div>
-              <div class="legend-item">⭐ 入门 (1-2)</div>
-              <div class="legend-item">⭐⭐⭐ 进阶 (3)</div>
-              <div class="legend-item">⭐⭐⭐⭐⭐ 高级 (4-5)</div>
+              <div class="legend-item">
+                <span class="dot" :style="{ background: difficultyColor(3) }"></span> ⭐⭐⭐ 进阶 (3)
+              </div>
+              <div class="legend-item">
+                <span class="dot" :style="{ background: difficultyColor(4) }"></span> ⭐⭐⭐⭐⭐ 高级 (4-5)
+              </div>
+              <div class="legend-title">节点边框 · 掌握度</div>
+              <div class="legend-item"><span class="dot mastered-dot"></span> 已掌握 (≥80%)</div>
+              <div class="legend-item"><span class="dot" :style="{ border: `1px solid ${difficultyColor(1)}` }"></span> 未掌握 (细灰框)</div>
             </div>
           </el-popover>
 
@@ -295,7 +300,7 @@ import { Search, RefreshRight, Loading, ArrowLeft, ArrowRight } from '@element-p
 import { Graph } from '@antv/g6'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useGraphData } from '@/composables/useGraphData'
-import { masteryColor } from '@/utils/format'
+import { masteryColor, difficultyColor } from '@/utils/format'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
 import { ElMessage } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -525,7 +530,8 @@ function initGraph() {
       node: {
         type: 'rect',
         style: {
-          fill: (d) => categoryColor(d.data?.category),
+          // 难度着色 (单域路径全同 category, 按分类着色会全图同色; 难度天然有梯度)
+          fill: (d) => difficultyColor(d.data?.difficulty || 1),
           size: cfg.node,
           labelText: (d) => cfg.label(d.data),
           labelPlacement: 'center',
@@ -533,12 +539,13 @@ function initGraph() {
           labelFill: '#ffffff',
           labelMaxWidth: cfg.labelMax,
           labelLineHeight: 18,
-          stroke: THEME.gray300,
-          lineWidth: 1,
+          // 掌握度改由边框表达 (已掌握 ≥0.8 绿色加粗)
+          stroke: (d) => (d.data?.mastery ?? 0) >= 0.8 ? '#34b37e' : THEME.gray300,
+          lineWidth: (d) => (d.data?.mastery ?? 0) >= 0.8 ? 2.5 : 1,
           radius: 8,
           opacity: (d) => d.data?.dimmed ? 0.35 : 1,
         },
-        state: { hover: { lineWidth: 2, shadowBlur: 12, shadowColor: THEME.primary } },
+        state: { hover: { lineWidth: 3.5, shadowBlur: 12, shadowColor: THEME.primary } },
       },
       edge: {
         style: {
@@ -868,7 +875,11 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 .dot {
   width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
 }
-/* 分类色经 inline style 注入, 见 template legend */
+/* 图例: 已掌握绿框样式 (对齐节点 mastery≥0.8 的加粗绿边框) */
+.mastered-dot {
+  background: transparent; border: 2.5px solid #34b37e; box-sizing: border-box;
+}
+/* 难度/分类色经 inline style 注入, 见 template legend */
 
 /* ---- 搜索无结果 ---- */
 .search-alert { margin-bottom: 16px; }
