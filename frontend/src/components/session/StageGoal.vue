@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { reactive, computed } from 'vue'
+import { reactive, computed, onMounted } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 
 const store = useAssessmentStore()
@@ -47,6 +47,14 @@ const presetDirections = [
   '数据库与缓存', '工程化实践',
 ]
 const canStart = computed(() => form.targetDirection.trim().length > 0)
+
+// P4: 引导选的方向 (kmatch-onboard-direction) 预填一次, tag 选中态自动高亮
+onMounted(() => {
+  try {
+    const dir = localStorage.getItem('kmatch-onboard-direction')
+    if (dir) form.targetDirection = dir
+  } catch { /* localStorage 不可用时忽略 */ }
+})
 
 async function handleStart() {
   if (!canStart.value) return

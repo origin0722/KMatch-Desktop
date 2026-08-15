@@ -47,10 +47,12 @@ const sidebar = useSidebarStore()
 // 首次使用 (无 onboarded 标记) 自动弹引导; 重新触发入口在设置页「通用」段
 if (!localStorage.getItem('kmatch-onboarded')) sidebar.startOnboarding()
 
-// T5: 真正走完引导 -> 落到 chat 视图开始体验; 跳过则保持 code 视图
-function onOnboardDone(skipped) {
+// 引导完成: 按场景落地 (学新技能 -> learning-session, 有项目 -> code; 跳过保持当前视图)
+function onOnboardDone(skipped, scene) {
   sidebar.finishOnboarding()
-  if (!skipped) sidebar.setView('chat')
+  if (skipped) return
+  if (scene === 'project') sidebar.setView('code')
+  else sidebar.setView('learning-session')
 }
 
 onMounted(() => ws.loadRecent())

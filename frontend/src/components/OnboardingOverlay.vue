@@ -44,32 +44,55 @@
               <p class="ob-hint" v-else>可在「设置」页随时更换厂商或修改 Key。</p>
             </template>
 
-            <!-- Step 2: 学习方向 -->
+            <!-- Step 2: 学习场景 + 方向 -->
             <template v-else-if="step === 2">
-              <h2 class="ob-title">你想学什么?</h2>
-              <p class="ob-sub">选一个方向, 我们会在学习会话里为你量身规划起点。</p>
-              <div class="ob-goal-grid">
+              <h2 class="ob-title">你想怎么开始?</h2>
+              <p class="ob-sub">选一个场景, 我们会为你打开对应的工作区。</p>
+              <div class="ob-scene-grid">
                 <button
-                  v-for="g in GOALS"
-                  :key="g.key"
+                  v-for="s in SCENES"
+                  :key="s.key"
                   type="button"
-                  class="ob-goal"
-                  :class="{ on: goal === g.key }"
-                  @click="goal = g.key"
+                  class="ob-scene"
+                  :class="{ on: scene === s.key }"
+                  @click="scene = s.key"
                 >
-                  <span class="ob-goal-ico">{{ g.icon }}</span>
-                  <span class="ob-goal-name">{{ g.name }}</span>
+                  <span class="ob-scene-ico">{{ s.icon }}</span>
+                  <span class="ob-scene-name">{{ s.name }}</span>
+                  <span class="ob-scene-desc">{{ s.desc }}</span>
                 </button>
               </div>
+              <!-- 学新技能: 展开方向选择 -->
+              <template v-if="scene === 'learn'">
+                <p class="ob-sub-section">选一个方向, 我们会在学习会话里为你量身规划起点。</p>
+                <div class="ob-goal-grid">
+                  <button
+                    v-for="g in GOALS"
+                    :key="g.key"
+                    type="button"
+                    class="ob-goal"
+                    :class="{ on: goal === g.key }"
+                    @click="goal = g.key"
+                  >
+                    <span class="ob-goal-ico">{{ g.icon }}</span>
+                    <span class="ob-goal-name">{{ g.name }}</span>
+                  </button>
+                </div>
+              </template>
+              <!-- 有项目: 提示打开项目 -->
+              <template v-else>
+                <p class="ob-hint ob-hint-project">完成后从左侧文件管理器「打开项目」, 我们会自动解析代码生成知识图谱, AI 助手也能基于项目结构回答架构问题。</p>
+              </template>
             </template>
 
             <!-- Step 3: 就绪 -->
             <template v-else>
               <h2 class="ob-title">一切就绪</h2>
-              <p class="ob-sub">马上为你打开 AI 助手。也可以从左侧「学习会话」开始, 你的学习图谱会随进度生长。</p>
+              <p class="ob-sub">{{ scene === 'learn' ? '马上为你打开学习会话, 你的学习图谱会随进度生长。' : '马上为你打开代码视图, 打开项目后自动生成知识图谱。' }}</p>
               <div class="ob-ready-list">
                 <div class="ob-check">✓ AI 助手 {{ aiSettings.apiKey ? '已连接' : '稍后配置' }}</div>
-                <div class="ob-check">✓ 学习方向: {{ goalLabel }}</div>
+                <div class="ob-check" v-if="scene === 'learn'">✓ 学习方向: {{ goalLabel }}</div>
+                <div class="ob-check" v-else>✓ 场景: 有项目二次开发</div>
                 <div class="ob-check">✓ 知识图谱就绪</div>
               </div>
             </template>
@@ -108,17 +131,22 @@ const emit = defineEmits(['done'])
 
 const aiSettings = useAiSettingsStore()
 
+const SCENES = [
+  { key: 'learn', icon: '🎓', name: '学新技能', desc: '无项目, 从零开始学' },
+  { key: 'project', icon: '🔧', name: '有项目二次开发', desc: '已有项目, 想理解并改进' },
+]
 const GOALS = [
-  { key: 'basic', icon: '🐍', name: 'Python 基础语法' },
-  { key: 'crawler', icon: '🕸️', name: '网络爬虫' },
-  { key: 'data', icon: '📊', name: '数据分析' },
-  { key: 'web', icon: '🌐', name: 'Web 开发' },
+  { key: 'basic', icon: '🐍', name: 'Python 基础语法', direction: 'Python 基础语法入门' },
+  { key: 'crawler', icon: '🕸️', name: '网络爬虫', direction: '网络爬虫' },
+  { key: 'data', icon: '📊', name: '数据分析', direction: '数据分析与可视化' },
+  { key: 'web', icon: '🌐', name: 'Web 开发', direction: 'Web 后端开发' },
 ]
 
 // 续步: 从 localStorage 恢复上次进度 (未完成引导时重开可续)
 const storedStep = Number(localStorage.getItem('kmatch-onboard-step')) || 0
 const step = ref(isNaN(storedStep) ? 0 : Math.min(3, Math.max(0, storedStep)))
 const keyInput = ref('')
+const scene = ref(localStorage.getItem('kmatch-onboard-scene') || 'learn')
 const goal = ref(localStorage.getItem('kmatch-onboard-goal') || 'basic')
 
 const providerLabel = computed(() => {
@@ -128,6 +156,7 @@ const providerLabel = computed(() => {
 const goalLabel = computed(() => GOALS.find((g) => g.key === goal.value)?.name || '未选择')
 
 watch(step, (s) => localStorage.setItem('kmatch-onboard-step', String(s)))
+watch(scene, (s) => localStorage.setItem('kmatch-onboard-scene', s))
 watch(goal, (g) => localStorage.setItem('kmatch-onboard-goal', g))
 
 async function next() {
@@ -136,7 +165,13 @@ async function next() {
     keyInput.value = ''
   }
   if (step.value === 2) {
-    // 方向已由 watch 持久化
+    // 学新技能场景: goal -> 方向文本写入 kmatch-onboard-direction (StageGoal.vue 读取预填)
+    if (scene.value === 'learn') {
+      const g = GOALS.find((x) => x.key === goal.value)
+      if (g?.direction) localStorage.setItem('kmatch-onboard-direction', g.direction)
+    } else {
+      localStorage.removeItem('kmatch-onboard-direction')
+    }
   }
   if (step.value < 3) step.value++
 }
@@ -145,10 +180,11 @@ function prev() {
   if (step.value > 0) step.value--
 }
 
+// done 事件携带场景, 由 Workspace.vue 决定落地视图; onboarded 标记由 sidebar store 单点写
 function finish(skipped = false) {
-  localStorage.setItem('kmatch-onboarded', '1')
+  // 跳过/完成时清 step 残留 (goal/scene/direction 保留供后续读取)
   localStorage.removeItem('kmatch-onboard-step')
-  emit('done', skipped)
+  emit('done', skipped, skipped ? null : scene.value)
 }
 
 function skipAll() {
@@ -236,6 +272,32 @@ function skipAll() {
 .ob-input-prefix { font-size: 14px; }
 
 /* 目标网格 */
+.ob-sub-section { font-size: 12px; color: var(--km-gray-500); margin: 16px 0 10px; }
+.ob-scene-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ob-scene {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 18px 12px;
+  border-radius: 12px;
+  background: var(--km-bg-layer-2);
+  border: 1.5px solid var(--km-border-light);
+  cursor: pointer;
+  transition: all 0.18s var(--km-ease);
+}
+.ob-scene:hover { border-color: var(--km-border-focus); transform: translateY(-1px); }
+.ob-scene.on {
+  border-color: var(--km-primary);
+  background: var(--km-primary-light);
+  box-shadow: 0 6px 18px -8px var(--km-primary);
+}
+.ob-scene-ico { font-size: 26px; }
+.ob-scene-name { font-size: 13px; font-weight: 600; color: var(--km-gray-700); }
+.ob-scene-desc { font-size: 11px; color: var(--km-gray-500); }
+.ob-hint-project { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); line-height: 1.7; }
+
 .ob-goal-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -301,5 +363,6 @@ function skipAll() {
 @media (max-width: 520px) {
   .ob-card { padding: 28px 22px 22px; border-radius: 16px; }
   .ob-goal-grid { grid-template-columns: 1fr; }
+  .ob-scene-grid { grid-template-columns: 1fr; }
 }
 </style>
