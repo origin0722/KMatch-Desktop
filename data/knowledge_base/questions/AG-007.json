@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AG007-001",
+    "source_node_id": "AG-007",
+    "type": "choice",
+    "question": "RAG 的典型流程顺序是下列哪一项？",
+    "options": [
+      "A. 查询改写 → 检索 → 重排序 → 生成",
+      "B. 检索 → 查询改写 → 生成 → 重排序",
+      "C. 生成 → 检索 → 重排序 → 查询改写",
+      "D. 查询改写 → 重排序 → 检索 → 生成"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "RAG流程包含查询改写、检索、重排序和生成。",
+    "created_at": "2026-08-15T11:06:49.833338Z"
+  },
+  {
+    "qid": "Q-AG007-002",
+    "source_node_id": "AG-007",
+    "type": "fill",
+    "question": "在 RAG 中，检索质量直接影响最终回答的____。",
+    "options": [],
+    "answer": "可信度",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "节点指出检索质量直接影响最终回答可信度。",
+    "created_at": "2026-08-15T11:06:49.833338Z"
+  }
+]

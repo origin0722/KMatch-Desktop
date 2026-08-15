@@ -1488,5 +1488,474 @@
     "source": "llm_generated",
     "domain_label": "人工智能",
     "created_at": "2026-08-14T12:41:23.126305Z"
+  },
+  {
+    "id": "AG-001",
+    "name": "LLM 基础与提示词",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "大语言模型通过预测下一个词元生成文本，是 Agent 推理与执行的基础。掌握系统提示、少样本提示、上下文窗口和温度等基本概念，有助于稳定控制模型输出。理解 LLM 的输入输出限制，是后续学习工具调用、记忆和规划的前提。",
+    "prerequisites": [],
+    "key_points": [
+      "LLM 通过预测下一个词元生成文本",
+      "系统提示可设定 Agent 角色与行为边界",
+      "少样本提示提供示例帮助模型稳定输出格式",
+      "上下文窗口限制决定单次可处理信息量"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-001",
+        "type": "choice",
+        "question": "LLM 生成文本的基本机制是什么？",
+        "options": [
+          "A. 通过预测下一个词元生成文本",
+          "B. 通过检索数据库匹配答案",
+          "C. 通过规则模板生成回复",
+          "D. 通过随机拼接词语"
+        ],
+        "answer": "A",
+        "difficulty": 1,
+        "explanation": "LLM 通过预测下一个词元生成文本。"
+      }
+    ],
+    "common_mistakes": [
+      "忽略系统提示对行为约束的作用",
+      "把上下文窗口当作无限记忆",
+      "认为模型输出天然适合直接执行"
+    ],
+    "tags": [
+      "LLM",
+      "提示词",
+      "基础"
+    ],
+    "estimated_minutes": 35,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-002",
+    "name": "AI Agent 核心概念",
+    "difficulty": 1,
+    "category": "动态领域",
+    "summary": "AI Agent 是以大语言模型为核心，具备目标理解、规划、工具调用、记忆与反馈循环的智能体系统。它不只是一次问答，而是通过感知任务目标、拆解步骤、调用工具并观察结果来持续执行。理解其核心组成与运行循环，是学习 ReAct、记忆、规划等模块的基础。",
+    "prerequisites": [
+      "AG-001"
+    ],
+    "key_points": [
+      "Agent 由模型、工具、记忆和规划等模块组成",
+      "运行过程通常包含目标理解、行动、观察与反思循环",
+      "Agent 与环境交互是实现自主任务的关键",
+      "与单轮 LLM 不同，Agent 具备多步执行能力"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-002",
+        "type": "choice",
+        "question": "AI Agent 与单轮 LLM 的主要区别是什么？",
+        "options": [
+          "A. Agent 使用更大的模型",
+          "B. Agent 具备多步执行能力",
+          "C. Agent 不需要提示词",
+          "D. Agent 只能回答单轮问题"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "explanation": "与单轮 LLM 不同，Agent 具备多步执行能力。"
+      }
+    ],
+    "common_mistakes": [
+      "把 Agent 简单当作预设流程的聊天机器人",
+      "认为 Agent 必须使用复杂框架才能实现",
+      "忽视观察与反馈环节，只关注模型输出"
+    ],
+    "tags": [
+      "Agent",
+      "概念",
+      "入门"
+    ],
+    "estimated_minutes": 40,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-003",
+    "name": "ReAct 推理与行动",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "ReAct 是一种将推理与行动交替结合的 Agent 执行范式。模型在每一步先分析当前状态、生成思考，再选择调用工具或返回答案，并根据观察结果继续推理。该模式能提升任务透明度和复杂问题解决能力，是许多 Agent 框架的基础。",
+    "prerequisites": [
+      "AG-002",
+      "AG-001"
+    ],
+    "key_points": [
+      "ReAct 让模型交替进行推理与行动",
+      "每一步包含思考、行动、观察三个基本环节",
+      "推理内容可帮助模型修正后续动作",
+      "相比纯生成答案更适合需要外部信息或工具的任务"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-003",
+        "type": "choice",
+        "question": "ReAct 每一步包含哪三个基本环节？",
+        "options": [
+          "A. 思考、行动、观察",
+          "B. 输入、编码、输出",
+          "C. 推理、执行、反馈",
+          "D. 感知、规划、行动"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "ReAct 每一步包含思考、行动、观察三个基本环节。"
+      }
+    ],
+    "common_mistakes": [
+      "把思考内容当作最终答案直接返回给用户",
+      "不设置最大步数导致循环无法终止",
+      "仅使用推理而不调用工具，无法获取外部信息"
+    ],
+    "tags": [
+      "ReAct",
+      "推理",
+      "Agent",
+      "框架"
+    ],
+    "estimated_minutes": 50,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-004",
+    "name": "工具调用与自定义工具",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "工具调用让 Agent 突破语言生成限制，能够查询实时数据、执行代码、操作外部系统。开发者需要定义工具的名称、描述、参数模式，让模型准确选择并调用。自定义工具通常封装 API 或脚本，并遵循结构化输入输出，使 Agent 能可靠完成特定任务。",
+    "prerequisites": [
+      "AG-003"
+    ],
+    "key_points": [
+      "工具调用是 Agent 连接外部世界的关键能力",
+      "工具描述和参数模式直接影响模型选择准确性",
+      "自定义工具应封装明确输入输出和错误处理",
+      "常用工具包括搜索、代码执行、数据库查询等"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-004",
+        "type": "choice",
+        "question": "工具描述和参数模式直接影响什么？",
+        "options": [
+          "A. 模型选择准确性",
+          "B. 模型训练速度",
+          "C. 上下文窗口大小",
+          "D. 提示词长度"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "工具描述和参数模式直接影响模型选择准确性。"
+      }
+    ],
+    "common_mistakes": [
+      "工具描述模糊导致模型调用错误",
+      "没有校验工具输入输出格式",
+      "在一个工具中塞入过多功能增加选择难度"
+    ],
+    "tags": [
+      "工具调用",
+      "自定义工具",
+      "API",
+      "函数调用"
+    ],
+    "estimated_minutes": 45,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-005",
+    "name": "记忆与上下文管理",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "记忆让 Agent 在长任务中保持用户偏好、历史决策和中间结果。短期记忆通常依赖上下文窗口，长期记忆则通过向量检索或外部存储实现。有效的上下文管理包括摘要、压缩、擦除和检索，以平衡信息完整性与窗口限制。",
+    "prerequisites": [
+      "AG-002",
+      "AG-001"
+    ],
+    "key_points": [
+      "记忆分为短期上下文和长期存储两类",
+      "上下文窗口有限，需要摘要、裁剪或检索策略",
+      "长期记忆常用向量数据库或外部记忆库实现",
+      "用户偏好与任务状态需要显式读写机制"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-005",
+        "type": "choice",
+        "question": "关于 Agent 记忆与上下文管理，下列哪项说法是正确的？",
+        "options": [
+          "A. 长期记忆通常只保存在当前上下文窗口中",
+          "B. 上下文窗口无限，无需任何管理策略",
+          "C. 短期上下文和长期存储是记忆的两类主要形式",
+          "D. 用户偏好无需显式读写机制"
+        ],
+        "answer": "C",
+        "difficulty": 2,
+        "explanation": "记忆分为短期上下文和长期存储两类，上下文窗口有限需要管理策略。"
+      }
+    ],
+    "common_mistakes": [
+      "把上下文窗口当作无限记忆",
+      "把所有历史信息无筛选地塞入提示词",
+      "长期记忆只存不检，导致信息不可用"
+    ],
+    "tags": [
+      "记忆",
+      "上下文",
+      "向量检索"
+    ],
+    "estimated_minutes": 45,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-006",
+    "name": "规划与任务分解",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "规划使 Agent 将复杂目标拆解为可执行的子任务，并安排执行顺序与依赖关系。常见方法包括思维链分解、任务列表、计划-执行-反思等。良好的规划能提高任务完成率，并为多智能体协作提供任务分配基础。",
+    "prerequisites": [
+      "AG-003",
+      "AG-002"
+    ],
+    "key_points": [
+      "复杂任务需要拆解为多个可管理子目标",
+      "任务依赖关系决定执行先后顺序",
+      "执行过程中需要根据新观察调整计划",
+      "规划质量直接影响 Agent 任务成功率"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-006",
+        "type": "choice",
+        "question": "关于 Agent 规划与任务分解，下列哪项是错误的？",
+        "options": [
+          "A. 复杂任务需要拆解为多个可管理子目标",
+          "B. 任务依赖关系决定执行先后顺序",
+          "C. 执行过程中需要根据新观察调整计划",
+          "D. 规划一旦确定就不应再改变"
+        ],
+        "answer": "D",
+        "difficulty": 2,
+        "explanation": "执行过程中需要根据新观察调整计划，因此规划不是固定不变的。"
+      }
+    ],
+    "common_mistakes": [
+      "一次性生成过于粗略的计划导致执行偏差",
+      "不根据执行结果调整后续任务",
+      "将规划与执行割裂，忽视反馈循环"
+    ],
+    "tags": [
+      "规划",
+      "任务分解",
+      "反思"
+    ],
+    "estimated_minutes": 50,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-007",
+    "name": "RAG 与知识增强",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "检索增强生成让 Agent 在生成前从外部知识库检索相关文档片段，以降低知识缺失和幻觉风险。Agent 场景中，RAG 通常作为工具或知识来源集成，为回答提供证据，并支持溯源与更新。",
+    "prerequisites": [
+      "AG-001",
+      "AG-004"
+    ],
+    "key_points": [
+      "RAG 通过检索外部文档补充模型知识",
+      "典型流程包含查询改写、检索、重排序和生成",
+      "检索质量直接影响最终回答可信度",
+      "RAG 可与工具调用组合实现知识型任务"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-007",
+        "type": "choice",
+        "question": "RAG 的典型流程顺序是下列哪一项？",
+        "options": [
+          "A. 查询改写 → 检索 → 重排序 → 生成",
+          "B. 检索 → 查询改写 → 生成 → 重排序",
+          "C. 生成 → 检索 → 重排序 → 查询改写",
+          "D. 查询改写 → 重排序 → 检索 → 生成"
+        ],
+        "answer": "A",
+        "difficulty": 2,
+        "explanation": "RAG流程包含查询改写、检索、重排序和生成。"
+      }
+    ],
+    "common_mistakes": [
+      "认为向量检索命中就代表回答正确",
+      "忽略对检索结果的筛选与排序",
+      "把 RAG 当作唯一知识来源而不更新库"
+    ],
+    "tags": [
+      "RAG",
+      "检索",
+      "知识库"
+    ],
+    "estimated_minutes": 45,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-008",
+    "name": "多智能体协同",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "多智能体系统通过多个具备不同角色或能力的 Agent 协作完成复杂任务，例如研究员、写手、评审等角色分工。协同模式包括对话式协作、流水线式分工和中心化调度。设计时需关注消息协议、任务分配、冲突解决和结果整合。",
+    "prerequisites": [
+      "AG-006",
+      "AG-005"
+    ],
+    "key_points": [
+      "多智能体通过角色分工提升复杂任务处理能力",
+      "常见结构包括流水线、群体讨论和调度中心",
+      "Agent 间通信需要明确消息格式与状态共享",
+      "冲突解决和结果整合是工程关键"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-008",
+        "type": "choice",
+        "question": "下列哪项不属于多智能体协同的常见结构？",
+        "options": [
+          "A. 流水线",
+          "B. 群体讨论",
+          "C. 调度中心",
+          "D. 单体决策树"
+        ],
+        "answer": "D",
+        "difficulty": 3,
+        "explanation": "常见结构包括流水线、群体讨论和调度中心，单体决策树不是。"
+      }
+    ],
+    "common_mistakes": [
+      "角色划分过细导致通信开销过大",
+      "没有共享记忆或状态导致信息丢失",
+      "缺少终止条件使多 Agent 讨论无限循环"
+    ],
+    "tags": [
+      "多智能体",
+      "协作",
+      "角色分工"
+    ],
+    "estimated_minutes": 60,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-009",
+    "name": "MCP 与 A2A 协议",
+    "difficulty": 2,
+    "category": "动态领域",
+    "summary": "MCP 为 Agent 提供标准化的工具、资源与上下文接入方式，A2A 协议则让不同 Agent 系统之间互操作。理解这些协议有助于构建可扩展、可集成的 Agent 生态，避免每个工具或 Agent 单独做定制连接。",
+    "prerequisites": [
+      "AG-004",
+      "AG-008"
+    ],
+    "key_points": [
+      "MCP 标准化 Agent 连接外部工具和数据源的方式",
+      "A2A 面向不同 Agent 系统之间的互操作",
+      "协议抽象可减少重复集成工作",
+      "可根据任务需要选择 MCP server 或 A2A 通信"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-009",
+        "type": "choice",
+        "question": "以下哪种场景最适合使用 MCP（Model Context Protocol）？",
+        "options": [
+          "A. 让两个不同厂商的 Agent 系统互相协作",
+          "B. 让单个 Agent 标准化地访问外部数据库或工具",
+          "C. 在两个 Agent 之间传输对话历史",
+          "D. 定义 Agent 的长期记忆格式"
+        ],
+        "answer": "B",
+        "difficulty": 2,
+        "explanation": "MCP 标准化 Agent 连接外部工具和数据源的方式，而 A 属于 A2A 的互操作场景。"
+      }
+    ],
+    "common_mistakes": [
+      "把所有通信问题都交给协议而不设计接口语义",
+      "混淆 MCP 与 A2A 的适用层级",
+      "忽略安全与权限控制直接暴露工具"
+    ],
+    "tags": [
+      "MCP",
+      "A2A",
+      "协议",
+      "互操作"
+    ],
+    "estimated_minutes": 50,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
+  },
+  {
+    "id": "AG-010",
+    "name": "上下文工程与评估落地",
+    "difficulty": 3,
+    "category": "动态领域",
+    "summary": "上下文工程是系统化设计、压缩和调度输入给模型的信息，以在窗口限制下稳定完成任务。工程落地还需要构建评估集、观测运行轨迹、统计工具调用成功率与任务完成率，并据此迭代提示词、工具和流程。该环节是把 Agent 从演示推进到生产可用的关键。",
+    "prerequisites": [
+      "AG-005",
+      "AG-009"
+    ],
+    "key_points": [
+      "上下文工程关注信息选择、排序、压缩与注入时机",
+      "评估需要覆盖端到端任务成功率和关键步骤指标",
+      "轨迹观测可定位规划、工具或检索环节的问题",
+      "迭代应基于评估数据而非主观感觉"
+    ],
+    "practice_questions": [
+      {
+        "node_id": "AG-010",
+        "type": "choice",
+        "question": "关于上下文工程，下列哪项不属于其关注点？",
+        "options": [
+          "A. 信息选择与排序",
+          "B. 信息压缩",
+          "C. 注入时机",
+          "D. 模型参数调整"
+        ],
+        "answer": "D",
+        "difficulty": 3,
+        "explanation": "上下文工程关注信息选择、排序、压缩与注入时机，不涉及模型参数调整。"
+      }
+    ],
+    "common_mistakes": [
+      "只在本地跑通就认为 Agent 可用",
+      "没有构建覆盖典型场景的评估集",
+      "把所有信息都放入上下文而不做结构化控制"
+    ],
+    "tags": [
+      "上下文工程",
+      "评估",
+      "落地",
+      "可观测性"
+    ],
+    "estimated_minutes": 70,
+    "source": "llm_generated",
+    "domain_label": "AI Agent",
+    "created_at": "2026-08-15T11:06:02.680766Z"
   }
 ]

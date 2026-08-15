@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AG009-001",
+    "source_node_id": "AG-009",
+    "type": "choice",
+    "question": "以下哪种场景最适合使用 MCP（Model Context Protocol）？",
+    "options": [
+      "A. 让两个不同厂商的 Agent 系统互相协作",
+      "B. 让单个 Agent 标准化地访问外部数据库或工具",
+      "C. 在两个 Agent 之间传输对话历史",
+      "D. 定义 Agent 的长期记忆格式"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "MCP 标准化 Agent 连接外部工具和数据源的方式，而 A 属于 A2A 的互操作场景。",
+    "created_at": "2026-08-15T11:06:49.833338Z"
+  },
+  {
+    "qid": "Q-AG009-002",
+    "source_node_id": "AG-009",
+    "type": "fill",
+    "question": "MCP 标准化 Agent 连接外部工具和____的方式；A2A 面向不同 Agent 系统之间的____。",
+    "options": [],
+    "answer": "数据源；互操作",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "节点要点直接表述了 MCP 与 A2A 各自的标准化对象。",
+    "created_at": "2026-08-15T11:06:49.833338Z"
+  }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AG002-001",
+    "source_node_id": "AG-002",
+    "type": "choice",
+    "question": "AI Agent 与单轮 LLM 的主要区别是什么？",
+    "options": [
+      "A. Agent 使用更大的模型",
+      "B. Agent 具备多步执行能力",
+      "C. Agent 不需要提示词",
+      "D. Agent 只能回答单轮问题"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "与单轮 LLM 不同，Agent 具备多步执行能力。",
+    "created_at": "2026-08-15T11:06:49.832832Z"
+  },
+  {
+    "qid": "Q-AG002-002",
+    "source_node_id": "AG-002",
+    "type": "fill",
+    "question": "Agent 运行过程中通常包含目标理解、行动、观察与____循环。",
+    "options": [],
+    "answer": "反思",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "Agent 运行过程包含目标理解、行动、观察与反思循环。",
+    "created_at": "2026-08-15T11:06:49.832832Z"
+  }
+]

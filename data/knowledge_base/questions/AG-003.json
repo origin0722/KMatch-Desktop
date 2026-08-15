@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AG003-001",
+    "source_node_id": "AG-003",
+    "type": "choice",
+    "question": "ReAct 每一步包含哪三个基本环节？",
+    "options": [
+      "A. 思考、行动、观察",
+      "B. 输入、编码、输出",
+      "C. 推理、执行、反馈",
+      "D. 感知、规划、行动"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "ReAct 每一步包含思考、行动、观察三个基本环节。",
+    "created_at": "2026-08-15T11:06:49.832832Z"
+  },
+  {
+    "qid": "Q-AG003-002",
+    "source_node_id": "AG-003",
+    "type": "fill",
+    "question": "ReAct 让模型交替进行推理与____。",
+    "options": [],
+    "answer": "行动",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "ReAct 让模型交替进行推理与行动。",
+    "created_at": "2026-08-15T11:06:49.832832Z"
+  }
+]

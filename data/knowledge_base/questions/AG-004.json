@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AG004-001",
+    "source_node_id": "AG-004",
+    "type": "choice",
+    "question": "工具描述和参数模式直接影响什么？",
+    "options": [
+      "A. 模型选择准确性",
+      "B. 模型训练速度",
+      "C. 上下文窗口大小",
+      "D. 提示词长度"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "工具描述和参数模式直接影响模型选择准确性。",
+    "created_at": "2026-08-15T11:06:49.832832Z"
+  },
+  {
+    "qid": "Q-AG004-002",
+    "source_node_id": "AG-004",
+    "type": "fill",
+    "question": "自定义工具应封装明确输入输出和____。",
+    "options": [],
+    "answer": "错误处理",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "自定义工具应封装明确输入输出和错误处理。",
+    "created_at": "2026-08-15T11:06:49.832832Z"
+  }
+]
