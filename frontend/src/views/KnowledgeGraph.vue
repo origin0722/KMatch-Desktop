@@ -269,6 +269,15 @@
                   </el-tag>
                 </div>
               </div>
+              <!-- 不懂就问: 节点上下文预填到 AI 助手 (可编辑后发送, 不自动发) -->
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                class="ask-ai-btn"
+                data-test="ask-ai"
+                @click="askAiAboutNode"
+              >问 AI 助手</el-button>
             </div>
             </template>
             <el-empty v-else description="点击图谱节点查看详情" :image-size="60" />
@@ -304,11 +313,14 @@ import { masteryColor, difficultyColor } from '@/utils/format'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
 import { ElMessage } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useChatStore } from '@/stores/chat'
+import { buildNodeQuestion } from '@/utils/askAi'
 import PathFinderModal from '@/components/PathFinderModal.vue'
 
 const store = useAssessmentStore()
 const data = useGraphData()
 const sidebar = useSidebarStore()
+const chat = useChatStore()
 
 // 主题色常量 (镜像 styles/theme.css 的 --km-* token, 供 G6 canvas 使用)
 const THEME = {
@@ -349,6 +361,15 @@ const personaCfg = () => PERSONA[sidebar.persona] || PERSONA.intermediate
 
 // 前往学习会话 (IDE 内切主区视图, 非路由跳转)
 const goSession = () => sidebar.setView('learning-session')
+
+// 不懂就问: 节点上下文预填 AI 助手输入框并切到 chat 视图 (用户可编辑后发送)
+function askAiAboutNode() {
+  const n = selectedNode.value
+  if (!n) return
+  chat.setDraft(buildNodeQuestion(
+    n, (prereqNodes.value || []).map((p) => p.name || p.node_id)))
+  sidebar.setView('chat')
+}
 
 // ---------------------------------------------------------------
 // 搜索 & 筛选状态
@@ -984,6 +1005,7 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
   color: var(--km-gray-700); font-size: 13px; line-height: 1.7;
 }
 .prereq-section { margin-top: 12px; }
+.ask-ai-btn { margin-top: 14px; width: 100%; }
 .prereq-section > .label {
   display: block; color: var(--km-gray-500);
   font-size: 13px; margin-bottom: 6px;

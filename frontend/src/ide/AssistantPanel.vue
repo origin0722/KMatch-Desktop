@@ -541,7 +541,12 @@ const projectGraph = useProjectGraphStore()
 const backend = useBackendHealthStore()
 const modelVision = useModelVisionStore()
 
-const inputText = ref('')
+// 输入框绑定 chat.draft (store): 图谱/项目图谱详情"问 AI"按钮预填后,
+// 切到 chat 视图 (或右侧分栏) 都能带出, 可编辑后再发送
+const inputText = computed({
+  get: () => chat.draft,
+  set: (v) => { chat.draft = v },
+})
 const inputRef = ref(null)
 const configPopoverVisible = ref(false)
 const msgContainer = ref(null)

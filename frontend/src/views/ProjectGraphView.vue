@@ -130,13 +130,22 @@
                   >{{ c.name }}</el-tag>
                 </div>
               </div>
-              <el-button
-                size="small"
-                type="primary"
-                :disabled="selectedEntity.line_start == null"
-                @click="jumpToCode(selectedEntity)"
-                style="margin-top: 10px"
-              >跳转源码</el-button>
+              <div class="entity-actions">
+                <el-button
+                  size="small"
+                  type="primary"
+                  :disabled="selectedEntity.line_start == null"
+                  @click="jumpToCode(selectedEntity)"
+                >跳转源码</el-button>
+                <!-- 不懂就问: 实体上下文预填 AI 助手 (可编辑后发送, 不自动发) -->
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  data-test="ask-ai"
+                  @click="askAiAboutEntity"
+                >让 AI 解释</el-button>
+              </div>
             </div>
           </el-card>
 
@@ -169,9 +178,12 @@ import { Search, RefreshRight, ArrowLeft, ArrowRight } from '@element-plus/icons
 import { Graph } from '@antv/g6'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useChatStore } from '@/stores/chat'
+import { buildEntityQuestion } from '@/utils/askAi'
 
 const pg = useProjectGraphStore()
 const sidebar = useSidebarStore()
+const chat = useChatStore()
 const containerRef = ref(null)
 let g6 = null
 
@@ -338,6 +350,18 @@ function jumpToCode(e) {
   if (e?.line_start != null) pg.requestReveal(e.line_start, e.line_end, e.name)
 }
 
+// 不懂就问: 实体上下文预填 AI 助手并切 chat 视图 (用户可编辑后发送)
+function askAiAboutEntity() {
+  const e = selectedEntity.value
+  if (!e) return
+  chat.setDraft(buildEntityQuestion(e, {
+    sourcePath: pg.graph?.sourcePath,
+    callsOut: (callsOut.value || []).map((c) => c.name),
+    callsIn: (callsIn.value || []).map((c) => c.name),
+  }))
+  sidebar.setView('chat')
+}
+
 onMounted(async () => {
   await nextTick()
   if (pg.graph) initGraph()
@@ -453,6 +477,7 @@ function goCode() { sidebar.setView('code') }
   word-break: break-all;
 }
 .rel-section { margin-top: 10px; }
+.entity-actions { display: flex; gap: 8px; margin-top: 12px; }
 .rel-section > .label {
   display: block; color: var(--km-gray-500); font-size: 13px; margin-bottom: 6px;
 }

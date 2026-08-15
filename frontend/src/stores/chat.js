@@ -305,6 +305,12 @@ export const useChatStore = defineStore('chat', () => {
   const error = ref(null)
   const abortController = ref(null)
 
+  // ---- 输入框草稿 (图谱/项目图谱详情面板"问 AI"预填通路) ----
+  // 跨组件共享: 图谱视图 setDraft 预填 → 切到 chat 视图 AssistantPanel 绑定带出,
+  // 用户可编辑后再发送 (不自动发送, 保留确认感)。
+  const draft = ref('')
+  function setDraft(text) { draft.value = text ?? '' }
+
   // ---- write_file 权限审批门 (阶段3.1) ----
   // pendingApproval 非空时, UI 渲染审批卡; resolveApproval 由按钮触发。
   // { id, call, content, safetyIssues, safe, checked, resolve }
@@ -968,6 +974,8 @@ export const useChatStore = defineStore('chat', () => {
     messages, visibleMessages, streaming, currentStreamId, error,
     hasMessages,
     isBusy,
+    // 输入框草稿 (图谱"问 AI"预填)
+    draft, setDraft,
     // write_file 审批门 (阶段3.1)
     pendingApproval, resolveApproval,
     // 启发式导学模式 (阶段4③)
