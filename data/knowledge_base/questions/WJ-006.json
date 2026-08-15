@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ006-001",
+    "source_node_id": "WJ-006",
+    "type": "choice",
+    "question": "图传链路的主要功能是？",
+    "options": [
+      "A. 传输飞手操纵指令",
+      "B. 地面站数据交互",
+      "C. 回传实时画面辅助取景和飞行判断",
+      "D. 触发失联保护"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "图传链路回传实时画面，辅助取景和飞行判断。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ006-002",
+    "source_node_id": "WJ-006",
+    "type": "fill",
+    "question": "失联保护策略通常包括悬停、返航或____。",
+    "options": [],
+    "answer": "降落",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "失联保护策略通常包括悬停、返航或降落。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

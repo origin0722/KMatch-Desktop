@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ003-001",
+    "source_node_id": "WJ-003",
+    "type": "choice",
+    "question": "描述机体姿态的三个基本轴是？",
+    "options": [
+      "A 升降、俯仰、横滚",
+      "B 俯仰、横滚、偏航",
+      "C 升力、重力、推力",
+      "D 迎角、空速、翼型"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "俯仰、横滚、偏航是描述机体姿态的三个基本轴。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ003-002",
+    "source_node_id": "WJ-003",
+    "type": "fill",
+    "question": "多旋翼靠旋翼____实现升降、俯仰、横滚和偏航。",
+    "options": [],
+    "answer": "转速差",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "多旋翼通过改变各旋翼转速差实现姿态和运动控制。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

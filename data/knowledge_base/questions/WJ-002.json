@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ002-001",
+    "source_node_id": "WJ-002",
+    "type": "choice",
+    "question": "无人机系统中负责姿态稳定与导航控制的核心电子部件是？",
+    "options": [
+      "A 机体",
+      "B 飞控",
+      "C 动力系统",
+      "D 地面站"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "飞控是核心电子部件，负责姿态稳定与导航控制。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ002-002",
+    "source_node_id": "WJ-002",
+    "type": "fill",
+    "question": "无人机系统由机体、飞控、动力、链路、载荷和____等部分组成。",
+    "options": [],
+    "answer": "地面站",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "地面站是无人机系统组成部分之一，用于任务规划、状态监视和指令交互。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

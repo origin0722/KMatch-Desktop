@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ007-001",
+    "source_node_id": "WJ-007",
+    "type": "choice",
+    "question": "飞行前应查询哪类空域信息？",
+    "options": [
+      "A. 适飞空域、禁飞区和临时限制",
+      "B. 操作资质要求",
+      "C. 合法登记状态",
+      "D. 视距内飞行和高度距离限制"
+    ],
+    "answer": "A",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "飞行前应查询适飞空域、禁飞区和临时限制，确保空域合规。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ007-002",
+    "source_node_id": "WJ-007",
+    "type": "fill",
+    "question": "机场净空区、军事设施、人群密集区通常____或限制飞行。",
+    "options": [],
+    "answer": "禁止",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "这些区域通常禁止或限制飞行。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

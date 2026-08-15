@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ010-001",
+    "source_node_id": "WJ-010",
+    "type": "choice",
+    "question": "自主飞行主要通过以下哪项完成预设任务？",
+    "options": [
+      "A. 航点、路径规划和飞控导航",
+      "B. 飞手全程手动遥控",
+      "C. 仅依靠避障传感器",
+      "D. 随机路径搜索"
+    ],
+    "answer": "A",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "节点指出自主飞行通过航点、路径规划和飞控导航完成预设任务。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ010-002",
+    "source_node_id": "WJ-010",
+    "type": "fill",
+    "question": "地面站软件可用于规划航线、设置速度、高度和______。",
+    "options": [],
+    "answer": "返航点",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "节点指出地面站软件可用于规划航线、设置速度、高度和返航点。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ004-001",
+    "source_node_id": "WJ-004",
+    "type": "choice",
+    "question": "多旋翼动力链路中，接收飞控信号并调节电机转速的部件是？",
+    "options": [
+      "A 电机",
+      "B 电调",
+      "C 桨",
+      "D 电池"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "电调接收飞控信号并调节电机转速。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ004-002",
+    "source_node_id": "WJ-004",
+    "type": "fill",
+    "question": "飞行前应检查电量、电压和连接状态，避免____。",
+    "options": [],
+    "answer": "过放",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "避免过放可保护电池，保证动力输出。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

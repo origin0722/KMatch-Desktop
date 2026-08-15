@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ005-001",
+    "source_node_id": "WJ-005",
+    "type": "choice",
+    "question": "惯性测量单元（IMU）主要提供哪类数据用于姿态解算？",
+    "options": [
+      "A. 角速度和加速度",
+      "B. 水平位置",
+      "C. 高度估计值",
+      "D. 航向参考"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "惯性测量单元提供角速度和加速度，用于姿态解算。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ005-002",
+    "source_node_id": "WJ-005",
+    "type": "fill",
+    "question": "磁罗盘提供航向参考，但易受____影响。",
+    "options": [],
+    "answer": "磁干扰",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "磁罗盘提供航向参考，易受磁干扰影响。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

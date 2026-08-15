@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ009-001",
+    "source_node_id": "WJ-009",
+    "type": "choice",
+    "question": "无人机在低电量情况下，飞手应优先采取哪项措施？",
+    "options": [
+      "A. 返航或降落",
+      "B. 冒险继续执行任务",
+      "C. 关闭遥控器等待",
+      "D. 快速爬升以争取时间"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "节点指出低电量时应优先返航或降落，不要冒险继续任务。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ009-002",
+    "source_node_id": "WJ-009",
+    "type": "fill",
+    "question": "在基础飞行操纵中，应建立正确的______和操纵习惯，避免舵量过大。",
+    "options": [],
+    "answer": "方向感",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "节点强调建立正确的方向感和操纵习惯，避免舵量过大。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]

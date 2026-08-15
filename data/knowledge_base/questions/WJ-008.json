@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-WJ008-001",
+    "source_node_id": "WJ-008",
+    "type": "choice",
+    "question": "影响多旋翼和固定翼飞行的主要气象因素是？",
+    "options": [
+      "A. 风",
+      "B. 降雨",
+      "C. 低温",
+      "D. 低能见度"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "风是影响多旋翼和固定翼飞行的主要气象因素。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  },
+  {
+    "qid": "Q-WJ008-002",
+    "source_node_id": "WJ-008",
+    "type": "fill",
+    "question": "低能见度会增加视距飞行和____判断难度。",
+    "options": [],
+    "answer": "障碍物",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "低能见度会增加视距飞行和障碍物判断难度。",
+    "created_at": "2026-08-15T11:40:31.547090Z"
+  }
+]
