@@ -469,7 +469,8 @@ def feedback(req: FeedbackRequest, request: Request):
     if tavily_key:
         tavily_pool = ThreadPoolExecutor(max_workers=1)
         tavily_future = tavily_pool.submit(
-            search_weak_topics, req.profile, tavily_key, nodes=session.get("nodes"))
+            search_weak_topics, req.profile, tavily_key, nodes=session.get("nodes"),
+            direction=session.get("target_direction"))
 
     try:
         with use_llm_overrides(req.llm_overrides):

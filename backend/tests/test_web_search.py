@@ -100,7 +100,9 @@ def test_search_weak_topics_no_weak_topics_returns_empty():
 
 
 def test_search_weak_topics_produces_web_links(monkeypatch):
-    """薄弱点 -> web_link 资源: 最多 3 点 x 2 条, 带 target_node_id 溯源。"""
+    """薄弱点 -> web_link 资源: 最多 3 点 x 2 条, 带 target_node_id 溯源。
+
+    direction 拼进搜索词锚定领域 (此前硬编码 Python 前缀, 学其他领域全偏)。"""
     captured = []
 
     def _fake_search_web(query, key, max_results):
@@ -115,17 +117,22 @@ def test_search_weak_topics_produces_web_links(monkeypatch):
         {"node_id": "PY-030", "mastery": 0.6},  # 第 4 个薄弱点不搜 (最多 3 个)
     ]}
     nodes = [{"node_id": "PY-001", "name": "变量"}, {"node_id": "PY-010", "name": "列表"}]
-    results = search_weak_topics(profile, "sk-test", nodes=nodes)
+    results = search_weak_topics(profile, "sk-test", nodes=nodes, direction="Python 入门")
     assert len(results) == 3  # 3 点 x 每点 1 条 (mock 返回 1 条)
     assert len(captured) == 3
-    # 搜索词用节点可读名
-    assert captured[0][0] == "Python 变量 教程 讲解 示例"
+    # 搜索词 = 方向前缀 + 节点可读名
+    assert captured[0][0] == "Python 入门 变量 教程 讲解 示例"
     assert captured[0][2] == 2
     # 资源带溯源
     assert all(r["content_type"] == "web_link" for r in results)
     assert {r["target_node_id"] for r in results} == {"PY-001", "PY-010", "PY-020"}
     # 无节点可读名的退回 node_id 作搜索词
-    assert captured[2][0] == "Python PY-020 教程 讲解 示例"
+    assert captured[2][0] == "Python 入门 PY-020 教程 讲解 示例"
+
+    # 无 direction 时不再硬编码 Python 前缀
+    captured.clear()
+    search_weak_topics(profile, "sk-test", nodes=nodes)
+    assert captured[0][0] == "变量 教程 讲解 示例"
 
 
 def test_search_weak_topics_fallback_to_node_id(monkeypatch):

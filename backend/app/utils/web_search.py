@@ -42,11 +42,14 @@ def search_web(query: str, api_key: str, max_results: int = 2) -> list[dict]:
         return []
 
 
-def search_weak_topics(profile: dict, api_key: str, nodes: list[dict] | None = None) -> list[dict]:
+def search_weak_topics(profile: dict, api_key: str, nodes: list[dict] | None = None,
+                       direction: str | None = None) -> list[dict]:
     """对画像薄弱知识点调 Tavily 搜索相关网站, 返回 web_link 资源列表。
 
     每条资源: {content_type: 'web_link', title, url, content(snippet), target_node_id}
     最多搜 3 个薄弱点, 每点 2 条结果。无 key/无薄弱点返回 []。
+    direction: 学习目标方向, 拼进搜索词保证领域相关 (此前硬编码 "Python" 前缀,
+    学 CSS/agent 等领域时搜索结果全偏)。
     """
     if not api_key:
         return []
@@ -60,9 +63,9 @@ def search_weak_topics(profile: dict, api_key: str, nodes: list[dict] | None = N
             continue
         node_id = t.get("node_id", "")
         node = node_map.get(node_id, {})
-        # 搜索词用节点可读名 (name/title), 退回 node_id
+        # 搜索词用节点可读名 (name/title), 退回 node_id; 方向前缀锚定领域
         name = node.get("name") or node.get("title") or node_id
-        query = f"Python {name} 教程 讲解 示例"
+        query = f"{direction} {name} 教程 讲解 示例" if direction else f"{name} 教程 讲解 示例"
         results = search_web(query, api_key, max_results=2)
         for r in results:
             resources.append({
