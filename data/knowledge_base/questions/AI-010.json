@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI010-001",
+    "source_node_id": "AI-010",
+    "type": "choice",
+    "question": "关于 MLOps 与模型部署，下列说法正确的是？",
+    "options": [
+      "A. MLOps 将机器学习工作流与工程实践结合",
+      "B. 版本控制只管理代码，不管理数据和模型",
+      "C. CI/CD 仅用于手动测试模型",
+      "D. 批处理部署适用于在线请求"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "MLOps 将机器学习工作流与工程实践结合，其他选项均与节点事实相反。",
+    "created_at": "2026-08-14T12:42:18.330186Z"
+  },
+  {
+    "qid": "Q-AI010-002",
+    "source_node_id": "AI-010",
+    "type": "fill",
+    "question": "在模型部署中，适用于离线预测的部署方式是____。",
+    "options": [],
+    "answer": "批处理部署",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "批处理部署适用于离线预测，实时服务适用于在线请求。",
+    "created_at": "2026-08-14T12:42:18.330186Z"
+  }
+]

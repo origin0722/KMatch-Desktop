@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI004-001",
+    "source_node_id": "AI-004",
+    "type": "choice",
+    "question": "以下哪项通常用于识别数据模式与异常？",
+    "options": [
+      "A. 直方图、箱线图和相关热图",
+      "B. 删除缺失值",
+      "C. 填充缺失值",
+      "D. 类别特征编码"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "直方图、箱线图和相关热图可用于识别数据模式与异常。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  },
+  {
+    "qid": "Q-AI004-002",
+    "source_node_id": "AI-004",
+    "type": "fill",
+    "question": "类别特征通常需要编码为______。",
+    "options": [],
+    "answer": "数值",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "类别特征通常需要编码为数值，便于模型处理。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  }
+]

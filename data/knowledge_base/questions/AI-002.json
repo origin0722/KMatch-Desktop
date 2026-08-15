@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI002-001",
+    "source_node_id": "AI-002",
+    "type": "choice",
+    "question": "以下哪个 Python 库最适合表格数据读取、清洗和统计分析？",
+    "options": [
+      "A. NumPy",
+      "B. Pandas",
+      "C. Matplotlib",
+      "D. 控制流"
+    ],
+    "answer": "B",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "Pandas 适合表格数据读取、清洗和统计分析。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  },
+  {
+    "qid": "Q-AI002-002",
+    "source_node_id": "AI-002",
+    "type": "fill",
+    "question": "NumPy 用于高效______运算和矩阵计算。",
+    "options": [],
+    "answer": "数组",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "NumPy 的核心作用是高效数组运算和矩阵计算。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  }
+]

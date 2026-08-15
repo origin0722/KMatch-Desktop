@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI003-001",
+    "source_node_id": "AI-003",
+    "type": "choice",
+    "question": "微积分中的梯度主要是什么方法的基础？",
+    "options": [
+      "A. 梯度下降等优化方法",
+      "B. 假设检验",
+      "C. 回归分析",
+      "D. 相关性分析"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "微积分中的梯度是梯度下降等优化方法的基础。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  },
+  {
+    "qid": "Q-AI003-002",
+    "source_node_id": "AI-003",
+    "type": "fill",
+    "question": "线性代数用于表示数据、______和变换。",
+    "options": [],
+    "answer": "权重",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "线性代数用于表示数据、权重和变换。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  }
+]

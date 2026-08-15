@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI007-001",
+    "source_node_id": "AI-007",
+    "type": "choice",
+    "question": "在神经网络中，激活函数的主要作用是？",
+    "options": [
+      "A. 连接各层权重",
+      "B. 为网络引入非线性",
+      "C. 计算损失函数",
+      "D. 存储输入数据"
+    ],
+    "answer": "B",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "激活函数为网络引入非线性。",
+    "created_at": "2026-08-14T12:42:18.330186Z"
+  },
+  {
+    "qid": "Q-AI007-002",
+    "source_node_id": "AI-007",
+    "type": "fill",
+    "question": "神经网络训练中，利用链式法则计算梯度的算法称为________。",
+    "options": [],
+    "answer": "反向传播",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "反向传播利用链式法则计算梯度。",
+    "created_at": "2026-08-14T12:42:18.330186Z"
+  }
+]

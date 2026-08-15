@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI006-001",
+    "source_node_id": "AI-006",
+    "type": "choice",
+    "question": "下列算法中，通常用于二分类并输出概率的是？",
+    "options": [
+      "A. 线性回归",
+      "B. 逻辑回归",
+      "C. 决策树",
+      "D. 随机森林"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "逻辑回归常用于二分类问题并输出概率。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  },
+  {
+    "qid": "Q-AI006-002",
+    "source_node_id": "AI-006",
+    "type": "fill",
+    "question": "随机森林通过集成多棵树来提高模型的________。",
+    "options": [],
+    "answer": "稳定性",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "随机森林通过集成多棵树提高稳定性。",
+    "created_at": "2026-08-14T12:42:18.329672Z"
+  }
+]

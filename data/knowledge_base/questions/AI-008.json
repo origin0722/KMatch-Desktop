@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-AI008-001",
+    "source_node_id": "AI-008",
+    "type": "choice",
+    "question": "下列任务中，需要同时定位并识别图像中多个物体的是？",
+    "options": [
+      "A. 图像分类",
+      "B. 目标检测",
+      "C. 池化",
+      "D. 卷积"
+    ],
+    "answer": "B",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "目标检测需要定位并识别多个物体。",
+    "created_at": "2026-08-14T12:42:18.330186Z"
+  },
+  {
+    "qid": "Q-AI008-002",
+    "source_node_id": "AI-008",
+    "type": "fill",
+    "question": "卷积神经网络中，用于降低空间尺寸并增加平移稳定性的层是________。",
+    "options": [],
+    "answer": "池化层",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "池化层降低空间尺寸并增加平移稳定性。",
+    "created_at": "2026-08-14T12:42:18.330186Z"
+  }
+]
