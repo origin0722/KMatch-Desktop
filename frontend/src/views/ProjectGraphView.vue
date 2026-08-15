@@ -19,11 +19,28 @@
       项目图谱已过期 (源文件被外部改动, 行号可能漂移), 建议在 AI 助手中重新解析
     </el-alert>
 
-    <!-- 空状态 -->
-    <el-empty v-if="!pg.graph" description="尚未生成项目图谱" :image-size="120">
-      <p class="pg-hint">在 AI 助手中发送"解析这个项目", 或打开 .py 文件后让 AI 解析</p>
-      <el-button type="primary" @click="goCode">前往代码视图</el-button>
-    </el-empty>
+    <!-- 空状态 / 解析中 / 解析失败 -->
+    <div v-if="!pg.graph" class="pg-empty-wrap">
+      <!-- 解析中 -->
+      <div v-if="pg.parsing" class="pg-empty-state">
+        <el-icon class="is-loading pg-spin" :size="48"><Loading /></el-icon>
+        <p class="pg-empty-title">正在解析项目代码…</p>
+        <p class="pg-hint">提取函数 / 类 / 方法与调用关系, 同时写入知识图谱</p>
+      </div>
+      <!-- 解析失败 -->
+      <div v-else-if="pg.parseError" class="pg-empty-state">
+        <el-empty :description="pg.parseError" :image-size="100" />
+        <el-button type="primary" :icon="RefreshRight" @click="handleParse">重新解析</el-button>
+      </div>
+      <!-- 未解析 -->
+      <el-empty v-else description="尚未生成项目图谱" :image-size="120">
+        <p class="pg-hint">打开项目后自动解析, 也可手动触发</p>
+        <div class="pg-empty-actions">
+          <el-button type="primary" :icon="RefreshRight" :disabled="!ws.hasProject" @click="handleParse">解析当前项目</el-button>
+          <el-button @click="goCode">前往代码视图</el-button>
+        </div>
+      </el-empty>
+    </div>
 
     <template v-else>
       <!-- 工具栏 -->
@@ -52,6 +69,7 @@
             <el-option label="module 模块" value="module" />
           </el-select>
           <el-button :icon="RefreshRight" @click="resetGraph">重置</el-button>
+          <el-button :icon="RefreshRight" :loading="pg.parsing" @click="handleParse">重新解析</el-button>
 
           <el-popover placement="bottom" :width="180" trigger="click">
             <template #reference>
@@ -174,15 +192,17 @@
  *   - 图例 + 过期提示 + 关系统计
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { Search, RefreshRight, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { Search, RefreshRight, ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue'
 import { Graph } from '@antv/g6'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore } from '@/stores/chat'
 import { buildEntityQuestion } from '@/utils/askAi'
 
 const pg = useProjectGraphStore()
 const sidebar = useSidebarStore()
+const ws = useWorkspaceStore()
 const chat = useChatStore()
 const containerRef = ref(null)
 let g6 = null
@@ -364,6 +384,8 @@ function askAiAboutEntity() {
 
 onMounted(async () => {
   await nextTick()
+  // P2: 无图谱时尝试从后端恢复上次解析结果 (localStorage 记 projectId)
+  if (!pg.graph) pg.restorePersisted()
   if (pg.graph) initGraph()
 })
 
@@ -379,6 +401,11 @@ watch(panelCollapsed, () => { rebuildGraph() })
 onBeforeUnmount(destroyGraph)
 
 function goCode() { sidebar.setView('code') }
+
+// P2: 手动触发项目解析 (空态大按钮 / 工具栏"重新解析")
+function handleParse() {
+  pg.parseCurrentProject()
+}
 </script>
 
 <style scoped>
@@ -393,6 +420,11 @@ function goCode() { sidebar.setView('code') }
 .pg-stats span { white-space: nowrap; }
 .pg-stale { margin-bottom: 12px; }
 .pg-hint { font-size: 12px; color: var(--km-gray-500); margin: 0 0 8px; }
+.pg-empty-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
+.pg-empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pg-empty-state .pg-spin { color: var(--km-primary, #6c7ce0); }
+.pg-empty-title { font-size: 14px; color: var(--km-gray-700); margin: 4px 0 0; }
+.pg-empty-actions { display: flex; gap: 8px; justify-content: center; }
 
 /* ---- 工具栏 ---- */
 .toolbar-card { margin-bottom: 12px; }

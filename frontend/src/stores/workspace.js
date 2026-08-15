@@ -35,6 +35,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return () => _changeListeners.delete(cb)
   }
 
+  // 项目打开订阅者 (P2: projectGraph 订阅 -> 后台自动解析成图谱, workspace 不直接依赖 projectGraph)
+  const _projectOpenListeners = new Set()
+  function onProjectOpened(cb) {
+    _projectOpenListeners.add(cb)
+    return () => _projectOpenListeners.delete(cb)
+  }
+
   const hasProject = computed(() => !!root.value)
   const openCount = computed(() => openFiles.value.length)
 
@@ -48,6 +55,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     openFiles.value = []
     activeFile.value = null
     startWatching() // 主进程 openProject 已 start watcher, 渲染层订阅事件
+    // P2: 通知订阅者 (projectGraph 后台自动解析), 不阻塞文件树交互
+    for (const cb of _projectOpenListeners) {
+      try { cb(res) } catch { /* 单个订阅者异常不影响其他 */ }
+    }
     return true
   }
 
@@ -156,5 +167,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     openProject, setRoot, refreshTree, loadRecent,
     openFile, closeFile, setActive, markDirty, saveFile,
     startWatching, stopWatching, clearExternalChange, onExternalChange,
+    onProjectOpened,
   }
 })

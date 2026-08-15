@@ -19,6 +19,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useLearningResourcesStore } from '@/stores/learningResources'
 import { getNode } from '@/api/graph'
+import { readProjectPyFiles, normalizeGraphResponse } from '@/api/project'
 import { streamChat } from '@/ide/chat/useChatStream'
 import { useAiSettingsStore } from '@/stores/aiSettings'
 import { withOverrides } from '@/stores/agentLlm'
@@ -527,20 +528,7 @@ export const useChatStore = defineStore('chat', () => {
     return { code: call.code, sourcePath: call.filename || 'main.py' }
   }
 
-  /** 读工作区目录所有 .py 文件 -> {module_name: source} (项目级图谱解析用) */
-  async function _readProjectPyFiles(dirPath) {
-    const entries = await window.api.fs.listDirectory(dirPath, { deep: true })
-    const pyFiles = (entries || []).filter((e) => !e.isDirectory && e.path.endsWith('.py'))
-    const sources = {}
-    for (const f of pyFiles) {
-      try {
-        const content = await window.api.fs.readFile(f.path)
-        const module = (f.path || '').replace(/\.py$/, '').replace(/[\/\\]/g, '.')
-        sources[module] = content
-      } catch { /* skip unreadable */ }
-    }
-    return sources
-  }
+  // _readProjectPyFiles 已提取至 @/api/project (readProjectPyFiles), 供 chat 工具与 store 自动解析复用
 
   /** 委派后端 /api/project/* 路由; 返回 { ok, status, data } */
   async function _delegate(urlPath, body, timeoutMs) {
@@ -618,36 +606,21 @@ export const useChatStore = defineStore('chat', () => {
         const isDir = call.path && call.path !== '' && !call.path.endsWith('.py')
         let body, sourcePath
         if (isDir) {
-          const sources = await _readProjectPyFiles(call.path)
+          const sources = await readProjectPyFiles(call.path)
           if (!Object.keys(sources).length) return { error: '项目中没有可解析的 .py 文件' }
-          body = { source_type: 'files', sources, write_to_neo4j: call.write_to_neo4j === true }
+          body = { source_type: 'files', sources, write_to_neo4j: call.write_to_neo4j !== false }
           sourcePath = call.path
         } else {
           const src = await _resolveCode(call)
           if (src.error) return { error: src.error }
-          body = { source_type: 'text', code: src.code, filename: call.filename || 'main.py', write_to_neo4j: call.write_to_neo4j === true }
+          body = { source_type: 'text', code: src.code, filename: call.filename || 'main.py', write_to_neo4j: call.write_to_neo4j !== false }
           sourcePath = src.sourcePath
         }
         const r = await _delegate('/api/project/parse', body)
         if (!r.ok) return { error: r.error }
-        const d = r.data || {}
-        // 提取实体 (G6 nodes.properties 含 line_start/line_end/qualified_name/kind)
-        const entities = (d.nodes || []).map((n) => ({
-          id: n.id,
-          name: n.label,
-          kind: n.group,
-          qualified_name: n.properties?.qualified_name || n.label,
-          line_start: n.properties?.line_start,
-          line_end: n.properties?.line_end,
-        }))
         const result = {
           tool: 'generate_project_graph',
-          projectId: d.project_id,
-          stats: d.stats || {},
-          entities,
-          relations: d.edges || [],
-          sourcePath,
-          written: !!d.written_to_neo4j,
+          ...normalizeGraphResponse(r.data, sourcePath),
         }
         // 供 4b Monaco 符号联动
         try { useProjectGraphStore().setGraph(result, sourcePath) } catch { /* store 未就绪不影响 */ }

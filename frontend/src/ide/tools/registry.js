@@ -40,7 +40,7 @@ export const TOOLS = Object.freeze([
       path: 'string (工作区文件相对路径, 优先于 code)',
       code: 'string (源码, path 缺省时用)',
       filename: 'string (默认 main.py)',
-      write_to_neo4j: 'boolean (默认 false, 仅解析返回不落库)',
+      write_to_neo4j: 'boolean (默认 true, 解析后落 Neo4j 供后续查询/跳转)',
     },
   },
   {
@@ -105,7 +105,7 @@ const TOOL_CALL_EXAMPLES = {
   read_file: '{"tool": "read_file", "path": "相对路径"}',
   list_directory: '{"tool": "list_directory", "path": "相对路径(可选)"}',
   write_file: '{"tool": "write_file", "path": "相对路径", "content": "完整文件内容"}',
-  generate_project_graph: '{"tool": "generate_project_graph", "path": "相对路径", "write_to_neo4j": false}',
+  generate_project_graph: '{"tool": "generate_project_graph", "path": "相对路径", "write_to_neo4j": true}',
   code_review: '{"tool": "code_review", "path": "相对路径", "target_direction": "开发目标方向"}',
   code_test: '{"tool": "code_test", "path": "相对路径", "target_direction": "开发目标方向", "mode": "generate"}',
   web_search: '{"tool": "web_search", "query": "Python 装饰器原理与用法"}',
@@ -155,7 +155,7 @@ export function buildToolBlock(allowedTools) {
   }
   if (allow.has('generate_project_graph')) {
     notes.push(`- generate_project_graph: 解析 Python 代码生成项目代码图谱 (函数/类/方法/调用关系),
-  返回实体清单与统计; 不依赖 Neo4j (离线可用)。审查/测试工作区文件前可先调它了解结构。`)
+  默认 write_to_neo4j=true (落 Neo4j 供后续查询/跳转)。审查/测试工作区文件前可先调它了解结构。`)
   }
   if (allow.has('code_review')) {
     notes.push(`- code_review: 四维度代码审查 (逻辑/安全/规范/领域合规), 需 Neo4j+LLM 在线;

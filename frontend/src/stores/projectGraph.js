@@ -1,19 +1,28 @@
 /**
  * 项目代码图谱 + Monaco 符号联动状态 (阶段4b)
  *
- * 由 chat 的 generate_project_graph 委派工具成功后填充 (setGraph)。
+ * 由 chat 的 generate_project_graph 委派工具成功后填充 (setGraph);
+ * P2: openProject 后后台自动解析 (parseCurrentProject), 重启可恢复 (restorePersisted)。
  * 双向联动:
- *   - chat 实体列表点击 → requestReveal → MonacoEditor watch revealTarget 跳转+高亮
- *   - Monaco 光标移动 → setActiveLine → chat 实体列表反查高亮对应实体
+ *   - chat 实体列表点击 -> requestReveal -> MonacoEditor watch revealTarget 跳转+高亮
+ *   - Monaco 光标移动 -> setActiveLine -> chat 实体列表反查高亮对应实体
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { ElMessage } from 'element-plus'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse } from '@/api/project'
+
+const LS_KEY = 'kmatch-last-project-id'
 
 export const useProjectGraphStore = defineStore('projectGraph', () => {
   // 最近一次 generate_project_graph 产出
   // { projectId, stats, entities, relations, sourcePath, written }
   const graph = ref(null)
+
+  // P2: 自动解析状态机
+  const parsing = ref(false)
+  const parseError = ref(null)
 
   // 阶段8: 图谱是否已过期 (源文件被外部改动, 行号可能漂移, 跳转会指错行)
   const stale = ref(false)
@@ -71,14 +80,69 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     stale.value = false
   }
 
+  // ---- P2: 项目自动解析 ----
+  /** 后台解析当前工作区项目 -> 落 Neo4j + 填充 graph (不阻塞文件树交互) */
+  async function parseCurrentProject() {
+    const ws = useWorkspaceStore()
+    if (!ws.root) return // 无项目, 跳过
+    parsing.value = true
+    parseError.value = null
+    try {
+      const sources = await readProjectPyFiles('')
+      if (!Object.keys(sources).length) {
+        parseError.value = '项目中没有可解析的 .py 文件'
+        return
+      }
+      const data = await parseProjectFiles(sources)
+      const result = normalizeGraphResponse(data, ws.root)
+      setGraph(result, ws.root)
+      try { localStorage.setItem(LS_KEY, result.projectId) } catch { /* ignore */ }
+      ElMessage.success(`项目图谱已生成: ${result.entities.length} 个实体, ${result.relations.length} 条关系`)
+    } catch (e) {
+      parseError.value = e?.message || '项目解析失败'
+      ElMessage.error(`项目解析失败: ${parseError.value}`)
+    } finally {
+      parsing.value = false
+    }
+  }
+
+  /** 重启恢复: store 空 + localStorage 有上次 projectId -> 从后端拉回 (失败静默) */
+  async function restorePersisted() {
+    if (graph.value) return // 已有图谱, 不覆盖
+    let pid
+    try { pid = localStorage.getItem(LS_KEY) } catch { return }
+    if (!pid) return
+    try {
+      const data = await getProjectGraph(pid)
+      const result = normalizeGraphResponse(data, '')
+      setGraph(result, '')
+    } catch {
+      // 404 = 后端重启/图谱已清, 清掉过期 id
+      try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
+    }
+  }
+
+  // P2: 订阅 workspace 项目打开事件 -> 后台自动解析 (只订阅一次)
+  let _unsubscribeProjectOpen = null
+  function _ensureProjectOpenSubscription() {
+    if (_unsubscribeProjectOpen) return
+    try {
+      _unsubscribeProjectOpen = useWorkspaceStore().onProjectOpened(() => {
+        parseCurrentProject()
+      })
+    } catch { /* workspace 未就绪, 忽略 */ }
+  }
+
   function clear() {
     graph.value = null
     activeLine.value = null
     revealTarget.value = null
     stale.value = false
+    parsing.value = false
+    parseError.value = null
   }
 
-  /** chat 实体点击 → 触发 Monaco 跳转 */
+  /** chat 实体点击 -> 触发 Monaco 跳转 */
   function requestReveal(lineStart, lineEnd, name) {
     const g = graph.value
     if (!g || lineStart == null) return
@@ -100,9 +164,13 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     revealTarget.value = null
   }
 
+  // store 首次使用时订阅项目打开事件 (后台自动解析)
+  _ensureProjectOpenSubscription()
+
   return {
-    graph, stale, revealTarget, activeLine, activeEntityId,
+    graph, stale, parsing, parseError, revealTarget, activeLine, activeEntityId,
     setGraph, clear, clearStale, markStale,
+    parseCurrentProject, restorePersisted,
     requestReveal, setActiveLine, consumeReveal,
   }
 })
