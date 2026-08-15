@@ -90,6 +90,25 @@ def _dynamic_domains(base: Path) -> dict[str, str]:
     return domains
 
 
+def _dynamic_domain_samples(base: Path = None, limit: int = 4) -> dict[str, list[str]]:
+    """动态域节点名样例 {前缀: [节点名]} — 供域分类器对照重合度。
+
+    宽泛伞形域名 (如「人工智能」) 会吸收其子领域目标 ("agent 开发" 被误判命中),
+    注册表标签不足以判断, 附节点名样例让 LLM 看到域的实际内容再做判定。
+    """
+    base = base or _kb_base()
+    samples: dict[str, list[str]] = {}
+    for node in _iter_nodes_from_json(base):
+        if node.get("source") != "llm_generated":
+            continue
+        nid = str(node.get("id", ""))
+        if len(nid) >= 3 and nid[2] == "-" and node.get("name"):
+            prefix = nid[:2]
+            if len(samples.setdefault(prefix, [])) < limit:
+                samples[prefix].append(str(node["name"]))
+    return samples
+
+
 def domain_registry(base: Path = None) -> dict[str, str]:
     """完整域注册表: 内置 6 域 + 已建动态域。"""
     base = base or _kb_base()
@@ -106,12 +125,22 @@ def _classify_domain(target_direction: str, registry: dict[str, str]) -> tuple[s
     且建域本身依赖 LLM, 主判据与兜底能力保持一致。
     """
     model = get_default_chat_model()
-    lines = "\n".join(f"- {pfx}: {label}" for pfx, label in sorted(registry.items()))
+    samples = _dynamic_domain_samples()
+    lines = []
+    for pfx, label in sorted(registry.items()):
+        if pfx in samples:
+            lines.append(f"- {pfx}: {label} (已含节点: {'、'.join(samples[pfx])})")
+        else:
+            lines.append(f"- {pfx}: {label}")
     system = SystemMessage(content=(
         "你是学习领域分类器。判断学习目标属于哪个既有知识领域, 或是未收录的全新领域。\n"
-        "既有领域注册表:\n" + lines + "\n"
+        "既有领域注册表:\n" + "\n".join(lines) + "\n"
+        "判据是「学习内容与该域知识点的重合度」, 不是「是否相关」:\n"
+        "- 目标与某领域只是相关但核心是另一门技术时选 new (如「学 Java」不是 Python)。\n"
+        "- 目标是某域的子领域/专项技术时同样选 new —— 学该专项不等于学该域通识课程\n"
+        "  (如「agent 开发」之于「人工智能」通识、「爬虫」之于「Web 后端开发」);\n"
+        "  动态域已附节点名样例, 与样例内容重合度低就选 new。\n"
         '严格输出 JSON: {"domain": "<注册表前缀>" 或 "new"}。'
-        "目标与某领域只是相关但核心是另一门技术时选 new (如「学 Java」不是 Python)。"
         "不要输出 JSON 以外文字。"
     ))
     user = HumanMessage(content=f"学习目标: {target_direction}")
@@ -167,6 +196,22 @@ def resolve_direction(kg, target_direction: str, known_topics: list) -> tuple[st
         if verdict == "new":
             return "miss", []
         if verdict == "known":
+            # 语义复核 (伞形域兜底): LLM 可能被宽泛域名误导 ("agent 开发"→「人工智能」),
+            # 若目标的语义检索结果中该域节点零出现 → 判定与目标零交集, 降级动态建域。
+            # 语义结果为空 (未建索引/检索异常) 时无法复核, 维持 LLM 判定。
+            if kg.embedding_client is not None:
+                try:
+                    sem = kg.semantic_search(target_direction, top_k=12)
+                except Exception:
+                    sem = None
+                    logger.warning("域判定语义复核检索失败, 维持 LLM 判定", exc_info=True)
+                if sem and not any(
+                    str(n.get("node_id", "")).startswith(f"{prefix}-") for n in sem
+                ):
+                    logger.info(
+                        "域判定复核: 目标「%s」与命中域 %s 语义零交集, 降级动态建域",
+                        target_direction, prefix)
+                    return "miss", []
             return "hit", _domain_candidate_nodes(kg, prefix, target_direction, known_ids)
         # invalid → 交给向量启发式兜底
 

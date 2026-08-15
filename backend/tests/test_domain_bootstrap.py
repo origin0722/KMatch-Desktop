@@ -152,6 +152,70 @@ def test_resolve_hit_falls_back_to_difficulty_when_semantic_thin(wired, monkeypa
     assert all(n["node_id"].startswith("DA-") for n in nodes)
 
 
+def test_resolve_hit_zero_semantic_overlap_downgrades_to_miss(wired, monkeypatch):
+    """伞形域兜底: LLM 判 known 但目标语义检索结果中该域节点零出现
+    (如「agent 开发」被「人工智能」吸收) → 降级 miss 走动态建域。"""
+    monkeypatch.setattr(db, "llm_configured", lambda: True)
+    monkeypatch.setattr(db, "_classify_domain", lambda t, r: ("known", "AI"))
+    kg = MagicMock()
+    kg.embedding_client = object()
+    # 语义检索只回来 PY/ML 节点, 无任何 AI- 前缀 → 与命中域零交集
+    kg.semantic_search.return_value = [
+        {"node_id": "PY-001", "_similarity": 0.7}, {"node_id": "ML-003", "_similarity": 0.6},
+    ]
+    resolution, nodes = db.resolve_direction(kg, "agent 开发", [])
+    assert resolution == "miss" and nodes == []
+
+
+def test_resolve_hit_semantic_empty_keeps_llm_verdict(wired, monkeypatch):
+    """语义检索为空 (索引未建/检索异常) 无法复核 → 维持 LLM 判定 hit。"""
+    monkeypatch.setattr(db, "llm_configured", lambda: True)
+    monkeypatch.setattr(db, "_classify_domain", lambda t, r: ("known", "DA"))
+    kg = MagicMock()
+    kg.embedding_client = object()
+    kg.semantic_search.return_value = []
+    kg.get_by_difficulty.return_value = [{"node_id": "DA-001", "name": "n", "difficulty": 1}]
+    resolution, nodes = db.resolve_direction(kg, "数据分析", [])
+    assert resolution == "hit" and nodes[0]["node_id"] == "DA-001"
+
+
+def test_classify_prompt_carries_granularity_rule_and_samples(wired, monkeypatch):
+    """分类器 prompt 带粒度判据 (子领域≠通识域) + 动态域节点样例 (供重合度对照)。"""
+    # 隔离 KB 放一个动态域节点
+    (wired.base / "nodes" / "dyn.json").write_text(json.dumps([
+        {"id": "AI-001", "source": "llm_generated", "name": "人工智能概览",
+         "domain_label": "人工智能"},
+    ], ensure_ascii=False), encoding="utf-8")
+
+    captured = {}
+
+    class _CaptureModel:
+        def invoke(self, messages):
+            captured["system"] = str(messages[0].content)
+            return SimpleNamespace(content='{"domain": "new"}')
+
+    monkeypatch.setattr(db, "get_default_chat_model", lambda: _CaptureModel())
+    verdict, prefix = db._classify_domain("agent 开发", {"AI": "人工智能", "PY": "Python 编程"})
+    assert (verdict, prefix) == ("new", None)
+    # 粒度判据 + 反例在场
+    assert "agent 开发" in captured["system"]
+    assert "重合度" in captured["system"]
+    # 动态域带节点样例, 内置域不带
+    assert "AI: 人工智能 (已含节点: 人工智能概览)" in captured["system"]
+    assert "PY: Python 编程\n" in captured["system"] or "- PY: Python 编程" in captured["system"]
+
+
+def test_dynamic_domain_samples_capped(wired):
+    """样例每域最多 4 个节点名, 只收 llm_generated 动态节点。"""
+    dyn = [{"id": f"JV-{i:03d}", "source": "llm_generated", "name": f"Java概念{i}",
+            "domain_label": "Java"} for i in range(1, 7)]
+    builtin = [{"id": "PY-001", "source": "manual", "name": "变量"}]
+    (wired.base / "nodes" / "dyn.json").write_text(
+        json.dumps(dyn + builtin, ensure_ascii=False), encoding="utf-8")
+    samples = db._dynamic_domain_samples(wired.base)
+    assert samples == {"JV": ["Java概念1", "Java概念2", "Java概念3", "Java概念4"]}
+
+
 def test_resolve_vector_fallback_when_llm_invalid(wired, monkeypatch):
     """LLM 分类失败 → 向量启发式: 最高分过阈值视为命中。"""
     monkeypatch.setattr(db, "llm_configured", lambda: True)
