@@ -124,6 +124,35 @@ def test_weak_prereq_above_difficulty_cap_skipped():
     assert "PY-099" in path_ids, "弱项本身难度2 ≤ cap3 仍入路径"
 
 
+def test_bfs_duplicate_rows_deduped():
+    """单次 `WITH n, min(length(path))` 实测按 (start,n) 分组不坍缩 — 同节点多入口
+    各出一行 (2026-08-15 AI 域 7 入口实测 42 行/9 唯一; Cypher 已改二次聚合坍缩,
+    此处 mock 重复行守住 Python 侧 seen_ids 兜底: 前端 G6 graphlib 对重复节点 id
+    直接抛 "Node already exists" → 图谱渲染失败) → 路径内 node_id 必须唯一。"""
+    kg = _make_kg()
+    # BFS 结果喂同节点重复行 (零基础分支: known_ids=入口并集 → 多入口可达同一节点)
+    dup_rows = [
+        {"n": {"id": "CS-005", "name": "a", "difficulty": 1, "estimated_minutes": 30}, "distance": 1},
+        {"n": {"id": "CS-007", "name": "b", "difficulty": 2, "estimated_minutes": 30}, "distance": 2},
+        {"n": {"id": "CS-007", "name": "b", "difficulty": 2, "estimated_minutes": 30}, "distance": 1},
+        {"n": {"id": "CS-006", "name": "c", "difficulty": 3, "estimated_minutes": 30}, "distance": 1},
+        {"n": {"id": "CS-006", "name": "c", "difficulty": 3, "estimated_minutes": 30}, "distance": 1},
+    ]
+    result = MagicMock()
+    result.__iter__ = lambda self: iter(dup_rows)
+    kg.driver.session.return_value.__enter__().run.return_value = result
+    kg.get_prerequisites = MagicMock(return_value=[])
+    kg.get_node = MagicMock(side_effect=lambda nid: {
+        "node_id": nid, "name": nid, "difficulty": 1, "estimated_minutes": 30})
+
+    path = kg.assemble_learning_path(
+        known_ids=["CS-001"], weak_ids=["CS-006"], level=3, max_nodes=10)
+
+    path_ids = [n["node_id"] for n in path]
+    dupes = [i for i in set(path_ids) if path_ids.count(i) > 1]
+    assert not dupes, f"路径节点必须唯一, 重复: {dupes}"
+
+
 # ============================================================
 # 优化回归: generate_embeddings 批量 UNWIND 写回 + None 跳过
 # ============================================================

@@ -498,6 +498,7 @@ class KnowledgeGraph:
                 MATCH path = (start:KnowledgeNode)<-[:REQUIRES*1..4]-(n:KnowledgeNode)
                 WHERE start.id IN $known_ids
                 WITH n, min(length(path)) AS distance
+                WITH n, min(distance) AS distance
                 RETURN n, distance
                 ORDER BY distance, n.difficulty
                 LIMIT $limit
@@ -507,10 +508,19 @@ class KnowledgeGraph:
             )
 
             nodes_by_dist: dict[int, list[dict]] = {}
+            # 实测 (2026-08-15, AI 域 7 入口): 单次 `WITH n, min(length(path))` 在此
+            # 模式按 (start, n) 分组不坍缩 — 同节点多入口各出一行 (42 行/9 唯一),
+            # LIMIT 会在重复行上浪费名额; 上面的二次聚合才真正坍缩到全局最短距离。
+            # seen_ids 兜底防未来查询回归: 前端 G6 graphlib 对重复节点 id 直接抛
+            # "Node already exists" → 图谱渲染失败。
+            seen_ids: set[str] = set()
             for r in result:
                 node = self._node_from_record(r["n"])
                 if node["node_id"] in known_set:  # 过滤已掌握（Python 侧，兼容 Neo4j 5.x）
                     continue
+                if node["node_id"] in seen_ids:
+                    continue
+                seen_ids.add(node["node_id"])
                 dist = r["distance"]
                 nodes_by_dist.setdefault(dist, []).append(node)
 
