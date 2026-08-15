@@ -18,8 +18,8 @@ import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useLearningResourcesStore } from '@/stores/learningResources'
-import { getNode } from '@/api/graph'
-import { readProjectPyFiles, normalizeGraphResponse } from '@/api/project'
+import { getNode, semanticSearch, assemblePath } from '@/api/graph'
+import { readProjectPyFiles, normalizeGraphResponse, getProjectGraph } from '@/api/project'
 import { streamChat } from '@/ide/chat/useChatStream'
 import { useAiSettingsStore } from '@/stores/aiSettings'
 import { withOverrides } from '@/stores/agentLlm'
@@ -37,7 +37,7 @@ import {
   learningEstimatedHours,
 } from '@/ide/chat/types'
 
-const MAX_TOOL_ROUNDS = 3
+const MAX_TOOL_ROUNDS = 6
 
 /**
  * 构建学情画像提示块 (C3: 经 chat/types.js 类型化 helper 读取, 不再硬编码 profile/knowledgeGraph 字段名)。
@@ -125,7 +125,7 @@ export function buildSystemPrompt(context) {
         + '\n1. 不直接给完整答案/完整代码。先给思路、提示、方向, 让学习者尝试; 仅当其反复卡住(≥2轮)或明确要求时才逐步揭示, 且优先给带空白的框架而非完整解。'
         + '\n2. 动态追问: 每次回复末尾提一个针对当前问题的追问, 探测学习者理解深度、引导下一步思考 (如"你觉得这里为什么会报错?"/"如果输入是空列表会怎样?"), 推动多轮交互。'
         + '\n3. 因材施教: 依据下方学情画像调整引导粒度——薄弱者多铺垫类比, 进阶者直指原理与权衡。'
-        + '\n4. 事实底座抗幻觉: 涉及项目代码时先用 read_file/generate_project_graph 等工具查证真实代码与结构, 严禁凭记忆臆造项目细节; 解释通用概念时也只讲你确信的内容。'
+        + '\n4. 事实底座抗幻觉: 涉及项目代码时先用 read_file/generate_project_graph 等工具查证真实代码与结构, 严禁凭记忆臆造项目细节; 知识点问题优先用 search_knowledge/get_knowledge_node 查证后再回答, 解释通用概念时也只讲你确信的内容。'
         + '\n5. 简洁: 每轮回复聚焦一个引导点 + 一个追问, 不要长篇大论。'
         + profileBlock
         + lectureBlock
@@ -144,7 +144,8 @@ export function buildSystemPrompt(context) {
     content:
       '你是 KMatch IDE 的 AI 编程助手。你可以阅读项目文件、解释代码、提供改进建议、帮助调试。\n'
       + '回答用中文，代码块标注语言。保持回答简洁实用。\n'
-      + '如果你需要查看某个文件来更好地回答问题，使用 tool_call 格式请求读取。'
+      + '如果你需要查看某个文件来更好地回答问题，使用 tool_call 格式请求读取。\n'
+      + '涉及知识点时优先用 search_knowledge/get_knowledge_node 查证, 涉及项目架构时优先用 query_project_graph 查证, 严禁凭记忆臆造细节。'
       + profileBlock
       + lectureBlock
       + memoriesBlock
@@ -687,8 +688,13 @@ export const useChatStore = defineStore('chat', () => {
         // 调后端 content_generator 图谱驱动生成结构化资源 (讲义/实操/测试), 落「学习资源」模块
         const { useAssessmentStore } = await import('@/stores/assessment')
         const aStore = useAssessmentStore()
-        if (!aStore.sessionId) return { error: '尚无学情测评 session。请先前往「学习会话」完成答题测评, 再生成资源。' }
-        if (!aStore.profile) return { error: '尚无学情画像, 请先完成测评' }
+        // 降级: 未完成测评时返回引导文案而非硬报错 (AI 可据此引导用户)
+        if (!aStore.sessionId || !aStore.profile) {
+          return {
+            tool: 'generate_learning_resources',
+            hint: '用户尚未完成学情测评, 无法生成个性化资源。请引导用户前往「学习会话」完成答题测评, 之后再来生成学习资源。',
+          }
+        }
         const strategy = call.strategy || aStore.feedbackStrategy || 'scaffold'
         // #30: feedback 逐节点 LLM 再生常超 60s, 显式放宽到 150s
         const r = await _delegate('/api/diagnostics/feedback', {
@@ -705,6 +711,75 @@ export const useChatStore = defineStore('chat', () => {
           node_count: r.data?.node_count ?? existing.node_count,
         }
         return { tool: 'generate_learning_resources', strategy, generated: newRes.length, node_count: r.data?.node_count, hint: '资源已落入「学习资源」页, 学习路径图谱在「知识图谱」页' }
+      }
+
+      // ---- P3: 只读知识/项目图谱查询工具 (助手"看到"事实底座, 减少幻觉) ----
+      if (call.tool === 'search_knowledge') {
+        if (!call.query) return { error: '缺少 query 参数（检索词）' }
+        const topK = Math.min(10, Math.max(1, parseInt(call.top_k, 10) || 5))
+        try {
+          const results = await semanticSearch(call.query, topK)
+          const nodes = (results || []).map((n) => ({
+            node_id: n.node_id, name: n.name, summary: n.summary,
+            difficulty: n.difficulty, category: n.category,
+          }))
+          return { tool: 'search_knowledge', query: call.query, count: nodes.length, nodes }
+        } catch (e) { return { error: e.response?.data?.detail || e.message || '知识检索失败' } }
+      }
+
+      if (call.tool === 'get_learning_path') {
+        const { useAssessmentStore } = await import('@/stores/assessment')
+        const aStore = useAssessmentStore()
+        if (!aStore.profile) {
+          return {
+            tool: 'get_learning_path',
+            hint: '用户尚未完成学情测评, 无法生成个性化学习路径。请引导用户前往「学习会话」完成答题测评。',
+          }
+        }
+        const knownIds = (aStore.profile.known_topics || []).map((t) => t.node_id)
+        const weakIds = (aStore.profile.weak_topics || []).map((t) => t.node_id)
+        const level = Math.min(4, Math.max(1, parseInt(call.level, 10) || 2))
+        const maxNodes = Math.min(50, Math.max(1, parseInt(call.max_nodes, 10) || 20))
+        try {
+          const data = await assemblePath({ knownIds, weakIds, level, maxNodes })
+          const path = (data?.learning_path || data?.nodes || []).map((n) => ({
+            node_id: n.node_id, name: n.name, difficulty: n.difficulty, category: n.category,
+          }))
+          return { tool: 'get_learning_path', count: path.length, learning_path: path }
+        } catch (e) { return { error: e.response?.data?.detail || e.message || '学习路径查询失败' } }
+      }
+
+      if (call.tool === 'query_project_graph') {
+        // project_id 优先用参数, 否则取 store / localStorage 最近一次
+        const pgStore = useProjectGraphStore()
+        let pid = call.project_id || pgStore.graph?.projectId
+        if (!pid) {
+          try { pid = localStorage.getItem('kmatch-last-project-id') } catch { /* ignore */ }
+        }
+        if (!pid) {
+          return {
+            tool: 'query_project_graph',
+            hint: '尚未解析过项目。请引导用户打开一个 Python 项目 (会自动解析成知识图谱), 之后再查询。',
+          }
+        }
+        try {
+          const data = await getProjectGraph(pid)
+          const result = normalizeGraphResponse(data, '')
+          return {
+            tool: 'query_project_graph', project_id: pid,
+            entity_count: result.entities.length,
+            relation_count: result.relations.length,
+            entities: result.entities.map((e) => ({ name: e.name, kind: e.kind, qualified_name: e.qualified_name })),
+            relations: result.relations,
+          }
+        } catch (e) {
+          const status = e.response?.status
+          if (status === 404) {
+            try { localStorage.removeItem('kmatch-last-project-id') } catch { /* ignore */ }
+            return { error: `项目图谱不存在: ${pid} (可能后端重启或已删除), 请重新打开项目解析` }
+          }
+          return { error: e.response?.data?.detail || e.message || '项目图谱查询失败' }
+        }
       }
 
       return { error: `未知工具: ${call.tool}` }

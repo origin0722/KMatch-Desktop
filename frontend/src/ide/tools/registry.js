@@ -83,6 +83,29 @@ export const TOOLS = Object.freeze([
     description: '基于学情画像薄弱知识点, 调后端 content_generator 生成结构化学习资源 (讲义/实操/测试题), 结果自动落「学习资源」模块。用户说"生成学习资源/讲义"时调它, 不要自己手写讲义。需先完成学情测评。',
     parameters: { strategy: 'string (scaffold补基础|remediate降维|advance进阶, 默认 scaffold)' },
   },
+  {
+    name: 'search_knowledge',
+    description: '语义检索知识图谱 (向量混合), 按自然语言查相关知识点 (名称/摘要/难度/分类/编号)。用户问某概念属于哪个知识点、或你想查证知识点内容时调它, 优先于凭记忆回答。',
+    parameters: {
+      query: 'string (自然语言检索词, 必填)',
+      top_k: 'number (返回条数, 默认5, 1-10)',
+    },
+  },
+  {
+    name: 'get_learning_path',
+    description: '查个性化学习路径 (基于用户学情画像的已知/薄弱点组装 BFS 路径)。用户问"我该学什么/学习顺序"时调它, 能看到接下来该学的知识点序列。',
+    parameters: {
+      level: 'number (路径深度, 默认2)',
+      max_nodes: 'number (路径最大节点数, 默认20)',
+    },
+  },
+  {
+    name: 'query_project_graph',
+    description: '查已落库的项目代码图谱 (函数/类/方法实体与调用关系)。用户问项目架构/某个函数被谁调用/整体结构时调它, 优先于凭记忆回答。需先解析过项目 (打开项目自动解析)。',
+    parameters: {
+      project_id: 'string (项目编号, 缺省用最近一次解析的项目)',
+    },
+  },
 ])
 
 /** 工具名清单（派生自 TOOLS，单一源）。 */
@@ -99,6 +122,9 @@ export const DEFAULT_TOOL_PERMISSIONS = Object.freeze({
   web_search: TOOL_PERMISSION.ALLOW,
   get_knowledge_node: TOOL_PERMISSION.ALLOW,
   generate_learning_resources: TOOL_PERMISSION.ALLOW,
+  search_knowledge: TOOL_PERMISSION.ALLOW,
+  get_learning_path: TOOL_PERMISSION.ALLOW,
+  query_project_graph: TOOL_PERMISSION.ALLOW,
 })
 
 const TOOL_CALL_EXAMPLES = {
@@ -111,6 +137,9 @@ const TOOL_CALL_EXAMPLES = {
   web_search: '{"tool": "web_search", "query": "Python 装饰器原理与用法"}',
   get_knowledge_node: '{"tool": "get_knowledge_node", "node_id": "PY-002"}',
   generate_learning_resources: '{"tool": "generate_learning_resources", "strategy": "scaffold"}',
+  search_knowledge: '{"tool": "search_knowledge", "query": "列表推导式怎么用", "top_k": 5}',
+  get_learning_path: '{"tool": "get_learning_path", "level": 2}',
+  query_project_graph: '{"tool": "query_project_graph"}',
 }
 
 export function toolCallExample(tool) {
@@ -172,6 +201,15 @@ export function buildToolBlock(allowedTools) {
   }
   if (allow.has('generate_learning_resources')) {
     notes.push('- generate_learning_resources: 用户要"生成学习资源/讲义/实操/测试题"时调它, 调后端 content_generator 图谱驱动生成结构化资源并自动落「学习资源」模块; 【不要自己手写讲义】。需用户已完成学情测评 (有 session+画像), 无则引导先去学习会话测评。strategy: scaffold(补基础,默认)/remediate(降维)/advance(进阶)。')
+  }
+  if (allow.has('search_knowledge')) {
+    notes.push('- search_knowledge: 语义检索知识图谱, 按自然语言查相关知识点 (返回编号/名称/摘要/难度/分类)。用户问某概念对应哪个知识点、或你不确定知识点内容时【优先调它查证】, 不要凭记忆回答知识点细节。')
+  }
+  if (allow.has('get_learning_path')) {
+    notes.push('- get_learning_path: 查个性化学习路径 (基于学情画像已知/薄弱点 BFS 组装)。用户问"我该学什么/学习顺序/接下来学什么"时调它, 返回知识点序列与依赖关系。需已完成测评, 无则引导先去学习会话。')
+  }
+  if (allow.has('query_project_graph')) {
+    notes.push('- query_project_graph: 查已落库的项目代码图谱 (函数/类/方法实体与调用关系)。用户问项目架构/某函数被谁调用/整体结构时【优先调它查证】, 不要凭记忆回答项目细节。需先打开项目自动解析。')
   }
   if (allow.has('generate_project_graph') || allow.has('code_review') || allow.has('code_test')) {
     notes.push('- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。')
