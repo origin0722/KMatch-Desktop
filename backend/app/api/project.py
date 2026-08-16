@@ -28,7 +28,7 @@ from app.code_parser import (
 )
 from app.agents.code_reviewer import review_code
 from app.agents.code_tester import run_tests
-from app.agents.project_analyzer import analyze_project
+from app.agents.project_analyzer import ProjectGraphNotFoundError, analyze_project
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -259,11 +259,10 @@ def analyze_project_api(req: AnalyzeRequest, request: Request):
     kg = _get_kg(request)
     try:
         result = analyze_project(kg, req.project_id, tavily_key=req.tavily_key)
+    except ProjectGraphNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
-        msg = str(e)
-        if "不存在" in msg:
-            raise HTTPException(status_code=404, detail=msg)
-        raise HTTPException(status_code=503, detail=msg)
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.error("项目深度分析失败 project=%s", req.project_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"项目深度分析失败: {e}")

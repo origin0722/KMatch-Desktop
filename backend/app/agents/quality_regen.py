@@ -46,11 +46,13 @@ def regenerate_flagged(resources: list[dict], hallucination_result: dict, kg) ->
     verdicts = [v for v in (hallucination_result or {}).get("verdicts", [])
                 if isinstance(v, dict) and v.get("verdict") == "hallucinated"]
 
-    flagged = []
+    # 按 resource_index 去重 (畸形重复 verdict 不致同一槽位再生两次, 保护调用方 before/after 算术)
+    flagged_by_index: dict[int, dict] = {}
     for v in verdicts[:MAX_REGENS]:
         i = v.get("resource_index")
         if isinstance(i, int) and 0 <= i < len(out) and isinstance(out[i], dict):
-            flagged.append((i, v))
+            flagged_by_index.setdefault(i, v)
+    flagged = list(flagged_by_index.items())
 
     if not flagged or kg is None:
         return {"resources": out, "regenerated_count": 0, "regen_indexes": [],
@@ -73,7 +75,8 @@ def regenerate_flagged(resources: list[dict], hallucination_result: dict, kg) ->
         )
         return (i, res) if ok else None
 
-    max_workers = min(settings.CONTENT_GEN_CONCURRENCY, len(flagged))
+    # max(1, ...) 防 CONTENT_GEN_CONCURRENCY=0 时 ThreadPoolExecutor 抛 ValueError
+    max_workers = max(1, min(settings.CONTENT_GEN_CONCURRENCY, len(flagged)))
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         results = list(pool.map(_regen_one, flagged))
 

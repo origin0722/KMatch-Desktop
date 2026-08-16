@@ -106,6 +106,13 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
         ),
     }[content_type]
 
+    # 定向再生修正块 (非空 = 上轮 reviewer retry_hint / 独立裁判 reason 注入)
+    correction_block = (
+        f"\n\n【上轮判定修正要求——定向再生】\n{correction_hint}\n"
+        "重点修正上述问题 (以图谱事实为准), 其余结构保持原样; 无法依据节点事实修正的部分宁可删去。"
+        if correction_hint else ""
+    )
+
     system = SystemMessage(content=(
         "你是 KMatch 领域知识生成 Agent。基于知识图谱节点事实生成个性化学习资源。"
         f"{style_hint}。"
@@ -122,12 +129,7 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
         "\n资源的第一小节 (讲义) / 任务目标 (实操) / 首个考察点 (测试题) 必须先用 1-3 句"
         "复述节点 summary/key_points 已给事实 (不加新信息) 作为锚定; 随后的展开只能"
         "阐释已锚定的事实; 结论不得先于其图谱依据出现 (先有桥再有结论)。"
-        + (
-            f"\n\n【上轮判定修正要求——定向再生】\n{correction_hint}\n"
-            "重点修正上述问题 (以图谱事实为准), 其余结构保持原样; 无法依据节点事实修正的部分宁可删去。"
-            if correction_hint
-            else ""
-        )
+        + correction_block
         + "\n【认识状态自声明 (unverified_claims)】"
         "\n类比、背景性铺垫等图谱事实之外的陈述是允许的, 但必须如实浮出: 在输出的"
         " unverified_claims 数组里逐条列出这些陈述 (每条一句话)。完全只用节点事实时输出空数组。"
@@ -157,6 +159,27 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
     return [system, user]
 
 
+def _finalize_resource(data: dict, node: dict, content_type: str, adaptation_label: str) -> dict:
+    """LLM 输出 → 资源契约的统一兜底 (_generate_one 与 _generate_feedback_one 共用)。
+
+    - 难度由系统按知识点难度统一赋值 (BUG-043: 资源难度对齐节点难度, 强制覆盖 LLM 自填值)
+    - source_nodes 非法时回退节点 summary 引用
+    - unverified_claims (认识状态自声明): 非 list 强转空 (缺失视为完全锚定, 由裁判复核)
+    """
+    data.setdefault("content_type", content_type)
+    data.setdefault("target_node_id", node.get("node_id"))
+    node_diff = node.get("difficulty", 1)
+    data["difficulty_level"] = node_diff if isinstance(node_diff, (int, float)) else 1
+    data.setdefault("adaptation_profile", adaptation_label)
+    if not isinstance(data.get("source_nodes"), list):
+        data["source_nodes"] = [f"{node['node_id']}.summary"]
+    ucs = data.get("unverified_claims")
+    data["unverified_claims"] = [str(c) for c in ucs if c] if isinstance(ucs, list) else []
+    data.setdefault("content", "")
+    data["generated_at"] = datetime.utcnow().isoformat() + "Z"
+    return data
+
+
 def _generate_one(node: dict, theory_level: int, content_type: str, correction_hint: str = "") -> dict:
     """调 LLM 为单节点生成单类型资源，返回带溯源标记的内容 dict。
 
@@ -173,22 +196,7 @@ def _generate_one(node: dict, theory_level: int, content_type: str, correction_h
         logger.warning("生成响应非对象 node=%s type=%s, 降级空资源",
                        node.get("node_id"), type(data))
         data = {}
-    # 兜底: 补全必要字段
-    data.setdefault("content_type", content_type)
-    data.setdefault("target_node_id", node.get("node_id"))
-    # 难度由系统按知识点难度统一赋值 (M5 适配率: 资源难度须对齐节点难度, gap=0)。
-    # 强制覆盖 LLM 自填值 — 难度是图谱事实, 非 LLM 臆造 (对齐"组装而非生成"理念)。
-    node_diff = node.get("difficulty", 1)
-    data["difficulty_level"] = node_diff if isinstance(node_diff, (int, float)) else 1
-    data.setdefault("adaptation_profile", _adaptation_label(theory_level))
-    if not isinstance(data.get("source_nodes"), list):
-        data["source_nodes"] = [f"{node['node_id']}.summary"]
-    # 认识状态自声明 (阶段二): 非 list 强转空 (自声明缺失视为完全锚定, 由裁判复核)
-    ucs = data.get("unverified_claims")
-    data["unverified_claims"] = [str(c) for c in ucs if c] if isinstance(ucs, list) else []
-    data.setdefault("content", "")
-    data["generated_at"] = datetime.utcnow().isoformat() + "Z"
-    return data
+    return _finalize_resource(data, node, content_type, _adaptation_label(theory_level))
 
 
 def content_generator_node(kg: KnowledgeGraph):
@@ -247,11 +255,11 @@ def content_generator_node(kg: KnowledgeGraph):
 
         resources = []
         failures = 0
-        # 并发度: 可配 (CONTENT_GEN_CONCURRENCY), 默认 5。
+        # 并发度: 可配 (CONTENT_GEN_CONCURRENCY), 默认 5; max(1,...) 防配置为 0 崩溃。
         # 实测 (DeepSeek V4 Pro API, 9 次生成): 并发5 内容生成 137s, 并发3 反而 190s。
         # 降并发未能减少 429 退避 (DeepSeek 对并发5 限流不严重), 却多了轮次 (2轮 vs 3轮) 更慢。
         # 故默认 5; 仅在确认重度限流时调低, 或换更快模型/减资源数 (减 LLM 调用) 才能真降耗时。
-        max_workers = min(settings.CONTENT_GEN_CONCURRENCY, len(tasks)) if tasks else 1
+        max_workers = max(1, min(settings.CONTENT_GEN_CONCURRENCY, len(tasks)))
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             results = list(pool.map(
                 lambda args: safe_llm_call(
@@ -448,7 +456,7 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         "lecture": (
             "生成【降维/补基础讲义】: 针对该节点用类比简明重讲 1 个核心 key_point, 并纠正 1 个 common_mistake; "
             "正文 250 字内, 只用节点已有事实, 禁编造。"
-        ) if content_type == "lecture" else "",
+        ),
         "test": (
             "生成【进阶挑战题】1 道跨知识点进阶选择题, 附答案字母与一句解析; "
             "200 字内, 只用节点已有事实, 禁编造。"
@@ -483,19 +491,7 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
     data = parse_llm_json(resp.content)
     if not isinstance(data, dict):
         raise ValueError(f"feedback 生成响应非对象: {type(data)}")
-    data.setdefault("content_type", content_type)
-    data.setdefault("target_node_id", node.get("node_id"))
-    # 难度由系统按知识点难度统一赋值 (BUG-043 一致性: 反馈再生路径同样强制, 避免 LLM 自填漂移)
-    node_diff = node.get("difficulty", 1)
-    data["difficulty_level"] = node_diff if isinstance(node_diff, (int, float)) else 1
-    data.setdefault("adaptation_profile", label)
-    if not isinstance(data.get("source_nodes"), list):
-        data["source_nodes"] = [f"{node['node_id']}.summary"]
-    ucs = data.get("unverified_claims")
-    data["unverified_claims"] = [str(c) for c in ucs if c] if isinstance(ucs, list) else []
-    data.setdefault("content", "")
-    data["generated_at"] = datetime.utcnow().isoformat() + "Z"
-    return data
+    return _finalize_resource(data, node, content_type, label)
 
 
 def _adaptation_style(label: str) -> str:

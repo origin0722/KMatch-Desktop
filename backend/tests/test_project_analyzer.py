@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from app.api import project as project_api
 from app.agents import project_analyzer
+from app.agents.project_analyzer import ProjectGraphNotFoundError
 
 
 # ============================================================
@@ -99,9 +100,9 @@ def test_analyze_project_success(monkeypatch):
 
 
 def test_analyze_project_graph_not_found():
-    """图谱不存在 -> ValueError。"""
+    """图谱不存在 -> ProjectGraphNotFoundError (API 层映射 404)。"""
     kg = _FakeKG(None)
-    with pytest.raises(ValueError, match="不存在"):
+    with pytest.raises(ProjectGraphNotFoundError, match="不存在"):
         project_analyzer.analyze_project(kg, "missing_proj")
 
 

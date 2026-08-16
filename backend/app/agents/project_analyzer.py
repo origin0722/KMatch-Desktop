@@ -8,15 +8,26 @@
 复用 app/agents/llm.py 的 LLM 基础设施 + app/utils/web_search.py 的 search_web。
 """
 
-import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
+from langchain_core.messages import HumanMessage
+
 from app.agents.llm import get_default_chat_model, llm_configured
+from app.config import settings
+from app.utils.json_utils import parse_llm_json
 from app.utils.logging import get_logger
 from app.utils.web_search import search_web
-from app.config import settings
 
 logger = get_logger(__name__)
+
+# 输入控量: 实体摘要上限 (超出的截断标注, 控 LLM token 预算)
+MAX_ENTITIES_IN_SUMMARY = 60
+# 关系摘要只取 CALLS (最有信息量), 上限同理
+MAX_CALLS_IN_SUMMARY = 30
+# 联网搜索: 技术栈逐个搜, 每项 max_results 条; 上限控延迟 (并行后 wall-clock ≈ 单项)
+MAX_TECHS_TO_SEARCH = 8
+WEB_RESULTS_PER_TECH = 2
 
 ANALYSIS_PROMPT = """你是一位资深 Python 架构师。请分析以下项目代码图谱, 输出结构化分析结果。
 
@@ -53,7 +64,11 @@ ANALYSIS_PROMPT = """你是一位资深 Python 架构师。请分析以下项目
 - 学习建议要具体到本项目的技术栈和架构特点"""
 
 
-def _build_entity_summary(graph: dict, max_entities: int = 60) -> str:
+class ProjectGraphNotFoundError(Exception):
+    """项目图谱不存在 (未解析或已删除) — API 层映射 404。"""
+
+
+def _build_entity_summary(graph: dict) -> str:
     """把项目图谱实体 + 关系摘要成 LLM 可读的文本 (控制在 token 预算内)。"""
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
@@ -62,11 +77,11 @@ def _build_entity_summary(graph: dict, max_entities: int = 60) -> str:
     out_deg = {}
     in_deg = {}
     for e in edges:
-        out_deg[e["source"]] = out_deg.get(e["source"], 0) + 1
-        in_deg[e["target"]] = in_deg.get(e["target"], 0) + 1
+        out_deg[e.get("source")] = out_deg.get(e.get("source"), 0) + 1
+        in_deg[e.get("target")] = in_deg.get(e.get("target"), 0) + 1
 
     lines = []
-    for n in nodes[:max_entities]:
+    for n in nodes[:MAX_ENTITIES_IN_SUMMARY]:
         props = n.get("properties") or {}
         nid = n.get("id", "")
         name = props.get("name") or n.get("label", "")
@@ -82,17 +97,15 @@ def _build_entity_summary(graph: dict, max_entities: int = 60) -> str:
             line += f"  # {doc_short}"
         lines.append(line)
 
-    if len(nodes) > max_entities:
-        lines.append(f"... (共 {len(nodes)} 个实体, 已省略 {len(nodes) - max_entities})")
+    if len(nodes) > MAX_ENTITIES_IN_SUMMARY:
+        lines.append(f"... (共 {len(nodes)} 个实体, 已省略 {len(nodes) - MAX_ENTITIES_IN_SUMMARY})")
 
     # 关系摘要: 只列 CALLS (最有信息量)
-    calls = [e for e in edges if e.get("label") == "CALLS"][:30]
+    calls = [e for e in edges if e.get("label") == "CALLS"][:MAX_CALLS_IN_SUMMARY]
     if calls:
         lines.append("\n调用关系:")
         for e in calls:
-            src = e["source"]
-            tgt = e["target"]
-            lines.append(f"  {src} -> {tgt}")
+            lines.append(f"  {e.get('source')} -> {e.get('target')}")
 
     return "\n".join(lines)
 
@@ -112,6 +125,31 @@ def _extract_tech_stack(graph: dict) -> list[str]:
     return sorted(mods)
 
 
+def _search_tech_resources(tech_stack: list[str], tavily_key: str) -> list[dict]:
+    """对技术栈逐个联网搜学习资源 (并行, wall-clock ≈ 单项搜索)。"""
+    techs = tech_stack[:MAX_TECHS_TO_SEARCH]
+    if not techs:
+        return []
+
+    def _one(tech: str) -> list[dict]:
+        return [
+            {
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "snippet": r.get("snippet", ""),
+                "tech": tech,
+            }
+            for r in search_web(f"{tech} Python 教程 入门 文档", tavily_key,
+                                max_results=WEB_RESULTS_PER_TECH)
+        ]
+
+    with ThreadPoolExecutor(max_workers=max(1, len(techs))) as pool:
+        nested = list(pool.map(_one, techs))
+    resources = [r for chunk in nested for r in chunk]
+    logger.info("项目深度分析: 搜到 %d 条技术栈学习资源 (技术 %d)", len(resources), len(techs))
+    return resources
+
+
 def analyze_project(kg, project_id: str, tavily_key: Optional[str] = None) -> dict:
     """LLM 深度分析项目图谱 + 联网搜技术栈学习资源。
 
@@ -128,11 +166,12 @@ def analyze_project(kg, project_id: str, tavily_key: Optional[str] = None) -> di
         }
 
     Raises:
-        ValueError: 项目图谱不存在或 LLM 未配置
+        ProjectGraphNotFoundError: 项目图谱不存在
+        ValueError: LLM 未配置
     """
     graph = kg.get_project_graph(project_id)
     if graph is None:
-        raise ValueError(f"项目图谱不存在: {project_id}")
+        raise ProjectGraphNotFoundError(f"项目图谱不存在: {project_id}")
 
     if not llm_configured():
         raise ValueError("LLM 未配置 (LLM_API_KEY 为占位符), 无法执行深度分析")
@@ -151,42 +190,23 @@ def analyze_project(kg, project_id: str, tavily_key: Optional[str] = None) -> di
 
     # 2. LLM 分析
     llm = get_default_chat_model()
-    from langchain_core.messages import HumanMessage
     resp = llm.invoke([HumanMessage(content=prompt)])
     raw = resp.content if hasattr(resp, "content") else str(resp)
 
-    # 3. 解析 LLM JSON 输出 (容错: 去 markdown 包裹)
-    text = raw.strip()
-    if text.startswith("```"):
-        # 去掉 ```json ... ``` 包裹
-        lines = text.split("\n")
-        text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-
-    try:
-        analysis = json.loads(text)
-    except json.JSONDecodeError:
-        # JSON 解析失败时用原始文本做 summary
+    # 3. 解析 LLM JSON 输出 (parse_llm_json 容错 markdown 包裹/尾随文本, 与其他 Agent 一致;
+    #    失败返回 {} → 一并降级为纯文本 summary)
+    analysis = parse_llm_json(raw)
+    if not isinstance(analysis, dict) or not analysis:
         logger.warning("LLM 分析结果 JSON 解析失败, 降级为纯文本 summary")
         analysis = {
-            "summary": text[:500],
+            "summary": str(raw)[:500],
             "architecture": {"pattern": "未知", "entry_points": [], "key_modules": []},
             "complexity": {"level": "未知", "note": "LLM 输出格式异常"},
             "recommendations": [],
         }
 
-    # 4. 联网搜索技术栈学习资源 (每项 2 条)
-    web_resources = []
-    if tavily_key and tech_stack:
-        for tech in tech_stack[:8]:
-            results = search_web(f"{tech} Python 教程 入门 文档", tavily_key, max_results=2)
-            for r in results:
-                web_resources.append({
-                    "title": r.get("title", ""),
-                    "url": r.get("url", ""),
-                    "snippet": r.get("snippet", ""),
-                    "tech": tech,
-                })
-        logger.info("项目深度分析: 搜到 %d 条技术栈学习资源 (技术 %d)", len(web_resources), len(tech_stack[:8]))
+    # 4. 联网搜索技术栈学习资源 (并行)
+    web_resources = _search_tech_resources(tech_stack, tavily_key) if tavily_key else []
 
     return {
         "summary": analysis.get("summary", ""),

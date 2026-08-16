@@ -615,7 +615,6 @@ class KnowledgeGraph:
             entities: CodeEntity 列表 (to_neo4j_props 可转 dict)
             relations: CodeRelation 列表
         """
-        import json
         from datetime import datetime, timezone
 
         parsed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -692,8 +691,6 @@ class KnowledgeGraph:
             {project_id, nodes:[{id,label,group,layer,properties}], edges:[{source,target,label,...}]}
             无实体返回 None。
         """
-        import json
-
         with self.driver.session() as s:
             node_result = s.run(
                 "MATCH (n:ProjectEntity {project_id: $pid}) RETURN n",
@@ -806,7 +803,6 @@ class KnowledgeGraph:
         字段存储对齐 import 脚本: practice_questions 存 JSON 字符串,
         key_points/common_mistakes/tags 原生 list。
         """
-        import json as _json
         from datetime import datetime, timezone
         nid = node.get("id")
         if not nid:
@@ -819,7 +815,7 @@ class KnowledgeGraph:
             "category": node.get("category", ""),
             "summary": node.get("summary", ""),
             "key_points": node.get("key_points", []),
-            "practice_questions": _json.dumps(node.get("practice_questions", []), ensure_ascii=False),
+            "practice_questions": json.dumps(node.get("practice_questions", []), ensure_ascii=False),
             "common_mistakes": node.get("common_mistakes", []),
             "tags": node.get("tags", []),
             "estimated_minutes": node.get("estimated_minutes", 20),
