@@ -128,6 +128,24 @@ def test_hallucination_empty_resources():
     assert result["total"] == 0
     assert result["rate"] == 0.0
 
+def test_hallucination_verdict_records_evidence_and_coverage():
+    """阶段四: verdict 读入 evidence_node_ids + coverage (验证依据+锚定覆盖双记录)。
+    非法 coverage 兜底 none; 缺失 evidence 兜底空列表。"""
+    judge = _FakeJudge([
+        json.dumps({"verdict": "grounded", "evidence_node_ids": ["PY-001", "PY-002"],
+                    "coverage": "full", "reason": "ok"}, ensure_ascii=False),
+        json.dumps({"verdict": "grounded", "coverage": "非法值", "reason": "ok"}, ensure_ascii=False),
+        json.dumps({"verdict": "grounded", "coverage": "partial", "reason": "ok"}, ensure_ascii=False),
+    ])
+    result = qj.judge_hallucination([_res("a"), _res("b"), _res("c")], judge_llm=judge)
+
+    assert result["verdicts"][0]["evidence_node_ids"] == ["PY-001", "PY-002"]
+    assert result["verdicts"][0]["coverage"] == "full"
+    # 非法 coverage → none; 缺失 evidence → []
+    assert result["verdicts"][1]["coverage"] == "none"
+    assert result["verdicts"][1]["evidence_node_ids"] == []
+    assert result["verdicts"][2]["coverage"] == "partial"
+
 
 # ============================================================
 # judge_adaptation

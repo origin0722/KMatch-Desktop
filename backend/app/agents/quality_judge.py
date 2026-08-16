@@ -138,11 +138,17 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
         if verdict not in counts:
             verdict = "unverifiable"  # 解析失败/非法判定 → 保守计为无法核实
         counts[verdict] += 1
+        # 验证依据 + 锚定覆盖双记录 (阶段四): evidence_node_ids 留档可追溯,
+        # coverage 评估内容对 key_points 的覆盖 (与 verdict 正交, 非法值兜底 none)
+        evidence = result.get("evidence_node_ids") if isinstance(result, dict) else None
+        coverage = result.get("coverage") if isinstance(result, dict) else None
         verdicts.append({
             "resource_index": i,
             "content_type": r.get("content_type", ""),
             "target_node_id": node_id,
             "verdict": verdict,
+            "evidence_node_ids": [str(n) for n in evidence if n] if isinstance(evidence, list) else [],
+            "coverage": coverage if coverage in ("full", "partial", "none") else "none",
             "reason": (result.get("reason", "") if isinstance(result, dict) else "") or "",
         })
     total = len(resources)

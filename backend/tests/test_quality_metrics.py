@@ -8,6 +8,7 @@ from app.agents.quality_metrics import (
     COVERAGE_TARGET,
     HALLUCINATION_TARGET,
     compute_adaptation_rate,
+    compute_anchor_coverage,
     compute_coverage_rate,
     compute_hallucination_rate,
     compute_quality_metrics,
@@ -202,3 +203,37 @@ def test_compute_quality_metrics_has_generated_at():
     qm = compute_quality_metrics({}, {}, {}, {})
     assert "generated_at" in qm
     assert qm["generated_at"].endswith("Z")
+
+
+# ---------- 锚定覆盖度 (阶段四: 资源内容对节点 key_points 的覆盖) ----------
+
+def test_anchor_coverage_counts_by_level():
+    verdicts = [
+        {"coverage": "full"},
+        {"coverage": "full"},
+        {"coverage": "partial"},
+        {"coverage": "none"},
+    ]
+    result = compute_anchor_coverage(verdicts)
+    assert result == {"full": 2, "partial": 1, "none": 1, "rate_full": 0.5}
+
+
+def test_anchor_coverage_invalid_and_missing_default_none():
+    result = compute_anchor_coverage([
+        {"coverage": "非法值"},
+        {},                      # 缺失 → none
+        "不是dict",              # 非 dict → 忽略
+        None,                    # 非 dict → 忽略
+    ])
+    assert result == {"full": 0, "partial": 0, "none": 2, "rate_full": 0.0}
+
+
+def test_anchor_coverage_empty_input():
+    assert compute_anchor_coverage([]) == {"full": 0, "partial": 0, "none": 0, "rate_full": 0.0}
+    assert compute_anchor_coverage(None) == {"full": 0, "partial": 0, "none": 0, "rate_full": 0.0}
+
+
+def test_anchor_coverage_all_full():
+    result = compute_anchor_coverage([{"coverage": "full"}] * 9)
+    assert result["rate_full"] == 1.0
+    assert result["full"] == 9

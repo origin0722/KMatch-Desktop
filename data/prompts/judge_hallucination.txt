@@ -34,6 +34,13 @@
 {
   "verdict": "grounded | hallucinated | unverifiable",
   "evidence_node_ids": ["可佐证或存疑的节点 ID 列表"],
+  "coverage": "full | partial | none",
   "reason": "一句话说明判定依据"
 }
 ```
+
+### coverage 字段语义 (锚定覆盖度, 与 verdict 正交)
+对照图谱事实评估**资源内容对节点 key_points 的覆盖程度**:
+- `full`: 资源实质覆盖了节点的全部关键点 (讲解/考察了每个 key_point)
+- `partial`: 只覆盖了部分关键点
+- `none`: 与节点关键点基本不相关 (此时 verdict 通常也是 unverifiable)

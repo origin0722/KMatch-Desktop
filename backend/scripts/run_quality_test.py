@@ -41,6 +41,7 @@ from app.agents.quality_metrics import (  # noqa: E402
     ADAPTATION_TARGET,
     COVERAGE_TARGET,
     HALLUCINATION_TARGET,
+    compute_anchor_coverage,
     compute_quality_metrics,
 )
 from app.agents.quality_regen import regenerate_flagged  # noqa: E402
@@ -244,6 +245,12 @@ def aggregate(per_run: list[dict]) -> dict:
                 "total": after_total,
             }
 
+        # 锚定覆盖聚合 (阶段四: 资源内容对节点 key_points 的覆盖, 验证方式+覆盖双记录)
+        anchor = compute_anchor_coverage(
+            [v for h in ih for v in h.get("verdicts", [])])
+        if anchor["full"] + anchor["partial"] + anchor["none"] > 0:
+            independent["anchor_coverage"] = anchor
+
     # M5 口径决策 (2026-08-12): 幻觉率达标判定以**独立裁判为主口径** —
     # 独立裁判正是 M5 升级为打破"作者自评循环"引入的机制。裁判可用时用裁判幻觉率,
     # 不可用 (--no-judge / 全部判定失败) 回退自评。适配率/覆盖率沿用系统结构性指标。
@@ -358,6 +365,13 @@ def write_markdown(report: dict, path: Path) -> None:
             "",
             f"- 独立裁判覆盖 {ind['n_runs']} 次运行; 判定失败的运行仅计入自评列 (标注 n/a)",
         ]
+        anchor = ind.get("anchor_coverage")
+        if anchor:
+            lines += [
+                f"- 锚定覆盖 (资源内容对节点 key_points 的覆盖): full {anchor['full']} / "
+                f"partial {anchor['partial']} / none {anchor['none']} "
+                f"(full 占比 {anchor['rate_full']*100:.1f}%; 逐条判定含 evidence_node_ids 验证依据可追溯)",
+            ]
         reg = ind.get("regen")
         if reg:
             lines += [
@@ -419,21 +433,22 @@ def write_markdown(report: dict, path: Path) -> None:
         "## 五、独立判定证据链 (逐条资源)",
         "",
         "> 每条资源的独立裁判判定明细 (内容 → 图谱事实 → 判定), 供评委追溯。"
-        "graph: grounded(可溯源) / hallucinated(幻觉) / unverifiable(无法核实)。",
+        "graph: grounded(可溯源) / hallucinated(幻觉) / unverifiable(无法核实)。"
+        "锚定覆盖: 资源内容对节点 key_points 的覆盖 (full/partial/none)。",
         "",
-        "| 画像 | 资源# | 类型 | 目标节点 | 幻觉判定 | 理由 |",
-        "|:---|:---:|:---|:---|:---:|:---|",
+        "| 画像 | 资源# | 类型 | 目标节点 | 幻觉判定 | 锚定覆盖 | 理由 |",
+        "|:---|:---:|:---|:---|:---:|:---:|:---|",
     ]
     for r in per_run:
         ind = r.get("independent")
         if not ind:
-            lines.append(f"| {r['name']} | - | - | - | n/a | 独立判定未运行 |")
+            lines.append(f"| {r['name']} | - | - | - | n/a | - | 独立判定未运行 |")
             continue
         for v in ind["hallucination"]["verdicts"]:
             vmark = {"grounded": "✅", "hallucinated": "❌", "unverifiable": "⚠️"}.get(v["verdict"], "?")
             lines.append(
                 f"| {r['name']} | {v['resource_index']} | {v['content_type']} | "
-                f"{v['target_node_id']} | {vmark} {v['verdict']} | {v['reason']} |"
+                f"{v['target_node_id']} | {vmark} {v['verdict']} | {v.get('coverage', '-')} | {v['reason']} |"
             )
     lines += [
         "",

@@ -141,6 +141,31 @@ def compute_coverage_rate(profile: dict, knowledge_graph: dict) -> dict:
     return {"rate": rate, "covered": covered, "total_weak": len(weak_ids)}
 
 
+def compute_anchor_coverage(verdicts: list) -> dict:
+    """锚定覆盖度 — 独立裁判判定资源内容对节点 key_points 的覆盖 (幻觉治理阶段四)。
+
+    与 compute_coverage_rate (学习路径覆盖弱项) 正交: 这里是"资源内容锚定节点事实"
+    的覆盖, 数据来自 judge_hallucination verdicts 的 coverage 字段。
+
+    Args:
+        verdicts: judge_hallucination 返回的 verdicts 列表 (每条含 coverage: full|partial|none)
+
+    Returns:
+        {full, partial, none, rate_full}  rate_full = full / total
+    """
+    counts = {"full": 0, "partial": 0, "none": 0}
+    for v in (verdicts or []):
+        if isinstance(v, dict):
+            counts[v.get("coverage", "none") if v.get("coverage") in counts else "none"] += 1
+    total = sum(counts.values())
+    return {
+        "full": counts["full"],
+        "partial": counts["partial"],
+        "none": counts["none"],
+        "rate_full": round(counts["full"] / total, 3) if total else 0.0,
+    }
+
+
 def compute_quality_metrics(
     profile: dict,
     knowledge_graph: dict,
