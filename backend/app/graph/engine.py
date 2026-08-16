@@ -710,6 +710,8 @@ class KnowledgeGraph:
                 "r.line AS line, r.resolved AS resolved",
                 pid=project_id,
             )
+            # 必须在 session 块内物化 result，否则 session 关闭后迭代抛 ResultConsumedError
+            edges_raw = [dict(r) for r in edge_result]
 
         nodes = []
         for n in nodes_raw:
@@ -731,7 +733,7 @@ class KnowledgeGraph:
             })
 
         edges = []
-        for r in edge_result:
+        for r in edges_raw:
             edge = {
                 "source": r["source"],
                 "target": r["target"],

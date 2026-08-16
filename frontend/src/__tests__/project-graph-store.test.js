@@ -244,14 +244,12 @@ describe('projectGraph store - analyze (P3 深度分析)', () => {
     pg.setGraph({ projectId: 'demo', entities: [], relations: [], stats: {}, sourcePath: '', written: true }, '/p')
 
     analyzeProject.mockResolvedValue({
-      data: {
-        summary: '一个爬虫项目',
-        architecture: { pattern: '单体脚本', entry_points: ['crawl'], key_modules: [] },
-        complexity: { level: '低', note: '简单' },
-        recommendations: ['学 requests'],
-        tech_stack: ['requests', 'bs4'],
-        web_resources: [{ title: '教程', url: 'https://ex.com', snippet: '示例', tech: 'requests' }],
-      },
+      summary: '一个爬虫项目',
+      architecture: { pattern: '单体脚本', entry_points: ['crawl'], key_modules: [] },
+      complexity: { level: '低', note: '简单' },
+      recommendations: ['学 requests'],
+      tech_stack: ['requests', 'bs4'],
+      web_resources: [{ title: '教程', url: 'https://ex.com', snippet: '示例', tech: 'requests' }],
     })
 
     await pg.analyze()

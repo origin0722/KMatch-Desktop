@@ -63,7 +63,7 @@ export function analyzeProject(projectId, tavilyKey) {
   return http.post('/api/project/analyze', {
     project_id: projectId,
     tavily_key: tavilyKey || undefined,
-  })
+  }, { timeout: 180000 }) // 3 min: LLM 分析 + 多技术栈联网搜索
 }
 
 /**

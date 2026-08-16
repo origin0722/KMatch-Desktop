@@ -138,7 +138,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     analyzing.value = true
     try {
       const aiSettings = useAiSettingsStore()
-      const { data } = await analyzeProject(g.projectId, aiSettings.tavilyKey)
+      const data = await analyzeProject(g.projectId, aiSettings.tavilyKey)
       analysis.value = data
       // web_resources 流入 learningResources store (学习视图可查看)
       const lr = useLearningResourcesStore()
