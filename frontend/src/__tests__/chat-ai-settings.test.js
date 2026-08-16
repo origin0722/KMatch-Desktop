@@ -93,6 +93,64 @@ describe('chat AI settings integration helpers', () => {
   })
 })
 
+describe('buildSystemPrompt: 项目深度分析结论 + 技术栈注入', () => {
+  it('注入深度分析结论 (概要/架构/技术栈/学习建议)', () => {
+    const prompt = buildSystemPrompt({
+      projectAnalysis: {
+        summary: '一个简单的网页爬虫项目',
+        architecture: { pattern: '单体脚本', entry_points: ['crawl'] },
+        complexity: { level: '低' },
+        recommendations: ['学 requests', '学 BeautifulSoup'],
+        tech_stack: ['requests', 'bs4'],
+      },
+    })
+    expect(prompt.content).toContain('项目深度分析结论')
+    expect(prompt.content).toContain('一个简单的网页爬虫项目')
+    expect(prompt.content).toContain('模式 单体脚本')
+    expect(prompt.content).toContain('入口点 crawl')
+    expect(prompt.content).toContain('复杂度 低')
+    expect(prompt.content).toContain('技术栈: requests, bs4')
+    expect(prompt.content).toContain('学 requests')
+  })
+
+  it('无深度分析但有技术栈时注入 AST 检测结果', () => {
+    const prompt = buildSystemPrompt({
+      projectTechStack: [
+        { name: 'Flask', category: 'Web 框架', count: 3 },
+        { name: 'Requests', category: 'HTTP 客户端', count: 1 },
+      ],
+    })
+    expect(prompt.content).toContain('项目技术栈 (项目图谱自动检测)')
+    expect(prompt.content).toContain('Flask(Web 框架)')
+    expect(prompt.content).toContain('Requests(HTTP 客户端)')
+  })
+
+  it('深度分析优先于技术栈检测 (两者都有时只注入分析结论)', () => {
+    const prompt = buildSystemPrompt({
+      projectAnalysis: { summary: '分析概要', tech_stack: ['flask'] },
+      projectTechStack: [{ name: 'Flask', category: 'Web 框架', count: 3 }],
+    })
+    expect(prompt.content).toContain('项目深度分析结论')
+    expect(prompt.content).not.toContain('项目技术栈 (项目图谱自动检测)')
+  })
+
+  it('导学模式也注入项目分析结论', () => {
+    const prompt = buildSystemPrompt({
+      tutorMode: true,
+      profile: { theory_level: 2, practice_level: 3, weak_topics: ['递归'] },
+      projectAnalysis: { summary: '爬虫项目', tech_stack: ['requests'] },
+    })
+    expect(prompt.content).toContain('启发式导学助手')
+    expect(prompt.content).toContain('项目深度分析结论')
+  })
+
+  it('无项目数据时不注入项目块', () => {
+    const prompt = buildSystemPrompt({})
+    expect(prompt.content).not.toContain('项目深度分析结论')
+    expect(prompt.content).not.toContain('项目技术栈')
+  })
+})
+
 describe('chat body: reasoning_mode + protocol (Spec A)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

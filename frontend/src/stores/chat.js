@@ -28,6 +28,7 @@ import {
   buildAdvertisedToolNames,
   toolPermissionError,
 } from '@/ide/tools/registry'
+import { detectTechStack } from '@/utils/techStack'
 import {
   hasProfile,
   profileTheoryLevel,
@@ -112,6 +113,31 @@ export function buildSystemPrompt(context) {
     lectureBlock = '\n\n## 学情讲义 (用户已生成的针对性学习内容, 可据此解答疑问)\n' + parts.join('\n\n')
   }
 
+  // 项目深度分析结论 + 技术栈: 用户跑过"深度分析"后助手可直接引用, 不必重新调 LLM 分析
+  let projectAnalysisBlock = ''
+  const pa = context?.projectAnalysis
+  if (pa) {
+    const parts = []
+    if (pa.summary) parts.push(`- 概要: ${pa.summary}`)
+    const arch = pa.architecture || {}
+    const archBits = []
+    if (arch.pattern) archBits.push(`模式 ${arch.pattern}`)
+    if (arch.entry_points?.length) archBits.push(`入口点 ${arch.entry_points.join(', ')}`)
+    if (pa.complexity?.level) archBits.push(`复杂度 ${pa.complexity.level}`)
+    if (archBits.length) parts.push(`- 架构: ${archBits.join(' | ')}`)
+    if (pa.tech_stack?.length) parts.push(`- 技术栈: ${pa.tech_stack.join(', ')}`)
+    if (Array.isArray(pa.recommendations) && pa.recommendations.length) {
+      parts.push(`- 学习建议: ${pa.recommendations.slice(0, 3).map((r, i) => `${i + 1}. ${r}`).join(' ')}`)
+    }
+    if (parts.length) {
+      projectAnalysisBlock = '\n\n## 项目深度分析结论 (用户问项目架构/技术栈/学习建议时据此回答, 不要臆造)\n' + parts.join('\n')
+    }
+  } else if (context?.projectTechStack?.length) {
+    // 无深度分析但有图谱: 注入 AST 自动检测的技术栈
+    const ts = context.projectTechStack.slice(0, 10).map((t) => `${t.name}(${t.category})`).join(', ')
+    projectAnalysisBlock = '\n\n## 项目技术栈 (项目图谱自动检测)\n- ' + ts
+  }
+
   // ---- 阶段4③ 启发式交互导学模式 (赛题(4)②) ----
   if (context && context.tutorMode) {
     // 注入学情画像 (经 types.js helper 读取, 导学模式聚焦薄弱点, 不含学习路径)
@@ -129,6 +155,7 @@ export function buildSystemPrompt(context) {
         + '\n5. 简洁: 每轮回复聚焦一个引导点 + 一个追问, 不要长篇大论。'
         + profileBlock
         + lectureBlock
+        + projectAnalysisBlock
         + memoriesBlock
         + reasoningBlock
         + ctxBlock
@@ -148,6 +175,7 @@ export function buildSystemPrompt(context) {
       + '涉及知识点时优先用 search_knowledge/get_knowledge_node 查证, 涉及项目架构时优先用 query_project_graph 查证, 严禁凭记忆臆造细节。'
       + profileBlock
       + lectureBlock
+      + projectAnalysisBlock
       + memoriesBlock
       + reasoningBlock
       + ctxBlock
@@ -805,6 +833,13 @@ export const useChatStore = defineStore('chat', () => {
       if (a.hasResults) ctx.knowledgeGraph = a.knowledgeGraph
       if (a.feedbackContent) ctx.feedbackContent = a.feedbackContent
     } catch { /* assessment store 未就绪, 忽略 */ }
+
+    // 项目深度分析结论 + 技术栈 (跑过"深度分析"后助手可直接引用; 有图谱无分析时注入 AST 技术栈检测)
+    try {
+      const pg = useProjectGraphStore()
+      if (pg.analysis) ctx.projectAnalysis = pg.analysis
+      if (pg.graph?.entities?.length) ctx.projectTechStack = detectTechStack(pg.graph.entities)
+    } catch { /* projectGraph store 未就绪, 忽略 */ }
 
     try {
       const aiSettings = useAiSettingsStore()
