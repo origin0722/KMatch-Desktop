@@ -88,7 +88,7 @@
             :loading="pg.analyzing"
             :disabled="!pg.graph?.projectId"
             @click="handleAnalyze"
-          >深度分析</el-button>
+          >{{ pg.analysis ? '查看分析' : '深度分析' }}</el-button>
 
           <el-popover placement="bottom" :width="180" trigger="click">
             <template #reference>
@@ -227,65 +227,67 @@
             <template #header><span>实体详情</span></template>
             <el-empty description="点击图谱节点查看详情" :image-size="60" />
           </el-card>
-
-          <!-- P3: 深度分析结果 -->
-          <el-card v-if="pg.analysis" shadow="never" class="panel-card analysis-card">
-            <template #header>
-              <div class="analysis-header">
-                <span>项目分析</span>
-                <el-button text size="small" @click="pg.analysis = null">关闭</el-button>
-              </div>
-            </template>
-            <div class="analysis-body">
-              <!-- 概要 -->
-              <p v-if="pg.analysis.summary" class="analysis-summary">{{ pg.analysis.summary }}</p>
-
-              <!-- 架构 -->
-              <div v-if="pg.analysis.architecture" class="analysis-section">
-                <div class="analysis-label">架构模式</div>
-                <el-tag size="small">{{ pg.analysis.architecture.pattern || '未知' }}</el-tag>
-                <div v-if="pg.analysis.architecture.entry_points?.length" class="analysis-sub">
-                  <span class="analysis-label-sm">入口点</span>
-                  <el-tag v-for="ep in pg.analysis.architecture.entry_points" :key="ep" size="small" type="info" class="analysis-tag">{{ ep }}</el-tag>
-                </div>
-                <div v-if="pg.analysis.architecture.key_modules?.length" class="analysis-sub">
-                  <span class="analysis-label-sm">关键模块</span>
-                  <div v-for="m in pg.analysis.architecture.key_modules" :key="m" class="analysis-module">{{ m }}</div>
-                </div>
-              </div>
-
-              <!-- 复杂度 -->
-              <div v-if="pg.analysis.complexity" class="analysis-section">
-                <div class="analysis-label">复杂度</div>
-                <el-tag size="small" :type="pg.analysis.complexity.level === '高' ? 'danger' : pg.analysis.complexity.level === '中' ? 'warning' : 'success'">
-                  {{ pg.analysis.complexity.level || '未知' }}
-                </el-tag>
-                <p v-if="pg.analysis.complexity.note" class="analysis-note">{{ pg.analysis.complexity.note }}</p>
-              </div>
-
-              <!-- 学习建议 -->
-              <div v-if="pg.analysis.recommendations?.length" class="analysis-section">
-                <div class="analysis-label">学习建议</div>
-                <ul class="analysis-recs">
-                  <li v-for="(r, i) in pg.analysis.recommendations" :key="i">{{ r }}</li>
-                </ul>
-              </div>
-
-              <!-- 联网资源 -->
-              <div v-if="pg.analysis.web_resources?.length" class="analysis-section">
-                <div class="analysis-label">联网资源 ({{ pg.analysis.web_resources.length }})</div>
-                <div v-for="(r, i) in pg.analysis.web_resources" :key="i" class="analysis-resource">
-                  <a :href="r.url" target="_blank" rel="noopener" class="analysis-link" :title="r.url">
-                    <span class="analysis-res-tech">[{{ r.tech }}]</span> {{ r.title }}
-                  </a>
-                  <p v-if="r.snippet" class="analysis-snippet">{{ r.snippet }}</p>
-                </div>
-              </div>
-            </div>
-          </el-card>
         </div>
       </div>
     </template>
+
+    <!-- 深度分析结果弹窗 (从侧栏移出, 800px 宽屏展示) -->
+    <el-dialog
+      v-model="analysisDialogVisible"
+      title="项目深度分析"
+      width="800px"
+      append-to-body
+      :close-on-click-modal="false"
+      class="analysis-dialog"
+    >
+      <template v-if="pg.analysis">
+        <p v-if="pg.analysis.summary" class="analysis-summary">{{ pg.analysis.summary }}</p>
+
+        <div v-if="pg.analysis.architecture" class="analysis-section">
+          <div class="analysis-label">架构模式</div>
+          <el-tag size="small">{{ pg.analysis.architecture.pattern || '未知' }}</el-tag>
+          <div v-if="pg.analysis.architecture.entry_points?.length" class="analysis-sub">
+            <span class="analysis-label-sm">入口点</span>
+            <el-tag v-for="ep in pg.analysis.architecture.entry_points" :key="ep" size="small" type="info" class="analysis-tag">{{ ep }}</el-tag>
+          </div>
+          <div v-if="pg.analysis.architecture.key_modules?.length" class="analysis-sub">
+            <span class="analysis-label-sm">关键模块</span>
+            <div v-for="m in pg.analysis.architecture.key_modules" :key="m" class="analysis-module">{{ m }}</div>
+          </div>
+        </div>
+
+        <div v-if="pg.analysis.complexity" class="analysis-section">
+          <div class="analysis-label">复杂度</div>
+          <el-tag size="small" :type="pg.analysis.complexity.level === '高' ? 'danger' : pg.analysis.complexity.level === '中' ? 'warning' : 'success'">
+            {{ pg.analysis.complexity.level || '未知' }}
+          </el-tag>
+          <p v-if="pg.analysis.complexity.note" class="analysis-note">{{ pg.analysis.complexity.note }}</p>
+        </div>
+
+        <div v-if="pg.analysis.recommendations?.length" class="analysis-section">
+          <div class="analysis-label">学习建议</div>
+          <ul class="analysis-recs">
+            <li v-for="(r, i) in pg.analysis.recommendations" :key="i">{{ r }}</li>
+          </ul>
+        </div>
+
+        <div v-if="pg.analysis.tech_stack?.length" class="analysis-section">
+          <div class="analysis-label">检测到的技术栈</div>
+          <el-tag v-for="t in pg.analysis.tech_stack" :key="t" size="small" type="info" class="analysis-tag">{{ t }}</el-tag>
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="analysis-footer">
+          <el-button @click="handleReanalyze" :loading="pg.analyzing">重新分析</el-button>
+          <el-button
+            v-if="pg.analysis?.web_resources?.length"
+            type="primary"
+            @click="goToWebResources"
+          >查看联网资源 ({{ pg.analysis.web_resources.length }})</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -374,18 +376,19 @@ const techStack = computed(() => {
 // 搜索中标志 (技术栈 badge 点击触发联网搜索)
 const searchingTech = ref(false)
 
-// 技术栈 badge 点击 -> 联网搜该技术的学习资源 -> 流入 learningResources store
+// 技术栈 badge 点击 -> 联网搜该技术的学习资源 -> 跳转学习视图查看
 async function searchTechResource(techName) {
   if (searchingTech.value) return
   searchingTech.value = true
   try {
-    const { data } = await http.post('/api/search/web', {
+    const data = await http.post('/api/search/web', {
       query: `${techName} Python 教程 入门`,
       max_results: 5,
       tavily_key: aiSettings.tavilyKey || undefined,
     })
     lr.addWebResources(techName, data?.results || [])
-    ElMessage.success(`已搜索 ${techName} 学习资源, 请到学习视图查看`)
+    ElMessage.success(`已搜索 ${techName} 学习资源`)
+    sidebar.setView('learning')
   } catch (e) {
     ElMessage.warning('联网搜索失败, 请检查 Tavily Key 配置')
   } finally {
@@ -576,9 +579,34 @@ function handleParse() {
   pg.parseCurrentProject()
 }
 
+// 深度分析弹窗可见性
+const analysisDialogVisible = ref(false)
+
+// 已有分析结果 -> 直接弹窗; 无 -> 调 LLM 分析, watch 自动弹窗
 function handleAnalyze() {
+  if (pg.analysis) {
+    analysisDialogVisible.value = true
+  } else {
+    pg.analyze()
+  }
+}
+
+// 弹窗内"重新分析"按钮: 关弹窗 -> 重新调 LLM -> watch 自动重开
+function handleReanalyze() {
+  analysisDialogVisible.value = false
   pg.analyze()
 }
+
+// 跳转学习视图查看联网资源
+function goToWebResources() {
+  analysisDialogVisible.value = false
+  sidebar.setView('learning')
+}
+
+// 分析完成后自动弹窗 (pg.analysis 从 null 变非 null)
+watch(() => pg.analysis, (val) => {
+  if (val) analysisDialogVisible.value = true
+})
 </script>
 
 <style scoped>
@@ -708,26 +736,18 @@ function handleAnalyze() {
 .rel-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .rel-tag { cursor: pointer; }
 .rel-tag:hover { opacity: 0.8; }
+</style>
 
-/* ---- 深度分析结果面板 ---- */
-.analysis-card { margin-top: 12px; }
-.analysis-header { display: flex; align-items: center; justify-content: space-between; }
-.analysis-body { font-size: 13px; color: var(--km-gray-700); }
-.analysis-summary { margin: 0 0 12px; line-height: 1.6; }
-.analysis-section { margin-bottom: 12px; }
-.analysis-label { font-size: 12px; color: var(--km-gray-500); margin-bottom: 4px; }
-.analysis-label-sm { font-size: 11px; color: var(--km-gray-500); margin-right: 4px; }
-.analysis-sub { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.analysis-tag { margin: 2px 0; }
-.analysis-module { font-size: 12px; color: var(--km-gray-600); padding: 2px 0; }
-.analysis-note { font-size: 12px; color: var(--km-gray-500); margin: 4px 0 0; }
-.analysis-recs { margin: 0; padding-left: 16px; font-size: 12px; color: var(--km-gray-600); line-height: 1.8; }
-.analysis-resource { margin-bottom: 8px; }
-.analysis-link {
-  font-size: 12px; color: var(--km-primary, #6c7ce0); text-decoration: none;
-  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.analysis-link:hover { text-decoration: underline; }
-.analysis-res-tech { font-size: 10px; color: var(--km-gray-500); }
-.analysis-snippet { font-size: 11px; color: var(--km-gray-500); margin: 2px 0 0; line-height: 1.4; }
+<!-- 深度分析弹窗样式 (非 scoped: append-to-body 移到 body 外, scoped data-v 不生效) -->
+<style>
+.analysis-dialog .analysis-summary { margin: 0 0 16px; line-height: 1.7; font-size: 14px; color: var(--km-gray-700); }
+.analysis-dialog .analysis-section { margin-bottom: 16px; }
+.analysis-dialog .analysis-label { font-size: 13px; color: var(--km-gray-500); margin-bottom: 6px; font-weight: 500; }
+.analysis-dialog .analysis-label-sm { font-size: 12px; color: var(--km-gray-500); margin-right: 6px; }
+.analysis-dialog .analysis-sub { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.analysis-dialog .analysis-tag { margin: 2px 0; }
+.analysis-dialog .analysis-module { font-size: 13px; color: var(--km-gray-600); padding: 3px 0; }
+.analysis-dialog .analysis-note { font-size: 13px; color: var(--km-gray-500); margin: 6px 0 0; }
+.analysis-dialog .analysis-recs { margin: 0; padding-left: 18px; font-size: 13px; color: var(--km-gray-600); line-height: 2; }
+.analysis-dialog .analysis-footer { display: flex; justify-content: flex-end; gap: 10px; }
 </style>
