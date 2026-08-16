@@ -212,6 +212,28 @@ def test_build_prompt_asks_unverified_claims():
     assert "认识状态自声明" in sys_text
 
 
+def test_build_prompt_contains_bridge_before_conclusion_rule():
+    """先锚定后展开规则 (阶段三): 防结论先行合理化, 首节须复述节点事实。"""
+    from app.agents.content_generator import _build_generation_prompt
+
+    for ctype in CONTENT_TYPES:
+        sys_text = _build_generation_prompt(_make_node(), 2, ctype)[0].content
+        assert "先锚定后展开" in sys_text
+        assert "结论不得先于其图谱依据出现" in sys_text
+
+
+def test_prompt_spec_file_contains_bridge_and_claims_sections():
+    """设计稿 data/prompts/04 与运行时 prompt 同步 (阶段二/三小节齐备)。"""
+    from app.config import settings
+    from pathlib import Path
+
+    spec = (Path(settings.DATA_DIR).parent / "data" / "prompts"
+            / "04_content_generator_agent.txt").read_text(encoding="utf-8")
+    assert "先锚定后展开" in spec
+    assert "认识状态自声明" in spec
+    assert "定向再生" in spec
+
+
 def test_generate_one_unverified_claims_fallback():
     """unverified_claims: LLM 未输出 → 空 list; 输出 list → 保留; 非 list → 强转空。"""
     from app.agents.content_generator import _generate_one
