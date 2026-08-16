@@ -97,7 +97,7 @@ def test_content_generator_safe_generate_sets_contextvar_in_worker_thread():
     captured = []
     import app.agents.content_generator as cg
 
-    def fake_generate_one(node, theory_level, content_type):
+    def fake_generate_one(node, theory_level, content_type, correction_hint=""):
         captured.append(_current_overrides.get())
         return {}
 

@@ -43,6 +43,7 @@ from app.agents.quality_metrics import (  # noqa: E402
     HALLUCINATION_TARGET,
     compute_quality_metrics,
 )
+from app.agents.quality_regen import regenerate_flagged  # noqa: E402
 from app.agents.report_builder import build_learning_report  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.graph.engine import KnowledgeGraph  # noqa: E402
@@ -94,11 +95,15 @@ def run_one(kg, profile: dict) -> dict:
     }
 
 
-def measure_one(artifacts: dict, kg, do_judge: bool = True) -> dict:
+def measure_one(artifacts: dict, kg, do_judge: bool = True, do_regen: bool = True) -> dict:
     """对单次运行产出算质量指标 (复用 build_learning_report) + 独立裁判判定。
 
     do_judge=True 时对生成的资源逐条跑独立裁判 (幻觉 + 难度适配), 结果挂
     independent 字段; 判定失败 (LLM 未配/调用异常) 时该字段为 None 并降级仅自评。
+
+    do_regen=True 时 (需 do_judge): 裁判检出幻觉 → 携带诊断定向再生 → 只对被替换
+    资源重判, before/after 记入 independent.regen (J-Space 元认知控制: 判定必须
+    触发动作)。artifacts 的 resources 同步更新为修复后状态 (--judge-only 复跑口径)。
     """
     profile = artifacts["user_profile"]
     kg_state = artifacts["knowledge_graph"]
@@ -111,12 +116,40 @@ def measure_one(artifacts: dict, kg, do_judge: bool = True) -> dict:
     if do_judge:
         try:
             resources = generated.get("resources", [])
-            independent = {
-                "hallucination": judge_hallucination(resources, kg=kg),
-                "adaptation": judge_adaptation(resources, profile),
-            }
+            halluc = judge_hallucination(resources, kg=kg)
+            independent = {"hallucination": halluc, "regen": None, "adaptation": None}
+
+            if do_regen and halluc.get("hallucinated", 0) > 0:
+                rr = regenerate_flagged(resources, halluc, kg)
+                if rr["regenerated_count"] > 0:
+                    re_judged = judge_hallucination(
+                        [rr["resources"][i] for i in rr["regen_indexes"]], kg=kg)
+                    # after = 未再生的原幻觉数 + 被替换资源重判仍幻觉数
+                    after_h = halluc["hallucinated"] - rr["regenerated_count"] + re_judged["hallucinated"]
+                    total = halluc["total"] or 1
+                    regen_indexes = set(rr["regen_indexes"])
+                    independent["regen"] = {
+                        "regenerated": rr["regenerated_count"],
+                        "reasons": [v.get("reason", "") for v in halluc["verdicts"]
+                                    if v.get("resource_index") in regen_indexes],
+                        "before": {
+                            "rate": halluc["rate"],
+                            "hallucinated": halluc["hallucinated"],
+                            "total": halluc["total"],
+                        },
+                        "after": {
+                            "rate": round(after_h / total, 3),
+                            "hallucinated": after_h,
+                            "total": halluc["total"],
+                        },
+                    }
+                    resources = rr["resources"]
+                    generated["resources"] = resources  # 后续判定与留档均为修复后状态
+
+            independent["adaptation"] = judge_adaptation(resources, profile)
         except Exception:
             logger.error("画像 [%s] 独立裁判失败, 降级仅自评", artifacts["name"], exc_info=True)
+            independent = None
 
     return {
         "profile_id": artifacts["profile_id"],
@@ -188,6 +221,23 @@ def aggregate(per_run: list[dict]) -> dict:
             },
             "same_source": all(h["same_source"] for h in ih) and all(a["same_source"] for a in ia),
         }
+
+        # 幻觉定向再生聚合 (before → after, J-Space 元认知闭环证据)
+        regens = [r["independent"]["regen"] for r in judged_runs if r["independent"].get("regen")]
+        if regens:
+            before_halluc = sum(g["before"]["hallucinated"] for g in regens)
+            before_total = sum(g["before"]["total"] for g in regens)
+            after_halluc = sum(g["after"]["hallucinated"] for g in regens)
+            after_total = sum(g["after"]["total"] for g in regens)
+            independent["regen"] = {
+                "n_runs": len(regens),
+                "regenerated": sum(g["regenerated"] for g in regens),
+                "before_rate": round(before_halluc / before_total, 3) if before_total else 0.0,
+                "before_hallucinated": before_halluc,
+                "after_rate": round(after_halluc / after_total, 3) if after_total else 0.0,
+                "after_hallucinated": after_halluc,
+                "total": after_total,
+            }
 
     # M5 口径决策 (2026-08-12): 幻觉率达标判定以**独立裁判为主口径** —
     # 独立裁判正是 M5 升级为打破"作者自评循环"引入的机制。裁判可用时用裁判幻觉率,
@@ -301,6 +351,25 @@ def write_markdown(report: dict, path: Path) -> None:
             "",
             f"- 独立裁判覆盖 {ind['n_runs']} 次运行; 判定失败的运行仅计入自评列 (标注 n/a)",
         ]
+        reg = ind.get("regen")
+        if reg:
+            lines += [
+                "",
+                "### 幻觉定向再生闭环 (判定 → 携带诊断再生 → 重判)",
+                "",
+                "裁判检出幻觉的资源, 以裁判诊断 (reason) 为修正提示定向再生后重判",
+                "(发生再生的运行子集, before/after 同口径对比):",
+                "",
+                "| 再生运行数 | 再生资源数 | 再生前幻觉率 | 再生后幻觉率 |",
+                "|:---:|:---:|:---:|:---:|",
+                f"| {reg['n_runs']} | {reg['regenerated']} | "
+                f"{reg['before_rate']*100:.1f}% ({reg['before_hallucinated']}/{reg['total']}) | "
+                f"{reg['after_rate']*100:.1f}% ({reg['after_hallucinated']}/{reg['total']}) |",
+                "",
+                "> 机制: 独立裁判不再只是记录判定 —— 检出幻觉即触发携带诊断的定向再生 (J-Space"
+                " 元认知控制: 不能改变动作的监控信号只是评论, 不是控制)。工作流内 reviewer 打回"
+                " 同样携带 retry_hint 定向再生 (消费此前被丢弃的审核诊断)。",
+            ]
     else:
         lines += ["**独立裁判未运行** (--no-judge 或全部判定失败), 下表仅为自评指标。"]
     lines += [
@@ -388,6 +457,8 @@ def main():
                         help="强制串行 (调试用; 默认并行)")
     parser.add_argument("--no-judge", action="store_true",
                         help="跳过独立裁判判定 (仅自评指标, 省 LLM 调用)")
+    parser.add_argument("--no-regen", action="store_true",
+                        help="跳过幻觉定向再生 (裁判只记录不触发再生; 需 --judge 生效)")
     parser.add_argument("--judge-only", action="store_true",
                         help="只重跑独立裁判 (读上次 quality_report.json 的资源, 免重跑工作流; 需 Neo4j)")
     args = parser.parse_args()
@@ -464,7 +535,8 @@ def main():
         logger.info("▶ 跑画像 [%s] target=%s", name, profile.get("target_direction"))
         try:
             artifacts = run_one(kg, profile)
-            measured = measure_one(artifacts, kg, do_judge=not args.no_judge)
+            measured = measure_one(artifacts, kg, do_judge=not args.no_judge,
+                                   do_regen=not args.no_regen)
             return name, measured
         except Exception:
             logger.error("画像 [%s] 运行失败", name, exc_info=True)

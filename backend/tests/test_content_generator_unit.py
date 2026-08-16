@@ -185,6 +185,84 @@ def test_node_real_exception_tolerated(monkeypatch):
     assert "失败" in result["orchestration_log"][-1]
 
 
+# ============================================================
+# 定向再生: correction_hint 注入 + retry_hint 状态流
+# ============================================================
+
+def test_build_prompt_injects_correction_hint():
+    """correction_hint 非空 → system 消息含"上轮判定修正要求"块; 为空则不含。"""
+    from app.agents.content_generator import _build_generation_prompt
+
+    messages = _build_generation_prompt(_make_node(), 2, "lecture",
+                                        correction_hint="find() 返回值描述错误")
+    sys_text = messages[0].content
+    assert "上轮判定修正要求" in sys_text
+    assert "find() 返回值描述错误" in sys_text
+
+    plain = _build_generation_prompt(_make_node(), 2, "lecture")
+    assert "上轮判定修正要求" not in plain[0].content
+
+
+def test_node_retry_hint_injected_on_content_phase_rerun(monkeypatch):
+    """内容阶段被 reviewer 打回 (content_phase_entered=True + retry_hint)
+    → _generate_one 收到 retry_hint (定向再生, 取代盲重跑)。"""
+    captured = []
+
+    class _CaptureModel:
+        def invoke(self, messages):
+            captured.append(messages[0].content)  # 记录 system 消息
+            class _Resp:
+                content = json.dumps({
+                    "content_type": "lecture", "target_node_id": "PY-005",
+                    "adaptation_profile": "beginner",
+                    "source_nodes": ["PY-005.summary"], "content": "x",
+                }, ensure_ascii=False)
+            return _Resp()
+
+    monkeypatch.setattr("app.agents.content_generator.get_default_chat_model", lambda: _CaptureModel())
+    monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
+
+    node = content_generator_node(_FakeKG())
+    state = {
+        "user_profile": {"theory_level": 2},
+        "knowledge_graph": {"learning_path": [_make_node()]},
+        "content_phase_entered": True,  # 内容阶段重跑
+        "review_results": {"passed": False, "retry_hint": "测试题答案与实际运行结果不符"},
+    }
+    result = node(state)
+    assert any("测试题答案与实际运行结果不符" in s for s in captured)
+    assert any("定向再生" in line for line in result["orchestration_log"])
+
+
+def test_node_first_run_no_retry_hint(monkeypatch):
+    """首轮 (无 content_phase_entered) → 即使有 review_results (画像阶段结论) 也不注入。"""
+    captured = []
+
+    class _CaptureModel:
+        def invoke(self, messages):
+            captured.append(messages[0].content)
+            class _Resp:
+                content = json.dumps({
+                    "content_type": "lecture", "target_node_id": "PY-005",
+                    "adaptation_profile": "beginner",
+                    "source_nodes": ["PY-005.summary"], "content": "x",
+                }, ensure_ascii=False)
+            return _Resp()
+
+    monkeypatch.setattr("app.agents.content_generator.get_default_chat_model", lambda: _CaptureModel())
+    monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
+
+    node = content_generator_node(_FakeKG())
+    state = {
+        "user_profile": {"theory_level": 2},
+        "knowledge_graph": {"learning_path": [_make_node()]},
+        # 首轮: 无 content_phase_entered, review_results 是画像阶段结论
+        "review_results": {"passed": True, "retry_hint": "画像阶段的不相关 hint"},
+    }
+    node(state)
+    assert all("画像阶段的不相关 hint" not in s for s in captured)
+
+
 def test_generate_one_list_response_takes_first_dict(monkeypatch):
     """BUG-041: LLM 偶发返回数组而非对象 → _generate_one 取首个 dict，不抛异常。"""
     from app.agents.content_generator import _generate_one

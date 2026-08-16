@@ -54,8 +54,12 @@ def _adaptation_label(theory_level: int) -> str:
     return "advanced"
 
 
-def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -> list:
-    """构造单节点单资源类型的生成 prompt，要求 LLM 返回带溯源标记的结构化 JSON。"""
+def _build_generation_prompt(node: dict, theory_level: int, content_type: str, correction_hint: str = "") -> list:
+    """构造单节点单资源类型的生成 prompt，要求 LLM 返回带溯源标记的结构化 JSON。
+
+    correction_hint 非空时注入"上轮判定修正要求" (reviewer retry_hint / 独立裁判 reason)，
+    使重试从盲重跑变为携带诊断的定向再生。
+    """
     kps = node.get("key_points", [])
     mistakes = node.get("common_mistakes", [])
     label = _adaptation_label(theory_level)
@@ -114,7 +118,13 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -
         "——这些是图谱外实现细节，节点未提供即不得写入。"
         "\n正向要求: 每条技术断言须能在给定的 key_points/summary 中找到依据；"
         "讲解用类比、结构、示例阐释已有事实，而非编造新事实。"
-        "\n【内容丰富度】讲义须在只用节点已有事实前提下充分展开: 逐条覆盖key_points、"
+        + (
+            f"\n\n【上轮判定修正要求——定向再生】\n{correction_hint}\n"
+            "重点修正上述问题 (以图谱事实为准), 其余结构保持原样; 无法依据节点事实修正的部分宁可删去。"
+            if correction_hint
+            else ""
+        )
+        + "\n【内容丰富度】讲义须在只用节点已有事实前提下充分展开: 逐条覆盖key_points、"
         "配边界反例、衔接前置知识(prerequisites)、误区全转化为对照(详见type_spec)。"
         "\n严格输出 JSON 对象: "
         '{"content_type": "' + content_type + '", "target_node_id": "PY-xxx", '
@@ -138,10 +148,13 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str) -
     return [system, user]
 
 
-def _generate_one(node: dict, theory_level: int, content_type: str) -> dict:
-    """调 LLM 为单节点生成单类型资源，返回带溯源标记的内容 dict。"""
+def _generate_one(node: dict, theory_level: int, content_type: str, correction_hint: str = "") -> dict:
+    """调 LLM 为单节点生成单类型资源，返回带溯源标记的内容 dict。
+
+    correction_hint: 上轮 reviewer retry_hint / 独立裁判 reason (定向再生时非空)。
+    """
     model = get_default_chat_model()
-    resp = model.invoke(_build_generation_prompt(node, theory_level, content_type))
+    resp = model.invoke(_build_generation_prompt(node, theory_level, content_type, correction_hint))
     data = parse_llm_json(resp.content)
     # BUG-041: LLM 偶发返回数组而非对象 (把多资源放数组)。
     # 取首个 dict 元素; 无可用 dict → 降级空资源 (不抛异常, 避免 _safe_generate 计失败拖累整体)
@@ -199,6 +212,14 @@ def content_generator_node(kg: KnowledgeGraph):
                 "orchestration_log": log,
             }
 
+        # 定向重试: 内容阶段被 reviewer 打回时, 注入其 retry_hint (诊断携带再生, 取代盲重跑)。
+        # 首轮 content_phase_entered 为 False → 不注入 (此时 review_results 是画像阶段结论, 语义不符)。
+        retry_hint = ""
+        if state.get("content_phase_entered") and isinstance(state.get("review_results"), dict):
+            retry_hint = (state["review_results"].get("retry_hint") or "").strip()
+            if retry_hint:
+                log.append(f"🔁 携带审核诊断定向再生: {retry_hint[:80]}")
+
         theory_level = profile.get("theory_level", 2) or 2
         target_nodes = learning_path[:MAX_NODES_TO_GENERATE]
         log.append(f"📖 为 {len(target_nodes)} 个节点生成资源 (每节点3种, level={theory_level})")
@@ -222,7 +243,7 @@ def content_generator_node(kg: KnowledgeGraph):
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             results = list(pool.map(
                 lambda args: safe_llm_call(
-                    _generate_one, args[0], theory_level, args[1],
+                    _generate_one, args[0], theory_level, args[1], retry_hint,
                     overrides=overrides, logger=logger,
                     label=f"node={args[0].get('node_id')} type={args[1]}"),
                 tasks,
