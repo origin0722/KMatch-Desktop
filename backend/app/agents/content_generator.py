@@ -124,12 +124,17 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
             if correction_hint
             else ""
         )
-        + "\n【内容丰富度】讲义须在只用节点已有事实前提下充分展开: 逐条覆盖key_points、"
+        + "\n【认识状态自声明 (unverified_claims)】"
+        "\n类比、背景性铺垫等图谱事实之外的陈述是允许的, 但必须如实浮出: 在输出的"
+        " unverified_claims 数组里逐条列出这些陈述 (每条一句话)。完全只用节点事实时输出空数组。"
+        "自声明用于独立裁判定向审计, 不是禁止——未声明比声明更严重 (隐性不可控)。"
+        "\n【内容丰富度】讲义须在只用节点已有事实前提下充分展开: 逐条覆盖key_points、"
         "配边界反例、衔接前置知识(prerequisites)、误区全转化为对照(详见type_spec)。"
         "\n严格输出 JSON 对象: "
         '{"content_type": "' + content_type + '", "target_node_id": "PY-xxx", '
         '"adaptation_profile": "beginner|intermediate|advanced", '
         '"source_nodes": ["PY-xxx.key_points[0]", "PY-xxx.summary", ...], '
+        '"unverified_claims": ["图谱事实之外的陈述, 每条一句; 完全锚定为空数组"], '
         '"content": "markdown格式正文"}。'
         "\n注意: difficulty_level 由系统按知识点难度统一赋值, 你不要输出该字段。"
         "不要输出 JSON 以外文字。"
@@ -174,6 +179,9 @@ def _generate_one(node: dict, theory_level: int, content_type: str, correction_h
     data.setdefault("adaptation_profile", _adaptation_label(theory_level))
     if not isinstance(data.get("source_nodes"), list):
         data["source_nodes"] = [f"{node['node_id']}.summary"]
+    # 认识状态自声明 (阶段二): 非 list 强转空 (自声明缺失视为完全锚定, 由裁判复核)
+    ucs = data.get("unverified_claims")
+    data["unverified_claims"] = [str(c) for c in ucs if c] if isinstance(ucs, list) else []
     data.setdefault("content", "")
     data["generated_at"] = datetime.utcnow().isoformat() + "Z"
     return data
@@ -454,6 +462,7 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         '{"content_type": "' + content_type + '", "target_node_id": "PY-xxx", '
         '"adaptation_profile": "beginner|intermediate|advanced", '
         '"source_nodes": ["PY-xxx.key_points[0]", "PY-xxx.summary"], '
+        '"unverified_claims": ["图谱事实之外的陈述; 完全锚定为空数组"], '
         '"content": "markdown格式正文"}。'
         "\n注意: difficulty_level 由系统按知识点难度统一赋值, 你不要输出该字段。"
         "不要输出 JSON 以外文字。"
@@ -478,6 +487,8 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
     data.setdefault("adaptation_profile", label)
     if not isinstance(data.get("source_nodes"), list):
         data["source_nodes"] = [f"{node['node_id']}.summary"]
+    ucs = data.get("unverified_claims")
+    data["unverified_claims"] = [str(c) for c in ucs if c] if isinstance(ucs, list) else []
     data.setdefault("content", "")
     data["generated_at"] = datetime.utcnow().isoformat() + "Z"
     return data

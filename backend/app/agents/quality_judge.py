@@ -90,19 +90,26 @@ def _node_facts_text(kg, node_id: str, source_nodes: list) -> str:
     return "\n".join(lines)
 
 
-def _build_hallucination_prompt(content: str, facts_text: str) -> str:
+def _build_hallucination_prompt(content: str, facts_text: str, unverified: list = None) -> str:
+    claims_block = ""
+    if unverified:
+        claims = "\n".join(f"- {c}" for c in unverified[:10])
+        claims_block = (
+            "\n\n## 资源自声明待验证补充 (生成方主动声明的图谱外陈述, 优先核验)\n" + claims
+        )
     prompt = _load_prompt("judge_hallucination")
     if prompt:
         return (
             prompt
             + "\n\n## 待判定资源内容\n"
             + "```\n" + content + "\n```\n\n## 图谱事实\n" + facts_text
+            + claims_block
         )
     # 内置降级摘要 (prompt 文件缺失时兜底, 语义与文件一致)
     return (
         "你是独立知识质量裁判。判定下列学习资源内容是否全部可溯源至给定图谱事实, "
-        "输出 JSON {\"verdict\": \"grounded|hallucinated|unverifiable\", \"reason\": \"...\"}。\n"
-        "资源内容:\n" + content + "\n\n图谱事实:\n" + facts_text
+        "输出 JSON {\"verdict\": \"grounded|hallucinated|unverifiable\", \"reason\": \"...\"}。"
+        "资源内容:\n" + content + "\n\n图谱事实:\n" + facts_text + claims_block
     )
 
 
@@ -125,7 +132,8 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
     for i, r in enumerate(resources):
         node_id = r.get("target_node_id", "")
         facts = _node_facts_text(kg, node_id, r.get("source_nodes"))
-        result = _invoke_judge(_build_hallucination_prompt(r["content"], facts), judge)
+        unverified = r.get("unverified_claims") if isinstance(r.get("unverified_claims"), list) else None
+        result = _invoke_judge(_build_hallucination_prompt(r["content"], facts, unverified), judge)
         verdict = result.get("verdict", "") if isinstance(result, dict) else ""
         if verdict not in counts:
             verdict = "unverifiable"  # 解析失败/非法判定 → 保守计为无法核实

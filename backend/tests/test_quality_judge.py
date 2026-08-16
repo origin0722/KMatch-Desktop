@@ -103,6 +103,25 @@ def test_hallucination_kg_none_uses_references_only():
     qj.judge_hallucination([_res("a")], kg=None, judge_llm=judge)
     assert "图谱事实缺失" in judge.calls[0]
 
+def test_hallucination_prompt_includes_unverified_claims():
+    """资源带 unverified_claims 自声明 → prompt 追加"资源自声明待验证补充"块 (优先核验)。
+    无声明 / 非 list → 不追加。"""
+    judge = _FakeJudge([
+        json.dumps({"verdict": "grounded", "reason": "ok"}, ensure_ascii=False),
+        json.dumps({"verdict": "grounded", "reason": "ok"}, ensure_ascii=False),
+        json.dumps({"verdict": "grounded", "reason": "ok"}, ensure_ascii=False),
+    ])
+    with_claims = {**_res("a"), "unverified_claims": ["变量像盒子的类比"]}
+    none_claims = _res("b")
+    bad_claims = {**_res("c"), "unverified_claims": "不是数组"}
+
+    qj.judge_hallucination([with_claims, none_claims, bad_claims], judge_llm=judge)
+
+    assert "资源自声明待验证补充" in judge.calls[0]
+    assert "变量像盒子的类比" in judge.calls[0]
+    assert "资源自声明待验证补充" not in judge.calls[1]
+    assert "资源自声明待验证补充" not in judge.calls[2]
+
 def test_hallucination_empty_resources():
     """空资源 → total 0, rate 0。"""
     result = qj.judge_hallucination([], judge_llm=_FakeJudge([]))

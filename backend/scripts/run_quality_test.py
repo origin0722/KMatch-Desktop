@@ -161,6 +161,11 @@ def measure_one(artifacts: dict, kg, do_judge: bool = True, do_regen: bool = Tru
         "review_passed": review.get("passed", False),
         "quality_metrics": qm,
         "independent": independent,
+        # 认识状态自声明统计 (阶段二: 生成方主动声明的图谱外陈述数, 审计覆盖证据)
+        "unverified_claims_total": sum(
+            len(r.get("unverified_claims") or []) for r in generated.get("resources", [])
+            if isinstance(r, dict)
+        ),
         # 资源正文 + 画像 (供 --judge-only 模式重跑裁判, 免重跑工作流)
         "resources": generated.get("resources", []),
         "profile": profile,
@@ -278,6 +283,8 @@ def aggregate(per_run: list[dict]) -> dict:
             "target_gte": COVERAGE_TARGET,
             "passed": coverage_rate >= COVERAGE_TARGET,
         },
+        # 认识状态自声明总条数 (生成方声明的图谱外陈述, 已浮出供审计)
+        "unverified_claims_total": sum(r.get("unverified_claims_total", 0) for r in per_run),
         "independent": independent,
         "all_passed": all_passed,
         "gate": gate,

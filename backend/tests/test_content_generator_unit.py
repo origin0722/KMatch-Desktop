@@ -203,6 +203,54 @@ def test_build_prompt_injects_correction_hint():
     assert "上轮判定修正要求" not in plain[0].content
 
 
+def test_build_prompt_asks_unverified_claims():
+    """prompt 要求 LLM 自声明 unverified_claims (认识状态标记, 阶段二)。"""
+    from app.agents.content_generator import _build_generation_prompt
+
+    sys_text = _build_generation_prompt(_make_node(), 2, "lecture")[0].content
+    assert "unverified_claims" in sys_text
+    assert "认识状态自声明" in sys_text
+
+
+def test_generate_one_unverified_claims_fallback():
+    """unverified_claims: LLM 未输出 → 空 list; 输出 list → 保留; 非 list → 强转空。"""
+    from app.agents.content_generator import _generate_one
+
+    class _Model:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def invoke(self, messages):
+            class _Resp:
+                content = json.dumps(self._payload, ensure_ascii=False)
+            return _Resp()
+
+    import app.agents.content_generator as cg
+    original = cg.get_default_chat_model
+    try:
+        # 未输出 → []
+        cg.get_default_chat_model = lambda: _Model({
+            "content_type": "lecture", "target_node_id": "PY-005", "content": "x"})
+        r1 = _generate_one(_make_node(), 2, "lecture")
+        assert r1["unverified_claims"] == []
+
+        # 正常输出 → 保留
+        cg.get_default_chat_model = lambda: _Model({
+            "content_type": "lecture", "target_node_id": "PY-005", "content": "x",
+            "unverified_claims": ["用了生活化类比: 变量像盒子"]})
+        r2 = _generate_one(_make_node(), 2, "lecture")
+        assert r2["unverified_claims"] == ["用了生活化类比: 变量像盒子"]
+
+        # 非 list (字符串) → 强转空
+        cg.get_default_chat_model = lambda: _Model({
+            "content_type": "lecture", "target_node_id": "PY-005", "content": "x",
+            "unverified_claims": "一段话不是数组"})
+        r3 = _generate_one(_make_node(), 2, "lecture")
+        assert r3["unverified_claims"] == []
+    finally:
+        cg.get_default_chat_model = original
+
+
 def test_node_retry_hint_injected_on_content_phase_rerun(monkeypatch):
     """内容阶段被 reviewer 打回 (content_phase_entered=True + retry_hint)
     → _generate_one 收到 retry_hint (定向再生, 取代盲重跑)。"""
