@@ -531,8 +531,10 @@ function initGraph() {
 
   // BUG-049: 异常保护
   try {
-    // T3 split 分栏: 侧栏 flex 占位推挤画布, offsetWidth 已是剩余宽, 不再做 panelGap 避让
-    const containerWidth = graphContainer.value.offsetWidth || 800
+    // 浮层避让: 详情面板展开时画布逻辑宽度避让右侧 (面板宽300 + 右偏移12 + 余量),
+    // dagre 在剩余区布局, 节点不进浮层底下; 收起时画布拿满全宽
+    const panelGap = panelCollapsed.value ? 0 : 320
+    const containerWidth = (graphContainer.value.offsetWidth || 800) - panelGap
     const containerHeight = graphContainer.value.offsetHeight || 600
 
     // 单一布局: dagre 层次 (借鉴 Understand-Anything ELK layered); 间距加大治"还是挤", nodeSize 随 persona
@@ -611,6 +613,9 @@ function destroyGraph() {
 // 节点选择
 // ---------------------------------------------------------------
 async function selectNode(nodeOrId) {
+  // 面板已收起时点击节点 → 自动展开 (收起后最自然的重入口: 想看详情就点节点)
+  if (panelCollapsed.value) panelCollapsed.value = false
+
   if (typeof nodeOrId === 'string') {
     const found = data.nodeMap.value[nodeOrId]
     if (found) {
@@ -906,9 +911,9 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 .search-alert { margin-bottom: 16px; }
 
 /* ---- 主内容区 ---- */
-.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; position: relative; }
+.main-area { display: flex; flex: 1; min-height: 0; position: relative; }
 
-/* ---- 图谱画布 (占满主区) ---- */
+/* ---- 图谱画布 (占满主区, 详情浮层叠加其上) ---- */
 .canvas-area { flex: 1; min-width: 0; min-height: 0; }
 .g6-container {
   width: 100%; height: 100%;
@@ -917,14 +922,18 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
   background: var(--km-bg-layer-3);
 }
 
-/* ---- 侧边面板 (split 分栏 + 可折叠, flex 推挤画布不压节点; T3 由浮层改占位) ---- */
+/* ---- 浮层详情面板 (悬浮图谱上, 画布逻辑宽度避让; 可折叠; 复用 ProjectGraphView 模式) ---- */
 .side-panel {
-  position: relative; /* 锚定折叠按钮 */
-  width: 300px; flex-shrink: 0;
-  max-height: 100%;
+  position: absolute; top: 12px; right: 12px;
+  width: 300px; max-height: calc(100% - 24px);
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
+  z-index: 5;
   transition: width 0.2s ease;
+}
+/* 浮层卡片加投影, 与画布拉开层次 */
+.side-panel:not(.collapsed) .panel-card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 .side-panel.collapsed { width: 36px; overflow: hidden; }
 .side-panel.collapsed > *:not(.panel-toggle) { display: none; }
