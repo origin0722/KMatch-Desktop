@@ -168,10 +168,29 @@
           </div>
         </el-tab-pane>
 
-        <!-- 联网资源 (AI 助手 web_search 结果, transition-group 平滑入场) -->
+        <!-- 联网资源 (AI 助手 web_search 结果 + 页内直接搜索/批量丰富, transition-group 平滑入场) -->
         <el-tab-pane label="联网资源" name="web_link">
+          <!-- 工具行: 任意搜索 + 按薄弱点批量丰富 (让联网资源从几篇变十几篇) -->
+          <div class="web-tools">
+            <el-input
+              v-model="webQuery"
+              placeholder="搜索任意知识点/技术… (如: Python 装饰器)"
+              clearable
+              :prefix-icon="Search"
+              class="web-search-input"
+              @keyup.enter="searchWeb"
+            />
+            <el-button type="primary" :loading="webSearching" @click="searchWeb">搜索</el-button>
+            <el-button :loading="weakSearching" :disabled="!weakTopics.length" @click="searchWeakTopics">
+              按薄弱点批量丰富
+            </el-button>
+            <span v-if="weakTopics.length" class="web-weak-hint">
+              {{ weakTopics.length }} 个薄弱点可搜
+            </span>
+          </div>
+
           <div v-if="webList.length === 0" class="empty-tab">
-            <el-empty description="尚无联网资源 — 在 AI 助手中让它搜索某个知识点" :image-size="80" />
+            <el-empty description="尚无联网资源 — 在上方搜索, 或在 AI 助手中让它搜索某个知识点" :image-size="80" />
           </div>
           <transition-group v-else name="res-flow" tag="div" class="resource-list">
             <el-card
@@ -231,16 +250,21 @@
  * 渲染：MarkdownViewer 组件（marked）
  */
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useLearningResourcesStore } from '@/stores/learningResources'
+import { useAiSettingsStore } from '@/stores/aiSettings'
 import { extractTitle, difficultyTagType, contentTypeLabel } from '@/utils/format'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import ScaffoldGuide from '@/components/ScaffoldGuide.vue'
+import http from '@/api'
 
 const store = useAssessmentStore()
 const sidebar = useSidebarStore()
 const learningRes = useLearningResourcesStore()
+const aiSettings = useAiSettingsStore()
 
 // ---------------------------------------------------------------
 // 资源类型定义
@@ -293,6 +317,66 @@ function resTitle(res, idx) {
 
 function openUrl(url) {
   if (url) window.open(url, '_blank', 'noopener')
+}
+
+// ---------------------------------------------------------------
+// 联网搜索 (资源页直接搜 + 按薄弱点批量丰富)
+// ---------------------------------------------------------------
+const webQuery = ref('')
+const webSearching = ref(false)
+const weakSearching = ref(false)
+
+// 薄弱点列表 (学情画像 weak_topics, 名称映射到图谱可读名, 最多 5 个)
+const weakTopics = computed(() => {
+  const profile = store.profile || {}
+  const path = store.knowledgeGraph?.learning_path || []
+  const lookup = {}
+  for (const n of path) if (n?.node_id) lookup[n.node_id] = n
+  return (profile.weak_topics || []).slice(0, 5).map((t) => ({
+    node_id: t?.node_id,
+    name: (t?.node_id && lookup[t.node_id]?.name) || t?.node_id || '',
+  })).filter((t) => t.node_id)
+})
+
+async function searchWeb() {
+  const q = webQuery.value.trim()
+  if (!q || webSearching.value) return
+  webSearching.value = true
+  try {
+    const data = await http.post('/api/search/web', {
+      query: q,
+      max_results: 8,   // 上限 8, 让一次搜索更丰富
+      tavily_key: aiSettings.tavilyKey || undefined,
+    })
+    learningRes.addWebResources(q, data?.results || [])
+    if (!data?.results?.length) ElMessage.warning('没有搜到结果, 换个关键词试试')
+    else ElMessage.success(`已添加 ${data.results.length} 篇联网资源`)
+  } catch (e) {
+    ElMessage.error(e?.message || '搜索失败, 请检查 Tavily Key 配置')
+  } finally {
+    webSearching.value = false
+  }
+}
+
+async function searchWeakTopics() {
+  if (weakSearching.value || !weakTopics.value.length) return
+  weakSearching.value = true
+  try {
+    const data = await http.post('/api/search/weak-topics', {
+      topics: weakTopics.value,
+      max_per_topic: 3,
+      direction: store.profile?.target_direction || undefined,
+      tavily_key: aiSettings.tavilyKey || undefined,
+    })
+    learningRes.addFeedbackLinks(data?.results || [])
+    const n = data?.results?.length || 0
+    if (n) ElMessage.success(`已按 ${data.topics} 个薄弱点拉取 ${n} 篇学习资源`)
+    else ElMessage.warning('没有搜到结果, 稍后再试')
+  } catch (e) {
+    ElMessage.error(e?.message || '批量搜索失败, 请检查 Tavily Key 配置')
+  } finally {
+    weakSearching.value = false
+  }
 }
 
 // ---------------------------------------------------------------
@@ -387,6 +471,14 @@ function goToNode(nodeId) {
 }
 
 /* ---- 联网资源卡 ---- */
+.web-tools {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.web-search-input { width: 280px; }
+.web-weak-hint {
+  font-size: 12px; color: var(--km-gray-500);
+}
 .web-card .web-snippet {
   font-size: 13px; color: var(--km-gray-600); line-height: 1.6;
 }

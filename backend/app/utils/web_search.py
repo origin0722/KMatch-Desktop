@@ -14,8 +14,13 @@ logger = get_logger(__name__)
 TAVILY_URL = "https://api.tavily.com/search"
 
 
-def search_web(query: str, api_key: str, max_results: int = 2) -> list[dict]:
-    """调 Tavily 搜索, 返回 [{title, url, snippet}]。失败/无 key 返回 []。"""
+def search_web(query: str, api_key: str, max_results: int = 2,
+               search_depth: str = "advanced") -> list[dict]:
+    """调 Tavily 搜索, 返回 [{title, url, snippet}]。失败/无 key 返回 []。
+
+    search_depth: basic=快但摘要短 / advanced=摘要更充实 (默认 advanced,
+    让学习资源里的每条内容更有信息量)。
+    """
     if not api_key or not query:
         return []
     try:
@@ -24,7 +29,7 @@ def search_web(query: str, api_key: str, max_results: int = 2) -> list[dict]:
                 "api_key": api_key,
                 "query": query,
                 "max_results": max_results,
-                "search_depth": "basic",
+                "search_depth": search_depth,
             })
             resp.raise_for_status()
             data = resp.json()
@@ -32,7 +37,7 @@ def search_web(query: str, api_key: str, max_results: int = 2) -> list[dict]:
                 {
                     "title": r.get("title", ""),
                     "url": r.get("url", ""),
-                    "snippet": (r.get("content", "") or "")[:300],
+                    "snippet": (r.get("content", "") or "")[:400],
                 }
                 for r in data.get("results", [])
                 if r.get("url")

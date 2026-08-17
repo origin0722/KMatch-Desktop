@@ -1,9 +1,10 @@
-"""web_search 单测 — Tavily 联网搜索封装 + /api/search/web 路由。
+"""web_search 单测 — Tavily 联网搜索封装 + /api/search/web + /weak-topics 路由。
 
 覆盖:
-  - search_web: 无 key/空 query 静默降级, 成功解析 (snippet 300 截断), 异常不抛
+  - search_web: 无 key/空 query 静默降级, 成功解析 (snippet 400 截断, advanced depth), 异常不抛
   - search_weak_topics: 薄弱点 -> web_link 资源 (target_node_id 溯源, 最多 3 点 x 2 条)
   - /api/search/web: 无 key 503, 空 query 422, 正常 200
+  - /api/search/weak-topics: 无 key 503, 空 topics 422, 正常批量 200
 """
 
 from unittest.mock import MagicMock
@@ -29,14 +30,14 @@ def test_search_web_empty_query_returns_empty():
 
 
 def test_search_web_success_parses_results(monkeypatch):
-    """Tavily 返回解析为 {title, url, snippet}, snippet 截 300 字。"""
+    """Tavily 返回解析为 {title, url, snippet}, snippet 截 400 字, 默认 advanced depth。"""
     class _FakeResp:
         def raise_for_status(self):
             pass
 
         def json(self):
             return {"results": [
-                {"title": "t1", "url": "https://a.com", "content": "x" * 400},
+                {"title": "t1", "url": "https://a.com", "content": "x" * 500},
                 {"title": "t2", "url": "https://b.com", "content": "short"},
                 {"url": "", "content": "no-url 丢弃"},
             ]}
@@ -44,6 +45,7 @@ def test_search_web_success_parses_results(monkeypatch):
     class _FakeClient:
         def __init__(self, *a, **k):
             self._resp = _FakeResp()
+            self._posted = {}
 
         def __enter__(self):
             return self
@@ -52,14 +54,18 @@ def test_search_web_success_parses_results(monkeypatch):
             return False
 
         def post(self, *a, **k):
+            self._posted = k.get("json", {})
             return self._resp
 
     monkeypatch.setattr("app.utils.web_search.httpx.Client", _FakeClient)
+    fake = _FakeClient()
+    monkeypatch.setattr("app.utils.web_search.httpx.Client", lambda *a, **k: fake)
     results = search_web("query", "sk-test", max_results=3)
+    assert fake._posted["search_depth"] == "advanced"   # 默认 advanced (摘要更充实)
     assert len(results) == 2
     assert results[0]["title"] == "t1"
     assert results[0]["url"] == "https://a.com"
-    assert len(results[0]["snippet"]) == 300  # 长内容截断
+    assert len(results[0]["snippet"]) == 400  # 长内容截断
     assert results[1]["snippet"] == "short"
 
 
@@ -199,4 +205,61 @@ def test_search_web_api_max_results_bounds(monkeypatch):
     """max_results 越界 -> 422 (pydantic 约束 1-8)。"""
     client = _client_with(monkeypatch, "sk-env", [])
     r = client.post("/api/search/web", json={"query": "q", "max_results": 99})
+    assert r.status_code == 422
+
+
+# ============================================================
+# /api/search/weak-topics 路由 (资源页一键丰富)
+# ============================================================
+
+def test_weak_topics_api_no_key_503(monkeypatch):
+    """无 key -> 503 带指引。"""
+    client = _client_with(monkeypatch, "", [])
+    r = client.post("/api/search/weak-topics",
+                    json={"topics": [{"node_id": "PY-001", "name": "变量"}], "max_per_topic": 3})
+    assert r.status_code == 503
+    assert "Tavily" in r.json()["detail"]
+
+
+def test_weak_topics_api_empty_topics_422(monkeypatch):
+    """topics 空 / 无 node_id -> 422。"""
+    client = _client_with(monkeypatch, "sk-env", [])
+    assert client.post("/api/search/weak-topics", json={"topics": []}).status_code == 422
+    assert client.post("/api/search/weak-topics",
+                       json={"topics": [{"name": "无 id"}]}).status_code == 422
+
+
+def test_weak_topics_api_ok(monkeypatch):
+    """正常批量: 每点搜索结果带 target_node_id, direction 拼进搜索词。"""
+    seen = {}
+
+    def _fake_search(q, k, max_results):
+        seen["query"] = q
+        seen["max"] = max_results
+        return [{"title": q, "url": "https://e.com", "snippet": "s"}]
+
+    import app.api.search as search_api
+    from app.main import app
+    monkeypatch.setattr(search_api.settings, "TAVILY_API_KEY", "sk-env")
+    monkeypatch.setattr(search_api, "search_web", _fake_search)
+    client = TestClient(app)
+    r = client.post("/api/search/weak-topics", json={
+        "topics": [{"node_id": "PY-001", "name": "变量"}],
+        "max_per_topic": 3,
+        "direction": "Python",
+    })
+    assert r.status_code == 200
+    assert seen["query"] == "Python 变量 教程 讲解 示例"
+    assert seen["max"] == 3
+    body = r.json()
+    assert body["topics"] == 1
+    assert body["results"][0]["target_node_id"] == "PY-001"
+    assert body["results"][0]["content_type"] == "web_link"
+
+
+def test_weak_topics_api_max_per_topic_bounds(monkeypatch):
+    """max_per_topic 越界 -> 422 (约束 1-5)。"""
+    client = _client_with(monkeypatch, "sk-env", [])
+    r = client.post("/api/search/weak-topics",
+                    json={"topics": [{"node_id": "PY-001", "name": "x"}], "max_per_topic": 9})
     assert r.status_code == 422
