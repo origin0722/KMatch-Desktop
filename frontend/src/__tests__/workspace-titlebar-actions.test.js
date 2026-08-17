@@ -25,6 +25,9 @@ function mountWorkspace(pinia = createPinia()) {
       stubs: {
         'el-icon': { template: '<span><slot /></span>' },
         FolderOpened: true,
+        // WIP 把 AssistantPanel 改 defineAsyncComponent 懒加载后, trivial vi.mock 与 test-utils
+        // componentsTransformer 的 isTeleport 检查冲突; 用 stub 直接顶替, 不走 async mock 解析
+        AssistantPanel: { template: '<aside data-test="assistant-panel" />' },
       },
     },
   })

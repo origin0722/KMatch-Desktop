@@ -26,6 +26,19 @@
             <template v-else-if="step === 1">
               <h2 class="ob-title">连接你的 AI 助手</h2>
               <p class="ob-sub">配置 LLM API Key 以启用对话、学情诊断与内容生成。当前厂商: <b>{{ providerLabel }}</b>。</p>
+              <div class="ob-provider-chips">
+                <button
+                  v-for="p in quickProviders"
+                  :key="p.id"
+                  type="button"
+                  class="ob-provider-chip"
+                  :class="{ on: aiSettings.provider === p.id }"
+                  @click="aiSettings.setProvider(p.id)"
+                >
+                  <img :src="iconUrlOf(p.iconKey)" class="ob-chip-icon" alt="" />
+                  <span>{{ p.label }}</span>
+                </button>
+              </div>
               <el-input
                 v-model="keyInput"
                 type="password"
@@ -39,6 +52,10 @@
               >
                 <template #prefix><span class="ob-input-prefix">🔑</span></template>
               </el-input>
+              <div class="ob-key-meta">
+                <a v-if="providerKeyUrl" :href="providerKeyUrl" target="_blank" rel="noopener" class="ob-key-link">获取 {{ providerLabel }} Key ↗</a>
+                <span class="ob-privacy">🔒 密钥仅存本机, 不上传</span>
+              </div>
               <p class="ob-hint" v-if="aiSettings.apiKey && !keyInput">已配置 API Key, 留空保持不变。可在「设置」页随时更换厂商。</p>
               <p class="ob-hint ob-hint-warn" v-else-if="keyInput.trim() && keyInput.trim().length < 20">这个 Key 看起来偏短, 请确认已完整粘贴 (可继续, 保存后可测试连接)。</p>
               <p class="ob-hint" v-else>可在「设置」页随时更换厂商或修改 Key。</p>
@@ -123,6 +140,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAiSettingsStore, PROVIDERS } from '@/stores/aiSettings'
+import { iconUrlOf } from '@/services/llm/icons'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -153,6 +171,9 @@ const providerLabel = computed(() => {
   const p = PROVIDERS.find((x) => x.id === aiSettings.provider)
   return p?.label || aiSettings.providerMeta()?.label || aiSettings.provider
 })
+// B4: 厂商快速切换 chips + "获取 Key"链接
+const quickProviders = PROVIDERS.filter((p) => p.id !== 'custom')
+const providerKeyUrl = computed(() => PROVIDERS.find((p) => p.id === aiSettings.provider)?.keyUrl || '')
 const goalLabel = computed(() => GOALS.find((g) => g.key === goal.value)?.name || '未选择')
 
 watch(step, (s) => localStorage.setItem('kmatch-onboard-step', String(s)))
@@ -270,6 +291,38 @@ function skipAll() {
   box-shadow: 0 0 0 2px var(--km-primary-light);
 }
 .ob-input-prefix { font-size: 14px; }
+
+/* B4: 厂商快速切换 chips + Key 获取链接 + 隐私文案 */
+.ob-provider-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 0 0 16px;
+}
+.ob-provider-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--km-border-light);
+  border-radius: 999px;
+  background: var(--km-bg-layer-2);
+  font-size: 12px; color: var(--km-gray-600);
+  cursor: pointer;
+  transition: all 0.15s var(--km-ease);
+}
+.ob-provider-chip:hover { border-color: var(--km-border-focus); }
+.ob-provider-chip.on {
+  border-color: var(--km-primary);
+  background: var(--km-primary-light);
+  color: var(--km-primary); font-weight: 600;
+}
+.ob-chip-icon { width: 13px; height: 13px; }
+.ob-key-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-top: 10px;
+}
+.ob-key-link {
+  font-size: 12px; color: var(--km-primary); text-decoration: none;
+}
+.ob-key-link:hover { text-decoration: underline; }
+.ob-privacy { font-size: 11px; color: var(--km-gray-500); }
 
 /* 目标网格 */
 .ob-sub-section { font-size: 12px; color: var(--km-gray-500); margin: 16px 0 10px; }

@@ -54,7 +54,7 @@
           <!-- 助手消息: chunks 判别联合 (think / content / tool_call) -->
           <div v-if="msg.role === 'assistant'" class="msg-body assistant-msg">
             <div class="msg-avatar">
-              <el-icon :size="18"><Cpu /></el-icon>
+              <el-icon :size="15"><Cpu /></el-icon>
             </div>
             <div class="msg-content">
               <template v-for="(chunk, ci) in (msg.versions?.[msg.activeVersion ?? 0]?.chunks || msg.chunks)" :key="ci">
@@ -65,7 +65,7 @@
                       <path d="M9 18l6-6-6-6"/>
                     </svg>
                     <span class="think-label" :class="{ breathing: isThinking(msg) }">
-                      {{ isThinking(msg) ? '思考中…' : '已思考' }}
+                      {{ isThinking(msg) ? '思考中…' : `已思考 · ${thinkCharCount(msg)} 字` }}
                     </span>
                   </button>
                   <div v-show="isThinkExpanded(msg.id)" class="think-content">
@@ -76,11 +76,25 @@
                 <MarkdownViewer v-else-if="chunk.type === 'content'" :content="chunk.content" />
                 <!-- 工具调用: 内联卡 (状态机 pending→in_progress→completed→error) -->
                 <div v-else-if="chunk.type === 'tool_call'" class="tool-call-card">
-                  <div class="tool-header">
+                  <div
+                    class="tool-header"
+                    :class="{ clickable: !(chunk.result?.error) }"
+                    @click="toggleTool(toolKey(msg, ci), chunk)"
+                  >
                     <el-tag size="small" :type="chunk.result?.error ? 'danger' : ''">{{ chunk.tool }}</el-tag>
                     <code class="tool-path">{{ chunk.args?.path || chunk.result?.sourcePath || chunk.args?.filename || '' }}</code>
                     <span class="tool-status" :class="chunk.status">● {{ statusLabel(chunk.status) }}</span>
+                    <span class="tool-summary">{{ toolSummary(chunk) }}</span>
+                    <svg
+                      v-if="!chunk.result?.error"
+                      class="tool-chevron"
+                      :class="{ expanded: isToolExpanded(toolKey(msg, ci), chunk) }"
+                      width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    >
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
                   </div>
+                  <div v-show="isToolExpanded(toolKey(msg, ci), chunk)" class="tool-body">
                   <template v-if="chunk.result">
                     <div v-if="chunk.result.error" class="tool-error">{{ chunk.result.error }}</div>
                     <div v-else-if="chunk.tool === 'write_file' && chunk.result.written" class="tool-ok">
@@ -176,6 +190,7 @@
                     </div>
                   </template>
                   <div v-else-if="chunk.status === 'in_progress'" class="tool-running">执行中…</div>
+                  </div>
                 </div>
               </template>
               <!-- 版本切换器: 多版本才显示, hover 浮现 -->
@@ -297,7 +312,12 @@
         title="后端未运行"
         description="localhost:8000 无响应, AI 对话/测评/图谱功能不可用。请启动后端 (见 scripts/start_all.py 或 CLAUDE.md 快速启动)。"
       />
-      <div class="textarea-wrap" @dragover.prevent @drop.prevent="onDrop">
+      <!-- B5: 一体化大圆角输入框 — 附件/导学/模型/发送内嵌, :focus-within 聚焦光圈 -->
+      <div
+        class="input-box"
+        @dragover.prevent
+        @drop.prevent="onDrop"
+      >
         <div v-if="chat.pendingAttachments.length" class="attachments-strip">
           <div v-for="a in chat.pendingAttachments" :key="a.id" class="attachment-item">
             <img :src="a.thumbDataUrl" :alt="a.name" />
@@ -311,13 +331,49 @@
           type="textarea"
           :rows="2"
           :disabled="chat.isBusy || backend.status === false"
-          :placeholder="chat.tutorMode ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)' : '输入消息… (Enter 发送, Shift+Enter 换行)'"
+          :placeholder="inputPlaceholder"
           resize="none"
+          class="input-main"
           @keydown="onKeydown"
         />
-      </div>
-      <div class="input-bar-row">
-        <!-- 模型与配置入口: 厂商/模型/思考模式/API Key 收进弹层, 输入栏只留一个芯片 (降密度) -->
+      <div class="input-toolbar">
+        <input
+          ref="fileInputRef"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          multiple
+          hidden
+          @change="onFilesPicked"
+        />
+        <!-- 附件 (内嵌输入框左侧) -->
+        <el-tooltip :content="attachTooltip" placement="top">
+          <button
+            type="button"
+            class="ib-tool"
+            :disabled="attachDisabled"
+            @click="onAttachClick"
+          >
+            <span v-if="visionPending">⋯</span>
+            <span v-else>📎</span>
+          </button>
+        </el-tooltip>
+        <!-- 启发式导学模式 (赛题(4)②) -->
+        <el-tooltip
+          :content="chat.tutorMode ? '导学模式开启: AI 以引导式回答+追问, 不直接给答案。点击关闭' : '开启启发式导学: AI 不直接给答案, 用提问和提示引导你思考'"
+          placement="top"
+        >
+          <button
+            type="button"
+            class="ib-tool"
+            :class="{ on: chat.tutorMode }"
+            :disabled="chat.streaming"
+            @click="chat.setTutorMode(!chat.tutorMode)"
+          >
+            <el-icon :size="13"><MagicStick /></el-icon>
+            <span v-if="chat.tutorMode" class="ib-tool-label">导学</span>
+          </button>
+        </el-tooltip>
+        <!-- 模型与配置入口 (弹层不动, 芯片内嵌工具栏) -->
         <el-popover
           v-model:visible="configPopoverVisible"
           placement="top-start"
@@ -402,42 +458,7 @@
           </div>
         </el-popover>
 
-        <div class="send-group">
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            multiple
-            hidden
-            @change="onFilesPicked"
-          />
-          <!-- 启发式导学模式 (赛题(4)②) -->
-          <el-tooltip
-            :content="chat.tutorMode ? '导学模式开启: AI 以引导式回答+追问, 不直接给答案。点击关闭' : '开启启发式导学: AI 不直接给答案, 用提问和提示引导你思考'"
-            placement="top"
-          >
-            <el-button
-              size="small"
-              class="tutor-btn"
-              :class="{ on: chat.tutorMode }"
-              :disabled="chat.streaming"
-              @click="chat.setTutorMode(!chat.tutorMode)"
-            >
-              <el-icon :size="14"><MagicStick /></el-icon>
-              <span v-if="chat.tutorMode" class="tutor-label">导学</span>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip :content="attachTooltip" placement="top">
-            <el-button
-              size="small"
-              class="attach-btn"
-              :disabled="attachDisabled"
-              @click="onAttachClick"
-            >
-              <span v-if="visionPending">⋯</span>
-              <span v-else>📎</span>
-            </el-button>
-          </el-tooltip>
+        <div class="ib-right">
           <el-button
             v-if="chat.streaming"
             type="danger"
@@ -457,6 +478,7 @@
             <el-icon :size="14"><Promotion /></el-icon>&nbsp;发送
           </el-button>
         </div>
+      </div>
       </div>
     </div>
 
@@ -547,6 +569,14 @@ const inputText = computed({
   get: () => chat.draft,
   set: (v) => { chat.draft = v },
 })
+// B4: 未配 Key 时输入框提示 CTA 化 (ollama 本地免 key)
+const inputPlaceholder = computed(() => {
+  if (!aiSettings.apiKey && aiSettings.provider !== 'ollama')
+    return '未配置 API Key, 点击下方芯片设置… (Enter 发送)'
+  return chat.tutorMode
+    ? '导学模式: 提问后 AI 会用追问和提示引导你思考, 不直接给答案… (Enter 发送)'
+    : '输入消息… (Enter 发送, Shift+Enter 换行)'
+})
 const inputRef = ref(null)
 const configPopoverVisible = ref(false)
 const msgContainer = ref(null)
@@ -622,15 +652,60 @@ function isThinking(msg) {
 const STATUS_LABEL = { pending: '待执行', in_progress: '执行中', completed: '完成', error: '失败' }
 function statusLabel(s) { return STATUS_LABEL[s] || s }
 
-// Think 状态: 默认展开 (#35 让用户看到思考过程, 不干等), 用户手动折叠记入集合
-const thinkCollapsed = reactive({})
+// Think 状态: 默认收起 (反馈: 思考过程噪音大, 何时想看再点开), 单行"已思考 · N 字"摘要;
+// 用户手动展开记入集合, 流式思考中也保持单行 (呼吸动画提示进行中)
+const thinkExpanded = reactive({})
 function isThinkExpanded(msgId) {
-  // 流式传输中始终展开
-  if (chat.streaming && chat.currentStreamId === msgId) return true
-  return !thinkCollapsed[msgId]
+  return !!thinkExpanded[msgId]
 }
 function toggleThink(msgId) {
-  thinkCollapsed[msgId] = !thinkCollapsed[msgId]
+  thinkExpanded[msgId] = !thinkExpanded[msgId]
+}
+/** 一条消息内 think chunks 总字数 (收起态摘要) */
+function thinkCharCount(msg) {
+  return activeChunksOf(msg)
+    .filter((c) => c.type === 'think')
+    .reduce((n, c) => n + (c.content?.length || 0), 0)
+}
+
+// 工具调用卡: 默认收起, 头部一句话摘要; 错误结果始终展开 (不能把失败藏起来)
+const toolExpanded = reactive({})
+function toolKey(msg, ci) { return `${msg.id}:${ci}` }
+function isToolExpanded(key, chunk) {
+  if (chunk?.result?.error) return true
+  return !!toolExpanded[key]
+}
+function toggleTool(key, chunk) {
+  if (chunk?.result?.error) return // 错误不可收起
+  toolExpanded[key] = !toolExpanded[key]
+}
+/** 收起态头部摘要: 按 result 形状生成一句话 */
+function toolSummary(chunk) {
+  const r = chunk.result
+  if (!r) return chunk.status === 'in_progress' ? '执行中…' : ''
+  if (r.error) return String(r.error).slice(0, 80)
+  if (r.tool === 'generate_project_graph') {
+    const st = r.stats || {}
+    return `${(st.module || 0) + (st.class || 0) + (st.function || 0) + (st.method || 0)} 实体${r.written ? ' · 已落库' : ''}`
+  }
+  if (r.tool === 'code_review') {
+    const s = Math.round((r.review?.overall_score || 0) * 100)
+    return r.review?.verdict === 'pass' ? `通过 · 总分 ${s}%` : `打回 · 总分 ${s}%`
+  }
+  if (r.tool === 'code_test') {
+    const s = r.report?.summary
+    return `${s?.passed || 0}/${s?.total || 0} 用例通过 · 行覆盖 ${Math.round((r.report?.coverage?.line_coverage || 0) * 100)}%`
+  }
+  if (r.tool === 'web_search') return `搜索到 ${r.count || 0} 条结果`
+  if (r.tool === 'search_knowledge') return `命中 ${r.count || 0} 个知识节点`
+  if (r.tool === 'get_knowledge_node') return r.name || r.node_id || ''
+  if (r.tool === 'get_learning_path') return r.count != null ? `路径 ${r.count} 个节点` : (r.hint ? '需先完成测评' : '')
+  if (r.tool === 'query_project_graph') return r.entity_count != null ? `${r.entity_count} 实体 · ${r.relation_count} 关系` : (r.hint ? '需先解析项目' : '')
+  if (r.tool === 'generate_learning_resources') return r.count != null ? `生成 ${r.count} 份资源` : (r.hint ? '需先完成测评' : '')
+  if (chunk.tool === 'write_file' && r.written) return `已写入 ${r.bytes ?? 0} 字节`
+  if (typeof r.content === 'string') return `${r.content.length} 字符`
+  if (Array.isArray(r.files)) return `${r.files.length} 个文件`
+  return ''
 }
 
 // ---------------------------------------------------------------
@@ -657,6 +732,12 @@ watch(() => {
 function handleSend() {
   const text = inputText.value.trim()
   if (!text || chat.streaming) return
+  // B4: 未配 Key 拦截 (ollama 本地免 key) - 提示并打开配置, 不发请求
+  if (!aiSettings.apiKey && aiSettings.provider !== 'ollama') {
+    ElMessage.warning('请先配置 API Key 再发送消息')
+    openApiKeyDialog()
+    return
+  }
   inputText.value = ''
   chat.sendMessage(text)
 }
@@ -851,7 +932,7 @@ async function copyText(text) {
 .icon-btn {
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--km-radius-sm);
   cursor: pointer; color: var(--km-gray-500);
   transition: all 0.15s var(--km-ease);
 }
@@ -881,7 +962,7 @@ async function copyText(text) {
 .ph-icon-badge {
   width: 52px; height: 52px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 14px;
+  border-radius: var(--km-radius-lg);
   background: var(--km-primary-light);
   color: var(--km-primary);
   box-shadow: 0 6px 18px -8px var(--km-primary, #3b82f6);
@@ -928,12 +1009,11 @@ async function copyText(text) {
 /* 助手消息 */
 .assistant-msg { width: 100%; }
 .msg-avatar {
-  flex-shrink: 0; width: 30px; height: 30px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--km-primary), var(--km-primary-active));
+  flex-shrink: 0; width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--km-primary-light);
   display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  box-shadow: var(--km-shadow-sm);
+  color: var(--km-primary);
 }
 /* Think 思考过程 */
 .think-block {
@@ -949,7 +1029,7 @@ async function copyText(text) {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--km-gray-500);
+  color: var(--km-gray-600);
   font-size: 12px;
   cursor: pointer;
   transition: color 0.15s var(--km-ease);
@@ -977,7 +1057,7 @@ async function copyText(text) {
   margin: 0;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--km-gray-500);
+  color: var(--km-gray-600);
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--km-font-ui);
@@ -990,16 +1070,13 @@ async function copyText(text) {
 }
 /* 助手消息软气泡 (Phase B: Codex 式质感 — 卡片底 + 细边框 + 左圆角朝向头像) */
 .assistant-msg .msg-content {
-  background: var(--km-bg-layer-2);
-  border: 1px solid var(--km-border-light);
-  border-radius: 12px 16px 16px 16px;
-  padding: 10px 14px 8px;
+  padding: 2px 0 0;
 }
 .msg-content :deep(pre) {
   max-height: 200px; overflow-y: auto;
   background: var(--km-gray-100);
   border: 1px solid var(--km-border-light);
-  border-radius: 6px;
+  border-radius: var(--km-radius-sm);
 }
 .msg-content :deep(code) {
   background: var(--km-gray-200);
@@ -1016,21 +1093,17 @@ async function copyText(text) {
 .user-msg .msg-content {
   max-width: 85%;
 }
+/* 用户消息: 去 AI 味 - 轻底色块 (primary-light 主题自适应) + 深色文字 + 细边框, 右对齐 */
 .user-text {
-  background: linear-gradient(135deg, var(--km-primary), var(--km-primary-active));
-  color: #ffffff;
+  background: var(--km-primary-light);
+  color: var(--km-gray-700);
+  border: 1px solid var(--km-border-light);
   padding: 8px 12px;
-  border-radius: 12px 12px 4px 12px;
+  border-radius: var(--km-radius-lg) var(--km-radius-lg) var(--km-radius-xs) var(--km-radius-lg);
   font-size: 13px; line-height: 1.5;
   white-space: pre-wrap; word-break: break-word;
   margin: 0;
   font-family: var(--km-font-ui);
-  box-shadow: var(--km-shadow-sm);
-}
-/* 暗色模式: primary 偏亮(#8b9cf0), 白字对比度不足; 改深紫底白字+primary 边框 (修用户消息看不清) */
-html.dark .user-text {
-  background: var(--km-primary-light);
-  border: 1px solid var(--km-primary);
 }
 
 /* 打字动画 */
@@ -1055,7 +1128,7 @@ html.dark .user-text {
 .tool-msg { width: 100%; }
 .tool-avatar {
   flex-shrink: 0; width: 28px; height: 28px;
-  border-radius: 6px; background: var(--km-info-light);
+  border-radius: var(--km-radius-sm); background: var(--km-info-light);
   display: flex; align-items: center; justify-content: center;
   color: var(--km-info);
 }
@@ -1065,10 +1138,10 @@ html.dark .user-text {
 }
 .tool-path {
   font-size: 11px;
-  color: var(--km-gray-500);
+  color: var(--km-gray-600);
   background: var(--km-gray-200);
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--km-radius-xs);
 }
 .tool-content pre {
   background: var(--km-bg-layer-2);
@@ -1084,7 +1157,7 @@ html.dark .user-text {
   color: var(--km-gray-600);
   background: var(--km-gray-200);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--km-radius-xs);
 }
 .truncated {
   font-size: 11px; color: var(--km-gray-400);
@@ -1102,10 +1175,14 @@ html.dark .user-text {
 }
 .tool-call-card .tool-header {
   display: flex; align-items: center; gap: 6px;
-  margin-bottom: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border-radius: var(--km-radius-xs);
+  transition: background 0.15s var(--km-ease);
 }
+.tool-call-card .tool-header.clickable { cursor: pointer; }
+.tool-call-card .tool-header.clickable:hover { background: var(--km-gray-100); }
 .tool-status {
-  margin-left: auto;
   font-size: 11px;
   display: inline-flex; align-items: center; gap: 3px;
   white-space: nowrap;
@@ -1114,6 +1191,21 @@ html.dark .user-text {
 .tool-status.in_progress { color: var(--km-info); animation: thinkPulse 1.2s ease-in-out infinite; }
 .tool-status.completed  { color: var(--km-success, #67c23a); }
 .tool-status.error      { color: var(--km-danger, #f56c6c); font-weight: 600; }
+.tool-summary {
+  font-size: 11px;
+  color: var(--km-gray-600);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+}
+.tool-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--km-gray-400);
+  transition: transform 0.2s var(--km-ease), color 0.15s var(--km-ease);
+}
+.tool-chevron.expanded { transform: rotate(90deg); }
+.tool-call-card .tool-header.clickable:hover .tool-chevron { color: var(--km-gray-600); }
+.tool-body { margin-top: 6px; }
 .tool-ok { color: var(--km-success, #67c23a); }
 .tool-running { color: var(--km-gray-500); font-size: 11px; }
 
@@ -1126,60 +1218,92 @@ html.dark .user-text {
   font-size: 12px;
 }
 
-/* ---- 输入区 ---- */
+/* ---- 输入区 (B5: 一体化大圆角输入框, 附件/模型/发送内嵌; 聚焦光圈) ---- */
 .assistant-input {
   padding: 12px 14px;
   border-top: 1px solid var(--km-border-light);
   flex-shrink: 0;
   background: var(--km-bg-layer-0);
 }
-.assistant-input :deep(.el-textarea__inner) {
-  background: var(--km-bg-layer-2);
-  color: var(--km-gray-700);
-  border-color: var(--km-border);
+.input-box {
+  border: 1px solid var(--km-border);
   border-radius: var(--km-radius);
+  background: var(--km-bg-layer-2);
+  padding: 6px 8px 8px;
+  transition: border-color 0.2s var(--km-ease), box-shadow 0.2s var(--km-ease);
+}
+.input-box:focus-within {
+  border-color: var(--km-primary);
+  box-shadow: 0 0 0 3px var(--km-primary-light);
+}
+.input-box .input-main :deep(.el-textarea__inner) {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--km-gray-700);
   font-size: 13px;
-  padding: 10px 12px;
-  transition: border-color 0.2s var(--km-ease);
+  padding: 4px 6px 6px;
+  border-radius: 0;
+  line-height: 1.55;
 }
-.assistant-input :deep(.el-textarea__inner:focus) {
-  border-color: var(--km-border-focus);
+.input-box .input-main :deep(.el-textarea__inner:focus) {
+  border: none;
+  box-shadow: none;
 }
-.input-bar-row {
+.input-toolbar {
   display: flex;
   align-items: center;
-  margin-top: 10px;
-  gap: 8px;
+  gap: 4px;
+  margin-top: 6px;
 }
-.input-bar-row > :last-child {
-  margin-left: auto;
+/* 内嵌工具按钮 (附件/导学): 无边框图标钮, hover 浅底 */
+.ib-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 7px;
+  border: none;
+  border-radius: var(--km-radius-xs);
+  background: transparent;
+  color: var(--km-gray-500);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s var(--km-ease), color 0.15s var(--km-ease);
 }
-/* 模型配置芯片: 收纳厂商/模型/思考模式/API Key, 输入栏降密度 */
+.ib-tool:hover:not(:disabled) { background: var(--km-gray-100); color: var(--km-gray-700); }
+.ib-tool:disabled { opacity: 0.4; cursor: not-allowed; }
+.ib-tool.on { color: var(--km-primary); background: var(--km-primary-light); }
+.ib-tool-label { font-size: 11px; font-weight: 600; }
+.ib-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+/* 模型配置芯片: 收纳厂商/模型/思考模式/API Key, 内嵌输入框工具栏 (B5) */
 .model-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
+  gap: 5px;
+  height: 26px;
   padding: 0 8px 0 6px;
   font-size: 12px;
   color: var(--km-gray-700);
-  background: var(--km-bg-layer-2);
-  border: 1px solid var(--km-border);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--km-radius-sm);
   cursor: pointer;
-  max-width: 220px;
+  max-width: 200px;
   transition: all 0.2s var(--km-ease);
 }
 .model-chip:hover:not(:disabled) {
-  border-color: var(--km-border-focus);
-  background: var(--km-bg-layer-1);
+  background: var(--km-gray-100);
+  border-color: var(--km-border);
 }
 .model-chip:disabled { opacity: 0.6; cursor: not-allowed; }
 .model-chip.unset {
-  border-color: var(--km-warning, #e6a23c);
   color: var(--km-warning, #e6a23c);
 }
-.model-chip .provider-icon { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.model-chip.unset:hover { border-color: var(--km-warning, #e6a23c); }
+.model-chip .provider-icon { width: 14px; height: 14px; border-radius: var(--km-radius-xs); flex-shrink: 0; }
 .model-chip-name {
   max-width: 150px;
   overflow: hidden;
@@ -1246,7 +1370,7 @@ html.dark .user-text {
   color: var(--km-gray-600);
   background: var(--km-gray-200);
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--km-radius-xs);
   margin-left: auto;
   max-width: 140px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1333,7 +1457,7 @@ html.dark .user-text {
   display: flex; align-items: center; gap: 6px;
   font-size: 11.5px;
   padding: 3px 6px;
-  border-radius: 4px;
+  border-radius: var(--km-radius-xs);
   cursor: pointer;
   transition: background 0.12s var(--km-ease);
 }
@@ -1347,7 +1471,7 @@ html.dark .user-text {
   flex-shrink: 0; width: 16px; height: 16px;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 700;
-  border-radius: 3px;
+  border-radius: var(--km-radius-xs);
   background: var(--km-gray-300); color: var(--km-gray-700);
 }
 .entity-kind.class { background: #e6f4ff; color: #1890ff; }
@@ -1368,7 +1492,7 @@ html.dark .user-text {
 .issue-list { display: flex; flex-direction: column; gap: 3px; }
 .issue-item { font-size: 11.5px; color: var(--km-gray-600); line-height: 1.5; }
 .issue-item.high { color: var(--km-danger); }
-.issue-item code { background: var(--km-gray-200); padding: 0 4px; border-radius: 3px; font-size: 11px; }
+.issue-item code { background: var(--km-gray-200); padding: 0 4px; border-radius: var(--km-radius-xs); font-size: 11px; }
 .fail-sug { color: var(--km-gray-500); }
 .review-hint { font-size: 11.5px; color: var(--km-gray-500); }
 
@@ -1386,7 +1510,7 @@ html.dark .user-text {
 .message.assistant:hover .version-bar { opacity: 1; }
 .ver-btn {
   border: 1px solid var(--km-border); background: var(--km-bg-layer-3);
-  color: var(--km-gray-600); border-radius: 4px; width: 18px; height: 18px;
+  color: var(--km-gray-600); border-radius: var(--km-radius-xs); width: 18px; height: 18px;
   cursor: pointer; font-size: 12px; line-height: 1; padding: 0;
 }
 .ver-btn:hover:not(:disabled) { border-color: var(--km-primary); color: var(--km-primary); }
@@ -1396,7 +1520,7 @@ html.dark .user-text {
 .regen-btn {
   position: absolute; right: 4px; bottom: 4px;
   border: 0; background: transparent; color: var(--km-gray-400);
-  cursor: pointer; padding: 4px; border-radius: 4px;
+  cursor: pointer; padding: 4px; border-radius: var(--km-radius-xs);
   opacity: 0; transition: opacity 0.12s var(--km-ease);
 }
 .message.assistant:hover .regen-btn { opacity: 1; }
@@ -1417,28 +1541,23 @@ html.dark .user-text {
 .model-badges { display: inline-flex; gap: 4px; }
 .model-badges .el-tag { padding: 0 6px; height: 18px; line-height: 18px; }
 
-/* ---- 附件上传 (Spec A, 阶段PR-5) ---- */
-/* send-group: 📎 + 发送/停止 成组右对齐 (.input-bar-row > :last-child 的 margin-left:auto 落到本组) */
-.send-group { display: flex; align-items: center; gap: 8px; }
-.textarea-wrap { position: relative; }
+/* ---- 附件上传 (Spec A, 阶段PR-5; B5: 条带内嵌输入框顶部; 附件按钮移入工具栏 .ib-tool) ---- */
 .attachments-strip {
   display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 6px 8px; background: var(--el-fill-color-light); border-radius: 4px 4px 0 0;
+  padding: 2px 4px 6px;
 }
 .attachment-item {
   display: flex; align-items: center; gap: 6px;
-  background: var(--el-bg-color); padding: 2px 6px; border-radius: 4px;
+  background: var(--km-bg-layer-1); padding: 2px 6px; border-radius: var(--km-radius-xs);
   border: 1px solid var(--el-border-color-lighter);
 }
-.attachment-item img { width: 32px; height: 32px; object-fit: cover; border-radius: 2px; }
+.attachment-item img { width: 32px; height: 32px; object-fit: cover; border-radius: var(--km-radius-xs); }
 .attachment-meta { font-size: 12px; color: var(--el-text-color-secondary); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.attach-btn { padding: 4px 8px; }
-.attach-btn:disabled { opacity: 0.45; }
 
 /* ---- 用户消息附件缩略图 (Task 21) ---- */
 .msg-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .msg-attachment-thumb {
-  width: 80px; height: 80px; object-fit: cover; border-radius: 4px; cursor: zoom-in;
+  width: 80px; height: 80px; object-fit: cover; border-radius: var(--km-radius-xs); cursor: zoom-in;
   border: 1px solid var(--el-border-color-lighter);
 }
 
@@ -1467,7 +1586,7 @@ html.dark .user-text {
   color: var(--km-gray-700);
   background: var(--km-bg-layer-1);
   border: 1px solid var(--km-border);
-  border-radius: 16px; /* 胶囊 */
+  border-radius: var(--km-radius-lg); /* 胶囊 */
   cursor: pointer;
   transition: all 0.18s var(--km-ease);
 }
@@ -1483,10 +1602,14 @@ html.dark .user-text {
 .assistant-panel.wide .assistant-msg .msg-content { font-size: 14px; }
 /* 输入区: 融入主区, 胶囊化 */
 .assistant-panel.wide .assistant-input { background: transparent; border-top: 0; padding: 12px 4px 20px; }
-.assistant-panel.wide .assistant-input :deep(.el-textarea__inner) {
-  border-radius: 18px;
-  padding: 12px 16px;
-  font-size: 13.5px;
+.assistant-panel.wide .input-box {
+  border-radius: var(--km-radius-lg);
+  padding: 10px 12px 10px;
   box-shadow: var(--km-shadow-sm);
 }
+.assistant-panel.wide .input-box .input-main :deep(.el-textarea__inner) {
+  padding: 6px 10px 8px;
+  font-size: 13.5px;
+}
+.assistant-panel.wide .input-toolbar { margin-top: 8px; }
 </style>

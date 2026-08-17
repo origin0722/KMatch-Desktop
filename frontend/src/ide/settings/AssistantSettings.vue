@@ -10,11 +10,33 @@
           <span class="provider-row"><img :src="iconUrlOf(p.iconKey)" class="provider-icon" alt="" /><span>{{ p.label }}</span></span>
         </el-option>
       </el-select>
+      <div class="provider-chips">
+        <button
+          v-for="p in quickProviders"
+          :key="p.id"
+          type="button"
+          class="provider-chip"
+          :class="{ on: ai.provider === p.id }"
+          @click="onProviderChange(p.id)"
+        >
+          <img :src="iconUrlOf(p.iconKey)" class="provider-icon" alt="" />
+          <span>{{ p.label }}</span>
+        </button>
+      </div>
     </SettingCard>
 
     <SettingCard title="API Key" info="用于鉴权；仅本地存储，不上传">
-      <el-input :model-value="ai.apiKey" type="password" show-password size="small" style="width: 320px"
-                placeholder="sk-..." @change="ai.setApiKey" />
+      <div class="apikey-row">
+        <el-input :model-value="ai.apiKey" type="password" show-password size="small" style="width: 300px"
+                  placeholder="sk-..." @change="onApiKeyChange" />
+        <el-button size="small" :loading="testConn.loading" @click="runTest">测试连接</el-button>
+        <a v-if="providerKeyUrl" :href="providerKeyUrl" target="_blank" rel="noopener" class="key-link">获取 Key ↗</a>
+      </div>
+      <transition name="ob-fade">
+        <div v-if="testConn.result" class="test-result" :class="testConn.result.ok ? 'ok' : 'fail'">
+          {{ testConn.result.ok ? `✓ 连接成功（${testConn.result.count} 个模型）` : `✗ ${testConn.result.error}` }}
+        </div>
+      </transition>
     </SettingCard>
 
     <SettingCard v-if="isCustomProvider(ai.provider)" title="Base URL" info="自定义厂商的 OpenAI 兼容端点">
@@ -83,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useAiSettingsStore, isCustomProvider, customProviderUuid, PROVIDERS } from '@/stores/aiSettings'
 import { useCustomProvidersStore } from '@/stores/customProviders'
@@ -109,6 +131,26 @@ const customBaseUrl = computed(() => {
 function onProviderChange(pid) {
   if (pid === 'custom') return ai.setProvider('custom:default')
   ai.setProvider(pid)
+}
+
+// B4: 厂商预设 chips (快速选择, 排除 custom) + 当前厂商"获取 Key"链接
+const quickProviders = PROVIDERS.filter((p) => p.id !== 'custom')
+const providerKeyUrl = computed(() => PROVIDERS.find((p) => p.id === ai.provider)?.keyUrl || '')
+
+// B4: 测试连接闭环 (按钮 -> /models -> 行内结果); 保存 Key 后自动复测
+const testConn = reactive({ loading: false, result: null })
+async function runTest() {
+  testConn.loading = true
+  testConn.result = null
+  try {
+    testConn.result = await ai.testConnection()
+  } finally {
+    testConn.loading = false
+  }
+}
+async function onApiKeyChange(key) {
+  await ai.setApiKey(key)
+  if (key) await runTest()
 }
 
 function onCustomBaseUrlChange(url) {
@@ -152,6 +194,43 @@ async function onClearHistory() {
 .provider-icon { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
 .provider-row { display: inline-flex; align-items: center; gap: 4px; }
 .model-row { display: inline-flex; align-items: center; gap: 6px; }
+/* B4: 厂商预设 chips */
+.provider-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 10px;
+}
+.provider-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--km-border-light);
+  border-radius: 999px;
+  background: var(--km-bg-layer-2);
+  font-size: 12px; color: var(--km-gray-600);
+  cursor: pointer;
+  transition: all 0.15s var(--km-ease);
+}
+.provider-chip:hover { border-color: var(--km-border-focus); color: var(--km-gray-700); }
+.provider-chip.on {
+  border-color: var(--km-primary);
+  background: var(--km-primary-light);
+  color: var(--km-primary);
+  font-weight: 600;
+}
+.provider-chip .provider-icon { width: 13px; height: 13px; margin: 0; }
+/* B4: API Key 行 + 测试连接 + 获取链接 */
+.apikey-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.key-link {
+  font-size: 12px; color: var(--km-primary);
+  text-decoration: none; white-space: nowrap;
+}
+.key-link:hover { text-decoration: underline; }
+.test-result {
+  margin-top: 8px;
+  font-size: 12px; padding: 6px 10px;
+  border-radius: var(--km-radius-sm);
+}
+.test-result.ok { color: var(--km-success, #67c23a); background: var(--km-success-light, #f0f9eb); }
+.test-result.fail { color: var(--km-danger, #f56c6c); background: var(--km-danger-light, #fef0f0); }
 .tool-perm-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 0; border-bottom: 1px solid var(--km-border-light);

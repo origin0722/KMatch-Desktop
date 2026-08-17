@@ -34,31 +34,31 @@ const DEFAULT_PROXY = Object.freeze({
 //   默认模型保持 deepseek-v4-pro (CLAUDE.md 技术栈锁定)
 export const PROVIDERS = Object.freeze([
   { id: 'deepseek',  label: 'DeepSeek',         baseUrl: 'https://api.deepseek.com/v1',
-    protocol: 'openai',    iconKey: 'deepseek',
+    protocol: 'openai',    iconKey: 'deepseek',  keyUrl: 'https://platform.deepseek.com/api_keys',
     fallbackModels: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'] },
   { id: 'openai',    label: 'OpenAI',           baseUrl: 'https://api.openai.com/v1',
-    protocol: 'openai',    iconKey: 'openai',
+    protocol: 'openai',    iconKey: 'openai',    keyUrl: 'https://platform.openai.com/api-keys',
     fallbackModels: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3'] },
   { id: 'anthropic', label: 'Anthropic',        baseUrl: 'https://api.anthropic.com',
-    protocol: 'anthropic', iconKey: 'claude',
+    protocol: 'anthropic', iconKey: 'claude',    keyUrl: 'https://console.anthropic.com/settings/keys',
     fallbackModels: ['claude-fable-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5-20251001'] },
   { id: 'moonshot',  label: 'Moonshot',         baseUrl: 'https://api.moonshot.cn/v1',
-    protocol: 'openai',    iconKey: 'moonshot',
+    protocol: 'openai',    iconKey: 'moonshot',  keyUrl: 'https://platform.moonshot.cn/console/api-keys',
     fallbackModels: ['kimi-k2', 'kimi-k2-thinking', 'kimi-k2-0905-preview'] },
   { id: 'qwen',      label: '通义千问',          baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    protocol: 'openai',    iconKey: 'qwen',
+    protocol: 'openai',    iconKey: 'qwen',      keyUrl: 'https://dashscope.console.aliyun.com/apiKey',
     fallbackModels: ['qwen3-max', 'qwen3-plus', 'qwen3-turbo', 'qwen3-vl-plus'] },
   { id: 'glm',       label: '智谱 GLM',         baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    protocol: 'openai',    iconKey: 'glm',
+    protocol: 'openai',    iconKey: 'glm',       keyUrl: 'https://open.bigmodel.cn/usercenter/apikeys',
     fallbackModels: ['glm-5.2', 'glm-4.6', 'glm-4.5-air'] },
   { id: 'gemini',    label: 'Google Gemini',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    protocol: 'openai',    iconKey: 'google',
+    protocol: 'openai',    iconKey: 'google',    keyUrl: 'https://aistudio.google.com/apikey',
     fallbackModels: ['gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'] },
   { id: 'ollama',    label: 'Ollama (本地)',    baseUrl: 'http://localhost:11434/v1',
-    protocol: 'openai',    iconKey: 'ollama',
+    protocol: 'openai',    iconKey: 'ollama',    keyUrl: '',
     fallbackModels: ['qwen3', 'llama4-scout', 'qwen3-coder'] },
   { id: 'custom',    label: '自定义',            baseUrl: '',
-    protocol: 'openai',    iconKey: 'custom',
+    protocol: 'openai',    iconKey: 'custom',    keyUrl: '',
     fallbackModels: [] },
 ])
 
@@ -287,9 +287,28 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     }
   }
 
+  /** 测试连接: 校验当前 key+base 能否拉取模型列表, 返回 {ok, count?, error?} */
+  async function testConnection() {
+    const base = getBaseUrl()
+    if (!base) return { ok: false, error: '未配置 Base URL' }
+    const key = apiKey.value.trim()
+    if (!key && provider.value !== 'ollama') return { ok: false, error: '未填写 API Key' }
+    try {
+      const meta = providerMeta()
+      const res = await window.api.http.request('POST', '/api/chat/models', {
+        base_url: base, api_key: key, protocol: meta.protocol || 'openai',
+      })
+      const data = res.body
+      if (!res.ok) throw new Error(typeof data === 'string' ? data : (data?.error || `HTTP ${res.status}`))
+      return { ok: true, count: data.models?.length || 0 }
+    } catch (e) {
+      return { ok: false, error: e.message || '连接失败' }
+    }
+  }
+
   // setters: 立即 persist provider/apiKey (同步落盘, 不依赖网络),
   // 再 fetchModels 校正 model 并二次 persist (避免把旧/跨厂商 model 写进 blob)。
-  // 审查 #1 修了 model 竞态, 但把 persist 整体 gate 在 fetch 后会导致慢网络下丢失 provider/key —— 拆开。
+  // 审查 #1 修了 model 竞态, 但把 persist 整体 gate 在 fetch 后会导致慢网络下丢失 provider/key -- 拆开。
   async function setProvider(pid) {
     provider.value = pid
     if (isCustomProvider(pid)) {
@@ -470,6 +489,7 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     providerMeta,
     getBaseUrl,
     fetchModels,
+    testConnection,
     setProvider,
     setApiKey,
     setModel,

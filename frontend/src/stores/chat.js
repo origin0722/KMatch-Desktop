@@ -213,6 +213,27 @@ function hasIpc() {
 }
 
 /**
+ * 活动文件内容缓存 (path → {mtime, content}):
+ * 每次发消息都注入 active file 全文, 未编辑时的重读是纯浪费 IPC 往返;
+ * stat 的 mtimeMs 未变直接用缓存, 文件被改动 (含外部改动) 自动失效。
+ * stat 失败时退回直读不缓存, 保证正确性。
+ */
+const activeFileCache = new Map()
+
+async function readActiveFileCached(filePath) {
+  let mtime = null
+  try { mtime = (await window.api.fs.stat(filePath))?.mtime } catch { /* stat 失败退直读 */ }
+  const hit = activeFileCache.get(filePath)
+  if (mtime != null && hit && hit.mtime === mtime) return hit.content
+  const content = await window.api.fs.readFile(filePath)
+  if (mtime != null) {
+    if (activeFileCache.size >= 32) activeFileCache.delete(activeFileCache.keys().next().value)
+    activeFileCache.set(filePath, { mtime, content })
+  }
+  return content
+}
+
+/**
  * 把一轮工具执行结果汇总成回喂 AI 的 user 消息文本 (C1.4 单一源)。
  * sendMessage 与 regenMessage 共用, 消除原先 regen 的精简重复副本。
  */
@@ -854,7 +875,7 @@ export const useChatStore = defineStore('chat', () => {
     if (ws.activeFile) {
       ctx.activeFile = ws.activeFile
       try {
-        ctx.fileContent = await window.api.fs.readFile(ws.activeFile)
+        ctx.fileContent = await readActiveFileCached(ws.activeFile)
       } catch { /* file not readable */ }
     }
     // 文件树摘要 (前 30 个文件)

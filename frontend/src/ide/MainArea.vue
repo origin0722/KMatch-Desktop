@@ -32,19 +32,22 @@
 </template>
 
 <script setup>
-import { nextTick, watch } from 'vue'
+import { nextTick, watch, defineAsyncComponent } from 'vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import FileExplorer from './FileExplorer.vue'
 import ResizablePanel from './ResizablePanel.vue'
 import EditorTabs from './EditorTabs.vue'
 import MonacoEditor from './MonacoEditor.vue'
-import AssistantPanel from './AssistantPanel.vue'
-import SettingsView from '@/ide/settings/SettingsView.vue'
-import KnowledgeGraph from '@/views/KnowledgeGraph.vue'
-import ProjectGraphView from '@/views/ProjectGraphView.vue'
-import LearningSession from '@/views/LearningSession.vue'
-import Learning from '@/views/Learning.vue'
-import Dashboard from '@/views/Dashboard.vue'
+// 非当前视图懒加载: KnowledgeGraph(@antv/g6)、Learning(echarts)、Dashboard(echarts)、
+// LearningSession、ProjectGraphView、SettingsView 都是重组件, 静态 import 会全打进首屏 chunk。
+// 改 defineAsyncComponent 按 tab 切换才下载, code 视图(默认)首屏只载 Monaco。
+const AssistantPanel = defineAsyncComponent(() => import('./AssistantPanel.vue'))
+const SettingsView = defineAsyncComponent(() => import('@/ide/settings/SettingsView.vue'))
+const KnowledgeGraph = defineAsyncComponent(() => import('@/views/KnowledgeGraph.vue'))
+const ProjectGraphView = defineAsyncComponent(() => import('@/views/ProjectGraphView.vue'))
+const LearningSession = defineAsyncComponent(() => import('@/views/LearningSession.vue'))
+const Learning = defineAsyncComponent(() => import('@/views/Learning.vue'))
+const Dashboard = defineAsyncComponent(() => import('@/views/Dashboard.vue'))
 
 const sidebar = useSidebarStore()
 

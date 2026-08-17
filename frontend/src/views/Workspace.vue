@@ -30,16 +30,17 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, defineAsyncComponent } from 'vue'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
 import NavSidebar from '@/ide/NavSidebar.vue'
 import MainArea from '@/ide/MainArea.vue'
-import AssistantPanel from '@/ide/AssistantPanel.vue'
 import ResizablePanel from '@/ide/ResizablePanel.vue'
 import StatusBar from '@/ide/StatusBar.vue'
 import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
+// 右侧 AI 分栏懒加载: AssistantPanel 依赖 MarkdownViewer + 重组件, 默认视图是 code 首屏无需它
+const AssistantPanel = defineAsyncComponent(() => import('@/ide/AssistantPanel.vue'))
 
 const ws = useWorkspaceStore()
 const sidebar = useSidebarStore()
