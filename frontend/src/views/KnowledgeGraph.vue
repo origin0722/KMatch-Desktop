@@ -83,6 +83,18 @@
 
           <el-divider direction="vertical" />
 
+          <!-- 布局切换 (治 TB 纵向 6 层占满 / 宽屏横向空置): 层次 TB / 层次 LR / 力导向聚类 -->
+          <div class="layout-selector">
+            <button
+              v-for="l in LAYOUT_MODES"
+              :key="l.id"
+              class="persona-btn"
+              :class="{ active: layoutMode === l.id }"
+              :title="l.desc"
+              @click="setLayoutMode(l.id)"
+            >{{ l.label }}</button>
+          </div>
+
           <el-button :icon="RefreshRight" @click="resetGraph" :disabled="!graphReady">
             重置
           </el-button>
@@ -396,6 +408,42 @@ const personas = [
 ]
 
 // ---------------------------------------------------------------
+// 布局切换 (借鉴 Understand-Anything 混合布局): TB 层次深 / LR 宽屏友好 / 力导向聚类疏朗浏览
+// ---------------------------------------------------------------
+const LAYOUT_MODES = [
+  { id: 'tb', label: '层次·上下', desc: '按前置依赖自顶向下分层 (默认)' },
+  { id: 'lr', label: '层次·左右', desc: '横向展开, 宽屏显示器更省纵向空间' },
+  { id: 'force', label: '力导向聚类', desc: '按分类聚簇 + 斥力散开, 浏览模式更疏朗' },
+]
+const layoutMode = ref('tb')
+
+function setLayoutMode(id) {
+  if (layoutMode.value === id) return
+  layoutMode.value = id
+}
+
+// 各布局的配置 (cfg: persona 节点尺寸)
+function getLayoutConfig(cfg) {
+  if (layoutMode.value === 'lr') {
+    // LR: 横向展开, ranksep 沿流向(横向)拉大, nodesep 纵向紧凑
+    return { type: 'dagre', rankdir: 'LR', nodesep: 50, ranksep: 160, nodeSize: cfg.layout }
+  }
+  if (layoutMode.value === 'force') {
+    // 力导向 + 按分类聚簇 (d3-force clustering): 同分类相互吸引成簇, 簇间斥力散开
+    return {
+      type: 'd3-force',
+      linkDistance: 160,
+      nodeStrength: -120,
+      preventOverlap: true,
+      collide: { radius: 80 },
+      clustering: true,
+      clusterBy: (n) => n?.data?.category || '未分类',
+    }
+  }
+  return { type: 'dagre', rankdir: 'TB', nodesep: 90, ranksep: 180, nodeSize: cfg.layout }
+}
+
+// ---------------------------------------------------------------
 // 图谱状态
 // ---------------------------------------------------------------
 const graphContainer = ref(null)
@@ -485,6 +533,33 @@ async function fetchPrerequisites() {
 // ---------------------------------------------------------------
 // G6 渲染
 // ---------------------------------------------------------------
+// tooltip 内容 (悬停即见: 名称 + 分类/难度/掌握度 + 摘要 + 关键点前 2 条)
+// summary/key_points 来自知识库, 经 escapeHtml 防注入
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;')
+}
+
+function buildTooltipHtml(d) {
+  if (!d) return ''
+  const mastery = Math.round((d.mastery ?? 0) * 100)
+  const kps = (Array.isArray(d.key_points) ? d.key_points : [])
+    .slice(0, 2)
+    .map((k) => `<li>${escapeHtml(k)}</li>`)
+    .join('')
+  const summary = d.summary
+    ? escapeHtml(d.summary.length > 100 ? d.summary.slice(0, 100) + '…' : d.summary)
+    : ''
+  return `
+    <div class="kg-tip">
+      <div class="kg-tip-title">${escapeHtml(d.label || '')}</div>
+      <div class="kg-tip-meta">${escapeHtml(d.category || '未分类')} · ${'⭐'.repeat(d.difficulty || 1)} · 掌握 ${mastery}%</div>
+      ${summary ? `<div class="kg-tip-summary">${summary}</div>` : ''}
+      ${kps ? `<ul class="kg-tip-kps">${kps}</ul>` : ''}
+    </div>`
+}
+
 function buildG6Data() {
   const baseNodes = [...data.g6Nodes.value]
 
@@ -537,10 +612,10 @@ function initGraph() {
     const containerWidth = (graphContainer.value.offsetWidth || 800) - panelGap
     const containerHeight = graphContainer.value.offsetHeight || 600
 
-    // 单一布局: dagre 层次 (借鉴 Understand-Anything ELK layered); 间距加大治"还是挤", nodeSize 随 persona
-    // 阶段C 图谱待办"间距": nodesep 70->90, ranksep 150->180, 节点更宽松不挤
+    // 布局随 layoutMode 切换 (dagre TB/LR 层次 or d3-force 聚类); 间距加大治"还是挤", nodeSize 随 persona
     const cfg = personaCfg()
-    const layoutConfig = { type: 'dagre', rankdir: 'TB', nodesep: 90, ranksep: 180, nodeSize: cfg.layout }
+    const layoutConfig = getLayoutConfig(cfg)
+    const isForce = layoutMode.value === 'force'
 
     const { nodes, edges } = buildG6Data()
 
@@ -581,8 +656,20 @@ function initGraph() {
       behaviors: [
         'drag-canvas',
         'zoom-canvas',
-        'drag-element',
+        // force 布局下用 drag-element-force: 拖动时固定节点参与力仿真, 松手跟随,
+        // 普通 drag-element 会被力仿真持续拉回原位
+        isForce ? 'drag-element-force' : 'drag-element',
         { type: 'hover-activate', degree: 1, direction: 'both' },
+      ],
+      plugins: [
+        // 悬停即见摘要 (治"看不到具体信息"): 不开面板不点节点, 扫一眼全图获取节点信息
+        {
+          type: 'tooltip',
+          trigger: 'hover',
+          getContent: (_evt, items) => buildTooltipHtml(items?.[0]?.data),
+        },
+        // 小地图 (治缩放后迷路): 左下角缩略导航, 避开右侧详情浮层
+        { type: 'minimap', size: [180, 110], position: 'left-bottom' },
       ],
     })
 
@@ -592,7 +679,12 @@ function initGraph() {
       await selectNode(nodeId)
     })
 
-    graph.render()
+    // 防御: G6 5.1.1 部分环境渲染完成后 afterrender 事件未达 (headless 实测),
+    // minimap 依赖该事件初始化 (debounced renderMinimap), 显式补发一次;
+    // 事件正常时重复触发仅幂等重绘, 无副作用
+    graph.render().then(() => {
+      try { graph.emit('afterrender', { type: 'afterrender' }) } catch { /* ignore */ }
+    })
     graphReady.value = true
   } catch (e) {
     console.error('[Graph] 初始化失败:', e)
@@ -849,6 +941,9 @@ onBeforeUnmount(() => {
 // 角色切换 -> 重建图谱 (节点详略变化, 借鉴 PersonaSelector)
 watch(() => sidebar.persona, () => { rebuildGraph() })
 
+// 布局切换 -> 重建图谱 (layout 配置在 init 时注入)
+watch(layoutMode, () => { rebuildGraph() })
+
 // 侧栏折叠 -> 重建图谱 (画布避让宽度变化)
 // T3 split: 折叠切换 -> 侧栏宽度过渡 (0.2s) 结束后再重建, 避免 dagre 读到过渡中的中间宽度
 watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
@@ -886,6 +981,8 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 .persona-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: color 0.15s, background 0.15s; }
 .persona-btn:hover { color: var(--km-gray-700); }
 .persona-btn.active { background: var(--km-primary); color: #fff; }
+/* 布局切换按钮组 (复用 persona-btn 视觉) */
+.layout-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: 6px; padding: 2px; }
 .graph-stats {
   color: var(--km-gray-500); font-size: 13px; white-space: nowrap;
   font-family: var(--km-font-mono);
@@ -1022,4 +1119,14 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 .prereq-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .prereq-tag { cursor: pointer; }
 .prereq-tag:hover { opacity: 0.8; }
+</style>
+
+<!-- tooltip 内容样式 (非 scoped: G6 tooltip 插件生成的 HTML 不带本组件 data-v, scoped 选不中;
+     底色为插件默认白卡, 文字用固定中性色保证可读) -->
+<style>
+.kg-tip { max-width: 280px; padding: 2px 0; text-align: left; }
+.kg-tip-title { font-size: 13px; font-weight: 600; color: #303133; margin-bottom: 4px; }
+.kg-tip-meta { font-size: 11px; color: #909399; margin-bottom: 6px; }
+.kg-tip-summary { font-size: 12px; color: #606266; line-height: 1.6; margin-bottom: 4px; }
+.kg-tip-kps { margin: 0; padding-left: 16px; font-size: 12px; color: #606266; line-height: 1.7; }
 </style>

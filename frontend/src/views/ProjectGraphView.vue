@@ -81,6 +81,18 @@
             <el-option label="module 模块" value="module" />
           </el-select>
           <el-button :icon="RefreshRight" @click="resetGraph">重置</el-button>
+          <el-divider direction="vertical" />
+          <!-- 视图模式: 分层 dagre (调用层级) / 模块分组 combo (架构视角) -->
+          <div class="view-mode-selector">
+            <button
+              v-for="m in VIEW_MODES"
+              :key="m.id"
+              class="vm-btn"
+              :class="{ active: viewMode === m.id }"
+              :title="m.desc"
+              @click="setViewMode(m.id)"
+            >{{ m.label }}</button>
+          </div>
           <el-button :icon="RefreshRight" :loading="pg.parsing" @click="handleParse">重新解析</el-button>
           <el-button
             type="warning"
@@ -359,6 +371,22 @@ const KIND_COLORS = {
 }
 const KINDS = ['function', 'class', 'method', 'module']
 
+// 视图模式: layered 分层 dagre (调用层级) / grouped 模块分组 combo (架构视角,
+// 借鉴 Understand-Anything 按架构层级自动分组带颜色编码)
+const VIEW_MODES = [
+  { id: 'layered', label: '分层', desc: '按调用依赖自顶向下分层 (默认)' },
+  { id: 'grouped', label: '模块分组', desc: '同模块实体收进一个带底色容器, 一眼看懂项目结构' },
+]
+const viewMode = ref('layered')
+
+function setViewMode(id) {
+  if (viewMode.value === id) return
+  viewMode.value = id
+}
+
+// combo 容器配色 (浅色系循环, 与节点 KIND_COLORS 错开饱和度: 容器当"底色"不当主角)
+const MODULE_COLORS = ['#8f9bb3', '#79a5b2', '#b2a179', '#a189b2', '#88b28d', '#b28787', '#7f8fb2', '#a3b287']
+
 // ---------------------------------------------------------------
 // 搜索 & 筛选状态
 // ---------------------------------------------------------------
@@ -477,6 +505,24 @@ function buildData() {
   const edgeSource = tourActive.value ? (pg.graph?.relations || []) : filteredEdges.value
   const stop = tourActive.value ? tourStop.value : null
 
+  // grouped 模式: 按 module_name 建 combo 容器, 同模块实体收进一个容器 (架构视角)
+  const grouped = viewMode.value === 'grouped'
+  const combos = []
+  if (grouped) {
+    const modCount = new Map()
+    for (const e of source) {
+      if (!e.module_name) continue
+      modCount.set(e.module_name, (modCount.get(e.module_name) || 0) + 1)
+    }
+    let i = 0
+    for (const [mod, count] of modCount) {
+      combos.push({
+        id: `combo:${mod}`,
+        data: { label: `${mod} · ${count}`, color: MODULE_COLORS[i++ % MODULE_COLORS.length] },
+      })
+    }
+  }
+
   const nodes = source.map((e) => {
     const label = e.qualified_name || e.name || String(e.id)
     const data = { label, w: nodeWidth(label), kind: e.kind, entity: e }
@@ -485,7 +531,9 @@ function buildData() {
       data.tourNeighbor = !data.tourCurrent && stop.neighborIds.has(String(e.id))
       data.dimmed = !data.tourCurrent && !data.tourNeighbor
     }
-    return { id: String(e.id), data }
+    const node = { id: String(e.id), data }
+    if (grouped && e.module_name) node.combo = `combo:${e.module_name}`
+    return node
   })
   const edges = edgeSource.map((r, i) => {
     const data = { type: r.type || 'call' }
@@ -500,12 +548,13 @@ function buildData() {
       data,
     }
   })
-  return { nodes, edges }
+  return grouped ? { nodes, edges, combos } : { nodes, edges }
 }
 
 function initGraph() {
   if (!containerRef.value) return
-  const { nodes, edges } = buildData()
+  const { nodes, edges, combos } = buildData()
+  const grouped = viewMode.value === 'grouped' && combos?.length > 0
 
   // 侧栏展开时画布逻辑宽度避让右侧 300px, dagre 在剩余区布局
   const panelGap = panelCollapsed.value ? 0 : 300
@@ -516,9 +565,12 @@ function initGraph() {
     container: containerRef.value,
     width: w,
     height: h,
-    data: { nodes, edges },
-    // nodeSize 用最大可能宽度 220 保守估, 防宽节点重叠; 实际节点 size 自适应
-    layout: { type: 'dagre', rankdir: 'TB', nodesep: 40, ranksep: 80, nodeSize: [220, 44] },
+    // grouped: combo-combined (combo 间力导向 + combo 内 grid 整齐排), combos 为空自动回落 dagre
+    // layered: dagre 分层, nodeSize 用最大可能宽度 220 保守估防宽节点重叠
+    layout: grouped
+      ? { type: 'combo-combined', comboPadding: 30, comboSpacing: 90, layout: { type: 'grid' } }
+      : { type: 'dagre', rankdir: 'TB', nodesep: 40, ranksep: 80, nodeSize: [220, 44] },
+    data: { nodes, edges, ...(grouped ? { combos } : {}) },
     node: {
       type: 'rect',
       style: {
@@ -539,6 +591,27 @@ function initGraph() {
       },
       state: { hover: { lineWidth: 2, shadowBlur: 10, shadowColor: KIND_COLORS.function } },
     },
+    // 模块分组容器: 浅底色 + 同色虚线描边 + 顶部模块名, 做"底色"不做主角
+    ...(grouped ? {
+      combo: {
+        type: 'rect',
+        style: {
+          fill: (d) => d.data?.color || '#8f9bb3',
+          fillOpacity: 0.06,
+          stroke: (d) => d.data?.color || '#8f9bb3',
+          strokeOpacity: 0.45,
+          lineWidth: 1.5,
+          lineDash: [6, 4],
+          radius: 10,
+          labelText: (d) => d.data?.label || '',
+          labelPlacement: 'top',
+          labelFontSize: 11,
+          labelFontWeight: 600,
+          labelFill: (d) => d.data?.color || '#8f9bb3',
+          labelOffsetY: 4,
+        },
+      },
+    } : {}),
     edge: {
       style: {
         // 导读模式: 当前站关联边高亮, 其余淡化
@@ -618,6 +691,9 @@ watch(() => pg.graph, async () => {
 
 // 侧栏折叠 -> 重建图谱 (画布避让宽度变化)
 watch(panelCollapsed, () => { rebuildGraph() })
+
+// 视图模式切换 (分层 <-> 模块分组) -> 重建图谱
+watch(viewMode, () => { rebuildGraph() })
 
 onBeforeUnmount(destroyGraph)
 
@@ -758,6 +834,11 @@ watch(() => pg.graph, () => {
 .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .search-input { width: 220px; }
 .filter-select { width: 140px; }
+/* 视图模式切换 (分层/模块分组), 视觉对齐 KnowledgeGraph 的 persona-selector */
+.view-mode-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: 6px; padding: 2px; }
+.vm-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: color 0.15s, background 0.15s; }
+.vm-btn:hover { color: var(--km-gray-700); }
+.vm-btn.active { background: var(--km-primary); color: #fff; }
 .graph-stats {
   margin-left: auto; color: var(--km-gray-500); font-size: 12px;
   white-space: nowrap; font-family: var(--km-font-mono);
