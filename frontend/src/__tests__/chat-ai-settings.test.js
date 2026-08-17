@@ -2,7 +2,7 @@
  * 场景：chat 与 aiSettings 的集成点——系统提示词与工具集成（阶段2/4c/6a）。
  *
  * 测 chat.js 暴露的纯 helper：
- *  - buildSystemPrompt：注入用户记忆、推理指令（reasoningMode auto/fast/deep → thinking 字段），
+ *  - buildSystemPrompt：注入用户记忆、推理指令（reasoningMode off/default/high/max → thinking 字段），
  *    导学模式下走 Socratic 分支（赛题(4)②）；
  *  - buildAdvertisedToolNames：按权限（allow/ask）对外广告工具名，deny 不暴露；
  *  - parseToolCalls / stripToolCalls：工具调用 fence 解析与后端序列化剥离；
@@ -169,10 +169,10 @@ describe('chat body: reasoning_mode + protocol (Spec A)', () => {
     ai.provider = 'anthropic'
     ai.apiKey = 'sk-X'
     ai.model = 'claude-fable-5'
-    ai.setReasoningMode('deep')
+    ai.setReasoningMode('max')
     const chat = useChatStore()
     await chat.sendMessage('hi')
-    expect(captured.body.reasoning_mode).toBe('deep')
+    expect(captured.body.reasoning_mode).toBe('max')
     expect(captured.body.protocol).toBe('anthropic')
     expect(captured.body).not.toHaveProperty('reasoning')
   })

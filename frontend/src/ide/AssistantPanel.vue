@@ -68,9 +68,11 @@
                       {{ isThinking(msg) ? '思考中…' : `已思考 · ${thinkCharCount(msg)} 字` }}
                     </span>
                   </button>
+                  <transition name="expand">
                   <div v-show="isThinkExpanded(msg.id)" class="think-content">
                     <pre>{{ chunk.content }}</pre>
                   </div>
+                  </transition>
                 </div>
                 <!-- 正文 -->
                 <MarkdownViewer v-else-if="chunk.type === 'content'" :content="chunk.content" />
@@ -94,6 +96,7 @@
                       <path d="M9 18l6-6-6-6"/>
                     </svg>
                   </div>
+                  <transition name="expand">
                   <div v-show="isToolExpanded(toolKey(msg, ci), chunk)" class="tool-body">
                   <template v-if="chunk.result">
                     <div v-if="chunk.result.error" class="tool-error">{{ chunk.result.error }}</div>
@@ -191,6 +194,7 @@
                   </template>
                   <div v-else-if="chunk.status === 'in_progress'" class="tool-running">执行中…</div>
                   </div>
+                  </transition>
                 </div>
               </template>
               <!-- 版本切换器: 多版本才显示, hover 浮现 -->
@@ -776,11 +780,12 @@ const deepDisabled = computed(() =>
 const deepDisabledTooltip = computed(() =>
   `当前模型 (${aiSettings.model}) 不支持原生推理；如需思考请用「快速/自动」+ 提示词`)
 
-// #38 思考模式分段控件选项 (替换 el-radio-button, 消除 label 弃用警告)
+// #38 思考程度分段控件 (四档: off/default/high/max 递进)
 const REASONING_OPTIONS = computed(() => [
-  { label: '自动', value: 'auto', title: '自动 - 由模型默认决定' },
-  { label: '快速', value: 'fast', title: '快速 - 不思考直接回答' },
-  { label: '深度', value: 'deep', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '深度 - 充分思考' },
+  { label: '关闭', value: 'off', title: '关闭 - 不思考直接回答' },
+  { label: '默认', value: 'default', title: '默认 - 由模型默认决定' },
+  { label: '高', value: 'high', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '高 - 增强思考' },
+  { label: '最高', value: 'max', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '最高 - 最充分思考' },
 ])
 
 // ---- 附件上传 (Spec A 图片上传, 阶段PR-5) ----
@@ -993,11 +998,11 @@ async function copyText(text) {
 .message {
   display: flex;
   position: relative;
-  animation: msgIn 0.3s var(--km-ease-out);
+  animation: msgIn 0.28s var(--km-ease-out);
 }
 @keyframes msgIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .msg-body {
@@ -1061,6 +1066,15 @@ async function copyText(text) {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--km-font-ui);
+}
+
+/* 展开/收起过渡 (think / tool body) */
+.expand-enter-active, .expand-leave-active {
+  transition: opacity 0.22s var(--km-ease-out), transform 0.22s var(--km-ease-out);
+}
+.expand-enter-from, .expand-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .msg-content {
@@ -1182,6 +1196,7 @@ async function copyText(text) {
 }
 .tool-call-card .tool-header.clickable { cursor: pointer; }
 .tool-call-card .tool-header.clickable:hover { background: var(--km-gray-100); }
+.tool-call-card .tool-header.clickable:active { background: var(--km-gray-200); }
 .tool-status {
   font-size: 11px;
   display: inline-flex; align-items: center; gap: 3px;
@@ -1230,7 +1245,10 @@ async function copyText(text) {
   border-radius: var(--km-radius);
   background: var(--km-bg-layer-2);
   padding: 6px 8px 8px;
-  transition: border-color 0.2s var(--km-ease), box-shadow 0.2s var(--km-ease);
+  transition: border-color 0.25s var(--km-ease), box-shadow 0.25s var(--km-ease);
+}
+.input-box:hover {
+  border-color: var(--km-border-focus);
 }
 .input-box:focus-within {
   border-color: var(--km-primary);

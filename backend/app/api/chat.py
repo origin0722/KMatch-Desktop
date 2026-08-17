@@ -67,9 +67,9 @@ class ChatRequest(BaseModel):
     api_key: str | None = Field(None)
     base_url: str | None = Field(None)
     protocol: Literal['openai', 'anthropic'] = Field('openai', description="协议分支")
-    reasoning_mode: Literal['auto', 'fast', 'deep'] = Field(
-        'auto',
-        description="思考模式: auto=模型默认 / fast=关思考秒回 / deep=充分思考",
+    reasoning_mode: Literal['default', 'high', 'max', 'off'] = Field(
+        'default',
+        description="思考程度: off=关闭思考 / default=模型默认 / high=增强思考 / max=最高思考",
     )
 
 
@@ -166,28 +166,30 @@ def _is_anthropic_reasoning_model(model: str) -> bool:
 def _build_request_extras(protocol: str, model: str, reasoning_mode: str) -> dict:
     """
     构造厂商特定的额外 kwargs (不含 messages/model/stream/max_tokens).
-    reasoning_mode: 'auto' | 'fast' | 'deep'
+    reasoning_mode: 'off' | 'default' | 'high' | 'max'
     返回 kwargs 字典 — 调用方直接 kwargs.update(extras)。
     """
     # DeepSeek-V4 系列 + xiaomi MiMo 等: extra_body.thinking
     if protocol == 'openai' and _is_thinking_extra_body_model(model):
-        thinking = 'disabled' if reasoning_mode == 'fast' else 'enabled'
+        thinking = 'disabled' if reasoning_mode == 'off' else 'enabled'
         return {'extra_body': {'thinking': {'type': thinking}}}
 
     # Anthropic Claude 4+: thinking param
     if protocol == 'anthropic' and _is_anthropic_reasoning_model(model):
-        if reasoning_mode == 'deep':
-            return {'thinking': {'type': 'enabled', 'budget_tokens': 8000}}
-        if reasoning_mode == 'fast':
+        if reasoning_mode == 'off':
             return {'thinking': {'type': 'disabled'}}
+        if reasoning_mode == 'high':
+            return {'thinking': {'type': 'enabled', 'budget_tokens': 8000}}
+        if reasoning_mode == 'max':
+            return {'thinking': {'type': 'enabled', 'budget_tokens': 16000}}
         return {}
 
     # OpenAI o1/o3: reasoning_effort
     if protocol == 'openai' and re.match(r'^o[13]', (model or '').lower()):
-        if reasoning_mode == 'deep':
+        if reasoning_mode == 'off':
+            return {'reasoning_effort': 'minimal'}
+        if reasoning_mode in ('high', 'max'):
             return {'reasoning_effort': 'high'}
-        if reasoning_mode == 'fast':
-            return {'reasoning_effort': 'low'}
         return {'reasoning_effort': 'medium'}
 
     return {}

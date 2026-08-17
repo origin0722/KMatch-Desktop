@@ -168,11 +168,12 @@ function capOf(m) {
 const deepDisabled = computed(() => capabilityOf(ai.provider, ai.model).reasoning !== 'native')
 const deepDisabledTooltip = computed(() => `当前模型 (${ai.model}) 不支持原生推理；如需思考请用「快速/自动」`)
 
-// #28 分段控件选项
+// #28 思考程度分段控件 (四档: off/default/high/max 递进)
 const REASONING_OPTIONS = computed(() => [
-  { label: '自动', value: 'auto' },
-  { label: '快速', value: 'fast' },
-  { label: '深度', value: 'deep', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '' },
+  { label: '关闭', value: 'off', title: '关闭思考，直接回答' },
+  { label: '默认', value: 'default', title: '由模型默认决定' },
+  { label: '高', value: 'high', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '增强思考' },
+  { label: '最高', value: 'max', disabled: deepDisabled.value, title: deepDisabled.value ? deepDisabledTooltip.value : '最充分思考' },
 ])
 const PERM_OPTIONS = [
   { label: '允许', value: 'allow', tone: 'success' },

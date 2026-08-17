@@ -61,7 +61,7 @@ describe('aiSettings store', () => {
     expect(settings.toolPermissions.code_review).toBe('allow')
     expect(settings.toolPermissions.code_test).toBe('allow')
 
-    expect(settings.reasoningMode).toBe('auto')
+    expect(settings.reasoningMode).toBe('default')
     expect(settings.enabledMemories).toEqual([])
   })
 
@@ -70,14 +70,14 @@ describe('aiSettings store', () => {
 
     settings.setProxy({ enabled: true, type: 'socks', url: 'socks://127.0.0.1:7890', scope: 'currentProvider' })
     settings.setToolPermission('code_test', 'deny')
-    settings.setReasoningMode('deep')
+    settings.setReasoningMode('max')
 
     setActivePinia(createPinia())
     const restored = useAiSettingsStore()
 
     expect(restored.proxy).toEqual({ enabled: true, type: 'socks', url: 'socks://127.0.0.1:7890', scope: 'currentProvider' })
     expect(restored.toolPermissions.code_test).toBe('deny')
-    expect(restored.reasoningMode).toBe('deep')
+    expect(restored.reasoningMode).toBe('max')
   })
 
   it('adds, updates, disables, and removes memory cards', () => {
@@ -118,11 +118,11 @@ describe('aiSettings store', () => {
     expect(settings.modelReasoningSupport('deepseek', 'deepseek-v3')).toBe('prompt-only')
     expect(settings.modelReasoningSupport('custom', 'claude-opus-4-8')).toBe('prompt-only')
 
-    settings.setReasoningMode('deep')
+    settings.setReasoningMode('max')
     expect(settings.reasoningInstruction('deepseek', 'deepseek-v4-pro')).toContain('当前模型支持 reasoning')
 
-    settings.setReasoningMode('fast')
-    expect(settings.reasoningInstruction('deepseek', 'deepseek-reasoner')).toContain('思考模式: 快速')
+    settings.setReasoningMode('off')
+    expect(settings.reasoningInstruction('deepseek', 'deepseek-reasoner')).toContain('思考模式: 关闭')
   })
 
   it('ignores invalid tool permission changes', () => {
@@ -306,28 +306,53 @@ describe('modelReasoningSupport 委托 capabilityOf（Spec A 收敛为两态）'
   })
 })
 
-describe('reasoningMode auto-downgrade (Spec A)', () => {
-  beforeEach(() => { setActivePinia(createPinia()); localStorage.clear() })
+describe('reasoningMode 自动降级 + 旧值迁移 (four档 off/default/high/max)', () => {
+  beforeEach(() => { setActivePinia(createPinia()); localStorage.clear(); vi.resetModules() })
 
-  it('deep 模式下切到 prompt-only 模型 -> 自动降级为 auto', async () => {
+  it('high/max 模式下切到 prompt-only 模型 -> 自动降级为 default', async () => {
     const s = useAiSettingsStore()
     s.provider = 'anthropic'
     s.model = 'claude-fable-5'
-    s.setReasoningMode('deep')
-    expect(s.reasoningMode).toBe('deep')
+    s.setReasoningMode('max')
+    expect(s.reasoningMode).toBe('max')
 
     s.provider = 'openai'
     s.model = 'gpt-4o'        // prompt-only 模型
     await new Promise(r => setTimeout(r, 0))   // watch flush
-    expect(s.reasoningMode).toBe('auto')
+    expect(s.reasoningMode).toBe('default')
   })
 
-  it('fast 不被降级', async () => {
+  it('off / default 不被降级', async () => {
     const s = useAiSettingsStore()
-    s.setReasoningMode('fast')
+    s.setReasoningMode('off')
     s.provider = 'openai'
     s.model = 'gpt-4o'
     await new Promise(r => setTimeout(r, 0))
-    expect(s.reasoningMode).toBe('fast')
+    expect(s.reasoningMode).toBe('off')
+  })
+
+  it('旧值迁移: auto→default / fast→off / deep→high', () => {
+    localStorage.setItem('kmatch-ai-settings', JSON.stringify({
+      providerConfig: { provider: 'deepseek', apiKey: '', model: 'deepseek-v4-pro' },
+      reasoningMode: 'deep',
+    }))
+    const s = useAiSettingsStore()
+    expect(s.reasoningMode).toBe('high')
+
+    localStorage.setItem('kmatch-ai-settings', JSON.stringify({
+      providerConfig: { provider: 'deepseek', apiKey: '', model: 'deepseek-v4-pro' },
+      reasoningMode: 'fast',
+    }))
+    setActivePinia(createPinia())
+    const s2 = useAiSettingsStore()
+    expect(s2.reasoningMode).toBe('off')
+
+    localStorage.setItem('kmatch-ai-settings', JSON.stringify({
+      providerConfig: { provider: 'deepseek', apiKey: '', model: 'deepseek-v4-pro' },
+      reasoningMode: 'auto',
+    }))
+    setActivePinia(createPinia())
+    const s3 = useAiSettingsStore()
+    expect(s3.reasoningMode).toBe('default')
   })
 })

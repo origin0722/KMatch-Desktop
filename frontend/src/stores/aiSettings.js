@@ -16,11 +16,26 @@ export function customProviderUuid(p) {
 
 const STORAGE_KEY = 'kmatch-ai-settings'
 
+// 思考程度 (用户要求四档 default/high/max/off, 取代旧 auto/fast/deep;
+// 旧值迁移见 normalizeReasoningMode)
 export const REASONING_MODE = Object.freeze({
-  AUTO: 'auto',
-  FAST: 'fast',
-  DEEP: 'deep',
+  OFF: 'off',
+  DEFAULT: 'default',
+  HIGH: 'high',
+  MAX: 'max',
 })
+
+// 旧版本值 → 新值迁移: auto→default / fast→off / deep→high
+const LEGACY_REASONING_MAP = Object.freeze({
+  auto: REASONING_MODE.DEFAULT,
+  fast: REASONING_MODE.OFF,
+  deep: REASONING_MODE.HIGH,
+})
+
+function normalizeReasoningMode(value) {
+  if (Object.values(REASONING_MODE).includes(value)) return value
+  return LEGACY_REASONING_MAP[value] || REASONING_MODE.DEFAULT
+}
 
 const DEFAULT_PROXY = Object.freeze({
   enabled: false,
@@ -200,9 +215,7 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   const proxy = ref({ ...DEFAULT_PROXY, ...(saved.proxy || {}) })
   const toolPermissions = ref(normalizeToolPermissions(saved.toolPermissions))
   const memories = ref(Array.isArray(saved.memories) ? saved.memories.map(normalizeMemory) : [])
-  const reasoningMode = ref(Object.values(REASONING_MODE).includes(saved.reasoningMode)
-    ? saved.reasoningMode
-    : REASONING_MODE.AUTO)
+  const reasoningMode = ref(normalizeReasoningMode(saved.reasoningMode))
 
   // 联网搜索 (Tavily, 学情反馈搜薄弱知识点相关网站)
   const tavilyKey = ref(typeof saved.tavilyKey === 'string' ? saved.tavilyKey : '')
@@ -388,7 +401,7 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   }
 
   function setReasoningMode(mode) {
-    reasoningMode.value = Object.values(REASONING_MODE).includes(mode) ? mode : REASONING_MODE.AUTO
+    reasoningMode.value = normalizeReasoningMode(mode)
     persist()
   }
 
@@ -399,10 +412,10 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   }
 
   function reasoningInstruction(provider, model) {
-    if (reasoningMode.value === REASONING_MODE.FAST) {
-      return '思考模式: 快速。请直接给出简洁实用的回答，不展开冗长推理。'
+    if (reasoningMode.value === REASONING_MODE.OFF) {
+      return '思考模式: 关闭。请直接给出简洁实用的回答，不展开冗长推理。'
     }
-    if (reasoningMode.value === REASONING_MODE.DEEP) {
+    if (reasoningMode.value === REASONING_MODE.HIGH || reasoningMode.value === REASONING_MODE.MAX) {
       const support = modelReasoningSupport(provider, model)
       if (support === 'native') return '思考模式: 深度。当前模型支持 reasoning，请进行更充分的分析，并在最终回答中保持结论清晰。'
       return '思考模式: 深度。当前模型未确认支持原生 thinking 参数，请更仔细地分析问题，先内部推理，再给出简洁结论。'
@@ -454,13 +467,13 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     return `\n\n## 用户记忆\n${lines.join('\n')}`
   }
 
-  // reasoningMode='deep' + 当前模型 prompt-only -> 自动降级到 auto
+  // 思考程度 high/max + 当前模型 prompt-only -> 自动降级到 default
   watch(
     [() => provider.value, () => model.value, reasoningMode],
     () => {
-      if (reasoningMode.value !== 'deep') return
+      if (reasoningMode.value !== REASONING_MODE.HIGH && reasoningMode.value !== REASONING_MODE.MAX) return
       if (capabilityOf(provider.value, model.value).reasoning !== 'native') {
-        reasoningMode.value = 'auto'
+        reasoningMode.value = REASONING_MODE.DEFAULT
         persist()
       }
     },
