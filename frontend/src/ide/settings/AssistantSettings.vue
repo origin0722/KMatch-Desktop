@@ -27,7 +27,7 @@
 
     <SettingCard title="API Key" info="用于鉴权；仅本地存储，不上传">
       <div class="apikey-row">
-        <el-input :model-value="ai.apiKey" type="password" show-password size="small" style="width: 300px"
+        <el-input v-model="apiKeyInput" type="password" show-password size="small" style="width: 300px"
                   placeholder="sk-..." @change="onApiKeyChange" />
         <el-button size="small" :loading="testConn.loading" @click="runTest">测试连接</el-button>
         <a v-if="providerKeyUrl" :href="providerKeyUrl" target="_blank" rel="noopener" class="key-link">获取 Key ↗</a>
@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useAiSettingsStore, isCustomProvider, customProviderUuid, PROVIDERS } from '@/stores/aiSettings'
 import { useCustomProvidersStore } from '@/stores/customProviders'
@@ -148,6 +148,12 @@ async function runTest() {
     testConn.loading = false
   }
 }
+
+// API Key 本地镜像 (修"粘贴不了": 受控 :model-value + @change 会在输入/粘贴间被 store
+// 旧值重置 — 与 Tavily 输入框同款修复)。v-model 输入流畅, 失焦 @change 落盘 store。
+const apiKeyInput = ref(ai.apiKey || '')
+watch(() => ai.apiKey, (v) => { apiKeyInput.value = v || '' })
+
 async function onApiKeyChange(key) {
   await ai.setApiKey(key)
   if (key) await runTest()

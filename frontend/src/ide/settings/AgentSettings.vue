@@ -16,7 +16,7 @@
       </SettingCard>
 
       <SettingCard title="API Key" info="Agent 学习引擎独立 key；仅本地存储">
-        <el-input :model-value="agent.state.apiKey" type="password" show-password size="small" style="width: 320px"
+        <el-input v-model="apiKeyInput" type="password" show-password size="small" style="width: 320px"
                   placeholder="sk-..." @change="agent.setApiKey" />
       </SettingCard>
 
@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useAgentLlmStore } from '@/stores/agentLlm'
 import { PROVIDERS, isCustomProvider } from '@/stores/aiSettings'
 import SettingCard from './SettingCard.vue'
@@ -53,6 +53,10 @@ import SettingCard from './SettingCard.vue'
 const agent = useAgentLlmStore()
 const testing = ref(false)
 const testResult = ref(null)
+
+// API Key 本地镜像 (修"粘贴不了": 受控 :model-value + @change 输入/粘贴间被 store 值重置)
+const apiKeyInput = ref(agent.state.apiKey || '')
+watch(() => agent.state.apiKey, (v) => { apiKeyInput.value = v || '' })
 
 async function testConn() {
   const overrides = agent.buildOverrides()

@@ -61,4 +61,18 @@ describe('AssistantSettings', () => {
     await flushPromises() // 等 onClearHistory 内 await confirm(resolve) → clearMessages
     expect(spy).toHaveBeenCalled()
   })
+
+  it('API Key 输入用本地镜像: 键入不被 store 重置 (修"粘贴不了")', async () => {
+    const w = mount(AssistantSettings, mountOpts())
+    const input = w.find('input[type="password"]')
+    expect(input.exists()).toBe(true)
+    // v-model="apiKeyInput" 本地镜像: setValue 直接更新输入框, 不依赖 :model-value 回写
+    await input.setValue('sk-test-1234567890')
+    expect(input.element.value).toBe('sk-test-1234567890')
+    // 触发一次 re-render (切厂商) 后输入框仍保留键入内容 (不受 store 旧值重置)
+    const ai = useAiSettingsStore()
+    await ai.setProvider('deepseek')
+    await w.vm.$nextTick()
+    expect(input.element.value).toBe('sk-test-1234567890')
+  })
 })
