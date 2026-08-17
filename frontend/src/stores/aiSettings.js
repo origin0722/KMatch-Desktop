@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
+import { ElMessage } from 'element-plus'
 import { TOOL_PERMISSION, DEFAULT_TOOL_PERMISSIONS } from '@/ide/tools/registry'
 import { capabilityOf } from '@/services/llm/modelCapabilities'
 import { useCustomProvidersStore } from './customProviders'
@@ -268,7 +269,15 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
       if (data.models?.length) {
         models.value = data.models.sort()
         if (!model.value || !data.models.includes(model.value)) {
+          const prev = model.value
           model.value = data.models[0]
+          // 模型名同步增强: 保存的模型已不在厂商最新列表 → 自动切换并提示,
+          // 避免"每次进去模型名不同步/配置了已下架模型"而茫然
+          if (prev && prev !== model.value) {
+            ElMessage.warning(
+              `模型 ${prev} 已不在 ${meta.label} 最新模型列表, 已自动切换为 ${model.value} (设置页可按需调整)`,
+            )
+          }
         }
         // 真实模型列表就绪: 异步起 vision 探测
         _scheduleProbeForCurrent()
