@@ -1,17 +1,6 @@
 <template>
   <div class="project-graph-page km-workbench">
-    <!-- 页面标题栏 (复用 km-workbench-* 紧凑一行条, 统计并入右侧操作行) -->
-    <div class="km-workbench-header">
-      <div class="km-workbench-head-left">
-        <h3 class="km-workbench-title">项目代码图谱</h3>
-      </div>
-      <div v-if="pg.graph" class="km-workbench-head-right pg-stats">
-        <span>函数 {{ pg.graph.stats?.function || 0 }}</span>
-        <span>类 {{ pg.graph.stats?.class || 0 }}</span>
-        <span>方法 {{ pg.graph.stats?.method || 0 }}</span>
-        <span>关系 {{ pg.graph.relations?.length || 0 }}</span>
-      </div>
-    </div>
+    <!-- 页面标题栏已去除 (左侧导航已标识当前视图, 避免重复; 统计并入工具栏右侧) -->
 
     <!-- 技术栈自动检测 (AST 数据驱动, 零 LLM) -->
     <div v-if="techStack.length" class="pg-tech-bar">
@@ -125,6 +114,10 @@
               </div>
             </div>
           </el-popover>
+
+          <span v-if="pg.graph" class="pg-stats">
+            实体 {{ filteredEntities.length }} / {{ pg.graph.entities.length }} | 关系 {{ filteredEdges.length }}
+          </span>
         </div>
       </el-card>
 
@@ -811,8 +804,8 @@ watch(() => pg.graph, () => {
 <style scoped>
 .project-graph-page { height: 100%; display: flex; flex-direction: column; min-height: 0; padding: 0; }
 
-/* ---- 标题栏 (C4: 复用 km-workbench-header 紧凑一行条; 统计在右侧操作行) ---- */
-.pg-stats { display: flex; gap: 14px; font-size: 12px; color: var(--km-gray-500); font-family: var(--km-font-mono); white-space: nowrap; flex-shrink: 0; }
+/* ---- 标题栏已去除 (导航已标识视图, 统计在工具栏右侧) ---- */
+.pg-stats { display: flex; gap: 12px; font-size: 12px; color: var(--km-gray-500); font-family: var(--km-font-mono); white-space: nowrap; flex-shrink: 0; margin-left: auto; }
 .pg-stats span { white-space: nowrap; }
 .pg-stale { margin-bottom: 12px; }
 .pg-hint { font-size: 12px; color: var(--km-gray-500); margin: 0 0 8px; }

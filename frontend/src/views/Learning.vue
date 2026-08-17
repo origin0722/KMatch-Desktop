@@ -1,19 +1,6 @@
 <template>
   <div class="learning-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题栏 (km-workbench-header) -->
-    <!-- ============================================================ -->
-    <div class="km-workbench-header">
-      <div>
-        <p class="km-workbench-kicker">learning resources</p>
-        <h3 class="km-workbench-title">学习资源</h3>
-        <p class="km-workbench-desc">
-          基于知识图谱与学情画像生成的个性化学习资源，每项内容可溯源至图谱节点
-        </p>
-      </div>
-    </div>
-
-    <!-- ============================================================ -->
     <!-- 空状态：尚未生成资源 -->
     <!-- ============================================================ -->
     <el-empty

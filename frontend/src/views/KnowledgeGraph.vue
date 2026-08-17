@@ -1,20 +1,6 @@
 <template>
   <div class="graph-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题栏 (km-workbench-header) -->
-    <!-- ============================================================ -->
-    <div class="km-workbench-header">
-      <div class="km-workbench-head-left">
-        <h3 class="km-workbench-title">知识图谱</h3>
-      </div>
-      <div v-if="hasPathData || graphReady" class="km-workbench-head-right">
-        <span class="graph-stats">
-          节点: {{ data.nodeCount.value }} | 边: {{ data.edgeCount.value }}
-        </span>
-      </div>
-    </div>
-
-    <!-- ============================================================ -->
     <!-- 空状态：无学习路径时显示引导 -->
     <!-- ============================================================ -->
     <el-empty
@@ -146,6 +132,10 @@
               </div>
             </div>
           </el-popover>
+
+          <span class="graph-stats">
+            节点: {{ data.nodeCount.value }} | 边: {{ data.edgeCount.value }}
+          </span>
         </div>
       </el-card>
 
@@ -967,8 +957,8 @@ watch(layoutMode, () => { rebuildGraph() })
 }
 .search-input { width: 260px; }
 .filter-select { width: 150px; }
-.legend-btn { margin-left: auto; }
 .stale-banner { margin-bottom: 8px; }
+.graph-stats { margin-left: auto; }
 .cat-dist-section { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
 .cat-dist-section > .label { color: var(--km-gray-500); font-size: 13px; margin-bottom: 2px; }
 .cat-dist { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--km-gray-700); }

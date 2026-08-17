@@ -1,13 +1,5 @@
 <template>
   <div class="learning-session km-workbench">
-    <div class="km-workbench-header">
-      <div>
-        <p class="km-workbench-kicker">learning session</p>
-        <h3 class="km-workbench-title">学习会话</h3>
-        <p class="km-workbench-desc">答题、Agent 协同、专属图谱串成一条会话流,由 Agent 推动阶段推进。</p>
-      </div>
-    </div>
-
     <div class="session-layout">
       <!-- 会话流: 进度轨(左) + 阶段卡(右), grid 每行同高 -> 进度点对齐阶段卡中心 -->
       <div class="session-flow" ref="flowRef">
