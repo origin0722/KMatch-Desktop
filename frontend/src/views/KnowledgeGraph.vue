@@ -4,9 +4,13 @@
     <!-- 页面标题栏 (km-workbench-header) -->
     <!-- ============================================================ -->
     <div class="km-workbench-header">
-      <div>
-        <p class="km-workbench-kicker">knowledge graph</p>
+      <div class="km-workbench-head-left">
         <h3 class="km-workbench-title">知识图谱</h3>
+      </div>
+      <div v-if="hasPathData || graphReady" class="km-workbench-head-right">
+        <span class="graph-stats">
+          节点: {{ data.nodeCount.value }} | 边: {{ data.edgeCount.value }}
+        </span>
       </div>
     </div>
 
@@ -39,49 +43,46 @@
             @keyup.enter="handleSearch"
             @clear="handleSearchClear"
           />
-          <el-button type="primary" :icon="Search" @click="handleSearch" :loading="searching">
-            搜索
-          </el-button>
 
           <el-divider direction="vertical" />
 
-          <el-select
-            v-model="categoryFilter"
-            placeholder="全部分类"
-            clearable
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
-          </el-select>
-
-          <el-select
-            v-model="difficultyFilter"
-            placeholder="全部难度"
-            clearable
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option label="⭐ 入门 (1)" :value="1" />
-            <el-option label="⭐⭐ 基础 (2)" :value="2" />
-            <el-option label="⭐⭐⭐ 进阶 (3)" :value="3" />
-            <el-option label="⭐⭐⭐⭐ 高级 (4)" :value="4" />
-            <el-option label="⭐⭐⭐⭐⭐ 专家 (5)" :value="5" />
-          </el-select>
-
-          <el-select
-            v-model="masteryFilter"
-            placeholder="全部掌握度"
-            clearable
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option label="已掌握 (≥80%)" value="mastered" />
-            <el-option label="学习中 (50-80%)" value="learning" />
-            <el-option label="未掌握 (<50%)" value="weak" />
-          </el-select>
-
-          <el-divider direction="vertical" />
+          <!-- 筛选 popover: 3 select 收纳, 带已选 badge -->
+          <el-popover placement="bottom" :width="300" trigger="click">
+            <template #reference>
+              <el-button :class="{ 'filter-active': activeFilterCount > 0 }">
+                筛选<span v-if="activeFilterCount" class="filter-badge">{{ activeFilterCount }}</span>
+              </el-button>
+            </template>
+            <div class="filter-pop">
+              <div class="filter-row">
+                <span class="filter-label">分类</span>
+                <el-select v-model="categoryFilter" placeholder="全部分类" clearable class="filter-select" @change="handleFilterChange">
+                  <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
+                </el-select>
+              </div>
+              <div class="filter-row">
+                <span class="filter-label">难度</span>
+                <el-select v-model="difficultyFilter" placeholder="全部难度" clearable class="filter-select" @change="handleFilterChange">
+                  <el-option label="⭐ 入门 (1)" :value="1" />
+                  <el-option label="⭐⭐ 基础 (2)" :value="2" />
+                  <el-option label="⭐⭐⭐ 进阶 (3)" :value="3" />
+                  <el-option label="⭐⭐⭐⭐ 高级 (4)" :value="4" />
+                  <el-option label="⭐⭐⭐⭐⭐ 专家 (5)" :value="5" />
+                </el-select>
+              </div>
+              <div class="filter-row">
+                <span class="filter-label">掌握度</span>
+                <el-select v-model="masteryFilter" placeholder="全部掌握度" clearable class="filter-select" @change="handleFilterChange">
+                  <el-option label="已掌握 (≥80%)" value="mastered" />
+                  <el-option label="学习中 (50-80%)" value="learning" />
+                  <el-option label="未掌握 (<50%)" value="weak" />
+                </el-select>
+              </div>
+              <div class="filter-pop-actions">
+                <el-button size="small" @click="clearAllFilters" :disabled="activeFilterCount === 0">清空筛选</el-button>
+              </div>
+            </div>
+          </el-popover>
 
           <!-- 布局切换 (治 TB 纵向 6 层占满 / 宽屏横向空置): 层次 TB / 层次 LR / 力导向聚类 -->
           <div class="layout-selector">
@@ -94,12 +95,6 @@
               @click="setLayoutMode(l.id)"
             >{{ l.label }}</button>
           </div>
-
-          <el-button :icon="RefreshRight" @click="resetGraph" :disabled="!graphReady">
-            重置
-          </el-button>
-
-          <el-divider direction="vertical" />
 
           <div class="persona-selector">
             <button
@@ -116,45 +111,41 @@
             路径查找
           </el-button>
 
-          <el-popover placement="bottom" :width="200" trigger="click">
-            <template #reference>
-              <el-button class="legend-btn">图例</el-button>
-            </template>
-            <div class="legend-popover">
-              <div class="legend-title">节点颜色 · 难度</div>
-              <div class="legend-item">
-                <span class="dot" :style="{ background: difficultyColor(1) }"></span> ⭐ 入门 (1-2)
-              </div>
-              <div class="legend-item">
-                <span class="dot" :style="{ background: difficultyColor(3) }"></span> ⭐⭐⭐ 进阶 (3)
-              </div>
-              <div class="legend-item">
-                <span class="dot" :style="{ background: difficultyColor(4) }"></span> ⭐⭐⭐⭐⭐ 高级 (4-5)
-              </div>
-              <div class="legend-title">节点边框 · 掌握度</div>
-              <div class="legend-item"><span class="dot mastered-dot"></span> 已掌握 (≥80%)</div>
-              <div class="legend-item"><span class="dot" :style="{ border: `1px solid ${difficultyColor(1)}` }"></span> 未掌握 (细灰框)</div>
-            </div>
-          </el-popover>
-
+          <!-- 更多 popover: 重置/导出/图例/快捷键 收纳 -->
           <el-popover placement="bottom" :width="240" trigger="click">
             <template #reference>
-              <el-button size="small">快捷键</el-button>
+              <el-button>更多</el-button>
             </template>
-            <div class="legend-popover">
-              <div class="legend-item"><code>Esc</code> 清除高亮/搜索</div>
-              <div class="legend-item"><code>滚轮</code> 缩放</div>
-              <div class="legend-item"><code>拖拽空白</code> 平移画布</div>
-              <div class="legend-item"><code>点击节点</code> 查看详情</div>
-              <div class="legend-item"><code>拖拽节点</code> 调整位置</div>
+            <div class="more-pop">
+              <div class="more-actions">
+                <el-button size="small" :icon="RefreshRight" @click="resetGraph" :disabled="!graphReady">重置</el-button>
+                <el-button size="small" @click="exportGraph" :disabled="!graphReady">导出</el-button>
+              </div>
+              <div class="more-section">
+                <div class="more-section-title">节点颜色 · 难度</div>
+                <div class="legend-item">
+                  <span class="dot" :style="{ background: difficultyColor(1) }"></span> ⭐ 入门 (1-2)
+                </div>
+                <div class="legend-item">
+                  <span class="dot" :style="{ background: difficultyColor(3) }"></span> ⭐⭐⭐ 进阶 (3)
+                </div>
+                <div class="legend-item">
+                  <span class="dot" :style="{ background: difficultyColor(4) }"></span> ⭐⭐⭐⭐⭐ 高级 (4-5)
+                </div>
+                <div class="more-section-title">节点边框 · 掌握度</div>
+                <div class="legend-item"><span class="dot mastered-dot"></span> 已掌握 (≥80%)</div>
+                <div class="legend-item"><span class="dot" :style="{ border: `1px solid ${difficultyColor(1)}` }"></span> 未掌握 (细灰框)</div>
+              </div>
+              <div class="more-section">
+                <div class="more-section-title">快捷键</div>
+                <div class="legend-item"><code>Esc</code> 清除高亮/搜索</div>
+                <div class="legend-item"><code>滚轮</code> 缩放</div>
+                <div class="legend-item"><code>拖拽空白</code> 平移画布</div>
+                <div class="legend-item"><code>点击节点</code> 查看详情</div>
+                <div class="legend-item"><code>拖拽节点</code> 调整位置</div>
+              </div>
             </div>
           </el-popover>
-
-          <el-button size="small" @click="exportGraph" :disabled="!graphReady">导出</el-button>
-
-          <span class="graph-stats">
-            节点: {{ data.nodeCount.value }} | 边: {{ data.edgeCount.value }}
-          </span>
         </div>
       </el-card>
 
@@ -180,7 +171,7 @@
         <div class="side-panel" :class="{ collapsed: panelCollapsed }">
           <button class="panel-toggle" @click="panelCollapsed = !panelCollapsed"
                   :title="panelCollapsed ? '展开详情面板' : '收起详情面板'">
-            <el-icon><ArrowRight v-if="panelCollapsed" /><ArrowLeft v-else /></el-icon>
+            <el-icon><ArrowUp v-if="panelCollapsed" /><ArrowDown v-else /></el-icon>
           </button>
           <!-- 新鲜度提示 (借鉴 StalenessBanner): 画像过期 -->
           <el-alert v-if="profileStale" type="warning" :closable="false" class="stale-banner" show-icon>
@@ -317,7 +308,7 @@
  * 配色: THEME 常量镜像 --km-* token (G6 canvas 不能读 CSS 变量, 故用 hex)。
  */
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Search, RefreshRight, Loading, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { Search, RefreshRight, Loading, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { Graph } from '@antv/g6'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useGraphData } from '@/composables/useGraphData'
@@ -392,6 +383,14 @@ const searchNoResult = ref(false)
 const categoryFilter = ref('')
 const difficultyFilter = ref(null)
 const masteryFilter = ref('')
+// 筛选 popover 已选数 (驱动 badge): 仅统计非默认值
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (categoryFilter.value) n++
+  if (difficultyFilter.value !== null && difficultyFilter.value !== '') n++
+  if (masteryFilter.value) n++
+  return n
+})
 
 const categories = [
   '基础语法', '数据结构与算法', '面向对象编程',
@@ -606,10 +605,8 @@ function initGraph() {
 
   // BUG-049: 异常保护
   try {
-    // 浮层避让: 详情面板展开时画布逻辑宽度避让右侧 (面板宽300 + 右偏移12 + 余量),
-    // dagre 在剩余区布局, 节点不进浮层底下; 收起时画布拿满全宽
-    const panelGap = panelCollapsed.value ? 0 : 320
-    const containerWidth = (graphContainer.value.offsetWidth || 800) - panelGap
+    // 详情面板改底部抽屉, 画布拿满全宽 (不避让)
+    const containerWidth = graphContainer.value.offsetWidth || 800
     const containerHeight = graphContainer.value.offsetHeight || 600
 
     // 布局随 layoutMode 切换 (dagre TB/LR 层次 or d3-force 聚类); 间距加大治"还是挤", nodeSize 随 persona
@@ -669,7 +666,7 @@ function initGraph() {
           getContent: (_evt, items) => buildTooltipHtml(items?.[0]?.data),
         },
         // 小地图 (治缩放后迷路): 左下角缩略导航, 避开右侧详情浮层
-        { type: 'minimap', size: [180, 110], position: 'left-bottom' },
+        { type: 'minimap', size: [180, 110], position: 'right-top' },
       ],
     })
 
@@ -867,6 +864,14 @@ function clearHighlight() {
   rebuildGraph()
 }
 
+// 筛选 popover "清空筛选": 复位三个筛选条件并重算高亮 (C2)
+function clearAllFilters() {
+  categoryFilter.value = ''
+  difficultyFilter.value = null
+  masteryFilter.value = ''
+  handleFilterChange()
+}
+
 // 面包屑: 点击分类过滤 (借鉴 Breadcrumb)
 function setCategoryFilter(cat) {
   categoryFilter.value = cat || ''
@@ -927,9 +932,11 @@ watch(() => store.knowledgeGraph, async (newVal) => {
   }
 }, { deep: true })
 
-// 快捷键 (借鉴 KeyboardShortcutsHelp): Esc 清除高亮
+// 快捷键 (借鉴 KeyboardShortcutsHelp): Esc 收起详情抽屉 / 清除高亮
 function handleKeydown(e) {
-  if (e.key === 'Escape') clearHighlight()
+  if (e.key !== 'Escape') return
+  if (!panelCollapsed.value && selectedNode.value) { panelCollapsed.value = true; return }
+  clearHighlight()
 }
 onMounted(() => { window.addEventListener('keydown', handleKeydown) })
 
@@ -943,10 +950,6 @@ watch(() => sidebar.persona, () => { rebuildGraph() })
 
 // 布局切换 -> 重建图谱 (layout 配置在 init 时注入)
 watch(layoutMode, () => { rebuildGraph() })
-
-// 侧栏折叠 -> 重建图谱 (画布避让宽度变化)
-// T3 split: 折叠切换 -> 侧栏宽度过渡 (0.2s) 结束后再重建, 避免 dagre 读到过渡中的中间宽度
-watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 </script>
 
 <style scoped>
@@ -971,30 +974,55 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 .cat-dist { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--km-gray-700); }
 .cat-name { flex: 1; }
 .cat-count { font-family: var(--km-font-mono); color: var(--km-gray-800); font-weight: 600; }
-.breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--km-gray-500); padding: 8px 12px; background: var(--km-bg-layer-2); border-radius: 8px; flex-wrap: wrap; }
+.breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--km-gray-500); padding: 8px 12px; background: var(--km-bg-layer-2); border-radius: var(--km-radius-sm); flex-wrap: wrap; }
 .bc-item { white-space: nowrap; }
 .bc-clickable { cursor: pointer; color: var(--km-primary); }
 .bc-clickable:hover { text-decoration: underline; }
 .bc-current { color: var(--km-gray-800); font-weight: 600; }
 .bc-sep { color: var(--km-gray-400); }
-.persona-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border-radius: 6px; padding: 2px; }
-.persona-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: color 0.15s, background 0.15s; }
+.persona-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border-radius: var(--km-radius-sm); padding: 2px; }
+.persona-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: var(--km-radius-xs); cursor: pointer; transition: color 0.15s, background 0.15s; }
 .persona-btn:hover { color: var(--km-gray-700); }
 .persona-btn.active { background: var(--km-primary); color: #fff; }
 /* 布局切换按钮组 (复用 persona-btn 视觉) */
-.layout-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: 6px; padding: 2px; }
+.layout-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); padding: 2px; }
 .graph-stats {
   color: var(--km-gray-500); font-size: 13px; white-space: nowrap;
   font-family: var(--km-font-mono);
 }
 
-/* ---- 图例弹窗 ---- */
-.legend-popover {
-  display: flex; flex-direction: column; gap: 8px; font-size: 13px;
+/* ---- 筛选 popover (C2: 3 select 收纳 + 已选 badge) ---- */
+.filter-active { color: var(--km-primary); border-color: var(--km-primary); }
+.filter-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px; margin-left: 4px;
+  border-radius: 999px; background: var(--km-primary); color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 1;
+}
+.filter-pop { display: flex; flex-direction: column; gap: 10px; }
+.filter-row { display: flex; align-items: center; gap: 10px; }
+.filter-label { flex-shrink: 0; width: 56px; font-size: 12px; color: var(--km-gray-600); }
+.filter-pop .filter-select { flex: 1; width: 100%; }
+.filter-pop-actions { display: flex; justify-content: flex-end; }
+
+/* ---- 更多 popover (重置/导出/图例/快捷键) ---- */
+.more-pop { display: flex; flex-direction: column; gap: 6px; }
+.more-pop .more-actions { display: flex; gap: 6px; }
+.more-section {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--km-border-light);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.more-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.more-section-title {
+  font-size: 11px; font-weight: 600; color: var(--km-gray-500);
+  text-transform: uppercase; letter-spacing: 0.3px;
 }
 .legend-item { display: flex; align-items: center; gap: 8px; }
-.legend-title { font-size: 11px; font-weight: 600; color: var(--km-gray-500); margin: 6px 0 2px; text-transform: uppercase; letter-spacing: 0.3px; }
-.legend-title:first-child { margin-top: 0; }
+.legend-item code {
+  font-size: 11px; background: var(--km-gray-100);
+  padding: 1px 5px; border-radius: var(--km-radius-xs);
+  color: var(--km-gray-700);
+}
 .dot {
   width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
 }
@@ -1019,39 +1047,40 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
   background: var(--km-bg-layer-3);
 }
 
-/* ---- 浮层详情面板 (悬浮图谱上, 画布逻辑宽度避让; 可折叠; 复用 ProjectGraphView 模式) ---- */
+/* ---- 详情面板 (底部抽屉, 画布全宽不避让; 可折叠; 复用 ProjectGraphView 模式) ---- */
 .side-panel {
-  position: absolute; top: 12px; right: 12px;
-  width: 300px; max-height: calc(100% - 24px);
-  overflow-y: auto;
+  position: absolute; bottom: 0; left: 0; right: 0;
+  max-height: 240px; overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
   z-index: 5;
-  transition: width 0.2s ease;
+  background: var(--km-bg-layer-2);
+  border-top: 1px solid var(--km-border-light);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  transition: max-height 0.2s ease;
 }
-/* 浮层卡片加投影, 与画布拉开层次 */
-.side-panel:not(.collapsed) .panel-card {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-.side-panel.collapsed { width: 36px; overflow: hidden; }
+.side-panel.collapsed { max-height: 36px; overflow: hidden; }
 .side-panel.collapsed > *:not(.panel-toggle) { display: none; }
 .panel-toggle {
-  position: absolute; top: 8px; right: 6px; z-index: 6;
-  width: 24px; height: 24px; border: 1px solid var(--km-border);
-  border-radius: 4px; background: var(--km-bg-layer-2); color: var(--km-gray-500);
+  position: sticky; top: 0; align-self: flex-end; z-index: 6;
+  width: 28px; height: 28px; margin: 6px 10px 0 0;
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius-xs); background: var(--km-bg-layer-2); color: var(--km-gray-500);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
 }
 .panel-toggle:hover { color: var(--km-primary); border-color: var(--km-primary); }
-/* 折叠态: 按钮占满侧栏顶部, primary 底白图标, 明确可点展开 (修折叠后展不开) */
+/* 折叠态: 全宽细条, primary 底, 明确可点展开 */
 .side-panel.collapsed .panel-toggle {
-  top: 12px; left: 0; right: 0; width: 100%; height: 36px;
-  border-radius: var(--km-radius-sm); border-color: var(--km-primary);
+  align-self: stretch;
+  width: auto; height: 36px; margin: 0;
+  border-radius: 0; border: none;
   background: var(--km-primary); color: #fff; font-size: 16px;
 }
 .side-panel.collapsed .panel-toggle:hover { background: var(--km-primary-active); }
 .panel-card :deep(.el-card) {
-  --el-card-bg-color: var(--km-bg-layer-2);
-  --el-card-border-color: var(--km-border-light);
+  --el-card-bg-color: transparent;
+  --el-card-border-color: transparent;
+  box-shadow: none;
 }
 /* T3 单卡两段: 段标题 + 段间分隔 */
 .panel-section-title { font-size: 13px; font-weight: 600; color: var(--km-gray-800); margin-bottom: 10px; }
@@ -1094,7 +1123,7 @@ watch(panelCollapsed, () => { setTimeout(() => rebuildGraph(), 220) })
 .detail-row .label { color: var(--km-gray-500); width: 56px; flex-shrink: 0; }
 .detail-row code {
   background: var(--km-bg-layer-1); padding: 1px 6px;
-  border-radius: 3px; font-size: 12px;
+  border-radius: var(--km-radius-xs); font-size: 12px;
   color: var(--km-gray-800);
 }
 .detail-summary {

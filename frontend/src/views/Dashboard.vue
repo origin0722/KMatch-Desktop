@@ -1,11 +1,10 @@
 <template>
   <div class="dashboard-page km-workbench">
     <!-- ============================================================ -->
-    <!-- 页面标题 (km-workbench-header, 与 LearningSession 同节奏) -->
+    <!-- 页面标题 (km-workbench-header 紧凑一行条, C4: 标题 15px + desc 内联) -->
     <!-- ============================================================ -->
     <div class="km-workbench-header">
-      <div>
-        <p class="km-workbench-kicker">learning analytics</p>
+      <div class="km-workbench-head-left">
         <h3 class="km-workbench-title">数据看板</h3>
         <p class="km-workbench-desc">
           个人学情与资源匹配度报告：知识盲区定位、难度匹配曲线、学习路径规划
@@ -30,36 +29,73 @@
     <!-- 有数据时 -->
     <!-- ============================================================ -->
     <template v-else>
-      <!-- 概览卡片行 -->
+      <!-- 大数字卡行 (C3: 36px 数字 + 迷你环形/sparkline + 语义色) -->
       <div class="overview-row">
+        <!-- 综合掌握度 -->
         <div class="stat-card km-surface">
-          <div class="stat-value km-mono-number">{{ (blindSpots.summary.overall_mastery * 100).toFixed(0) }}%</div>
+          <div class="stat-head">
+            <div class="stat-value" :class="toneClass(mastery)">{{ (mastery * 100).toFixed(0) }}%</div>
+            <svg class="stat-ring" viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
+              <circle class="ring-bg" cx="22" cy="22" :r="ringR" />
+              <circle class="ring-fg" :class="toneClass(mastery)" cx="22" cy="22" :r="ringR"
+                      :stroke-dasharray="ring.circumference" :stroke-dashoffset="ring.offset(mastery)" />
+            </svg>
+          </div>
           <div class="stat-label">综合掌握度</div>
-          <div class="stat-sub">{{ blindSpots.summary.total }} 个节点</div>
+          <div class="stat-sub">{{ blindSpots.summary.total }} 个节点 · 薄弱 {{ blindSpots.summary.weak }}</div>
         </div>
+
+        <!-- 答题正确率 -->
         <div class="stat-card km-surface">
-          <div class="stat-value km-mono-number">{{ (accuracy * 100).toFixed(0) }}%</div>
+          <div class="stat-head">
+            <div class="stat-value" :class="toneClass(accuracy)">{{ (accuracy * 100).toFixed(0) }}%</div>
+            <svg class="stat-ring" viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
+              <circle class="ring-bg" cx="22" cy="22" :r="ringR" />
+              <circle class="ring-fg" :class="toneClass(accuracy)" cx="22" cy="22" :r="ringR"
+                      :stroke-dasharray="ring.circumference" :stroke-dashoffset="ring.offset(accuracy)" />
+            </svg>
+          </div>
           <div class="stat-label">答题正确率</div>
           <div class="stat-sub">{{ assessment?.total_count || 0 }} 题</div>
         </div>
+
+        <!-- 难度适配率 (sparkline = 逐资源难度偏差走势) -->
         <div class="stat-card km-surface">
-          <div class="stat-value km-mono-number" :class="diffMatch.summary.avg_gap > 1 ? 'warn' : 'ok'">
-            {{ diffMatch.summary.avg_gap > 0 ? '+' : '' }}{{ diffMatch.summary.avg_gap.toFixed(1) }}
+          <div class="stat-head">
+            <div class="stat-value" :class="toneClass(adaptationRate)">{{ (adaptationRate * 100).toFixed(0) }}%</div>
+            <svg class="stat-spark" :viewBox="spark.viewBox" width="64" height="32" aria-hidden="true">
+              <polyline class="spark-line" :class="spark.tone" :points="spark.points" />
+            </svg>
           </div>
-          <div class="stat-label">平均难度偏差</div>
+          <div class="stat-label">难度适配率</div>
           <div class="stat-sub">{{ diffMatch.summary.matched }}/{{ diffMatch.summary.total_resources }} 匹配</div>
         </div>
-        <div class="stat-card km-surface" v-if="reviewResults">
-          <div class="stat-value" :class="reviewResults.passed ? 'ok' : 'warn'">
-            {{ reviewResults.passed ? '通过' : '打回' }}
+
+        <!-- 内容审核 (有报告才展示) -->
+        <div v-if="reviewResults" class="stat-card km-surface">
+          <div class="stat-head">
+            <div class="stat-value" :class="reviewResults.passed ? 'ok' : 'warn'">{{ reviewScore }}%</div>
+            <svg class="stat-ring" viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
+              <circle class="ring-bg" cx="22" cy="22" :r="ringR" />
+              <circle class="ring-fg" :class="reviewResults.passed ? 'ok' : 'warn'" cx="22" cy="22" :r="ringR"
+                      :stroke-dasharray="ring.circumference" :stroke-dashoffset="ring.offset(reviewScoreNorm)" />
+            </svg>
           </div>
-          <div class="stat-label">内容审核</div>
-          <div class="stat-sub">得分 {{ ((reviewResults.overall_score || 0) * 100).toFixed(0) }}%</div>
+          <div class="stat-label">内容审核 · {{ reviewResults.passed ? '通过' : '打回' }}</div>
+          <div class="stat-sub">质量得分 {{ reviewScore }}%</div>
         </div>
       </div>
 
-      <!-- 第一行: 盲区定位 + 难度匹配 -->
-      <div class="charts-row">
+      <!-- 3 列栅格: 综合雷达 | 知识盲区 | 难度匹配 (C3, 小屏降级单列) -->
+      <div class="dash-grid">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <span>综合能力雷达</span>
+            <el-tag size="small" type="info">{{ radarActiveDims }}/5 维度达标</el-tag>
+          </template>
+          <div ref="radarChartRef" class="chart-box"></div>
+        </el-card>
+
         <!-- ① 知识盲区定位 -->
         <el-card class="chart-card" shadow="never">
           <template #header>
@@ -83,7 +119,7 @@
         </el-card>
       </div>
 
-      <!-- 第二行: 学习路径规划图 -->
+      <!-- 第三行: 学习路径规划图 -->
       <el-card class="path-card" shadow="never">
         <template #header>
           <span>③ 学习路径规划图</span>
@@ -125,7 +161,7 @@
         <ReviewReport :review-results="reviewResults" />
       </el-card>
 
-      <!-- 第三行: 质量指标 -->
+      <!-- 质量指标 -->
       <el-card class="quality-card" shadow="never" v-if="qualityMetrics">
         <template #header>
           <span>赛题 M5 质量检测指标</span>
@@ -176,20 +212,28 @@
 /**
  * KMatch 数据看板 — 赛题(3)① 可视化报告
  *
- * 从 assessment store 取原始数据，客户端派生三类可视化:
- *   ① 知识盲区定位 — ECharts 横向柱状图
- *   ② 资源难度匹配曲线 — ECharts 散点图
- *   ③ 学习路径规划图 — 横向流程节点
+ * 从 assessment store 取原始数据，客户端派生四类可视化:
+ *   ① 综合能力雷达 — ECharts 雷达图 (5 维: 掌握度/正确率/覆盖度/难度适配/活跃度)
+ *   ② 知识盲区定位 — ECharts 横向柱状图 (带均值线 markLine, C3)
+ *   ③ 资源难度匹配曲线 — ECharts 散点图
+ *   ④ 学习路径规划图 — 横向流程节点
  *
  * 可复用后端 report_builder.py 的等价 JS 逻辑，纯函数不调 API。
  *
  * 配色: THEME 常量镜像 --km-* token (ECharts canvas 不能读 CSS 变量, 故用 hex)。
+ * C3: 顶部 4 stat 卡改为大数字卡 (36px 数字 + 迷你环形/sparkline + 语义色)。
  */
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import * as echarts from 'echarts'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+// C3: 全量 echarts → 按需 import (仿 ProfileRadar.vue:15-18, 减小 chunk)
+import * as echarts from 'echarts/core'
+import { BarChart, ScatterChart, RadarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
 import ReviewReport from '@/components/ReviewReport.vue'
+
+echarts.use([BarChart, ScatterChart, RadarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const store = useAssessmentStore()
 const sidebar = useSidebarStore()
@@ -211,8 +255,10 @@ const THEME = {
 // ============================================================
 // Chart refs
 // ============================================================
+const radarChartRef = ref(null)
 const blindChartRef = ref(null)
 const matchChartRef = ref(null)
+let radarChart = null
 let blindChart = null
 let matchChart = null
 
@@ -224,6 +270,105 @@ const hasData = computed(() => store.hasResults && store.profile)
 const accuracy = computed(() => store.accuracy || 0)
 const assessment = computed(() => store.assessment)
 const reviewResults = computed(() => store.reviewResults)
+
+// ============================================================
+// 大数字卡派生 (C3)
+// ============================================================
+const mastery = computed(() => blindSpots.value.summary.overall_mastery || 0)
+
+// 难度适配率: 优先后端 quality_metrics.adaptation.rate, fallback diffMatch 客户端派生
+const adaptationRate = computed(() => {
+  const q = qualityMetrics.value
+  if (q) return q.adaptation_rate
+  const dm = diffMatch.value.summary
+  return dm.total_resources ? +(dm.matched / dm.total_resources).toFixed(3) : 0
+})
+
+// 内容审核得分 (0-100 展示 / 0-1 环形)
+const reviewScore = computed(() => Math.round((reviewResults.value?.overall_score || 0) * 100))
+const reviewScoreNorm = computed(() => reviewResults.value?.overall_score || 0)
+
+// 迷你环形 (SVG stroke-dasharray 环形进度, 免额外 ECharts 实例)
+const ringR = 18
+const ringC = 2 * Math.PI * ringR
+const ring = {
+  circumference: ringC,
+  offset: (ratio) => ringC * (1 - Math.max(0, Math.min(1, ratio || 0))),
+}
+
+/** 语义色: ≥0.8 ok (绿) / ≥0.5 warn (黄) / <0.5 fail (红) */
+function toneClass(ratio) {
+  if (ratio >= 0.8) return 'ok'
+  if (ratio >= 0.5) return 'warn'
+  return 'fail'
+}
+
+// 难度偏差 sparkline (最近 ≤24 条资源偏差走势)
+const gapSeries = computed(() => diffMatch.value.points.map((p) => p.gap).slice(-24))
+const spark = computed(() => {
+  const v = gapSeries.value
+  if (!v.length) return { viewBox: '0 0 64 32', points: '', tone: '' }
+  const W = 64
+  const H = 32
+  const PAD = 3
+  const min = Math.min(0, ...v)
+  const max = Math.max(0, ...v)
+  const span = max - min || 1
+  const step = W / (v.length - 1 || 1)
+  const pts = v.map((val, i) => {
+    const x = i * step
+    const y = H - PAD - ((val - min) / span) * (H - 2 * PAD)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const avg = v.reduce((a, b) => a + b, 0) / v.length
+  return {
+    viewBox: `0 0 ${W} ${H}`,
+    points: pts.join(' '),
+    tone: Math.abs(avg) > 0.5 ? 'tone-warn' : 'tone-ok',
+  }
+})
+
+// ============================================================
+// ① 综合能力雷达 5 维 (C3, 全部归一化 0-1)
+// ============================================================
+const activityLevel = computed(() => {
+  // 活跃度: 学习足迹条数为主 (20+ 条 = 满活跃), 无足迹时回退答题量 + 资源数 (30+ = 满)
+  const profile = store.profile || {}
+  const history = profile.learning_history
+  if (Array.isArray(history) && history.length) {
+    return Math.min(1, history.length / 20)
+  }
+  const answers = store.assessment?.total_count || 0
+  const resources = store.generatedContent?.resources?.length || 0
+  return Math.min(1, (answers + resources) / 30)
+})
+
+const radarDims = computed(() => {
+  const q = qualityMetrics.value
+  const coverage = q ? q.coverage_rate : 0
+  const adaptation = q ? q.adaptation_rate : adaptationRate.value
+  const clamp = (x) => Math.max(0, Math.min(1, x || 0))
+  return {
+    mastery: clamp(mastery.value),
+    accuracy: clamp(store.accuracy),
+    coverage: clamp(coverage),
+    adaptation: clamp(adaptation),
+    activity: clamp(activityLevel.value),
+  }
+})
+
+const radarActiveDims = computed(() => {
+  const d = radarDims.value
+  return [d.mastery, d.accuracy, d.coverage, d.adaptation, d.activity].filter((x) => x >= 0.8).length
+})
+
+const RADAR_INDICATORS = [
+  { name: '掌握度', max: 100 },
+  { name: '正确率', max: 100 },
+  { name: '覆盖度', max: 100 },
+  { name: '难度适配', max: 100 },
+  { name: '活跃度', max: 100 },
+]
 
 // ============================================================
 // ① 知识盲区定位 (等价 report_builder._build_blind_spots)
@@ -475,7 +620,49 @@ function masteryColor(m) {
 }
 
 // ============================================================
-// ECharts: ① 盲区柱状图
+// ECharts: 综合能力雷达 (C3)
+// ============================================================
+function renderRadarChart() {
+  if (!radarChartRef.value) return
+  if (!radarChart) {
+    radarChart = echarts.init(radarChartRef.value)
+  }
+
+  const d = radarDims.value
+  radarChart.setOption({
+    tooltip: {
+      formatter: (p) => {
+        const v = p.value || []
+        const rows = RADAR_INDICATORS.map((ind, i) => `${ind.name}: ${v[i] ?? 0}%`).join('<br/>')
+        return `<b>能力画像</b><br/>${rows}`
+      },
+    },
+    radar: {
+      center: ['50%', '52%'],
+      radius: '62%',
+      indicator: RADAR_INDICATORS,
+      axisName: { fontSize: 11, color: THEME.gray500 },
+      splitLine: { lineStyle: { color: THEME.splitLine } },
+      splitArea: { areaStyle: { color: ['rgba(108,124,224,0.04)', 'rgba(108,124,224,0.08)'] } },
+    },
+    series: [{
+      type: 'radar',
+      symbol: 'circle',
+      symbolSize: 4,
+      data: [{
+        name: '能力画像',
+        value: [d.mastery, d.accuracy, d.coverage, d.adaptation, d.activity]
+          .map((x) => Math.round(x * 100)),
+      }],
+      lineStyle: { color: THEME.primary, width: 2 },
+      areaStyle: { color: 'rgba(108,124,224,0.2)' },
+      itemStyle: { color: THEME.primary },
+    }],
+  }, true)
+}
+
+// ============================================================
+// ECharts: ① 盲区柱状图 (+ 均值线 markLine, C3)
 // ============================================================
 function renderBlindChart() {
   if (!blindChartRef.value) return
@@ -505,7 +692,11 @@ function renderBlindChart() {
       },
     },
     grid: { left: 8, right: 20, top: 8, bottom: 0, containLabel: true },
-    xAxis: { max: 100, axisLabel: { fontSize: 11, color: THEME.gray500 }, splitLine: { lineStyle: { color: THEME.splitLine } } },
+    xAxis: {
+      max: 100,
+      axisLabel: { fontSize: 11, color: THEME.gray500 },
+      splitLine: { lineStyle: { color: THEME.splitLine } },
+    },
     yAxis: {
       type: 'category',
       data: names.reverse(),
@@ -520,6 +711,19 @@ function renderBlindChart() {
       })),
       barMaxWidth: 18,
       label: { show: true, position: 'right', fontSize: 11, formatter: '{c}%' },
+      // C3: 均值线标注 (整体掌握度均值)
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: THEME.warning, type: 'dashed', width: 1 },
+        label: {
+          formatter: `均值 ${(blindSpots.value.summary.overall_mastery * 100).toFixed(0)}%`,
+          position: 'insideEndTop',
+          fontSize: 10,
+          color: THEME.warning,
+        },
+        data: [{ xAxis: +(blindSpots.value.summary.overall_mastery * 100).toFixed(1) }],
+      },
     }],
   }, true)
 }
@@ -573,54 +777,98 @@ function renderMatchChart() {
 // ============================================================
 // 响应式渲染 + 窗口 resize
 // ============================================================
+function renderAllCharts() {
+  renderRadarChart()
+  renderBlindChart()
+  renderMatchChart()
+}
+
+function onWindowResize() {
+  radarChart?.resize()
+  blindChart?.resize()
+  matchChart?.resize()
+}
+
 watch(hasData, async (ok) => {
   if (!ok) return
   await nextTick()
-  renderBlindChart()
-  renderMatchChart()
+  renderAllCharts()
 })
 
 onMounted(() => {
   if (hasData.value) {
-    nextTick(() => {
-      renderBlindChart()
-      renderMatchChart()
-    })
+    nextTick(renderAllCharts)
   }
-  window.addEventListener('resize', () => {
-    blindChart?.resize()
-    matchChart?.resize()
-  })
+  window.addEventListener('resize', onWindowResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onWindowResize)
+  radarChart?.dispose()
+  blindChart?.dispose()
+  matchChart?.dispose()
+  radarChart = blindChart = matchChart = null
 })
 </script>
 
 <style scoped>
 .dashboard-page { padding: 0; }
 
-/* ---- 概览卡片 ---- */
+/* ---- 大数字卡 (C3) ---- */
 .overview-row {
-  display: flex; gap: 12px; margin-bottom: 16px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .stat-card {
-  flex: 1; min-width: 120px;
-  padding: 14px 16px; text-align: center;
+  padding: 14px 16px;
+}
+.stat-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
 }
 .stat-value {
-  font-size: 28px; font-weight: 700;
+  font-size: 36px; font-weight: 700;
   color: var(--km-gray-800);
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 .stat-value.ok { color: var(--km-success); }
 .stat-value.warn { color: var(--km-warning); }
-.stat-label { font-size: 12px; color: var(--km-gray-500); margin-top: 4px; }
+.stat-value.fail { color: var(--km-danger); }
+.stat-label { font-size: 12px; color: var(--km-gray-600); margin-top: 8px; }
 .stat-sub { font-size: 11px; color: var(--km-gray-400, var(--km-gray-500)); margin-top: 2px; }
 
-/* ---- 图表行 ---- */
-.charts-row {
-  display: flex; gap: 16px; margin-bottom: 16px;
+/* 迷你环形 */
+.stat-ring { flex-shrink: 0; transform: rotate(-90deg); }
+.stat-ring .ring-bg { fill: none; stroke: var(--km-gray-300, #e4e3e1); stroke-width: 5; }
+.stat-ring .ring-fg {
+  fill: none; stroke-width: 5; stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s var(--km-ease);
 }
-.chart-card { flex: 1; min-width: 0; }
+.stat-ring .ring-fg.ok { stroke: var(--km-success); }
+.stat-ring .ring-fg.warn { stroke: var(--km-warning); }
+.stat-ring .ring-fg.fail { stroke: var(--km-danger); }
+
+/* 迷你 sparkline (难度偏差走势) */
+.stat-spark { flex-shrink: 0; }
+.stat-spark .spark-line {
+  fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round;
+}
+.stat-spark .spark-line.tone-ok { stroke: var(--km-success); }
+.stat-spark .spark-line.tone-warn { stroke: var(--km-warning); }
+
+/* ---- 3 列图表栅格 (C3, 小屏降级单列) ---- */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 1100px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+.chart-card { min-width: 0; }
 .chart-card :deep(.el-card) {
   --el-card-bg-color: var(--km-bg-layer-2);
   --el-card-border-color: var(--km-border-light);
@@ -632,7 +880,7 @@ onMounted(() => {
   border-bottom: 1px solid var(--km-border-light);
 }
 .chart-card :deep(.el-card__header) .el-tag { margin-left: auto; }
-.chart-box { height: 260px; }
+.chart-box { height: 280px; }
 
 /* ---- 学习路径 ---- */
 .path-card { margin-bottom: 16px; }
@@ -704,6 +952,16 @@ onMounted(() => {
 }
 
 /* ---- 质量指标 ---- */
+.review-card { margin-bottom: 16px; }
+.review-card :deep(.el-card) {
+  --el-card-bg-color: var(--km-bg-layer-2);
+  --el-card-border-color: var(--km-border-light);
+}
+.review-card :deep(.el-card__header) {
+  padding: 10px 16px; font-weight: 600; font-size: 14px;
+  color: var(--km-gray-800);
+  border-bottom: 1px solid var(--km-border-light);
+}
 .quality-card { margin-bottom: 16px; }
 .quality-card :deep(.el-card) {
   --el-card-bg-color: var(--km-bg-layer-2);

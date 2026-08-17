@@ -124,7 +124,7 @@ onBeforeUnmount(() => observer?.disconnect())
   font-size: 12.5px;
 }
 .settings-fatal strong { font-size: 15px; display: block; margin-bottom: 8px; }
-.settings-fatal pre { white-space: pre-wrap; word-break: break-all; background: var(--km-bg-layer-2); padding: 10px; border-radius: 6px; margin: 8px 0; }
+.settings-fatal pre { white-space: pre-wrap; word-break: break-all; background: var(--km-bg-layer-2); padding: 10px; border-radius: var(--km-radius-sm); margin: 8px 0; }
 .settings-fatal .hint { color: var(--km-gray-500); margin-top: 10px; font-family: inherit; }
 .settings-view {
   display: flex;
@@ -134,7 +134,7 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .settings-topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 10px 28px; border-bottom: 1px solid var(--km-border-light); position: sticky; top: 0; background: var(--km-bg-layer-1); z-index: 2; }
 .settings-title { font-size: 15px; font-weight: 650; color: var(--km-gray-800); }
-.settings-close { border: 0; background: transparent; color: var(--km-gray-500); cursor: pointer; font-size: 22px; line-height: 1; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.settings-close { border: 0; background: transparent; color: var(--km-gray-500); cursor: pointer; font-size: 22px; line-height: 1; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--km-radius-sm); }
 .settings-close:hover { background: var(--km-gray-100); color: var(--km-gray-800); }
 .settings-main {
   flex: 1;
@@ -154,7 +154,7 @@ onBeforeUnmount(() => observer?.disconnect())
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
-  border-radius: 10px;
+  border-radius: var(--km-radius);
   background: var(--km-bg-layer-2);
   border: 1px solid var(--km-border-light);
 }
@@ -196,7 +196,7 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 /* 设置页按钮质感 (2026-08-12 用户反馈"按钮太粗糙"): 统一圆角/字重/主按钮轻阴影 */
 .settings-content :deep(.el-button) {
-  border-radius: 7px;
+  border-radius: var(--km-radius-sm);
   font-weight: 500;
   letter-spacing: 0.2px;
 }

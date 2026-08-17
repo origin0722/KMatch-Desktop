@@ -15,6 +15,7 @@
   --km-ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
 
   /* 圆角 */
+  --km-radius-xs: 4px;
   --km-radius-sm: 8px;
   --km-radius: 12px;
   --km-radius-lg: 18px;
@@ -228,7 +229,7 @@ html.dark {
 :focus-visible {
   outline: 2px solid var(--km-border-focus);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--km-radius-xs);
 }
 
 /* ============================================================

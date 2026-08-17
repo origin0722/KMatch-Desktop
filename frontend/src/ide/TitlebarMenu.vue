@@ -135,7 +135,7 @@ async function runCommand(command) {
   height: 26px;
   padding: 0 10px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--km-radius-sm);
   background: transparent;
   color: var(--km-gray-600);
   font-size: 12.5px;
@@ -182,7 +182,7 @@ async function runCommand(command) {
 <style>
 .km-titlebar-menu.el-dropdown-menu {
   padding: 5px;
-  border-radius: 11px !important;
+  border-radius: var(--km-radius) !important;
   border: 1px solid var(--km-border-light);
   background: var(--km-bg-layer-3);
   box-shadow: var(--km-shadow-lg);
@@ -193,7 +193,7 @@ async function runCommand(command) {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .km-titlebar-menu .el-dropdown-menu__item {
-  border-radius: 7px;
+  border-radius: var(--km-radius-sm);
   margin: 1px 0;
   padding: 6px 10px;
   font-size: 12.5px;

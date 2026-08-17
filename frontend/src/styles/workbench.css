@@ -3,38 +3,51 @@
   color: var(--km-gray-700);
 }
 
+/* ---- 页面标题栏 (C4: 三行 kicker+title+desc 压为一行紧凑条) ----
+   - 取消 kicker (保留选择器占位, 隐藏)
+   - 标题 15px 与右侧操作同行
+   - desc 可选内联 (head-left 内 title 右侧) */
 .km-workbench-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .km-workbench-kicker {
-  margin: 0 0 6px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--km-gray-500);
-  font-weight: 700;
+  display: none;
 }
 
 .km-workbench-title {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: 0;
   color: var(--km-gray-800);
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .km-workbench-desc {
-  margin: 8px 0 0;
-  max-width: 68ch;
-  color: var(--km-gray-600);
-  font-size: 13px;
-  line-height: 1.65;
+  margin: 0;
+  max-width: 60ch;
+  color: var(--km-gray-500);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 标题行内部: 左 (标题 + 可选内联 desc) / 右 (操作/统计) */
+.km-workbench-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.km-workbench-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .km-surface {

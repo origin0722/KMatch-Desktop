@@ -1,12 +1,11 @@
 <template>
   <div class="project-graph-page km-workbench">
-    <!-- 页面标题栏 -->
-    <div class="pg-header">
-      <div>
-        <p class="pg-kicker">project graph</p>
-        <h3 class="pg-title">项目代码图谱</h3>
+    <!-- 页面标题栏 (复用 km-workbench-* 紧凑一行条, 统计并入右侧操作行) -->
+    <div class="km-workbench-header">
+      <div class="km-workbench-head-left">
+        <h3 class="km-workbench-title">项目代码图谱</h3>
       </div>
-      <div v-if="pg.graph" class="pg-stats">
+      <div v-if="pg.graph" class="km-workbench-head-right pg-stats">
         <span>函数 {{ pg.graph.stats?.function || 0 }}</span>
         <span>类 {{ pg.graph.stats?.class || 0 }}</span>
         <span>方法 {{ pg.graph.stats?.method || 0 }}</span>
@@ -55,7 +54,7 @@
     </div>
 
     <template v-else>
-      <!-- 工具栏 -->
+      <!-- 工具栏 (C2: 图例+深度分析收"更多", 重置+重新解析合并, 统计移入页头, 主行 6 组) -->
       <el-card class="toolbar-card" shadow="never">
         <div class="toolbar">
           <el-input
@@ -80,7 +79,8 @@
             <el-option label="method 方法" value="method" />
             <el-option label="module 模块" value="module" />
           </el-select>
-          <el-button :icon="RefreshRight" @click="resetGraph">重置</el-button>
+          <!-- 重置+重新解析合并: 一次操作复位视图并拉取最新源码 -->
+          <el-button :icon="RefreshRight" :loading="pg.parsing" @click="handleReparse">重新解析</el-button>
           <el-divider direction="vertical" />
           <!-- 视图模式: 分层 dagre (调用层级) / 模块分组 combo (架构视角) -->
           <div class="view-mode-selector">
@@ -93,14 +93,6 @@
               @click="setViewMode(m.id)"
             >{{ m.label }}</button>
           </div>
-          <el-button :icon="RefreshRight" :loading="pg.parsing" @click="handleParse">重新解析</el-button>
-          <el-button
-            type="warning"
-            plain
-            :loading="pg.analyzing"
-            :disabled="!pg.graph?.projectId"
-            @click="handleAnalyze"
-          >{{ pg.analysis ? '查看分析' : '深度分析' }}</el-button>
           <el-button
             type="primary"
             plain
@@ -108,20 +100,31 @@
             @click="startTour"
           >项目导读</el-button>
 
-          <el-popover placement="bottom" :width="180" trigger="click">
+          <!-- 更多 popover: 图例 + 深度分析 收纳 -->
+          <el-popover placement="bottom" :width="220" trigger="click">
             <template #reference>
-              <el-button>图例</el-button>
+              <el-button>更多</el-button>
             </template>
-            <div class="legend-popover">
-              <div v-for="k in KINDS" :key="k" class="legend-item">
-                <span class="dot" :style="{ background: KIND_COLORS[k] }"></span> {{ k }}
+            <div class="more-pop">
+              <div class="more-section">
+                <div class="more-section-title">节点颜色</div>
+                <div v-for="k in KINDS" :key="k" class="legend-item">
+                  <span class="dot" :style="{ background: KIND_COLORS[k] }"></span> {{ k }}
+                </div>
+              </div>
+              <div class="more-section">
+                <div class="more-section-title">AI 分析</div>
+                <el-button
+                  type="warning"
+                  plain
+                  size="small"
+                  :loading="pg.analyzing"
+                  :disabled="!pg.graph?.projectId"
+                  @click="handleAnalyze"
+                >{{ pg.analysis ? '查看分析' : '深度分析' }}</el-button>
               </div>
             </div>
           </el-popover>
-
-          <span class="graph-stats">
-            实体 {{ filteredEntities.length }} / {{ pg.graph.entities.length }} | 关系 {{ filteredEdges.length }}
-          </span>
         </div>
       </el-card>
 
@@ -138,7 +141,7 @@
             @click="panelCollapsed = !panelCollapsed"
             :title="panelCollapsed ? '展开详情面板' : '收起详情面板'"
           >
-            <el-icon><ArrowRight v-if="panelCollapsed" /><ArrowLeft v-else /></el-icon>
+            <el-icon><ArrowUp v-if="panelCollapsed" /><ArrowDown v-else /></el-icon>
           </button>
 
           <el-card v-if="selectedEntity" shadow="never" class="panel-card">
@@ -339,7 +342,7 @@
  *   - 图例 + 过期提示 + 关系统计
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { Search, RefreshRight, ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue'
+import { Search, RefreshRight, ArrowDown, ArrowUp, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { Graph } from '@antv/g6'
 import { useProjectGraphStore } from '@/stores/projectGraph'
@@ -556,9 +559,8 @@ function initGraph() {
   const { nodes, edges, combos } = buildData()
   const grouped = viewMode.value === 'grouped' && combos?.length > 0
 
-  // 侧栏展开时画布逻辑宽度避让右侧 300px, dagre 在剩余区布局
-  const panelGap = panelCollapsed.value ? 0 : 300
-  const w = (containerRef.value.offsetWidth || 800) - panelGap
+  // 详情面板改底部抽屉, 画布拿满全宽 (不避让)
+  const w = containerRef.value.offsetWidth || 800
   const h = containerRef.value.offsetHeight || 600
 
   g6 = new Graph({
@@ -629,6 +631,8 @@ function initGraph() {
     const node = nodes.find((n) => n.id === id)
     if (node?.data?.entity) {
       selectedEntity.value = node.data.entity
+      // 点击节点自动展开底部详情抽屉
+      panelCollapsed.value = false
       // 保留原有跳转联动 (点击即跳源码)
       pg.requestReveal(node.data.entity.line_start, node.data.entity.line_end, node.data.entity.name)
     }
@@ -689,9 +693,6 @@ watch(() => pg.graph, async () => {
   if (pg.graph) initGraph()
 })
 
-// 侧栏折叠 -> 重建图谱 (画布避让宽度变化)
-watch(panelCollapsed, () => { rebuildGraph() })
-
 // 视图模式切换 (分层 <-> 模块分组) -> 重建图谱
 watch(viewMode, () => { rebuildGraph() })
 
@@ -702,6 +703,12 @@ function goCode() { sidebar.setView('code') }
 // P2: 手动触发项目解析 (空态大按钮 / 工具栏"重新解析")
 function handleParse() {
   pg.parseCurrentProject()
+}
+
+// C2: 重置+重新解析合并 — 先复位视图 (搜索/筛选/选中), 再拉取最新源码解析
+function handleReparse() {
+  resetGraph()
+  nextTick(() => { handleParse() })
 }
 
 // 深度分析弹窗可见性
@@ -786,12 +793,14 @@ function exitTour() {
   rebuildGraph()
 }
 
-// Esc 退出导读
-function _onTourKeydown(e) {
-  if (e.key === 'Escape' && tourActive.value) exitTour()
+// Esc: 退出导读 / 收起底部详情抽屉
+function _onKeydown(e) {
+  if (e.key !== 'Escape') return
+  if (tourActive.value) { exitTour(); return }
+  if (!panelCollapsed.value && selectedEntity.value) panelCollapsed.value = true
 }
-window.addEventListener('keydown', _onTourKeydown)
-onBeforeUnmount(() => window.removeEventListener('keydown', _onTourKeydown))
+window.addEventListener('keydown', _onKeydown)
+onBeforeUnmount(() => window.removeEventListener('keydown', _onKeydown))
 
 // 重新解析得到新图谱时自动退出导读 (旧站点失效)
 watch(() => pg.graph, () => {
@@ -802,11 +811,7 @@ watch(() => pg.graph, () => {
 <style scoped>
 .project-graph-page { height: 100%; display: flex; flex-direction: column; min-height: 0; padding: 0; }
 
-/* ---- 标题栏 ---- */
-.pg-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; gap: 16px; }
-.pg-kicker { margin: 0; font-size: 11px; color: var(--km-gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
-.pg-title { margin: 2px 0 4px; font-size: 16px; color: var(--km-gray-800); }
-.pg-desc { margin: 0; font-size: 12px; color: var(--km-gray-500); }
+/* ---- 标题栏 (C4: 复用 km-workbench-header 紧凑一行条; 统计在右侧操作行) ---- */
 .pg-stats { display: flex; gap: 14px; font-size: 12px; color: var(--km-gray-500); font-family: var(--km-font-mono); white-space: nowrap; flex-shrink: 0; }
 .pg-stats span { white-space: nowrap; }
 .pg-stale { margin-bottom: 12px; }
@@ -835,17 +840,21 @@ watch(() => pg.graph, () => {
 .search-input { width: 220px; }
 .filter-select { width: 140px; }
 /* 视图模式切换 (分层/模块分组), 视觉对齐 KnowledgeGraph 的 persona-selector */
-.view-mode-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: 6px; padding: 2px; }
-.vm-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: color 0.15s, background 0.15s; }
+.view-mode-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); padding: 2px; }
+.vm-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: var(--km-radius-xs); cursor: pointer; transition: color 0.15s, background 0.15s; }
 .vm-btn:hover { color: var(--km-gray-700); }
 .vm-btn.active { background: var(--km-primary); color: #fff; }
-.graph-stats {
-  margin-left: auto; color: var(--km-gray-500); font-size: 12px;
-  white-space: nowrap; font-family: var(--km-font-mono);
-}
 
-/* ---- 图例 ---- */
-.legend-popover { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+/* ---- 更多 popover (图例 + AI 分析 收纳, C2) ---- */
+.more-pop { display: flex; flex-direction: column; gap: 6px; }
+.more-section { display: flex; flex-direction: column; gap: 6px; }
+.more-section + .more-section {
+  margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--km-border-light);
+}
+.more-section-title {
+  font-size: 11px; font-weight: 600; color: var(--km-gray-500);
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
 .legend-item { display: flex; align-items: center; gap: 8px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 
@@ -859,35 +868,40 @@ watch(() => pg.graph, () => {
   background: var(--km-bg-layer-3);
 }
 
-/* ---- 浮层详情面板 (可折叠, 不挤占画布) ---- */
+/* ---- 详情面板 (底部抽屉, 画布全宽不避让; 可折叠) ---- */
 .side-panel {
-  position: absolute; top: 12px; right: 12px;
-  width: 280px; max-height: calc(100% - 24px);
-  overflow-y: auto;
+  position: absolute; bottom: 0; left: 0; right: 0;
+  max-height: 240px; overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
   z-index: 5;
-  transition: width 0.2s ease;
+  background: var(--km-bg-layer-2);
+  border-top: 1px solid var(--km-border-light);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  transition: max-height 0.2s ease;
 }
-.side-panel.collapsed { width: 36px; overflow: hidden; }
+.side-panel.collapsed { max-height: 36px; overflow: hidden; }
 .side-panel.collapsed > *:not(.panel-toggle) { display: none; }
 .panel-toggle {
-  position: absolute; top: 8px; right: 6px; z-index: 6;
-  width: 24px; height: 24px; border: 1px solid var(--km-border);
-  border-radius: 4px; background: var(--km-bg-layer-2); color: var(--km-gray-500);
+  position: sticky; top: 0; align-self: flex-end; z-index: 6;
+  width: 28px; height: 28px; margin: 6px 10px 0 0;
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius-xs); background: var(--km-bg-layer-2); color: var(--km-gray-500);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
 }
 .panel-toggle:hover { color: var(--km-primary); border-color: var(--km-primary); }
-/* 折叠态: 按钮占满侧栏顶部, primary 底白图标, 明确可点展开 (修折叠后展不开) */
+/* 折叠态: 全宽细条, primary 底, 明确可点展开 */
 .side-panel.collapsed .panel-toggle {
-  top: 12px; left: 0; right: 0; width: 100%; height: 36px;
-  border-radius: var(--km-radius-sm); border-color: var(--km-primary);
+  align-self: stretch;
+  width: auto; height: 36px; margin: 0;
+  border-radius: 0; border: none;
   background: var(--km-primary); color: #fff; font-size: 16px;
 }
 .side-panel.collapsed .panel-toggle:hover { background: var(--km-primary-active); }
 .panel-card :deep(.el-card) {
-  --el-card-bg-color: var(--km-bg-layer-2);
-  --el-card-border-color: var(--km-border-light);
+  --el-card-bg-color: transparent;
+  --el-card-border-color: transparent;
+  box-shadow: none;
 }
 .panel-card :deep(.el-card__header) {
   padding: 10px 16px; font-weight: 600; font-size: 14px;
@@ -908,20 +922,20 @@ watch(() => pg.graph, () => {
 .detail-row .label { color: var(--km-gray-500); width: 48px; flex-shrink: 0; }
 .detail-row code {
   background: var(--km-bg-layer-1); padding: 1px 6px;
-  border-radius: 3px; font-size: 12px; color: var(--km-gray-800);
+  border-radius: var(--km-radius-xs); font-size: 12px; color: var(--km-gray-800);
   word-break: break-all;
 }
 .rel-section { margin-top: 10px; }
 .entity-actions { display: flex; gap: 8px; margin-top: 12px; }
 .entity-docstring {
-  margin: 4px 0 0; padding: 8px 10px; border-radius: 6px;
+  margin: 4px 0 0; padding: 8px 10px; border-radius: var(--km-radius-sm);
   background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light);
   font-size: 12px; line-height: 1.6; color: var(--km-gray-600);
   white-space: pre-wrap; word-break: break-word; cursor: pointer; max-height: 200px; overflow-y: auto;
 }
 .param-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .param-item {
-  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; padding: 2px 8px; border-radius: var(--km-radius-xs);
   background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light);
 }
 .param-type { color: var(--km-gray-500); }
@@ -934,7 +948,7 @@ watch(() => pg.graph, () => {
 
 /* ---- 项目导读浮条 (画布底部居中悬浮) ---- */
 .tour-bar {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
   z-index: 6; max-width: calc(100% - 48px);
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
   padding: 10px 14px;
