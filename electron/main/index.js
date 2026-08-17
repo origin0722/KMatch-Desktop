@@ -13,6 +13,7 @@ import { registerWorkspaceIpc } from './ipc/workspace.js'
 import { registerHttpProxyIpc } from './ipc/http-proxy.js'
 import { registerWindowIpc } from './ipc/window.js'
 import { registerWatcherIpc, getWatcherController } from './ipc/watcher.js'
+import { registerDockerIpc } from './ipc/docker.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -26,6 +27,7 @@ function registerAllIpc() {
   registerHttpProxyIpc()
   registerWindowIpc({ getMainWindow: () => mainWindow })
   registerWatcherIpc({ getMainWindow: () => mainWindow })
+  registerDockerIpc()
 }
 
 app.whenReady().then(async () => {

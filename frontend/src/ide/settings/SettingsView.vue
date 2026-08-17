@@ -33,6 +33,46 @@
               </div>
               <el-button data-test="re-onboard" @click="sidebar.startOnboarding()">重新引导</el-button>
             </div>
+            <!-- 数据底座 (D 批: Neo4j 状态 + Docker 引导) -->
+            <div class="general-row">
+              <div class="general-info">
+                <b>数据底座 (Neo4j)
+                  <span class="db-badge" :class="dbBadgeClass">{{ dbBadgeLabel }}</span>
+                </b>
+                <span>学习路径图谱 / 知识检索依赖本地图数据库。</span>
+              </div>
+              <el-popover
+                placement="left"
+                :width="340"
+                trigger="click"
+                popper-class="neo4j-guide-pop"
+              >
+                <template #reference>
+                  <el-button size="small" :disabled="!backend.backendUp">启动引导</el-button>
+                </template>
+                <div class="neo4j-guide">
+                  <div class="ng-title">数据底座 (Neo4j) {{ backend.neo4jStatus === 'connected' ? '已就绪' : '未就绪' }}</div>
+                  <template v-if="dockerChecked && docker.installed">
+                    <p class="ng-desc">已检测到 Docker。在项目根目录运行以下命令启动 Neo4j:</p>
+                    <div class="ng-cmd">
+                      <code>docker-compose up -d</code>
+                      <el-button size="small" @click="copyDockerCmd">复制</el-button>
+                    </div>
+                    <p class="ng-hint">启动后约 10s 内后端自动连上图库。<a href="#" @click.prevent="backend.check()">重新检测</a></p>
+                  </template>
+                  <template v-else-if="dockerChecked && !docker.installed">
+                    <p class="ng-desc">
+                      未检测到 Docker。安装 <a href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noopener">Docker Desktop</a>
+                      后运行 <code>docker-compose up -d</code> 启用完整图数据库功能。
+                    </p>
+                    <div class="ng-note">受限模式: 不装 Docker 时, 测评 / 对话 / 内容生成仍可用, 图谱检索与路径规划不可用。</div>
+                  </template>
+                  <template v-else>
+                    <p class="ng-hint">正在探测 Docker…</p>
+                  </template>
+                </div>
+              </el-popover>
+            </div>
           </section>
         </div>
       </div>
@@ -50,13 +90,54 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick, onErrorCaptured } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, onErrorCaptured } from 'vue'
+import { ElMessage } from 'element-plus'
 import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
 import ProvidersSettings from './ProvidersSettings.vue'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useBackendHealthStore } from '@/stores/backendHealth'
 
 const sidebar = useSidebarStore()
+const backend = useBackendHealthStore()
+
+// ---- 数据底座 (D 批): Docker 探测 + Neo4j 状态徽标 ----
+const dockerChecked = ref(false)
+const docker = ref({ installed: false, version: '', hint: '' })
+
+async function probeDocker() {
+  if (!window.api?.docker) return
+  try {
+    docker.value = await window.api.docker.checkVersion()
+  } catch {
+    docker.value = { installed: false, version: '', hint: '' }
+  } finally {
+    dockerChecked.value = true
+  }
+}
+
+async function copyDockerCmd() {
+  try {
+    await navigator.clipboard.writeText('docker-compose up -d')
+    ElMessage.success('启动命令已复制, 在项目根目录运行')
+  } catch {
+    ElMessage.warning('复制失败, 请手动复制: docker-compose up -d')
+  }
+}
+
+const dbBadgeLabel = computed(() => {
+  if (!backend.backendUp) return '后端未起'
+  return backend.neo4jStatus === 'connected' ? '已连接' : '未连接'
+})
+const dbBadgeClass = computed(() => ({
+  ok: backend.backendUp && backend.neo4jStatus === 'connected',
+  bad: backend.backendUp && backend.neo4jStatus !== 'connected',
+}))
+
+onMounted(() => {
+  backend.start()
+  probeDocker()
+})
 
 const anchors = [
   { id: 'sec-assistant', label: 'AI 助手' },
@@ -160,6 +241,15 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .general-info b { display: block; font-size: 13.5px; font-weight: 600; color: var(--km-gray-700); }
 .general-info span { font-size: 12px; color: var(--km-gray-500); }
+/* 数据底座徽标 (D 批) */
+.db-badge {
+  display: inline-block; margin-left: 8px;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 8px; border-radius: 999px;
+  vertical-align: 1px;
+}
+.db-badge.ok { color: var(--km-success); background: var(--km-success-light); }
+.db-badge.bad { color: var(--km-warning); background: var(--km-warning-light); }
 .section-title {
   font-size: 18px;
   font-weight: 700;

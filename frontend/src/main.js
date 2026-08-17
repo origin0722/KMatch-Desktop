@@ -8,6 +8,7 @@ import App from './App.vue'
 import router from './router'
 import './styles/theme.css'
 import './styles/workbench.css'
+import './styles/neo4j-guide.css'
 import './style.css'
 
 const app = createApp(App)

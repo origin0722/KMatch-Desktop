@@ -1,0 +1,50 @@
+/**
+ * 数据底座 (Neo4j/Docker) 引导 popover 样式 (UX D 批)
+ *
+ * StatusBar 与 SettingsView 通用段共用同一套引导卡片; popover 内容
+ * teleport 到 body, 组件 scoped 选不中, 故放全局样式表。
+ */
+.neo4j-guide-pop {
+  padding: 4px;
+}
+
+.neo4j-guide .ng-title {
+  font-size: 13px; font-weight: 700; color: var(--km-gray-800); margin-bottom: 6px;
+}
+.neo4j-guide .ng-desc {
+  font-size: 12px; color: var(--km-gray-600); line-height: 1.6; margin: 0 0 10px;
+}
+.neo4j-guide .ng-desc a { color: var(--km-primary); text-decoration: none; }
+.neo4j-guide .ng-desc a:hover { text-decoration: underline; }
+.neo4j-guide .ng-desc code,
+.neo4j-guide .ng-hint code {
+  font-family: var(--km-font-mono); background: var(--km-gray-200);
+  padding: 0 4px; border-radius: var(--km-radius-xs); font-size: 11px;
+}
+.neo4j-guide .ng-step {
+  font-size: 12px; color: var(--km-gray-700); margin: 8px 0 6px;
+}
+.neo4j-guide .ng-step b { color: var(--km-gray-800); }
+.neo4j-guide .ng-cmd {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--km-bg-layer-2);
+  border: 1px solid var(--km-border-light);
+  border-radius: var(--km-radius-sm);
+  padding: 6px 10px;
+}
+.neo4j-guide .ng-cmd code {
+  flex: 1; font-family: var(--km-font-mono); font-size: 12px;
+  color: var(--km-primary-active); user-select: all;
+}
+.neo4j-guide .ng-hint {
+  font-size: 11px; color: var(--km-gray-500); margin: 8px 0 0;
+}
+.neo4j-guide .ng-hint a { color: var(--km-primary); text-decoration: none; }
+.neo4j-guide .ng-hint a:hover { text-decoration: underline; }
+.neo4j-guide .ng-note {
+  margin-top: 8px; padding: 8px 10px;
+  font-size: 11.5px; line-height: 1.6; color: var(--km-gray-600);
+  background: var(--km-warning-light);
+  border: 1px solid var(--km-border-light);
+  border-radius: var(--km-radius-sm);
+}

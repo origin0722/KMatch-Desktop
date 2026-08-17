@@ -15,11 +15,14 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
   // null=未知, true=就绪, false=宕机
   const status = ref(null)
   const lastError = ref('')
+  // Neo4j 状态: 'unknown'=后端未确认 / 'connected'=后端已连上图库 / 'down'=后端活着但图库不可用
+  const neo4jStatus = ref('unknown')
   let _timer = null
   let _started = false
 
   const backendUp = computed(() => status.value === true)
   const backendUnknown = computed(() => status.value === null)
+  const neo4jConnected = computed(() => neo4jStatus.value === 'connected')
   const label = computed(() => {
     if (status.value === null) return '后端检测中'
     return status.value ? '后端就绪' : '后端未起'
@@ -31,18 +34,31 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
         // Electron: 经 IPC 代理 (主进程 → 后端)
         const res = await window.api.http.request('GET', '/api/health')
         status.value = !!res.ok
-        if (res.ok) lastError.value = ''
-        else lastError.value = `HTTP ${res.status}`
+        if (res.ok) {
+          lastError.value = ''
+          // 后端 main.py /api/health 返回 neo4j 字段 (connected / unavailable...)
+          const neo4j = res.body?.neo4j || ''
+          neo4jStatus.value = typeof neo4j === 'string' && neo4j.startsWith('connected')
+            ? 'connected'
+            : 'down'
+        } else {
+          lastError.value = `HTTP ${res.status}`
+        }
       } else {
         // 浏览器 dev: 走 axios → Vite proxy。原实现无条件走 window.api,
         // 浏览器下直接 TypeError → 永远显示"后端未起" (实测)
-        await http.get('/api/health')
+        const ret = await http.get('/api/health')
         status.value = true
         lastError.value = ''
+        const neo4j = ret.data?.neo4j || ''
+        neo4jStatus.value = typeof neo4j === 'string' && neo4j.startsWith('connected')
+          ? 'connected'
+          : 'down'
       }
     } catch (e) {
       status.value = false
       lastError.value = e?.message || '连接失败'
+      neo4jStatus.value = 'unknown'
     }
   }
 
@@ -59,5 +75,5 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     _started = false
   }
 
-  return { status, backendUp, backendUnknown, label, lastError, check, start, stop }
+  return { status, backendUp, backendUnknown, neo4jStatus, neo4jConnected, label, lastError, check, start, stop }
 })
