@@ -99,10 +99,32 @@ def test_search_weak_topics_no_key_returns_empty():
 
 
 def test_search_weak_topics_no_weak_topics_returns_empty():
-    """画像无薄弱点 (或非 dict) 返回 []。"""
+    """画像无薄弱点 (或非 dict) 且无 direction 返回 []。"""
     assert search_weak_topics({}, "sk-test") == []
     assert search_weak_topics({"weak_topics": []}, "sk-test") == []
     assert search_weak_topics(None, "sk-test") == []
+
+
+def test_search_weak_topics_no_weak_topics_fallback_to_direction(monkeypatch):
+    """无薄弱点时按 direction 兜底搜一轮 (保证反馈后联网资源 tab 不空, target_node_id 置空)。"""
+    captured = []
+
+    def _fake_search_web(query, key, max_results):
+        captured.append((query, key, max_results))
+        return [{"title": f"{query} #1", "url": "https://d.com", "snippet": "s"}]
+
+    monkeypatch.setattr("app.utils.web_search.search_web", _fake_search_web)
+    results = search_weak_topics({"weak_topics": []}, "sk-test", direction="Python 数据分析")
+    assert len(results) == 1
+    assert captured[0][0] == "Python 数据分析 学习路线 入门 教程"
+    assert captured[0][2] == 4
+    assert results[0]["content_type"] == "web_link"
+    assert results[0]["target_node_id"] is None
+
+
+def test_search_weak_topics_no_weak_no_direction_still_empty():
+    """无薄弱点且无 direction -> 仍返回 [] (不硬造无意义搜索)。"""
+    assert search_weak_topics({}, "sk-test", direction=None) == []
 
 
 def test_search_weak_topics_produces_web_links(monkeypatch):

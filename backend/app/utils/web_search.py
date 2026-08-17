@@ -55,13 +55,31 @@ def search_weak_topics(profile: dict, api_key: str, nodes: list[dict] | None = N
     最多搜 3 个薄弱点, 每点 2 条结果。无 key/无薄弱点返回 []。
     direction: 学习目标方向, 拼进搜索词保证领域相关 (此前硬编码 "Python" 前缀,
     学 CSS/agent 等领域时搜索结果全偏)。
+
+    兜底: 无薄弱点 (如全答对) 时, 若给了 direction, 按方向搜一轮"学习路线/教程/入门",
+    保证"针对性反馈"后学习资源四 tab 都有内容 (联网资源 tab 不空)。
     """
     if not api_key:
         return []
     weak = profile.get("weak_topics", []) if isinstance(profile, dict) else []
-    if not weak:
-        return []
     node_map = {n.get("node_id"): n for n in (nodes or []) if isinstance(n, dict)}
+
+    # 兜底: 无薄弱点时按学习方向搜
+    if not weak:
+        if not direction:
+            return []
+        results = search_web(f"{direction} 学习路线 入门 教程", api_key, max_results=4)
+        return [
+            {
+                "content_type": "web_link",
+                "title": r["title"],
+                "url": r["url"],
+                "content": r["snippet"],
+                "target_node_id": None,
+            }
+            for r in results
+        ]
+
     resources = []
     for t in weak[:3]:
         if not isinstance(t, dict):
