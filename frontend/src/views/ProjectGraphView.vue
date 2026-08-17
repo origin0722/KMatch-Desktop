@@ -89,6 +89,12 @@
             :disabled="!pg.graph?.projectId"
             @click="handleAnalyze"
           >{{ pg.analysis ? '查看分析' : '深度分析' }}</el-button>
+          <el-button
+            type="primary"
+            plain
+            :disabled="!pg.graph?.entities?.length"
+            @click="startTour"
+          >项目导读</el-button>
 
           <el-popover placement="bottom" :width="180" trigger="click">
             <template #reference>
@@ -228,6 +234,21 @@
             <el-empty description="点击图谱节点查看详情" :image-size="60" />
           </el-card>
         </div>
+
+        <!-- 项目导读浮条 (手动逐站, 按层级从入口下探) -->
+        <div v-if="tourActive && tourStop" class="tour-bar">
+          <span class="tour-progress">第 {{ tourStop.layer }} 层 · 第 {{ tourIndex + 1 }}/{{ tourStops.length }} 站</span>
+          <el-tag size="small" type="warning">{{ TOUR_ROLE_LABELS[tourStop.role] || tourStop.role }}</el-tag>
+          <span class="tour-name">{{ tourStop.entity?.name || tourStop.id }}</span>
+          <span class="tour-kind">({{ tourStop.entity?.kind || '?' }})</span>
+          <span class="tour-why">{{ tourStop.why }}</span>
+          <div class="tour-actions">
+            <el-button size="small" :disabled="tourIndex === 0" @click="tourStep(-1)">‹ 上一步</el-button>
+            <el-button size="small" type="primary" :disabled="tourIndex >= tourStops.length - 1" @click="tourStep(1)">下一步 ›</el-button>
+            <el-button size="small" type="primary" plain @click="askAiAboutEntity">问 AI</el-button>
+            <el-button size="small" text @click="exitTour">退出</el-button>
+          </div>
+        </div>
       </div>
     </template>
 
@@ -315,6 +336,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore } from '@/stores/chat'
 import { buildEntityQuestion } from '@/utils/askAi'
 import { detectTechStack } from '@/utils/techStack'
+import { buildTourStops, TOUR_ROLE_LABELS } from '@/utils/projectTour'
 import http from '@/api'
 import { useLearningResourcesStore } from '@/stores/learningResources'
 import { useAiSettingsStore } from '@/stores/aiSettings'
@@ -450,19 +472,34 @@ function nodeWidth(label) {
 }
 
 function buildData() {
-  const nodes = filteredEntities.value.map((e) => {
+  // 导读模式用全量实体 (忽略搜索/类型过滤), 保证导读上下文完整
+  const source = tourActive.value ? (pg.graph?.entities || []) : filteredEntities.value
+  const edgeSource = tourActive.value ? (pg.graph?.relations || []) : filteredEdges.value
+  const stop = tourActive.value ? tourStop.value : null
+
+  const nodes = source.map((e) => {
     const label = e.qualified_name || e.name || String(e.id)
+    const data = { label, w: nodeWidth(label), kind: e.kind, entity: e }
+    if (stop) {
+      data.tourCurrent = String(e.id) === stop.id
+      data.tourNeighbor = !data.tourCurrent && stop.neighborIds.has(String(e.id))
+      data.dimmed = !data.tourCurrent && !data.tourNeighbor
+    }
+    return { id: String(e.id), data }
+  })
+  const edges = edgeSource.map((r, i) => {
+    const data = { type: r.type || 'call' }
+    if (stop) {
+      const sid = String(stop.id)
+      data.tourEdge = String(r.source) === sid || String(r.target) === sid
+    }
     return {
-      id: String(e.id),
-      data: { label, w: nodeWidth(label), kind: e.kind, entity: e },
+      id: `e${i}`,
+      source: String(r.source),
+      target: String(r.target),
+      data,
     }
   })
-  const edges = filteredEdges.value.map((r, i) => ({
-    id: `e${i}`,
-    source: String(r.source),
-    target: String(r.target),
-    data: { type: r.type || 'call' },
-  }))
   return { nodes, edges }
 }
 
@@ -492,13 +529,25 @@ function initGraph() {
         labelFontSize: 11,
         labelFill: '#ffffff',
         labelMaxWidth: 200,
-        stroke: '#e4e3e1',
-        lineWidth: 1,
+        // 导读模式: 当前站 primary 强调 / 邻居细描边 / 其余淡化; 平时浅灰描边
+        stroke: (d) => (d.data?.tourCurrent || d.data?.tourNeighbor) ? '#6c7ce0' : '#e4e3e1',
+        lineWidth: (d) => d.data?.tourCurrent ? 3 : d.data?.tourNeighbor ? 1.5 : 1,
+        shadowBlur: (d) => (d.data?.tourCurrent ? 14 : 0),
+        shadowColor: '#6c7ce0',
+        opacity: (d) => (d.data?.dimmed ? 0.25 : 1),
         radius: 6,
       },
       state: { hover: { lineWidth: 2, shadowBlur: 10, shadowColor: KIND_COLORS.function } },
     },
-    edge: { style: { stroke: '#c8c6c4', lineWidth: 1, endArrow: true } },
+    edge: {
+      style: {
+        // 导读模式: 当前站关联边高亮, 其余淡化
+        stroke: (d) => (d.data?.tourEdge ? '#6c7ce0' : '#c8c6c4'),
+        lineWidth: (d) => (d.data?.tourEdge ? 2 : 1),
+        endArrow: true,
+        opacity: (d) => (tourActive.value && tourStop.value && !d.data?.tourEdge ? 0.15 : 1),
+      },
+    },
     behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element', { type: 'hover-activate', degree: 1, direction: 'both' }],
   })
 
@@ -606,6 +655,71 @@ function goToWebResources() {
 // 分析完成后自动弹窗 (pg.analysis 从 null 变非 null)
 watch(() => pg.analysis, (val) => {
   if (val) analysisDialogVisible.value = true
+})
+
+// ---------------------------------------------------------------
+// 项目导读 (场景二 Step 4: 分层项目解读, 手动逐站按层级下探)
+// ---------------------------------------------------------------
+const tourActive = ref(false)
+const tourStops = ref([])
+const tourIndex = ref(0)
+const tourStop = computed(() => tourStops.value[tourIndex.value] || null)
+
+function startTour() {
+  const g = pg.graph
+  if (!g?.entities?.length) {
+    ElMessage.warning('请先解析项目图谱')
+    return
+  }
+  const stops = buildTourStops(g.entities, g.relations)
+  if (!stops.length) {
+    ElMessage.warning('项目图谱缺少实体或调用关系，无法生成导读')
+    return
+  }
+  tourStops.value = stops
+  tourIndex.value = 0
+  tourActive.value = true
+  applyTourStop()
+  ElMessage.success(`导读路径已生成: ${stops.length} 站，按层级从入口开始`)
+}
+
+function tourStep(delta) {
+  const next = tourIndex.value + delta
+  if (next < 0 || next >= tourStops.value.length) return
+  tourIndex.value = next
+  applyTourStop()
+}
+
+function applyTourStop() {
+  const stop = tourStop.value
+  if (!stop) return
+  selectedEntity.value = stop.entity // 侧栏详情同步跟随
+  rebuildGraph()                     // 重建带导读高亮
+  nextTick(() => {
+    try {
+      const p = g6?.focusElement(String(stop.id))
+      if (p && typeof p.catch === 'function') p.catch(() => { /* 聚焦失败仅高亮 */ })
+    } catch { /* G6 版本差异兜底 */ }
+  })
+}
+
+function exitTour() {
+  tourActive.value = false
+  tourStops.value = []
+  tourIndex.value = 0
+  rebuildGraph()
+}
+
+// Esc 退出导读
+function _onTourKeydown(e) {
+  if (e.key === 'Escape' && tourActive.value) exitTour()
+}
+window.addEventListener('keydown', _onTourKeydown)
+onBeforeUnmount(() => window.removeEventListener('keydown', _onTourKeydown))
+
+// 重新解析得到新图谱时自动退出导读 (旧站点失效)
+watch(() => pg.graph, () => {
+  if (tourActive.value) exitTour()
 })
 </script>
 
@@ -736,6 +850,23 @@ watch(() => pg.analysis, (val) => {
 .rel-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .rel-tag { cursor: pointer; }
 .rel-tag:hover { opacity: 0.8; }
+
+/* ---- 项目导读浮条 (画布底部居中悬浮) ---- */
+.tour-bar {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  z-index: 6; max-width: calc(100% - 48px);
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 10px 14px;
+  background: var(--km-bg-layer-2, #fff);
+  border: 1px solid var(--km-border-light, #e4e3e1);
+  border-radius: var(--km-radius-sm, 8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+}
+.tour-progress { font-size: 12px; color: var(--km-gray-500); white-space: nowrap; font-family: var(--km-font-mono, monospace); }
+.tour-name { font-size: 14px; font-weight: 600; color: var(--km-gray-800); white-space: nowrap; }
+.tour-kind { font-size: 12px; color: var(--km-gray-500); white-space: nowrap; }
+.tour-why { font-size: 13px; color: var(--km-gray-600); flex: 1; min-width: 160px; }
+.tour-actions { display: flex; gap: 6px; margin-left: auto; }
 </style>
 
 <!-- 深度分析弹窗样式 (非 scoped: append-to-body 移到 body 外, scoped data-v 不生效) -->
