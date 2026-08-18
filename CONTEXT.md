@@ -100,7 +100,7 @@ chat 的 `buildSystemPrompt` 注入这些字段做因材施教；导学模式下
 
 ## 进程拓扑
 
-四进程：**Renderer**（Vue3，沙箱，无 Node）↔ **Main**（Electron/Node）↔ **Backend**（FastAPI/uvicorn :8000）↔ Neo4j。跨进程边界用 `[PB]` 标注。IPC 全表与数据流见 `docs/ARCHITECTURE.md`。
+四进程：**Renderer**（Vue3，沙箱，无 Node）↔ **Main**（Electron/Node）↔ **Backend**（FastAPI/uvicorn :8000）↔ Neo4j。跨进程边界用 `[PB]` 标注。IPC 全表与数据流见 `docs/架构与设计/ARCHITECTURE.md`。
 
 ## AI 配置
 
@@ -114,7 +114,7 @@ chat 的 `buildSystemPrompt` 注入这些字段做因材施教；导学模式下
 赛题 M5 三指标（幻觉率<5% / 适配率≥85% / 覆盖率≥90%）的判定升级（阶段15）：
 
 - **独立裁判** — `backend/app/agents/quality_judge.py`，LLM-as-Judge 逐资源判定 `grounded|hallucinated|unverifiable`。裁判只拿资源内容 + 图谱事实（summary/key_points），**不拿**生成过程与 reviewer 结论，打破"作者自评"循环验证。
-- **双口径** — `quality_metrics.py` 自评（reviewer 维度分）与独立裁判双列并存；**幻觉率达标以独立裁判为主口径**（口径决策见 `docs/质量检测报告.md`）。
+- **双口径** — `quality_metrics.py` 自评（reviewer 维度分）与独立裁判双列并存；**幻觉率达标以独立裁判为主口径**（口径决策见 `docs/质量与验收/质量检测报告.md`）。
 - **JUDGE_LLM_*** — `.env` 独立配置裁判模型（可异源），未配置回退主 LLM（标注同源裁判）。
 - **反馈快模型** — `agentLlm.feedbackModel`（默认 deepseek-v4-flash），仅针对性反馈请求经 `buildFeedbackOverrides` 换快模型，主引擎模型不变。
 

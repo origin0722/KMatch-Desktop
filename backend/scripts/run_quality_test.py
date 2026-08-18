@@ -14,11 +14,11 @@ M5 升级 (2026-08-03): 独立裁判 (LLM-as-Judge) 双列对比 — 幻觉率/�
   cd backend
   python scripts/run_quality_test.py                 # 跑全部内置画像 (默认 10 组)
   python scripts/run_quality_test.py --profiles beginner intermediate
-  python scripts/run_quality_test.py --out ../docs/质量检测报告.md
+  python scripts/run_quality_test.py --out ../docs/质量与验收/质量检测报告.md
   python scripts/run_quality_test.py --no-judge      # 仅自评指标 (跳过独立裁判)
 
 依赖: Neo4j 已起 + .env 配 LLM_API_KEY (demo 模式 LLM 自动作答)。
-产出: data/quality_report.json (机读) + docs/质量检测报告.md (人读, M5 交付物)。
+产出: data/quality_report.json (机读) + docs/质量与验收/质量检测报告.md (人读, M5 交付物)。
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ DEFAULT_PROFILES = [
     "web_dev", "high_school", "java_to_python",
 ]
 REPORT_JSON = Path(settings.DATA_DIR) / "quality_report.json"
-REPORT_MD = Path(settings.DATA_DIR).parent / "docs" / "质量检测报告.md"
+REPORT_MD = Path(settings.DATA_DIR).parent / "docs" / "质量与验收" / "质量检测报告.md"
 
 
 def load_profile(name: str) -> dict:

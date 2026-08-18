@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "KMatch 用户画像 Schema v3",
-  "description": "与前置数据准备指南.md v3 对齐的用户画像标准格式。学情检测 Agent 的输出格式。",
+  "description": "与 docs/指南手册/前置数据准备指南.md v3 对齐的用户画像标准格式。学情检测 Agent 的输出格式。",
   "type": "object",
   "required": [
     "profile_id", "name", "theory_level", "practical_level",

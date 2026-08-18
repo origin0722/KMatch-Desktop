@@ -15,7 +15,7 @@ gh issue close <number>
 
 ## 约定
 
-- 新 bug / 新任务一律开 GitHub issue，不再往 `docs/BUG决策日志.md` 追加（该文件已转为历史存档）。
+- 新 bug / 新任务一律开 GitHub issue，不再往 `docs/缺陷管理/BUG决策日志.md` 追加（该文件已转为历史存档）。
 - 每个 issue 用 triage label 标注状态（见 [triage-labels.md](./triage-labels.md)），用分类 label 标注类型（`bug`/`refactor`/`documentation`/`competition`/`enhancement`）。
 - 重构类 issue 的 body 必须含"验收标准"，其中嵌入赛题功能锚点回归（场景一/二闭环、(3)①可视化、(4)②导学、M5 指标、四层图谱契约）。
 - 按依赖序发布（blocker 先），便于在 `Blocked by` 字段引用真实 issue 编号。

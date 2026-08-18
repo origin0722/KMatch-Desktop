@@ -36,7 +36,7 @@ KMatch-Desktop (Electron + Monaco)
   Neo4j — 四层图谱 (领域元知识 → 项目框架 → 代码实体 → 演化扩展) + 原生向量索引
 ```
 
-完整进程拓扑 / 数据流 / 状态更新流见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；领域词汇见 [CONTEXT.md](CONTEXT.md)。
+完整进程拓扑 / 数据流 / 状态更新流见 [docs/架构与设计/ARCHITECTURE.md](docs/架构与设计/ARCHITECTURE.md)；领域词汇见 [CONTEXT.md](CONTEXT.md)。
 
 ## 快速启动
 
@@ -78,20 +78,25 @@ KMatch-Desktop/
 │   └── views/         # Workspace 壳 + 学习视图
 ├── backend/app/       # FastAPI + LangGraph (agents/ graph/ api/)
 ├── data/              # 92 知识点 + 7 提示词 + 用户画像
-├── docs/              # ARCHITECTURE / ADR / devlogs / agents 配置 / 重构方案
+├── docs/              # 文档中心 — 分类索引见 docs/README.md
+│   ├── 项目规划/ 指南手册/ 架构与设计/ adr/ 质量与验收/
+│   ├── 接口对接/ 评审记录/ 研究与调研/ 合规与安全/ 交付材料/ 缺陷管理/
+│   └── agents/ devlogs/ legacy/ superpowers/
 ├── CONTEXT.md         # 领域词汇表
 └── CLAUDE.md          # 项目速查卡
 ```
+
+> 全部文档已统一收纳进 `docs/` 并按主题分类，导航见 [docs/README.md](docs/README.md)。
 
 ## 开发约定
 
 - 分支：`main` 直接开发，大功能开 `feature/xxx`。
 - Commit：`type(scope): 中文简述`（feat/fix/docs/chore/refactor）。
-- Bug/任务：开 GitHub Issue（见 [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)）；`docs/BUG决策日志.md` 为历史存档。
+- Bug/任务：开 GitHub Issue（见 [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)）；`docs/缺陷管理/BUG决策日志.md` 为历史存档。
 - 文档：每完成模块更新 `docs/devlogs/`；架构决策记 `docs/adr/`。
 
 ## 赛题功能锚点
 
 场景一全流程闭环 · 场景二全链路 · 赛题(3)①图谱可视化 · 赛题(4)②动态追问导学 · M5 质量指标（幻觉率<5% / 适配率≥85% / 覆盖率≥90%）· 四层图谱契约。
 
-> 开发排期与赛题对标见 [项目开发计划书.md](项目开发计划书.md)。
+> 开发排期与赛题对标见 [docs/项目规划/项目开发计划书.md](docs/项目规划/项目开发计划书.md)；完整文档导航见 [docs/README.md](docs/README.md)。

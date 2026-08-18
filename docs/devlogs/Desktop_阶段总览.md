@@ -139,7 +139,7 @@
 **M1 M5 质检升级（独立裁判 LLM-as-Judge）**：
 - 新增 [quality_judge.py](../../backend/app/agents/quality_judge.py)（逐资源判定 grounded/hallucinated/unverifiable，只拿资源内容+图谱事实，不拿生成过程/reviewer 结论）+ [quality_metrics.py](../../backend/app/agents/quality_metrics.py) 双口径指标（自评 + 独立裁判双列）
 - 裁判 LLM 经 `.env JUDGE_LLM_*` 独立配置（可异源）；`--judge-only` 只跑裁判；三批迭代收官（标准修正 + 真实错误证据链）
-- 扩样本：3 画像 → 10 画像（`data/user_profiles/`），单领域 → ML 第二领域；终报 10 画像 × 83 资源：裁判幻觉率 2.4%（达标 <5%，主口径）/ 适配率 94% / 覆盖率 100%；见 [../质量检测报告.md](../质量检测报告.md) + [../M5质量检测方法论升级.md](../M5质量检测方法论升级.md)
+- 扩样本：3 画像 → 10 画像（`data/user_profiles/`），单领域 → ML 第二领域；终报 10 画像 × 83 资源：裁判幻觉率 2.4%（达标 <5%，主口径）/ 适配率 94% / 覆盖率 100%；见 [../质量与验收/质量检测报告.md](../质量与验收/质量检测报告.md) + [../质量与验收/M5质量检测方法论升级.md](../质量与验收/M5质量检测方法论升级.md)
 
 **M2 图谱扩域**：4 新域 100 节点（DA/DB/EN/WD 各 25 + ML 30）→ 222 节点 6 域（`data/knowledge_base/nodes/` 11 文件）；内容生成丰富度升级（针对性反馈产物落学习资源视图：知识点入 generatedContent + 网址入联网资源 tab + 自动开分屏）。
 
@@ -160,14 +160,14 @@
 ## 已知待修
 - Apix 审查 S1–S9 全部已修（见各阶段 + ADR-0005）
 - 沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现 backend/app/agents/sandbox.py）
-- F 系列脆弱点修复 + C1–C4 解耦已合并 main（feature/regularization 已并入；见 [../重构方案_解耦.md](../重构方案_解耦.md) + ADR-0006）
+- F 系列脆弱点修复 + C1–C4 解耦已合并 main（feature/regularization 已并入；见 [../架构与设计/重构方案_解耦.md](../架构与设计/重构方案_解耦.md) + ADR-0006）
 - Spec B Task 18-19 代理主进程落盘未接线（UI 已就绪，preload/IPC/env 注入待做）
 
 ## 规范化（2026-06-23，feature/regularization 分支）
 
 文档/流程规范化，不改业务代码：
 - 领域文档：`CONTEXT.md` + `docs/adr/0001..0005`
-- 架构梳理：`docs/ARCHITECTURE.md`（进程拓扑/6 数据流/状态更新流）+ `docs/重构方案_解耦.md`（C1–C4 + F1–F15 决策表）
+- 架构梳理：`docs/架构与设计/ARCHITECTURE.md`（进程拓扑/6 数据流/状态更新流）+ `docs/架构与设计/重构方案_解耦.md`（C1–C4 + F1–F15 决策表）
 - 文档重构：README 重写为 Desktop 版、旧 Web 文档归档 `docs/legacy/`、CLAUDE.md 瘦身、devlog 索引补全
 - 用例注释：6 裸 + 4 部分前端测试补场景注释（94 测试全过）
 - Skills：装 Matt Pocock 中文版 skills 到 `.claude/skills/`；建 GitHub triage + 分类 label

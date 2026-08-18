@@ -26,7 +26,7 @@ W5 起按计划书「第5-6周 feature/xxx」分支策略，本任务在 `featur
 | submit 路由 | `backend/app/api/diagnostics.py` | 新增 `POST /api/diagnostics/submit`：取缓存题目→判分→画像→动态反馈 |
 | 会话缓存 | `backend/app/api/diagnostics.py` | 模块级 dict + LRU（上限100），按 session_id 缓存题目+nodes |
 | 单测 | `test_diagnostics_unit.py` + `test_submit_api.py` | decide_feedback 8 + submit API 集成 4 |
-| 对接文档 | `docs/A端后端对接文档.md` | §3.1 分流、新增 §3.3 submit、§6.4 W5 两步流程、§9 curl |
+| 对接文档 | `docs/接口对接/A端后端对接文档.md` | §3.1 分流、新增 §3.3 submit、§6.4 W5 两步流程、§9 curl |
 
 ---
 

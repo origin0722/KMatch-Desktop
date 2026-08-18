@@ -1,6 +1,6 @@
 # ARCHITECTURE — KMatch-Desktop 架构总览
 
-> 进程拓扑、数据流、状态更新流。术语对齐 [CONTEXT.md](../CONTEXT.md)。本文件是 CONTEXT 的结构化补充。
+> 进程拓扑、数据流、状态更新流。术语对齐 [CONTEXT.md](../../CONTEXT.md)。本文件是 CONTEXT 的结构化补充。
 
 ## 1. 进程拓扑
 

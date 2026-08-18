@@ -6,7 +6,7 @@
 
 - `CONTEXT.md`（仓库根）— 项目领域词汇表。`improve-codebase-architecture`、`diagnose`、`tdd` 等 skill 会读取它来对齐术语。
 - `docs/adr/` — ADR（Architecture Decision Records），编号 `NNNN-kebab-title.md`。只记录已成形决策，不重开争论。
-- `docs/ARCHITECTURE.md` — 架构总览（进程拓扑 + 数据流 + 状态更新流），是 CONTEXT 的结构化补充。
+- `docs/架构与设计/ARCHITECTURE.md` — 架构总览（进程拓扑 + 数据流 + 状态更新流），是 CONTEXT 的结构化补充。
 
 ## 消费规则
 

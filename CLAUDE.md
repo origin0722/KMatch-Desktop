@@ -130,9 +130,10 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [data/knowledge_base/](data/knowledge_base/) — 92 个 Python 知识点 (JSON)
 - [data/prompts/](data/prompts/) — 7 个 Agent 系统提示词
 - [data/user_profiles/](data/user_profiles/) — 3 组用户画像
-- [项目开发计划书.md](项目开发计划书.md) — 9 周排期 + 赛题对标
-- [docs/BUG决策日志.md](docs/BUG决策日志.md) — BUG 记录与决策
+- [docs/项目规划/项目开发计划书.md](docs/项目规划/项目开发计划书.md) — 9 周排期 + 赛题对标
+- [docs/缺陷管理/BUG决策日志.md](docs/缺陷管理/BUG决策日志.md) — BUG 记录与决策
 - [docs/devlogs/](docs/devlogs/) — 开发日志
+- [docs/README.md](docs/README.md) — 文档中心分类索引
 
 ## 技术栈版本约束
 
@@ -154,7 +155,7 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 
 **Spec B 进度**：Task 1-7 后端 (ContextVar per-request llm_overrides + AgentState 字段 + 5 agent 透传 + 8 路由 + /api/agents/ping) ✅；Task 8-17 前端 (设置页主壳 + AI 助手 / Agent 独立 key / 供应商管理 CRUD + 视觉探测 + 网络代理 UI) ✅；Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入) ⏳ 待做；Task 20 全量收尾 ⏳。
 
-**已知待修**：沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现见 [backend/app/agents/sandbox.py](backend/app/agents/sandbox.py)，Dockerfile 见 `backend/sandbox/`）；feature/regularization 分支（F 系列脆弱点修复 + C1-C4 解耦 + 24 GitHub Issues）已合并 main（见 [docs/重构方案_解耦.md](docs/重构方案_解耦.md) + ADR-0006）；Apix 审查 S1-S9 全部已修（ADR-0005）；Spec B Task 18-19 代理落盘未接线（UI 已就绪，preload/IPC/env 注入待做）。
+**已知待修**：沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现见 [backend/app/agents/sandbox.py](backend/app/agents/sandbox.py)，Dockerfile 见 `backend/sandbox/`）；feature/regularization 分支（F 系列脆弱点修复 + C1-C4 解耦 + 24 GitHub Issues）已合并 main（见 [docs/架构与设计/重构方案_解耦.md](docs/架构与设计/重构方案_解耦.md) + ADR-0006）；Apix 审查 S1-S9 全部已修（ADR-0005）；Spec B Task 18-19 代理落盘未接线（UI 已就绪，preload/IPC/env 注入待做）。
 
 ### 原 KMatch 后端已交付项
 - ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证
@@ -167,7 +168,7 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - ✅ 知识库管理 CRUD API
 - ✅ SSE 流式测评
 
-BUG 清单: 77 条 (77 已解决, 含 IDE 化 S7-S9 三断点; 见 [docs/BUG决策日志.md](docs/BUG决策日志.md) BUG-001~077)
+BUG 清单: 77 条 (77 已解决, 含 IDE 化 S7-S9 三断点; 见 [docs/缺陷管理/BUG决策日志.md](docs/缺陷管理/BUG决策日志.md) BUG-001~077)
 
 ## 开发约定
 
@@ -191,7 +192,7 @@ BUG 清单: 77 条 (77 已解决, 含 IDE 化 S7-S9 三断点; 见 [docs/BUG决�
 
 ### 文档维护
 - 每完成一个功能模块，同步更新 `docs/devlogs/`
-- 新 Bug 开 GitHub Issue（见下方 Agent skills），`docs/BUG决策日志.md` 为历史存档不再新增
+- 新 Bug 开 GitHub Issue（见下方 Agent skills），`docs/缺陷管理/BUG决策日志.md` 为历史存档不再新增
 - 重大架构变更更新本文件 + 记 ADR (`docs/adr/`)
 
 ## Agent skills

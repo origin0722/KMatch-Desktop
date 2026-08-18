@@ -8,7 +8,7 @@ Tavily 联网检索 → LLM 生成迷你知识域 (~10 节点 + 前置依赖 + �
 
 节点标记: category="动态领域" + source="llm_generated" + domain_label=<领域名>
 (schema 已扩字段)。质量口径: 动态域事实基准来自 LLM (Tavily 检索缓解),
-不纳入 M5 质检指标 (见 docs/质量检测报告.md 固定画像口径)。
+不纳入 M5 质检指标 (见 docs/质量与验收/质量检测报告.md 固定画像口径)。
 
 对齐 data/prompts/08_domain_bootstrap_agent.txt。
 """

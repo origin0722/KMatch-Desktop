@@ -3,7 +3,7 @@
 > 记录开发过程中遇到的所有技术问题、根因分析和解决决策。
 > 每个问题标注影响范围、决策人和解决状态。
 >
-> **⚠️ 历史存档**（2026-06-23 起）：新 BUG 一律开 GitHub Issue（见 [docs/agents/issue-tracker.md](agents/issue-tracker.md)），本文件不再新增。下方为既有 76 条记录。新发现的 F1–F15 脆弱点与解耦 candidates 已全部转 Issue，见 [重构方案_解耦.md](重构方案_解耦.md)。
+> **⚠️ 历史存档**（2026-06-23 起）：新 BUG 一律开 GitHub Issue（见 [docs/agents/issue-tracker.md](../agents/issue-tracker.md)），本文件不再新增。下方为既有 76 条记录。新发现的 F1–F15 脆弱点与解耦 candidates 已全部转 Issue，见 [重构方案_解耦.md](../架构与设计/重构方案_解耦.md)。
 
 ---
 
@@ -1049,7 +1049,7 @@ function nodeCorrect(results) {
 | LLM Embedding | 千问 text-embedding-3-small | 1536维 |
 ```
 
-但 `text-embedding-3-small` 是 OpenAI 的模型名。千问的实际模型名是 `text-embedding-v2`（[backend/app/config.py](../backend/app/config.py) 默认值已正确）。
+但 `text-embedding-3-small` 是 OpenAI 的模型名。千问的实际模型名是 `text-embedding-v2`（[backend/app/config.py](../../backend/app/config.py) 默认值已正确）。
 
 BUG-012 修复时改了 `.env.example` 与 `config.py`，但漏改 `CLAUDE.md`。新协作者读项目第一文档就被误导。
 
@@ -1123,7 +1123,7 @@ BUG-012 修复时改了 `.env.example` 与 `config.py`，但漏改 `CLAUDE.md`�
 
 ### 详见
 
-[docs/W1-2_ABC三端审查报告_2026-06-18.md](W1-2_ABC三端审查报告_2026-06-18.md) §二·#2
+[docs/legacy/三人协作时代/W1-2_ABC三端审查报告_2026-06-18.md](../legacy/三人协作时代/W1-2_ABC三端审查报告_2026-06-18.md) §二·#2
 
 ---
 
@@ -1179,7 +1179,7 @@ for idx, g in enumerate(grades):     # idx 是 grades 数组下标
 
 ### 详见
 
-[docs/W1-2_ABC三端审查报告_2026-06-18.md](W1-2_ABC三端审查报告_2026-06-18.md) §二·#4
+[docs/legacy/三人协作时代/W1-2_ABC三端审查报告_2026-06-18.md](../legacy/三人协作时代/W1-2_ABC三端审查报告_2026-06-18.md) §二·#4
 
 ---
 

@@ -10,7 +10,7 @@
 | `electron-vite` | `^2.3.0` | Electron + Vite 集成 |
 | `electron-builder` | `^25.1.0` | NSIS 安装包打包 |
 | `monaco-editor` | `^0.52.0` | 代码编辑器（frontend 依赖） |
-| `chokidar` | `^4.0.3` | 文件监听（v4 非 v5，ESM/CJS 兼容，见 [ADR-0004](adr/0004-file-watcher-worker-threads.md)） |
+| `chokidar` | `^4.0.3` | 文件监听（v4 非 v5，ESM/CJS 兼容，见 [ADR-0004](../adr/0004-file-watcher-worker-threads.md)） |
 | `rollup` | (electron-vite 拉取) | watcher-worker 多入口 build |
 
 ## 1. 运行环境
