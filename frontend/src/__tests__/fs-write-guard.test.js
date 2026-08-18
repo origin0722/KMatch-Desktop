@@ -13,12 +13,21 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { setWorkspaceRoot, resolveSafe, assertSafeForWrite } from '../../../electron/main/ipc/fs'
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'kmatch-fs-guard-'))
+// 每次用例独立建 workspace 临时目录 (修复测试隔离缺陷: 原模块级 TMP 被首个用例
+// afterEach rmSync 删除, 后续用例在"不存在的 workspace"跑守卫 → realpath 上溯到
+// 父目录 Temp → 误报"符号链接穿越"假阳性)。
+let TMP
 
-beforeEach(() => setWorkspaceRoot(TMP))
+beforeEach(() => {
+  TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'kmatch-fs-guard-'))
+  setWorkspaceRoot(TMP)
+})
 afterEach(() => {
   setWorkspaceRoot(null)
-  try { fs.rmSync(TMP, { recursive: true, force: true }) } catch { /* ignore */ }
+  if (TMP) {
+    try { fs.rmSync(TMP, { recursive: true, force: true }) } catch { /* ignore */ }
+    TMP = null
+  }
 })
 
 describe('fs 写操作守卫 (F12)', () => {

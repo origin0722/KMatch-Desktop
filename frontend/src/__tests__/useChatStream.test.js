@@ -77,12 +77,15 @@ describe('useChatStream — SSE 传输层 (C1.3)', () => {
     ).rejects.toThrow('stream init failed')
   })
 
-  it('IPC 路: abort signal 结束等待 (resolve)', async () => {
+  it('IPC 路: abort signal → AbortError reject (issue-07/m4 统一 AbortError 语义)', async () => {
+    // 旧行为 abort 走 finish() 正常 resolve, 会让工具循环把"已停止"当正常完成继续跑。
+    // issue-07/m4 后与浏览器 fetch 路统一为 AbortError reject; chat store 按 AbortError
+    // 静默停 (追加 "(已停止)")。故断言 reject 且 name 为 AbortError。
     const m = mockIpc()
     const ac = new AbortController()
     const p = streamChat({ body: {}, signal: ac.signal, onBlock: () => {} })
     ac.abort() // 用户点停止
-    await expect(p).resolves.toBeUndefined()
+    await expect(p).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('F3: 仅处理本流 reqId, 忽略其他并发流的事件', async () => {
