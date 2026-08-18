@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU008-001",
+    "source_node_id": "PU-008",
+    "type": "choice",
+    "question": "与传统阈值规则相比，机器学习异常检测的主要优势是能捕捉什么？",
+    "options": [
+      "A. 单一限值超限",
+      "B. 复杂模式",
+      "C. 不同井况的泛化能力",
+      "D. 设备故障趋势"
+    ],
+    "answer": "B",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "机器学习异常检测可捕捉传统阈值规则难以发现的复杂模式。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU008-002",
+    "source_node_id": "PU-008",
+    "type": "fill",
+    "question": "模型上线前需要验证精度、误报率和对不同井况的______能力。",
+    "options": [],
+    "answer": "泛化",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "模型上线前需要验证精度、误报率和对不同井况的泛化能力。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]

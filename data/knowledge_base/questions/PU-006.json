@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU006-001",
+    "source_node_id": "PU-006",
+    "type": "choice",
+    "question": "远程实时作业中心（RTOC）接收现场异常信息后，专家远程协同处置通常结合实时曲线、设计要求和什么？",
+    "options": [
+      "A. 低时延网络配置",
+      "B. 历史数据",
+      "C. 可视化工具界面",
+      "D. 现场机器人巡检图片"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "专家可结合实时曲线、设计要求和历史数据远程协同处置。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU006-002",
+    "source_node_id": "PU-006",
+    "type": "fill",
+    "question": "数字孪生通过对物理对象的______辅助分析和培训。",
+    "options": [],
+    "answer": "数字化映射",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "数字孪生通过对物理对象的数字化映射辅助分析和培训。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]

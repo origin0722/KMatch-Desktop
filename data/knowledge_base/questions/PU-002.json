@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU002-001",
+    "source_node_id": "PU-002",
+    "type": "choice",
+    "question": "SCADA系统在油气生产中的主要功能不包括哪项？",
+    "options": [
+      "A 数据采集",
+      "B 远程监控",
+      "C 基本控制指令下发",
+      "D 实时数据入库"
+    ],
+    "answer": "D",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "SCADA主要完成数据采集、远程监控和基本控制指令下发，实时数据入库是报警分析和优化的前提。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU002-002",
+    "source_node_id": "PU-002",
+    "type": "fill",
+    "question": "在油气生产物联网中，实时数据入库是报警、______和优化的前提。",
+    "options": [],
+    "answer": "分析",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "节点指出实时数据入库是报警、分析和优化的前提。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]

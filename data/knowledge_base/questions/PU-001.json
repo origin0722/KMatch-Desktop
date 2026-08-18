@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU001-001",
+    "source_node_id": "PU-001",
+    "type": "choice",
+    "question": "石油开采主要环节包括以下哪一项？",
+    "options": [
+      "A 无人化目标",
+      "B 减少现场人员风险",
+      "C 油气集输",
+      "D 降低劳动强度"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "勘探、钻井、采油和油气集输是主要环节，其余选项属于无人化开采目标。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU001-002",
+    "source_node_id": "PU-001",
+    "type": "fill",
+    "question": "传统井场需要人工读取仪表、巡检设备、调整______等参数。",
+    "options": [],
+    "answer": "钻井液",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "节点指出传统井场需人工读取仪表、巡检设备、调整钻井液等参数。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]

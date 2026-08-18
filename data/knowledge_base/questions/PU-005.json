@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU005-001",
+    "source_node_id": "PU-005",
+    "type": "choice",
+    "question": "无人化开采中，巡检机器人主要依靠什么获取设备状态和工艺参数？",
+    "options": [
+      "A. 机械臂接触测量",
+      "B. 检测仪器",
+      "C. 无人机拍摄",
+      "D. 本地控制中心指令"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "巡检机器人通过检测仪器获取设备状态和工艺参数。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU005-002",
+    "source_node_id": "PU-005",
+    "type": "fill",
+    "question": "巡检机器人发现钻井液参数不正确或设备不正常时，将异常传给______和本地控制中心。",
+    "options": [],
+    "answer": "RTOC",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "根据节点事实，机器人将异常传给RTOC和本地控制中心。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]

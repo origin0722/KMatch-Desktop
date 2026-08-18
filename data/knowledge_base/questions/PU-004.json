@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU004-001",
+    "source_node_id": "PU-004",
+    "type": "choice",
+    "question": "在边云协同的无人化开采中，复杂分析和优化主要由哪一侧承担？",
+    "options": [
+      "A 边缘侧",
+      "B 云端",
+      "C 传感器",
+      "D 机械臂"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "边云协同中边缘负责实时控制，云端负责复杂分析和优化。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU004-002",
+    "source_node_id": "PU-004",
+    "type": "fill",
+    "question": "机械臂可根据操作指令添加材料，配制符合______的钻井液。",
+    "options": [],
+    "answer": "设计要求",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "节点指出机械臂根据操作指令添加材料和用量，配制符合设计要求的钻井液。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]

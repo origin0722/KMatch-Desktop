@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-PU007-001",
+    "source_node_id": "PU-007",
+    "type": "choice",
+    "question": "为了降低单一阈值误报，智能报警应结合限值、变化率和什么？",
+    "options": [
+      "A. 关联参数",
+      "B. 闭环跟踪记录",
+      "C. 报警优先级",
+      "D. 非计划停机次数"
+    ],
+    "answer": "A",
+    "difficulty": 3,
+    "hint": "",
+    "explanation": "智能报警需结合限值、变化率和关联参数，降低单一阈值误报。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  },
+  {
+    "qid": "Q-PU007-002",
+    "source_node_id": "PU-007",
+    "type": "fill",
+    "question": "设备健康管理关注振动、温度、电流等信号的______变化。",
+    "options": [],
+    "answer": "趋势",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "设备健康管理关注振动、温度、电流等信号的趋势变化。",
+    "created_at": "2026-08-18T17:06:27.068493Z"
+  }
+]
