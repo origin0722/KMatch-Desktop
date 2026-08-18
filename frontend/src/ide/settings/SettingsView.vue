@@ -12,6 +12,10 @@
           <button class="settings-close" @click="sidebar.back()" title="关闭设置">×</button>
         </div>
         <div class="settings-content">
+          <section id="sec-api" class="settings-section">
+            <h2 class="section-title">API 设置</h2>
+            <ApiSettings />
+          </section>
           <section id="sec-assistant" ref="secAssistant" class="settings-section">
             <h2 class="section-title">AI 助手</h2>
             <AssistantSettings />
@@ -95,6 +99,7 @@ import { ElMessage } from 'element-plus'
 import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
 import ProvidersSettings from './ProvidersSettings.vue'
+import ApiSettings from './ApiSettings.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 
@@ -140,6 +145,7 @@ onMounted(() => {
 })
 
 const anchors = [
+  { id: 'sec-api', label: 'API 设置' },
   { id: 'sec-assistant', label: 'AI 助手' },
   { id: 'sec-agent', label: 'Agent 学习引擎' },
   { id: 'sec-providers', label: '供应商管理' },
