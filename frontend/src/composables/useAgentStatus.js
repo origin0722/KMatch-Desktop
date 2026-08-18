@@ -1,16 +1,14 @@
 /**
- * useAgentStatus — 从 orchestrationLog 推导各 Agent 实时状态
+ * useAgentStatus — 从结构化事件 / orchestrationLog 推导各 Agent 实时状态
  *
- * 输入：store.orchestrationLog[]（字符串数组）
+ * 输入：store.orchestrationEvents[]（结构化, Phase 0 优先, 后端 to_log_event 产出）
+ *       store.orchestrationLog[]（字符串, 正则降级兜底）
  * 输出：agentNodes（含 status/retryCount）+ pipelineRunning
  *
- * 推导规则：
- *   - 关键字映射 → agent key
- *   - 📚/🔍/📊 + "开始" → running
- *   - ✅ + "通过"|"完成" → done
- *   - ❌ + "不通过" → failed
- *   - reviewer 日志 "(第N轮)" → retryCount
- *   - pipelineRunning = 最后一条非 "✅ 流程结束"
+ * Phase 0 推导规则（结构化事件优先，事件缺失时回退正则）：
+ *   - 事件 {type, agent, status} → 确定性状态映射 (running/done/failed)
+ *   - run-end degraded → orchestrator failed (降级结束)
+ *   - retryCount 始终来自日志 "(第N轮)"（事件不带轮数）
  */
 import { computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
@@ -74,7 +72,31 @@ function extractRetryCount(line) {
 }
 
 // ---------------------------------------------------------------
-// 状态推导
+// 结构化事件 → 状态 (Phase 0, 优先; 事件缺失时回退下方正则推导)
+// ---------------------------------------------------------------
+function statesFromEvents(events) {
+  const states = {}
+  for (const def of AGENT_DEFS) {
+    states[def.key] = { status: 'idle', retryCount: 0 }
+  }
+  for (const ev of events) {
+    if (!ev || !ev.agent) continue
+    if (ev.type === 'run-end') {
+      // 降级结束 → orchestrator 视为失败级别 (降级待人工)
+      states.orchestrator.status = ev.status === 'degraded' ? 'failed' : 'done'
+      continue
+    }
+    const st = states[ev.agent]
+    if (!st) continue
+    if (ev.status === 'running') st.status = 'running'
+    else if (ev.status === 'failed') st.status = 'failed'
+    else if (ev.status === 'done') st.status = 'done'
+  }
+  return states
+}
+
+// ---------------------------------------------------------------
+// 状态推导 (正则)
 // ---------------------------------------------------------------
 function deriveAgentStates(logs) {
   const states = {}
@@ -129,6 +151,7 @@ export function useAgentStatus() {
   const store = useAssessmentStore()
 
   const logs = computed(() => store.orchestrationLog || [])
+  const events = computed(() => store.orchestrationEvents || [])
 
   // ---------------------------------------------------------------
   // 每 Agent 产出概览 (store 实数据, ground truth) - 先于 agentNodes, 供 done 判定
@@ -171,29 +194,41 @@ export function useAgentStatus() {
   })
 
   // ---------------------------------------------------------------
-  // agentNodes: 状态 = 日志推导(running/failed) + 产出覆盖(done)
-  // 日志措辞在 interactive(判分/路径组装完成) 与 demo(开始/✅完成) 间不一致, 单靠正则不可靠;
-  // 产出是 ground truth--有产出即完成, 覆盖日志推导的 running/idle。
-  // 日志仅保留 running(demo 实时流) + failed(❌不通过) + retryCount(第N轮) 的探测。
+  // agentNodes: 优先结构化事件(events)推导; 无事件回退日志正则。
+  // 产出覆盖仍为 ground truth (有产出即 done)。retryCount 始终取日志 "(第N轮)"。
   // ---------------------------------------------------------------
   const agentNodes = computed(() => {
-    const states = deriveAgentStates(logs.value)
+    const logStates = deriveAgentStates(logs.value)
+    const states = events.value.length ? statesFromEvents(events.value) : logStates
     const prod = productions.value
     return AGENT_DEFS.map((def) => {
       let status = states[def.key]?.status || 'idle'
-      const retryCount = states[def.key]?.retryCount || 0
+      // retryCount 来自日志推导 (事件不带轮数)
+      const retryCount = logStates[def.key]?.retryCount || 0
       if (prod[def.key]) status = 'done'
       return { ...def, status, retryCount }
     })
   })
 
-  // 运行中: 仅在请求 in flight (loading) 且有日志时为真。
+  // 运行中: 仅在请求 in flight (loading) 且有日志/事件时为真。
+  // Phase 0: 结构化事件与日志任一存在即视为流进行中 (旧逻辑只看日志长度)。
   // 旧逻辑看最后一条日志是否含"流程结束"--interactive submit 无此标记, 会误判为一直运行中。
-  const pipelineRunning = computed(() => !!store.loading && logs.value.length > 0)
+  const pipelineRunning = computed(
+    () => !!store.loading && (logs.value.length > 0 || events.value.length > 0),
+  )
 
-  // 实时动作: pipelineRunning 时取最后一条日志的 agent + 去时间戳/emoji 的消息
+  // 实时动作: pipelineRunning 时取最后一条事件/日志的 agent + 去时间戳/emoji 的消息
   const currentAction = computed(() => {
     if (!pipelineRunning.value) return null
+    // 结构化事件优先: 最后一条事件的 message 已清洗
+    const evs = events.value
+    if (evs.length) {
+      const lastEv = evs[evs.length - 1]
+      const key = lastEv.agent && AGENT_DEFS.some((d) => d.key === lastEv.agent) ? lastEv.agent : null
+      const label = AGENT_DEFS.find((d) => d.key === key)?.label || '协同'
+      const action = lastEv.message || lastEv.status || '执行中'
+      if (action && action !== 'idle') return { label, action }
+    }
     const all = logs.value
     if (!all.length) return null
     const last = all[all.length - 1]

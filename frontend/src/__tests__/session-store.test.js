@@ -121,12 +121,14 @@ describe('session store', () => {
     expect(s.activeStage).toBe('graph')
   })
 
-  it('优先级: loading+log 胜过 phase (agent > quiz)', () => {
+  it('issue-06 意图: phase(答题/反馈) 胜过 loading+log (quiz > agent)', () => {
+    // issue-06 之后 phase 判断前置: interactive 答题/反馈期间阶段卡留在 quiz。
+    // demo 流式 phase 恒 idle, 该组合只影响 demo+phase 同时成立的边缘, 按 quiz 收敛安全。
     mockAssessment.loading = true
     mockAssessment.orchestrationLog = [{ msg: '协同中' }]
     mockAssessment.phase = 'answering'
     const s = useSessionStore()
-    expect(s.activeStage).toBe('agent')
+    expect(s.activeStage).toBe('quiz')
   })
 
   it('优先级: phase 胜过空态 (quiz > goal)', () => {

@@ -29,6 +29,7 @@ from app.agents.diagnostics import (
 from app.agents.domain_bootstrap import bootstrap_domain, resolve_direction
 from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
+from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
 from app.config import settings
 from app.utils.logging import get_logger
@@ -82,6 +83,7 @@ class AssessResponse(BaseModel):
     generated_content: dict = Field(default_factory=dict, description="生成的学习资源 (内容审核通过后交付)")
     learning_report: dict = Field(default_factory=dict, description="可视化报告数据契约 (三类可视化预计算, demo 填充 / interactive 出题阶段为空)")
     orchestration_log: list = Field(default_factory=list, description="执行日志 (interactive 出题阶段为空)")
+    orchestration_events: list = Field(default_factory=list, description="结构化执行事件 (Phase 0: to_log_event 规范化, interactive 出题阶段为空)")
 
 
 class SubmitRequest(BaseModel):
@@ -101,6 +103,7 @@ class SubmitResponse(BaseModel):
     feedback: dict = Field(..., description="动态反馈策略: advance/remediate/scaffold")
     knowledge_graph: dict = Field(default_factory=dict, description="专属学习路径图谱 (submit 后由 graph_controller 组装)")
     orchestration_log: list = Field(default_factory=list, description="Agent 协同执行日志 (判分/画像/图谱)")
+    orchestration_events: list = Field(default_factory=list, description="结构化执行事件 (Phase 0: to_log_event 规范化)")
 
 
 class FeedbackRequest(BaseModel):
@@ -237,6 +240,7 @@ def assess(req: AssessRequest, request: Request):
         generated_content=result.get("generated_content", {}),
         learning_report=report,
         orchestration_log=result.get("orchestration_log", []),
+        orchestration_events=[to_log_event(l) for l in result.get("orchestration_log", [])],
     )
 
 
@@ -318,6 +322,7 @@ def assess_stream(req: AssessRequest, request: Request):
                         "node": node_name,
                         "message": message,
                         "log_tail": log_tail,
+                        "log_events": [to_log_event(l) for l in log_tail],
                     })
         except Exception as e:
             logger.error("SSE 测评流程失败 session=%s", session_id, exc_info=True)
@@ -341,6 +346,7 @@ def assess_stream(req: AssessRequest, request: Request):
                 "generated_content": final_state.get("generated_content", {}),
                 "learning_report": report,
                 "orchestration_log": final_state.get("orchestration_log", []),
+                "orchestration_events": [to_log_event(l) for l in final_state.get("orchestration_log", [])],
             }
             yield _sse("done", result)
             logger.info("SSE 测评完成 session=%s", session_id)
@@ -433,6 +439,7 @@ def submit(req: SubmitRequest, request: Request):
         feedback=feedback,
         knowledge_graph=knowledge_graph,
         orchestration_log=orchestration_log,
+        orchestration_events=[to_log_event(l) for l in orchestration_log],
     )
 
 

@@ -61,6 +61,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const orchestrationLog = ref([])
 
   /**
+   * 结构化 Agent 执行事件 (Phase 0)
+   * 对象数组，由后端 to_log_event 规范化: { type, agent, status, message, log }
+   * 驱动 useAgentStatus 做确定性状态推导 (正则仅作降级兜底)。
+   */
+  const orchestrationEvents = ref([])
+
+  /**
    * 学习路径图谱 (graph_controller 产出, BUG-030)
    */
   const knowledgeGraph = ref(null)
@@ -138,6 +145,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     assessment.value = null
     reviewResults.value = null
     orchestrationLog.value = []
+    orchestrationEvents.value = []
     knowledgeGraph.value = null
     generatedContent.value = null
     learningReport.value = null
@@ -154,6 +162,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     assessment.value = data.assessment
     reviewResults.value = data.review_results
     orchestrationLog.value = data.orchestration_log || []
+    orchestrationEvents.value = data.orchestration_events || []
     knowledgeGraph.value = data.knowledge_graph || null
     generatedContent.value = data.generated_content || null
     learningReport.value = data.learning_report || null
@@ -248,6 +257,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
       feedbackStrategy.value = data.feedback?.strategy || null
       knowledgeGraph.value = data.knowledge_graph || null
       orchestrationLog.value = data.orchestration_log || []
+      orchestrationEvents.value = data.orchestration_events || []
       phase.value = 'feedback'
     } catch (e) {
       error.value = e.response?.data?.detail || e.message || '提交答题失败'
@@ -368,6 +378,18 @@ export const useAssessmentStore = defineStore('assessment', () => {
             message: p.message,
             logTail: p.log_tail || [],
           }
+          // Phase 0: demo 流式期间实时累加事件与日志 (原有行为只在 done 后填充;
+          // 修复 2-4 分钟流式期间 Agent 协同卡片空白), 去重后 at done 由终态整体替换
+          const lt = Array.isArray(p.log_tail) ? p.log_tail : []
+          for (const line of lt) {
+            if (!orchestrationLog.value.includes(line)) orchestrationLog.value.push(line)
+          }
+          const evs = Array.isArray(p.log_events) ? p.log_events : []
+          for (const ev of evs) {
+            if (ev && !orchestrationEvents.value.some((e) => e.log === ev.log)) {
+              orchestrationEvents.value.push(ev)
+            }
+          }
         },
         onDone: (data) => {
           _applyResult(data)
@@ -408,6 +430,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     assessment,
     reviewResults,
     orchestrationLog,
+    orchestrationEvents,
     knowledgeGraph,
     generatedContent,
     learningReport,

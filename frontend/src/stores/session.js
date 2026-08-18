@@ -12,7 +12,8 @@
  * showCollab: #30 答题完成后默认展示 AI 协同。纯布局状态 (可手动收起)——
  *   由 assessment.phase watch 自动点亮 (feedback→true, idle→复位), 用户可 setShowCollab(false) 收起。
  *
- * 优先级 (高→低): graph > agent > quiz > goal
+ * 优先级 (高→低): quiz(答题/feedback) > graph > agent > goal
+ * (issue-06: phase 判断前置, interactive 答题/反馈期间阶段卡留在 quiz)
  *
  * 边界 (C4 决策: 保留为独立 store):
  *   本 store 近 pass-through (41 行, 仅拥 splitView; activeStage 纯派生), 曾被质疑是否
