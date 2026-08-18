@@ -30,9 +30,9 @@ function definitionStages(agent, defStages) {
     const ags = (s.agents || []).map((a) => byAgent[a]).filter(Boolean)
     let status = 'idle'
     if (ags.some((a) => a.status === 'running')) status = 'running'
-    else if (ags.length && ags.every((a) => a.status === 'done')) status = 'done'
     else if (ags.some((a) => a.status === 'failed')) status = 'failed'
-    else if (ags.length && ags.some((a) => a.status === 'done')) status = 'done'
+    else if (ags.some((a) => a.status === 'degraded')) status = 'degraded'
+    else if (ags.length && ags.every((a) => a.status === 'done')) status = 'done'
     return {
       key: s.id || `s${i}`,
       label: s.label || s.id || `阶段 ${i + 1}`,

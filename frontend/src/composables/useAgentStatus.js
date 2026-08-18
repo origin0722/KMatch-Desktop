@@ -82,14 +82,15 @@ function statesFromEvents(events) {
   for (const ev of events) {
     if (!ev || !ev.agent) continue
     if (ev.type === 'run-end') {
-      // 降级结束 → orchestrator 视为失败级别 (降级待人工)
-      states.orchestrator.status = ev.status === 'degraded' ? 'failed' : 'done'
+      // 降级结束 → orchestrator 显示「降级」(区别于失败): 超重试/降级待人工
+      states.orchestrator.status = ev.status === 'degraded' ? 'degraded' : 'done'
       continue
     }
     const st = states[ev.agent]
     if (!st) continue
     if (ev.status === 'running') st.status = 'running'
     else if (ev.status === 'failed') st.status = 'failed'
+    else if (ev.status === 'degraded') st.status = 'degraded'
     else if (ev.status === 'done') st.status = 'done'
   }
   return states
@@ -124,9 +125,9 @@ function deriveAgentStates(logs) {
     else if (/❌/.test(line) && /不通过/.test(line)) {
       state.status = 'failed'
     }
-    // orchestrator 降级结束 (⚠️ 流程结束 超过最大重试) 也判 done
-    else if (/⚠️/.test(line) && /流程结束/.test(line)) {
-      state.status = 'done'
+    // 降级提示 (⚠️ 含"流程结束"= orchestrator 降级结束; 其余为某阶段降级, 如 LLM 未配置)
+    else if (/⚠️/.test(line)) {
+      state.status = 'degraded'
     }
 
     // 提取重试轮数

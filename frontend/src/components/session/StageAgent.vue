@@ -128,7 +128,13 @@ const parsedLogs = computed(() => {
 function toggleExpand() { expanded.value = !expanded.value }
 // 面向学习者的状态文案 (idle=按需待触发, 非"待命"--避免暗示即将自动运行)
 function statusBadge(s) {
-  return { idle: '⏸ 待触发', running: '⏳ 执行中', done: '✅ 完成', failed: '❌ 失败' }[s] || s
+  return {
+    idle: '⏸ 待触发',
+    running: '⏳ 执行中',
+    done: '✅ 完成',
+    degraded: '⚠️ 降级',
+    failed: '❌ 失败',
+  }[s] || s
 }
 
 // activeStage 进入 agent 时自动展开
@@ -188,6 +194,7 @@ watch([() => session.showCollab, hasLogs], () => {
 .prod-row { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--km-border-light); border-left: 3px solid var(--km-border-light); border-radius: var(--km-radius-sm); background: var(--km-bg-layer-2); transition: border-color 0.2s var(--km-ease); }
 .prod-row.status-running { border-left-color: var(--km-warning); background: rgba(240,160,64,0.06); }
 .prod-row.status-done { border-left-color: var(--km-success); }
+.prod-row.status-degraded { border-left-color: #d98b3c; background: rgba(217,139,60,0.07); }
 .prod-row.status-failed { border-left-color: var(--km-danger); }
 .prod-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
 .prod-main { flex: 1; min-width: 0; }
@@ -196,6 +203,7 @@ watch([() => session.showCollab, hasLogs], () => {
 .prod-badge { font-size: 11px; padding: 1px 6px; border-radius: 8px; background: var(--km-bg-layer-3); color: var(--km-gray-600); }
 .prod-badge.badge-running { background: rgba(240,160,64,0.15); color: var(--km-warning); }
 .prod-badge.badge-done { background: rgba(52,179,126,0.12); color: var(--km-success); }
+.prod-badge.badge-degraded { background: rgba(217,139,60,0.15); color: #b9680d; }
 .prod-badge.badge-failed { background: rgba(224,85,85,0.12); color: var(--km-danger); }
 .prod-badge.badge-idle { background: var(--km-bg-layer-3); color: var(--km-gray-500); }
 .prod-retry { font-size: 11px; color: var(--km-danger); font-weight: 600; }

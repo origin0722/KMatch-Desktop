@@ -82,7 +82,7 @@ describe('useAgentStatus 结构化事件 (Phase 0)', () => {
     expect(byKey.diagnostics).toBe('running')
   })
 
-  it('run-end degraded → orchestrator failed; run-end done → orchestrator done', async () => {
+  it('run-end degraded → orchestrator degraded; run-end done → orchestrator done', async () => {
     mockAssessment.loading = true
     mockAssessment.orchestrationEvents = [
       ev('run-end', 'orchestrator', 'degraded', '流程结束 (超过最大重试, 降级为待人工审核)'),
@@ -90,7 +90,7 @@ describe('useAgentStatus 结构化事件 (Phase 0)', () => {
     const { agentNodes } = useAgentStatus()
     await nextTick()
     let byKey = Object.fromEntries(agentNodes.value.map((a) => [a.key, a.status]))
-    expect(byKey.orchestrator).toBe('failed')
+    expect(byKey.orchestrator).toBe('degraded') // 降级 ≠ 失败, 独立可视化
 
     reset()
     mockAssessment.loading = true
@@ -101,6 +101,18 @@ describe('useAgentStatus 结构化事件 (Phase 0)', () => {
     await nextTick()
     byKey = Object.fromEntries(s2.agentNodes.value.map((a) => [a.key, a.status]))
     expect(byKey.orchestrator).toBe('done')
+  })
+
+  it('⚠️ 降级事件 → 该 Agent 显示 degraded', async () => {
+    mockAssessment.orchestrationEvents = [
+      ev('info', 'content_generator', 'degraded', '⚠️ LLM 未配置, 内容生成降级'),
+      ev('agent-end', 'diagnostics', 'done', '学情检测完成'),
+    ]
+    const { agentNodes } = useAgentStatus()
+    await nextTick()
+    const byKey = Object.fromEntries(agentNodes.value.map((a) => [a.key, a.status]))
+    expect(byKey.content_generator).toBe('degraded')
+    expect(byKey.diagnostics).toBe('done')
   })
 
   it('currentAction 取最后一条事件的 message', async () => {

@@ -39,9 +39,9 @@ const C = {
   white: '#ffffff',
 }
 
-const NODE_FILL = { idle: '#f3f4f8', running: '#fff4e6', done: '#e8f6f0', failed: '#fdeeee' }
-const NODE_STROKE = { idle: C.gray300, running: C.warning, done: C.success, failed: C.danger }
-const NODE_LABEL_FILL = { idle: C.gray500, running: '#c7771a', done: '#207a55', failed: C.danger }
+const NODE_FILL = { idle: '#f3f4f8', running: '#fff4e6', done: '#e8f6f0', degraded: '#fdf3e7', failed: '#fdeeee' }
+const NODE_STROKE = { idle: C.gray300, running: C.warning, done: C.success, degraded: '#d98b3c', failed: C.danger }
+const NODE_LABEL_FILL = { idle: C.gray500, running: '#c7771a', done: '#207a55', degraded: '#b9680d', failed: C.danger }
 
 function buildData() {
   const nodes = (props.stages || []).map((s, i) => ({
