@@ -76,13 +76,20 @@ describe('apiSettings (统一 API 设置)', () => {
     expect(s.unified.baseUrl).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1')
   })
 
-  it('testConnectivity 走到 /api/agents/ping (openai 兼容)', async () => {
+  it('testConnectivity 走到 /api/agents/ping (支持 protocol)', async () => {
     http.post.mockResolvedValue({ data: { ok: true, content: 'pong' } })
     const s = useApiSettingsStore()
     const r = await s.testConnectivity({ apiKey: 'k', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' })
     expect(http.post).toHaveBeenCalledWith('/api/agents/ping', {
       llm_overrides: { api_key: 'k', base_url: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' },
+      protocol: 'openai',
     })
     expect(r.ok).toBe(true)
+    // anthropic 协议透传
+    await s.testConnectivity({ apiKey: 'k', baseUrl: 'https://api.anthropic.com', model: 'claude-x', protocol: 'anthropic' })
+    expect(http.post).toHaveBeenLastCalledWith('/api/agents/ping', {
+      llm_overrides: { api_key: 'k', base_url: 'https://api.anthropic.com', model: 'claude-x' },
+      protocol: 'anthropic',
+    })
   })
 })

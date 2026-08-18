@@ -103,12 +103,13 @@ export const useApiSettingsStore = defineStore('apiSettings', () => {
   }
 
   /**
-   * 连通性测试 (复用 /api/agents/ping, openai 兼容; anthropic 端点在 v1 中可能不支持)。
-   * @returns {Promise<{ok:boolean, content?:string, error?:string}>}
+   * 连通性测试 (POST /api/agents/ping, 支持 openai | anthropic)。
+   * @returns {Promise<{ok:boolean, content?:string, error?:string, protocol?:string}>}
    */
-  async function testConnectivity({ apiKey, baseUrl, model }) {
+  async function testConnectivity({ apiKey, baseUrl, model, protocol = 'openai' }) {
     const { data } = await http.post('/api/agents/ping', {
       llm_overrides: { api_key: apiKey, base_url: baseUrl, model },
+      protocol,
     })
     return data
   }

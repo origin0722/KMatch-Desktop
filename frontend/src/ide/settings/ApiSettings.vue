@@ -31,7 +31,7 @@
         <input v-model="uApiKey" type="password" class="inp" placeholder="sk-…" autocomplete="off" />
       </div>
       <div class="actions">
-        <button class="btn" :disabled="busy" @click="onTest(uProvider, uBaseUrl, uModel, uApiKey)">测试连通性</button>
+        <button class="btn" :disabled="busy" @click="onTest(uProvider, uBaseUrl, uModel, uApiKey, unifiedProtocol)">测试连通性</button>
         <button class="btn primary" :disabled="busy || !uApiKey" @click="onApplyUnified">应用到全部 →</button>
       </div>
     </div>
@@ -53,7 +53,7 @@
           <input :value="ai.apiKey" @change="onChatKey($event.target.value)" type="password" class="inp" placeholder="sk-…" autocomplete="off" />
         </div>
         <div class="actions">
-          <button class="btn" :disabled="busy || !ai.apiKey" @click="onTest(ai.provider, ai.getBaseUrl(), ai.model, ai.apiKey)">测试连通性</button>
+          <button class="btn" :disabled="busy || !ai.apiKey" @click="onTest(ai.provider, ai.getBaseUrl(), ai.model, ai.apiKey, chatProtocol)">测试连通性</button>
         </div>
       </div>
 
@@ -75,7 +75,7 @@
           引擎默认「跟随内置服务端 .env」；在本处填写 Key 后即切换到独立 Key（等效开启 Agent 独立 key）。
         </div>
         <div class="actions">
-          <button class="btn" :disabled="busy" @click="onTest(ag.state.provider, ag.state.baseUrl, ag.state.model, ag.state.apiKey)">测试连通性</button>
+          <button class="btn" :disabled="busy" @click="onTest(ag.state.provider, ag.state.baseUrl, ag.state.model, ag.state.apiKey, 'openai')">测试连通性</button>
         </div>
       </div>
     </div>
@@ -110,6 +110,10 @@ const busy = ref(false)
 const status = ref('')
 const statusErr = ref(false)
 const allPresets = computed(() => allPresetModels())
+
+const providerMetaOf = (pid) => PROVIDERS.find((p) => p.id === pid) || { protocol: 'openai', baseUrl: '' }
+const unifiedProtocol = computed(() => providerMetaOf(uProvider.value).protocol || 'openai')
+const chatProtocol = computed(() => ai.providerMeta?.().protocol || 'openai')
 
 // 统一模式表单镜像 (local, 应用时才写两端)
 // 注: pinia setup store 会把 ref 自动解包, 这里用 api.unified.* (非 .value)
@@ -153,13 +157,13 @@ async function onApplyUnified() {
   }
 }
 
-async function onTest(providerId, baseUrl, model, apiKey) {
+async function onTest(providerId, baseUrl, model, apiKey, protocol = 'openai') {
   if (!apiKey) { setStatus('请先填写 API Key', true); return }
   busy.value = true
   try {
     const meta = PROVIDERS.find((p) => p.id === providerId)
     const url = baseUrl || meta?.baseUrl || ''
-    const r = await api.testConnectivity({ apiKey, baseUrl: url, model })
+    const r = await api.testConnectivity({ apiKey, baseUrl: url, model, protocol })
     setStatus(r?.ok ? `连接成功 · 模型响应: ${(r.content || '').slice(0, 60) || 'ok'}` : `连接失败: ${r?.error || '未知错误'}`)
     if (!r?.ok) statusErr.value = true
   } catch (e) {

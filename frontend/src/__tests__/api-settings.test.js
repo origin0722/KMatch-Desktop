@@ -11,6 +11,7 @@ import { nextTick } from 'vue'
 const aiMock = vi.hoisted(() => ({
   provider: 'deepseek', apiKey: '', model: 'deepseek-v4-pro',
   getBaseUrl: () => 'https://api.deepseek.com/v1',
+  providerMeta: () => ({ protocol: aiMock.provider === 'anthropic' ? 'anthropic' : 'openai' }),
   setProvider: vi.fn(), setApiKey: vi.fn(), setModel: vi.fn(),
 }))
 const agMock = vi.hoisted(() => ({
@@ -71,7 +72,23 @@ describe('ApiSettings.vue (API 设置栏目)', () => {
     await flushPromises()
     expect(httpMock.post).toHaveBeenCalledWith('/api/agents/ping', {
       llm_overrides: { api_key: 'sk-chat', base_url: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' },
+      protocol: 'openai',
     })
     expect(w.text()).toContain('连接成功')
+  })
+
+  it('AI 助手行选 anthropic → 连通性带 protocol=anthropic', async () => {
+    httpMock.post.mockResolvedValue({ data: { ok: true, content: 'hi' } })
+    aiMock.provider = 'anthropic'
+    aiMock.apiKey = 'sk-ant'
+    const w = mount(ApiSettings)
+    await nextTick()
+    const btn = w.findAll('.row-card')[0].findAll('button').find((b) => b.text().includes('测试连通性'))
+    await btn.trigger('click')
+    await flushPromises()
+    expect(httpMock.post).toHaveBeenCalledWith('/api/agents/ping', {
+      llm_overrides: { api_key: 'sk-ant', base_url: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' },
+      protocol: 'anthropic',
+    })
   })
 })
