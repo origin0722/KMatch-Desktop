@@ -204,13 +204,16 @@ app.include_router(search.router, prefix="/api/search", tags=["Search"])
 # ============================================================
 
 if __name__ == "__main__":
+    import os
     import uvicorn
     print(f"🚀 启动 {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"   📖 API 文档: http://localhost:8000/api/docs")
     print(f"   ❤️  健康检查: http://localhost:8000/api/health")
+    # issue-45: 默认只绑本机 (127.0.0.1), 防局域网被当开放代理;
+    # 容器/需要被外部访问时设 KMATCH_HOST=0.0.0.0
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host=os.getenv("KMATCH_HOST", "127.0.0.1"),
         port=8000,
         reload=settings.DEBUG,
     )

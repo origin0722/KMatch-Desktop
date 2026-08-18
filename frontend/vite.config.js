@@ -9,9 +9,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        // 127.0.0.1 而非 localhost: 本机 localhost 优先解析 ::1, 而后端只绑 IPv4,
-        // 走 localhost 会随机撞连接拒绝 → "后端未运行" (实测)
-        target: 'http://127.0.0.1:8000',
+        // 本地默认 127.0.0.1:8000 (同桌后端); Docker 容器内用 VITE_PROXY_TARGET=http://backend:8000
+        target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

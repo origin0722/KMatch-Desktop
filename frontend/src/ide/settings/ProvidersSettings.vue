@@ -130,7 +130,7 @@ async function clearVisionCache() {
 }
 
 // 网络代理: 盘活 aiSettings.proxy ({enabled,type,url,scope})。UI 改 store;
-// 落盘 + sidecar env 注入在 Task 18-19 (window.api.setProxyConfig/restartBackend 暂为 preload 占位)
+// 落盘 + sidecar env 注入已接线 (Spec B 18-19 / issue-49: preload setProxyConfig + backend:restart)
 const restarting = ref(false)
 
 function onProxyChange(patch) {

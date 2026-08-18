@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -27,6 +28,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+
+# issue-46: cov_module 白名单 (防以 '-' 开头被 pytest 当命令行选项; 分离参数而非 --cov=拼接)
+_COV_MODULE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*")
+
+
+def _pytest_cov_args(cov_module: str) -> list[str]:
+    """构造 pytest coverage 参数; 不合规 module 时不测覆盖率 (容许降级, 不注入选项)。"""
+    if _COV_MODULE_RE.fullmatch(cov_module or ""):
+        return ["--cov", cov_module, "--cov-branch", "--cov-report=json:coverage.json"]
+    return []
 
 
 # ============================================================
@@ -127,9 +139,7 @@ class SubprocessSandboxExecutor(SandboxExecutor):
             "--tb=short",
             "-q",
             "--junitxml=junit.xml",
-            f"--cov={cov_module}",
-            "--cov-branch",
-            "--cov-report=json:coverage.json",
+            *_pytest_cov_args(cov_module),  # issue-46: 白名单 + 分离参数
             test_filename,
         ]
         try:
@@ -159,8 +169,14 @@ class SubprocessSandboxExecutor(SandboxExecutor):
                 success=False, exit_code=-1, error=f"沙箱执行异常: {e}",
             )
 
-        # pytest 退出码: 0=全过, 1=有失败/错误, 2=收集错误 → 均视为成功启动
-        success = proc.returncode in (0, 1, 2)
+        # pytest 退出码: 0=全过, 1=有失败/错误, 2=收集错误(测试无法运行, 非"成功启动", issue-46)
+        if proc.returncode == 2:
+            return TestRunResult(
+                success=False, exit_code=2,
+                error="pytest 收集错误 (被测代码无法导入/收集)",
+                stdout=proc.stdout or "", stderr=(proc.stderr or "")[:400],
+            )
+        success = proc.returncode in (0, 1)
 
         # 解析 junit.xml
         junit_path = workdir / "junit.xml"
@@ -229,9 +245,7 @@ class DockerSandboxExecutor(SandboxExecutor):
             "-o", "addopts=",
             "--tb=short", "-q",
             "--junitxml=junit.xml",
-            f"--cov={cov_module}",
-            "--cov-branch",
-            "--cov-report=json:coverage.json",
+            *_pytest_cov_args(cov_module),  # issue-46: 白名单 + 分离参数
             test_filename,
         ]
         try:
@@ -266,7 +280,14 @@ class DockerSandboxExecutor(SandboxExecutor):
                 stdout=proc.stdout or "", stderr=proc.stderr or "",
             )
 
-        success = proc.returncode in (0, 1, 2)
+        # 收集错误 (exit 2): 测试无法运行, 非"成功启动" (issue-46)
+        if proc.returncode == 2:
+            return TestRunResult(
+                success=False, exit_code=2,
+                error="pytest 收集错误 (被测代码无法导入/收集)",
+                stdout=proc.stdout or "", stderr=(proc.stderr or "")[:400],
+            )
+        success = proc.returncode in (0, 1)
         junit_path = workdir / "junit.xml"
         junit_text = junit_path.read_text(encoding="utf-8") if junit_path.exists() else ""
         summary, cases = parse_junit_xml(junit_text)

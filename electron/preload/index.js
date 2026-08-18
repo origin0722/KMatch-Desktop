@@ -62,4 +62,8 @@ contextBridge.exposeInMainWorld('api', {
     // 探测 Docker 是否可用 (数据底座引导): 返回 { installed, version, hint }
     checkVersion: () => ipcRenderer.invoke('docker:checkVersion'),
   },
+  // Spec B 18-19 / issue-49: 网络代理落盘 + 后端重启 (设置页「网络代理」)
+  setProxyConfig: (config) => ipcRenderer.invoke('proxy:setConfig', config),
+  getProxyConfig: () => ipcRenderer.invoke('proxy:getConfig'),
+  restartBackend: () => ipcRenderer.invoke('backend:restart'),
 })

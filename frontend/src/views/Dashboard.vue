@@ -787,6 +787,9 @@ watch(hasData, async (ok) => {
 
 onMounted(() => {
   if (hasData.value) {
+    // issue-42: interactive 会话进报告页时补跑 /learning/report (幂等),
+    // 让 M5 质量指标走后端真实计算 (source:'backend'); demo 模式 learningReport 已内联, 跳过
+    if (!store.learningReport) store.loadLearningReport()
     nextTick(renderAllCharts)
   }
   window.addEventListener('resize', onWindowResize)

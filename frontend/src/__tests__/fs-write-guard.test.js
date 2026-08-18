@@ -53,4 +53,17 @@ describe('fs 写操作守卫 (F12)', () => {
     }
     fs.rmSync(outsideTarget, { force: true })
   })
+
+  it('issue-47: 拒绝写入"父目录为指向工作区外的符号链接"的新文件', () => {
+    // 目标文件不存在 (新建场景), 但其父目录是指向外部目录的符号链接 → 旧实现 realpath 抛
+    // ENOENT 放行, 会沿链接写穿工作区; 修复后应拒绝。
+    const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kmatch-outside-dir-'))
+    const linkDir = path.resolve(TMP, 'linked-dir')
+    try { fs.symlinkSync(outsideDir, linkDir) } catch { /* 无权限建链接则跳过 */ }
+    if (fs.existsSync(linkDir) && fs.lstatSync(linkDir).isSymbolicLink()) {
+      expect(() => assertSafeForWrite(path.join(linkDir, 'new.py'), '写入')).toThrow('符号链接穿越')
+      expect(() => assertSafeForWrite(path.join(linkDir, 'nested', 'new.py'), '写入')).toThrow('符号链接穿越')
+    }
+    fs.rmSync(outsideDir, { recursive: true, force: true })
+  })
 })

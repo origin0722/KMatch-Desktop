@@ -13,6 +13,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback } from '@/api/diagnostics'
+import { fetchLearningReport } from '@/api/learning'
 
 export const useAssessmentStore = defineStore('assessment', () => {
   // ============================================================
@@ -71,10 +72,15 @@ export const useAssessmentStore = defineStore('assessment', () => {
 
   /**
    * 可视化报告数据契约 (三类可视化预计算 + M5 真实质量指标)
-   * demo 模式由 assess/assess_stream 内联返回; interactive 模式由 /learning/report 补跑
-   * 结构: { knowledge_blind_map, difficulty_match_curve, learning_path_plan, quality_metrics }
+   * demo 模式由 assess/assess_stream 内联返回; interactive 由 /learning/report 补跑
+   * 结构: { blind_spots, difficulty_match, learning_path, review_status, quality_metrics, generated_at }
+   *   (契约对齐 backend/app/agents/report_builder.build_learning_report)
    */
   const learningReport = ref(null)
+  /** 报告补跑中 (interactive /learning/report) */
+  const reportLoading = ref(false)
+  /** 报告已取 (含会话失效降级), 幂等防重复补跑 */
+  const reportLoaded = ref(false)
 
   // ============================================================
   // interactive 三阶段状态 (S9 修复: 接通答题闭环)
@@ -135,6 +141,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     knowledgeGraph.value = null
     generatedContent.value = null
     learningReport.value = null
+    reportLoading.value = false
+    reportLoaded.value = false
   }
 
   // ============================================================
@@ -291,6 +299,34 @@ export const useAssessmentStore = defineStore('assessment', () => {
     }
   }
 
+  /**
+   * interactive 可视化报告 (issue-42): 按 session_id 调 /learning/report 补跑,
+   * 填充 learningReport (M5 真实质量指标 + 三类可视化预计算) 供 Dashboard 使用。
+   *
+   * 幂等: reportLoaded 防止重复补跑 (后端同一 session 也会缓存);
+   * 会话失效 (404/409) 标记已取, 不给死磕。补跑失败不弹错, Dashboard 走客户端派生兜底。
+   */
+  async function loadLearningReport() {
+    if (!sessionId.value || !profile.value || reportLoading.value || reportLoaded.value) return
+    reportLoading.value = true
+    try {
+      const data = await fetchLearningReport({ sessionId: sessionId.value })
+      learningReport.value = data.learning_report || null
+      // 补跑产出的路径/内容/审核在 interactive 下可能缺失, 合并回 store 供看板/学习资源消费
+      // (已有值不覆盖 —— 反馈再生的针对性内容优先保留)
+      if (!knowledgeGraph.value && data.knowledge_graph) knowledgeGraph.value = data.knowledge_graph
+      if (!generatedContent.value && data.generated_content) generatedContent.value = data.generated_content
+      if (!reviewResults.value && data.review_results) reviewResults.value = data.review_results
+      reportLoaded.value = true
+    } catch (e) {
+      const st = e?.response?.status
+      if (st === 404 || st === 409) reportLoaded.value = true // 会话失效 → 不再补跑
+      if (import.meta.env.DEV) console.debug('[assessment] 学习报告补跑失败', e?.message)
+    } finally {
+      reportLoading.value = false
+    }
+  }
+
   /** interactive 阶段回退到输入 (重新测评) */
   function backToInput() {
     phase.value = 'idle'
@@ -375,6 +411,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     knowledgeGraph,
     generatedContent,
     learningReport,
+    reportLoading,
+    reportLoaded,
     // interactive 三阶段状态 (S9)
     phase,
     pendingQuestions,
@@ -392,6 +430,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     startDemoStream,
     submitAssessmentAnswers,
     fetchFeedback,
+    loadLearningReport,
     backToInput,
     reset,
   }

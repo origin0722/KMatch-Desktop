@@ -60,6 +60,8 @@ logger = get_logger(__name__)
 # 沙箱预算 (诚实标注: 单测 5s 近似为整套 timeout，精确单测超时需 pytest-timeout 未引入)
 PER_TEST_TIMEOUT_SEC = 5
 MAX_TEST_BUDGET_SEC = 60
+# issue-46: baseline 模式 (metadata 空) 无逐用例估算, 用保底预算防整套仅 5s 误判超时
+BASELINE_TIMEOUT_SEC = 20
 
 
 # ============================================================
@@ -536,9 +538,11 @@ def run_tests(kg: KnowledgeGraph, sources: dict[str, str], target_direction: str
         test_filename = f"test_{module_name}.py"
         (workdir / test_filename).write_text(test_code, encoding="utf-8")
 
-        # 5. 估算 timeout
-        est_cases = max(len(test_metadata), 1)
-        timeout = min(PER_TEST_TIMEOUT_SEC * est_cases, MAX_TEST_BUDGET_SEC)
+        # 5. 估算 timeout (issue-46: baseline/metadata 为空时用保底预算, 防小套件 5s 误判超时)
+        if test_metadata:
+            timeout = min(PER_TEST_TIMEOUT_SEC * max(len(test_metadata), 1), MAX_TEST_BUDGET_SEC)
+        else:
+            timeout = min(BASELINE_TIMEOUT_SEC, MAX_TEST_BUDGET_SEC)
 
         # 6. 执行 (重新解析以拿含 source_code 的 entities 供 function coverage)
         run_result = executor.run(workdir, module_name, test_filename,

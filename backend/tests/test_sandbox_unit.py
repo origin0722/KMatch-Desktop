@@ -241,6 +241,26 @@ def test_subprocess_failed_test():
 
 
 # ============================================================
+# issue-46: pytest coverage 参数构造 (纯函数, 免 subprocess)
+# ============================================================
+def test_cov_args_valid_module_separate_args():
+    """合法 module → --cov 分离参数 + branch/report; 不再是 --cov={module} 拼接。"""
+    from app.agents.sandbox import _pytest_cov_args
+    args = _pytest_cov_args("calc")
+    assert "--cov" in args and args[args.index("--cov") + 1] == "calc"
+    assert "--cov-branch" in args
+    assert "--cov-report=json:coverage.json" in args
+
+def test_cov_args_invalid_or_empty_module_no_cov_args():
+    """'-' 前缀 / 非法字符 / 空 → 不注入 coverage 参数 (防 pytest 选项注入)。"""
+    from app.agents.sandbox import _pytest_cov_args
+    assert _pytest_cov_args("-collect-only") == []
+    assert _pytest_cov_args("../../evil") == []
+    assert _pytest_cov_args("a b") == []
+    assert _pytest_cov_args("") == []
+
+
+# ============================================================
 # 沙箱执行器选择 (F12/#15: SANDBOX_MODE + docker_available)
 # ============================================================
 

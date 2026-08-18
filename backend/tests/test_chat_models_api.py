@@ -35,6 +35,15 @@ def test_models_defaults_protocol_to_openai_when_omitted():
     fake_client = MagicMock()
     fake_client.models.list = AsyncMock(return_value=MagicMock(data=[]))
     with patch("app.api.chat._get_async_client", return_value=fake_client):
-        resp = client.post("/api/chat/models", json={"base_url": "x", "api_key": "y"})
+        resp = client.post("/api/chat/models", json={"base_url": "https://x.example/v1", "api_key": "y"})
     assert resp.status_code == 200
     assert "models" in resp.json()
+
+
+def test_models_rejects_non_http_scheme():
+    """issue-45: 非 http/https base_url → 400, 不构造 client。"""
+    resp = client.post("/api/chat/models", json={
+        "base_url": "file:///etc/passwd", "api_key": "y", "protocol": "openai",
+    })
+    assert resp.status_code == 400
+    assert "http" in resp.json()["detail"]

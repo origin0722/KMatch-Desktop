@@ -59,7 +59,8 @@ def test_probe_vision_auth_error_does_not_write_cache():
         side_effect=Exception("401 Unauthorized: invalid api key"))
     with patch("app.api.chat._get_async_client", return_value=fake_client):
         resp = client.post("/api/chat/probe-vision", json={
-            "base_url": "u", "api_key": "bad", "model": "gpt-4o", "protocol": "openai",
+            "base_url": "https://api.openai.com/v1", "api_key": "bad",
+            "model": "gpt-4o", "protocol": "openai",
         })
     body = resp.json()
     assert body["vision"] is False
@@ -72,11 +73,22 @@ def test_probe_vision_non_auth_error_writes_false_to_cache():
     fake_client.chat.completions.create = AsyncMock(side_effect=Exception("500 server error"))
     with patch("app.api.chat._get_async_client", return_value=fake_client):
         resp = client.post("/api/chat/probe-vision", json={
-            "base_url": "u", "api_key": "sk-X", "model": "gpt-foo", "protocol": "openai",
+            "base_url": "https://api.openai.com/v1", "api_key": "sk-X",
+            "model": "gpt-foo", "protocol": "openai",
         })
     assert resp.json() == {"vision": False, "cached": False}
     cache = json.loads((Path(settings.DATA_DIR) / "vision_cache.json").read_text())
-    assert cache["u::gpt-foo"] is False
+    assert cache["https://api.openai.com/v1::gpt-foo"] is False
+
+
+def test_probe_vision_rejects_non_http_scheme():
+    """issue-45: 非 http/https base_url → 400, 不写缓存。"""
+    resp = client.post("/api/chat/probe-vision", json={
+        "base_url": "gopher://x", "api_key": "sk-X", "model": "gpt-4o", "protocol": "openai",
+    })
+    assert resp.status_code == 400
+    assert "http" in resp.json()["detail"]
+    assert not (Path(settings.DATA_DIR) / "vision_cache.json").exists()
 
 
 def test_delete_probe_vision_cache_clears_file():

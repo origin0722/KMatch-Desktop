@@ -10,6 +10,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { app } from 'electron'
+import { proxyEnv } from './ipc/proxy.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // 127.0.0.1 而非 localhost: 本机 localhost 优先解析 ::1, 后端只绑 IPv4 (uvicorn --host 127.0.0.1),
@@ -59,7 +60,8 @@ function spawnBackend() {
 
   // PYTHONIOENCODING=utf-8: 后端日志含 ✅/❌ 等字符, 管道下 Python 默认按 GBK 编码会
   // UnicodeEncodeError 刷 "Logging error" 噪音 (实测)。
-  const env = { ...process.env, PYTHONIOENCODING: 'utf-8' }
+  // issue-49: 注入已落盘的代理 env (Spec B 18-19), 使 LLM/搜索出站走代理; NO_PROXY 排除本地回环
+  const env = { ...process.env, PYTHONIOENCODING: 'utf-8', ...proxyEnv() }
   const proc = usePackaged
     ? spawn(exe, [], { cwd, stdio: ['ignore', 'pipe', 'pipe'], env })
     : spawn(process.env.PYTHON || 'python', [
@@ -110,6 +112,27 @@ export async function stopBackend() {
     backendProc.kill()
     backendProc = null
   }
+}
+
+/** issue-49: 重启 sidecar (改代理后生效); 返回是否就绪。 */
+export async function restartBackend() {
+  if (backendProc) {
+    backendProc.kill()
+    backendProc = null
+  }
+  // 等 Windows 下端口释放后, 先做 attach 探测 (避免刚 kill 的旧进程被误探测)
+  await new Promise((r) => setTimeout(r, 800))
+  if (await fetchHealth()) {
+    console.log('[backend] restart: 检测到已有后端, attach 复用')
+    return true
+  }
+  const exe = resolvePackagedBackendExe()
+  const usePackaged = app.isPackaged && fs.existsSync(exe)
+  console.log(`[backend] restart sidecar (${usePackaged ? 'packaged exe' : 'uvicorn dev'})...`)
+  backendProc = spawnBackend()
+  const ready = await waitForReady()
+  console.log(ready ? '[backend] restart 就绪 ✓' : '[backend] restart 30s 未就绪, 业务功能不可用')
+  return ready
 }
 
 export async function getBackendHealth() {

@@ -53,23 +53,43 @@ export function resolveSafe(relPath) {
 /**
  * F12: 写/删操作的强化守卫。
  *  - 拒绝操作 workspace 根本身 (防止 rm 根目录或覆盖根)
- *  - 拒绝符号链接穿越 (目标指向 workspace 外)
+ *  - 符号链接穿越检查 (目标指向 workspace 外 → 拒绝)
+ *    issue-47: 目标文件不存在(新建)时, 旧实现 realpath 抛 ENOENT 直接放行,
+ *    若其父目录是"指向工作区外的符号链接"会被 mkdir/write 沿着写穿工作区。
+ *    现改为: 目标存在 → realpath 校验; 不存在 → 逐级上溯到最近存在的祖先并
+ *    realpath 校验 (覆盖多级符号链接目录)。
  * 抛错则 IPC 返回异常, 渲染层 http/fs 错误路径处理。
  */
 export function assertSafeForWrite(abs, op) {
   if (!workspaceRoot || path.resolve(abs) === path.resolve(workspaceRoot)) {
     throw new Error(`禁止${op}工作区根目录`)
   }
-  // 符号链接穿越检查 (若 abs 是/含符号链接且最终目标在工作区外, 拒绝)
-  try {
-    const real = fsSync.realpathSync(abs)
+  // 符号链接穿越检查 (不存在的路径 realpath 返回 null)
+  const probe = (p) => { try { return fsSync.realpathSync(p) } catch { return null } }
+
+  const real = probe(abs)
+  if (real) {
     const rel = path.relative(workspaceRoot, real)
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error(`符号链接穿越工作区: ${abs} → ${real}`)
     }
-  } catch (e) {
-    if (e.message.startsWith('符号链接穿越') || e.message.startsWith('禁止')) throw e
-    // realpathSync 失败 = 文件不存在 (createFile/writeFile 新建场景), 放行
+    return
+  }
+  // 目标不存在 (createFile 新建 / writeFile 到新文件): 对最近存在的祖先目录做校验
+  let cur = path.dirname(abs)
+  let guard = 0
+  while (guard++ < 64) {
+    const r = probe(cur)
+    if (r) {
+      const rel = path.relative(workspaceRoot, r)
+      if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        throw new Error(`符号链接穿越工作区(目录): ${abs} → ${r}`)
+      }
+      return
+    }
+    const parent = path.dirname(cur)
+    if (parent === cur) return // 顶到盘符根
+    cur = parent
   }
 }
 

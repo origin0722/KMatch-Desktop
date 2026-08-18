@@ -14,16 +14,17 @@ POST /api/chat/models
 导致事件循环冻结 (S4 修复)。
 """
 
+import hashlib
 import json
 import os
 import re
 import tempfile
-from functools import lru_cache
+from urllib.parse import urlparse
 from pathlib import Path
 from typing import Literal
 
 from anthropic import AsyncAnthropic
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -95,17 +96,49 @@ class ProbeVisionRequest(BaseModel):
 
 # ----------------------------------------------------------------
 # AsyncOpenAI client 缓存 (按 base_url + api_key)
+# 安全 (issue-45): 缓存键用 api_key 的 sha256 摘要, 不把原始 key 字符串驻留缓存;
+# client 对象内部仍持有真实 key (发请求所需), 但不再额外留在 dict 键里。
 # ----------------------------------------------------------------
-@lru_cache(maxsize=16)
+_ASYNC_OPENAI_CLIENTS: dict[tuple[str, str], AsyncOpenAI] = {}
+_ASYNC_ANTHROPIC_CLIENTS: dict[str, AsyncAnthropic] = {}
+
+
+def _validate_base_url(base_url: str) -> str:
+    """SSRF 收敛: 客户端传入的 base_url 只允许 http/https (issue-45)。
+
+    允许任意 http(s) 厂商/内网 (如 Ollama 127.0.0.1), 但拒绝 file:/gopher:/
+    dict: 等非 HTTP 协议造成的任意协议访问面。非法 → 400。
+    """
+    try:
+        scheme = urlparse(base_url).scheme.lower()
+    except Exception as exc:  # 缺 scheme / 畸形 URL
+        raise HTTPException(status_code=400, detail=f"非法 base_url: {base_url}") from exc
+    if scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"base_url 仅支持 http/https, 收到: {scheme or '(空)'}",
+        )
+    return base_url.strip()
+
+
 def _get_async_client(base_url: str, api_key: str) -> AsyncOpenAI:
-    """缓存 AsyncOpenAI client, 相同 (base_url, api_key) 复用"""
-    return AsyncOpenAI(base_url=base_url, api_key=api_key)
+    """缓存 AsyncOpenAI client, 相同 (base_url, api_key) 复用; 键用 key 哈希。"""
+    key = (base_url, hashlib.sha256((api_key or "").encode()).hexdigest())
+    if key not in _ASYNC_OPENAI_CLIENTS:
+        _ASYNC_OPENAI_CLIENTS[key] = AsyncOpenAI(base_url=base_url, api_key=api_key)
+        if len(_ASYNC_OPENAI_CLIENTS) > 32:  # 简单上限 (类 lru, 丢弃最早键), 防无界增长
+            _ASYNC_OPENAI_CLIENTS.pop(next(iter(_ASYNC_OPENAI_CLIENTS)))
+    return _ASYNC_OPENAI_CLIENTS[key]
 
 
-@lru_cache(maxsize=16)
 def _get_anthropic_client(api_key: str) -> AsyncAnthropic:
-    """缓存 AsyncAnthropic client (key 唯一索引)"""
-    return AsyncAnthropic(api_key=api_key)
+    """缓存 AsyncAnthropic client (键用 key 哈希)。"""
+    key = hashlib.sha256((api_key or "").encode()).hexdigest()
+    if key not in _ASYNC_ANTHROPIC_CLIENTS:
+        _ASYNC_ANTHROPIC_CLIENTS[key] = AsyncAnthropic(api_key=api_key)
+        if len(_ASYNC_ANTHROPIC_CLIENTS) > 32:
+            _ASYNC_ANTHROPIC_CLIENTS.pop(next(iter(_ASYNC_ANTHROPIC_CLIENTS)))
+    return _ASYNC_ANTHROPIC_CLIENTS[key]
 
 
 def _split_system(messages: list[dict]) -> tuple[str, list[dict]]:
@@ -196,9 +229,14 @@ def _build_request_extras(protocol: str, model: str, reasoning_mode: str) -> dic
 
 
 def _resolve_openai_client(req: ChatRequest) -> AsyncOpenAI | None:
-    """优先用请求中的 api_key/base_url 建 AsyncOpenAI; 否则用服务端默认 (非 placeholder)。"""
+    """优先用请求中的 api_key/base_url 建 AsyncOpenAI; 否则用服务端默认 (非 placeholder)。
+
+    issue-45: 客户端传入 base_url 先过 scheme 白名单 (http/https), 防任意协议访问面。
+    """
     if req.api_key:
         base = req.base_url or settings.LLM_BASE_URL
+        if req.base_url:
+            _validate_base_url(req.base_url)
         return _get_async_client(base, req.api_key)
     if settings.LLM_API_KEY and settings.LLM_API_KEY != "sk-placeholder":
         return _get_async_client(settings.LLM_BASE_URL, settings.LLM_API_KEY)
@@ -329,6 +367,7 @@ async def chat_completions(req: ChatRequest, request: Request):
     """AI 助手对话 (SSE 流式, OpenAI / Anthropic 双协议, async 不阻塞)"""
     model = req.model or settings.LLM_MODEL
 
+    # issue-45: _validate_base_url 不合规时抛 HTTPException(400) 由 FastAPI 统一返回; 其余正常
     client, protocol = _resolve_client(req)
 
     if client is None:
@@ -383,6 +422,7 @@ async def list_models(req: ModelsRequest):
     """拉取厂商模型列表 (OpenAI 兼容 /models 端点 / Anthropic 硬编码)。"""
     if req.protocol == 'anthropic':
         return {"models": list(ANTHROPIC_MODELS)}
+    _validate_base_url(req.base_url)  # issue-45: scheme 白名单 → 非法直接 400
     try:
         client = _get_async_client(req.base_url, req.api_key)
         resp = await client.models.list()
@@ -428,6 +468,8 @@ async def probe_vision(req: ProbeVisionRequest):
     key = f"{req.base_url}::{req.model}"
     if key in cache:
         return {"vision": cache[key], "cached": True}
+
+    _validate_base_url(req.base_url)  # issue-45: scheme 白名单 → 非法直接 400 (不写缓存)
 
     try:
         if req.protocol == 'openai':

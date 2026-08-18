@@ -21,4 +21,5 @@ import uvicorn
 from app.main import app
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port=8000, log_level='info')
+    # issue-45: 默认只绑本机; 容器部署 KMATCH_HOST=0.0.0.0
+    uvicorn.run(app, host=os.getenv('KMATCH_HOST', '127.0.0.1'), port=8000, log_level='info')

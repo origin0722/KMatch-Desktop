@@ -7,13 +7,14 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { createMainWindow } from './window.js'
-import { startBackend, stopBackend, getBackendHealth } from './backend-sidecar.js'
+import { startBackend, stopBackend, getBackendHealth, restartBackend } from './backend-sidecar.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
 import { registerHttpProxyIpc } from './ipc/http-proxy.js'
 import { registerWindowIpc } from './ipc/window.js'
 import { registerWatcherIpc, getWatcherController } from './ipc/watcher.js'
 import { registerDockerIpc } from './ipc/docker.js'
+import { registerProxyIpc } from './ipc/proxy.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -28,6 +29,8 @@ function registerAllIpc() {
   registerWindowIpc({ getMainWindow: () => mainWindow })
   registerWatcherIpc({ getMainWindow: () => mainWindow })
   registerDockerIpc()
+  // Spec B 18-19 / issue-49: 网络代理落盘 + 后端重启
+  registerProxyIpc(restartBackend)
 }
 
 app.whenReady().then(async () => {
