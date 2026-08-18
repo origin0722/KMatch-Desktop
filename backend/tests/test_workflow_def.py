@@ -148,3 +148,87 @@ def test_workflows_api_preflight(monkeypatch, tmp_path):
     bad = c.post("/api/diagnostics/workflows/preflight",
                  json={"workflow_id": "scene1-loop", "target_direction": ""}).json()
     assert bad["ok"] is False
+
+
+# ---------------- Phase 4: 逻辑门 / 决策确定性求值 ----------------
+
+def test_evaluate_gate_predicates():
+    ctx = {"a": 1, "b": 0, "lst": [1, 2], "empty": [], "s": "x", "none": None}
+    # truthy
+    assert wf.evaluate_gate({"on": "a", "predicate": "truthy"}, ctx) is True
+    assert wf.evaluate_gate({"on": "b", "predicate": "truthy"}, ctx) is False
+    assert wf.evaluate_gate({"on": "missing", "predicate": "truthy"}, ctx) is False
+    # falsy
+    assert wf.evaluate_gate({"on": "b", "predicate": "falsy"}, ctx) is True
+    assert wf.evaluate_gate({"on": "a", "predicate": "falsy"}, ctx) is False
+    assert wf.evaluate_gate({"on": "missing", "predicate": "falsy"}, ctx) is True
+    # nonEmpty
+    assert wf.evaluate_gate({"on": "lst", "predicate": "nonEmpty"}, ctx) is True
+    assert wf.evaluate_gate({"on": "empty", "predicate": "nonEmpty"}, ctx) is False
+    assert wf.evaluate_gate({"on": "none", "predicate": "nonEmpty"}, ctx) is False
+    assert wf.evaluate_gate({"on": "missing", "predicate": "nonEmpty"}, ctx) is False
+    # 嵌套点路径
+    assert wf.evaluate_gate({"on": "sub.deep", "predicate": "truthy"}, {"sub": {"deep": True}}) is True
+    assert wf.evaluate_gate({"on": "sub.deep", "predicate": "truthy"}, {"sub": {}}) is False
+
+
+def test_strategy_decision_matches_decide_feedback_thresholds():
+    """流程定义里的 strategy 决策与 decide_feedback 语义严格一致 (见 diagnostics.py 注释)。"""
+    sc = wf.BUILTIN_WORKFLOWS["scene1-interactive"]
+    dec = sc["decisions"][0]
+    assert dec["id"] == "strategy"
+    assert wf.evaluate_decision(dec, {"correct_ratio": 0.85}) == "advance"
+    assert wf.evaluate_decision(dec, {"correct_ratio": 0.8}) == "advance"   # ≥0.8
+    assert wf.evaluate_decision(dec, {"correct_ratio": 0.75}) == "remediate"  # ≥0.5 & <0.8
+    assert wf.evaluate_decision(dec, {"correct_ratio": 0.5}) == "remediate"  # ≥0.5
+    assert wf.evaluate_decision(dec, {"correct_ratio": 0.499}) == "scaffold"  # <0.5
+    assert wf.evaluate_decision(dec, {"correct_ratio": 0}) == "scaffold"
+
+
+def test_decision_missing_field_falls_to_else():
+    sc = wf.BUILTIN_WORKFLOWS["scene1-interactive"]
+    dec = sc["decisions"][0]
+    assert wf.evaluate_decision(dec, {}) == "scaffold"  # 缺 correct_ratio → else
+    assert wf.evaluate_decision(dec, {"correct_ratio": "not-a-number"}) == "scaffold"
+    assert wf.evaluate_decision({}, {}) is None  # 非对象/空决策 → None
+
+
+def test_def_decisions_result_shape():
+    sc = wf.BUILTIN_WORKFLOWS["scene1-loop"]
+    out = wf.evaluate_def_decisions(sc, {"correct_ratio": 0.9})
+    assert out == [{"id": "strategy", "label": "反馈策略", "chosen": "advance"}]
+
+
+def test_validate_decisions_rules():
+    base = wf.BUILTIN_WORKFLOWS["scene1-loop"]
+    # 未知比较算子
+    bad1 = {
+        "decisions": [{"id": "d", "on": "x", "rules": [{"when": {"FOO": 1}, "then": "a"}]}],
+    }
+    # else 与 when 互斥
+    bad2 = {
+        "decisions": [{"id": "d", "on": "x", "rules": [{"when": {"gte": 1}, "then": "a", "else": "b"}]}],
+    }
+    # 两条 else
+    bad3 = {
+        "decisions": [{"id": "d", "on": "x", "rules": [{"else": "a"}, {"else": "b"}]}],
+    }
+    # 未知字段
+    bad4 = {"decisions": [{"id": "d", "on": "x", "rules": [{"then": "a"}], "hack": 1}]}
+    for b in (bad1, bad2, bad3, bad4):
+        defn = dict(base, decisions=b["decisions"])
+        assert wf.validate_definition(defn), f"{b} 应校验失败"
+
+
+def test_workflows_api_evaluate(monkeypatch, tmp_path):
+    from app.config import settings
+    monkeypatch.setattr(settings, "DATA_DIR", Path(tmp_path))
+    c = TestClient(_diag_app())
+    r = c.post("/api/diagnostics/workflows/evaluate",
+               json={"workflow_id": "scene1-loop", "context": {"correct_ratio": 0.9}})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["decisions"][0] == {"id": "strategy", "label": "反馈策略", "chosen": "advance"}
+    assert c.post("/api/diagnostics/workflows/evaluate",
+                  json={"workflow_id": "nope", "context": {}}).status_code == 404

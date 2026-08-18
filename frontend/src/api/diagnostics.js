@@ -97,6 +97,20 @@ export async function fetchWorkflows() {
   return data
 }
 
+/**
+ * Phase 4: 流程决策确定性求值 (不跑 Agent, 如 feedback 策略由 correct_ratio 判定)。
+ * @param {string} workflowId
+ * @param {Object} [context] 求值上下文 (点路径字段, 如 { correct_ratio: 0.9 })
+ * @returns {Promise<{workflow_id, ok, decisions: Array<{id,label,chosen}>}>}
+ */
+export async function fetchWorkflowEvaluate(workflowId, context = {}) {
+  const { data } = await http.post('/api/diagnostics/workflows/evaluate', {
+    workflow_id: workflowId,
+    context,
+  })
+  return data
+}
+
 // ============================================================
 // W5 — interactive 答题闭环（assess(interactive) → submit → feedback）
 // ============================================================

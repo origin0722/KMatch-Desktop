@@ -32,7 +32,14 @@ from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
 from app.agents.run_store import list_runs, load_run, save_run
-from app.agents.workflow_def import get_workflow, list_workflows, preflight, workflow_for
+from app.agents.workflow_def import (
+    evaluate_def_decisions,
+    get_workflow,
+    list_workflows,
+    preflight,
+    validate_definition,
+    workflow_for,
+)
 from app.config import settings
 from app.utils.logging import get_logger
 from app.utils.web_search import search_weak_topics
@@ -216,6 +223,28 @@ def preflight_api(req: PreflightRequest):
         max_retries=req.max_retries,
     )
     return {"workflow_id": req.workflow_id, "ok": ok, "errors": errs}
+
+
+class EvaluateRequest(BaseModel):
+    """流程决策确定性求值请求 (Phase 4, 不跑 Agent)。"""
+
+    workflow_id: str = Field(..., description="流程定义 id")
+    context: dict = Field(default_factory=dict, description="求值上下文 (如 correct_ratio 等点路径字段)")
+
+
+@router.post("/workflows/evaluate", summary="流程决策确定性求值 (Phase 4, 不跑 Agent)")
+def evaluate_api(req: EvaluateRequest):
+    wf = get_workflow(req.workflow_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail=f"流程定义不存在: {req.workflow_id}")
+    errs = validate_definition(wf)
+    if errs:
+        raise HTTPException(status_code=400, detail="; ".join(errs))
+    return {
+        "workflow_id": req.workflow_id,
+        "ok": True,
+        "decisions": evaluate_def_decisions(wf, req.context or {}),
+    }
 
 
 @router.get("/workflows/{workflow_id}", summary="流程定义详情 (Phase 2)")

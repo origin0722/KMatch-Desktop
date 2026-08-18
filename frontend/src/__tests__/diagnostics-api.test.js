@@ -23,6 +23,7 @@ import {
   fetchRun,
   fetchRuns,
   fetchWorkflows,
+  fetchWorkflowEvaluate,
 } from '@/api/diagnostics'
 
 describe('api/diagnostics', () => {
@@ -165,6 +166,16 @@ describe('api/diagnostics', () => {
       const res = await fetchWorkflows()
       expect(http.get).toHaveBeenCalledWith('/api/diagnostics/workflows')
       expect(res.workflows[0].id).toBe('scene1-loop')
+    })
+
+    it('fetchWorkflowEvaluate 打到 /workflows/evaluate (Phase 4 确定性求值)', async () => {
+      http.post.mockResolvedValueOnce({ data: { ok: true, decisions: [{ id: 'strategy', label: '反馈策略', chosen: 'advance' }] } })
+      const res = await fetchWorkflowEvaluate('scene1-loop', { correct_ratio: 0.9 })
+      expect(http.post).toHaveBeenCalledWith('/api/diagnostics/workflows/evaluate', {
+        workflow_id: 'scene1-loop',
+        context: { correct_ratio: 0.9 },
+      })
+      expect(res.decisions[0].chosen).toBe('advance')
     })
   })
 })

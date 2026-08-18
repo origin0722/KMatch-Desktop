@@ -38,7 +38,13 @@ _WF_DIR_NAME = "workflows"
 
 _KNOWN_AGENTS = set(log_events.AGENT_KEYS)
 _STAGE_FIELDS = {"id", "label", "agents", "dependencies"}
-_TOP_FIELDS = {"format", "version", "id", "name", "description", "stages", "inputs"}
+_TOP_FIELDS = {"format", "version", "id", "name", "description", "stages", "inputs", "decisions"}
+
+# Phase 4: 确定性逻辑门/决策
+#  - 谓词门 (gate): truthy/falsy/nonEmpty, 对上下文某字段求值 (仿 dsh-deepseek-flow 的 flow_evaluate)
+#  - 阈值决策 (decisions): 按 on 路径取数值, 依规则序匹配 when(全部算子满足), 命中/else → chosen
+GATE_PREDICATES = {"truthy", "falsy", "nonEmpty"}
+DECISION_OPS = {"gt", "gte", "lt", "lte", "eq", "neq"}
 
 
 # ============================================================
@@ -62,6 +68,23 @@ def _interactive_stages():
     ]
 
 
+# Phase 4: 反馈策略决策 (确定性阈值, 与 decide_feedback 语义严格一致:
+# 正确率 ≥0.8→advance / ≥0.5→remediate / <0.5→scaffold; 详见诊断 agent 注释。
+# 单一真相源搬进流程定义, decide_feedback 为执行侧镜像方式保持兼容。)
+_STRATEGY_DECISIONS = [
+    {
+        "id": "strategy",
+        "label": "反馈策略",
+        "on": "correct_ratio",
+        "rules": [
+            {"when": {"gte": 0.8}, "then": "advance"},
+            {"when": {"gte": 0.5}, "then": "remediate"},
+            {"else": "scaffold"},
+        ],
+    },
+]
+
+
 BUILTIN_WORKFLOWS: dict[str, dict] = {
     "scene1-loop": {
         "format": WORKFLOW_FORMAT,
@@ -71,6 +94,7 @@ BUILTIN_WORKFLOWS: dict[str, dict] = {
         "description": "学情检测→画像审核→图谱组装→内容生成→内容审核→交付",
         "stages": _scene1_stages(),
         "inputs": {"required": ["target_direction"], "schema": {"target_direction": "string", "scene": "string"}},
+        "decisions": _STRATEGY_DECISIONS,
     },
     "scene1-interactive": {
         "format": WORKFLOW_FORMAT,
@@ -80,6 +104,7 @@ BUILTIN_WORKFLOWS: dict[str, dict] = {
         "description": "interactive 出题→判分→专属路径组装",
         "stages": _interactive_stages(),
         "inputs": {"required": ["target_direction"], "schema": {"target_direction": "string"}},
+        "decisions": _STRATEGY_DECISIONS,
     },
     "scene2-project": {
         "format": WORKFLOW_FORMAT,
@@ -166,6 +191,46 @@ def validate_definition(defn: Any) -> list:
                 errors.append(f"stage[{sid}] 不能依赖自身")
             elif d not in seen:  # 依赖必须指向更早阶段 (顺序即拓扑, 天然无环)
                 errors.append(f"stage[{sid}] 依赖未知/乱序: {d}")
+
+    # Phase 4: decisions 块校验 (确定性阈值决策)
+    decs = defn.get("decisions")
+    if decs is not None:
+        if not isinstance(decs, list):
+            errors.append("decisions 必须为数组")
+        else:
+            for di, dec in enumerate(decs):
+                if not isinstance(dec, dict):
+                    errors.append(f"decisions[{di}] 不是对象")
+                    continue
+                for f in dec:
+                    if f not in {"id", "label", "on", "rules"}:
+                        errors.append(f"decisions[{di}] 未知字段: {f}")
+                if not dec.get("id"):
+                    errors.append(f"decisions[{di}] 缺 id")
+                if not dec.get("on"):
+                    errors.append(f"decisions[{di}] 缺 on (数据路径)")
+                rules = dec.get("rules")
+                if not isinstance(rules, list) or not rules:
+                    errors.append(f"decisions[{dec.get('id')}] rules 必须为非空数组")
+                    continue
+                else_count = 0
+                for ri, rule in enumerate(rules):
+                    if not isinstance(rule, dict):
+                        errors.append(f"decisions[{dec.get('id')}] rules[{ri}] 不是对象")
+                        continue
+                    if "when" in rule and not isinstance(rule["when"], dict):
+                        errors.append(f"decisions[{dec.get('id')}] rules[{ri}] when 必须为对象")
+                    for op in (rule.get("when") or {}):
+                        if op not in DECISION_OPS:
+                            errors.append(f"decisions[{dec.get('id')}] rules[{ri}] 未知比较算子: {op}")
+                    if "else" in rule:
+                        else_count += 1
+                        if "when" in rule:
+                            errors.append(f"decisions[{dec.get('id')}] rules[{ri}] else 与 when 互斥")
+                    if "then" not in rule and "else" not in rule:
+                        errors.append(f"decisions[{dec.get('id')}] rules[{ri}] 需含 then 或 else")
+                if else_count > 1:
+                    errors.append(f"decisions[{dec.get('id')}] else 最多一条 (应为最后一条默认)")
     return errors
 
 
@@ -235,3 +300,91 @@ def preflight(workflow_id: str, *, target_direction: str, scene: str = "no_proje
     if scene not in ("no_project", "with_project"):
         errors.append(f"未知 scene: {scene}")
     return (not errors), errors
+
+
+# ============================================================
+# 确定性逻辑门 / 决策求值 (Phase 4, 纯函数, 不跑 Agent)
+# ============================================================
+def _get_path(context, path):
+    """取上下文点路径值; 缺失/非 dict 返回 None。"""
+    if not isinstance(context, dict) or not path:
+        return None
+    node = context
+    for part in str(path).split("."):
+        if not isinstance(node, dict) or part not in node:
+            return None
+        node = node[part]
+    return node
+
+
+def evaluate_gate(gate, context) -> bool:
+    """谓词门求值 (truthy/falsy/nonEmpty)。缺字段按确定性值处理, 永不明暗。"""
+    gate = gate or {}
+    val = _get_path(context, gate.get("on"))
+    pred = gate.get("predicate")
+    if pred == "truthy":
+        return bool(val)
+    if pred == "falsy":
+        return not bool(val)
+    if pred == "nonEmpty":
+        return val is not None and (len(val) > 0 if hasattr(val, "__len__") else bool(val))
+    return bool(val)  # 未知谓词按 truthy 保守处理
+
+
+def _match_when(when, val) -> bool:
+    """when: {op: number, ...} — 全部算子满足才命中。非数值/缺失一律不命中。"""
+    if not isinstance(when, dict) or not when:
+        return False
+    try:
+        fval = float(val) if val is not None else None
+    except (TypeError, ValueError):
+        fval = None
+    if fval is None:
+        return False
+    for op, expected in when.items():
+        if op not in DECISION_OPS:
+            return False
+        exp = float(expected)
+        if op == "gt" and fval <= exp:
+            return False
+        elif op == "gte" and fval < exp:
+            return False
+        elif op == "lt" and fval >= exp:
+            return False
+        elif op == "lte" and fval > exp:
+            return False
+        elif op == "eq" and fval != exp:
+            return False
+        elif op == "neq" and fval == exp:
+            return False
+    return True
+
+
+def evaluate_decision(dec, context):
+    """纯函数: 依上下文按规则序取首个命中 → chosen; 无命中/缺 else → None。"""
+    if not isinstance(dec, dict):
+        return None
+    val = _get_path(context, dec.get("on"))
+    for rule in (dec.get("rules") or []):
+        if not isinstance(rule, dict):
+            continue
+        if "then" in rule and "when" in rule:
+            if _match_when(rule.get("when"), val):
+                return rule.get("then")
+        elif "else" in rule:
+            return rule.get("else")
+    return None
+
+
+def evaluate_def_decisions(defn, context) -> list:
+    """对定义里全部 decisions 求值 → [{id,label,chosen}]。确定性、可单测。"""
+    out = []
+    for dec in (defn.get("decisions") or []):
+        if not isinstance(dec, dict):
+            continue
+        out.append({
+            "id": dec.get("id"),
+            "label": dec.get("label"),
+            "chosen": evaluate_decision(dec, context),
+        })
+    return out
