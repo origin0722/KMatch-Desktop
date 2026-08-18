@@ -16,6 +16,7 @@ export const ACTIVITY_ITEMS = [
   { id: 'project-graph', icon: 'Connection', title: '项目图谱' },
   { id: 'learning', icon: 'Reading', title: '学习资源' },
   { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
+  { id: 'workflow-studio', icon: 'SetUp', title: '流程工作台' },
 ]
 
 export const useSidebarStore = defineStore('sidebar', () => {

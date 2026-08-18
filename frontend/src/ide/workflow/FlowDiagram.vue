@@ -17,8 +17,10 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
-  /** 阶段数组 (有序 = 流程顺序): {key,label,icon,status,current} */
+  /** 阶段数组 (有序): {key,label,icon,status,current} */
   stages: { type: Array, default: () => [] },
+  /** 可选边 [{source,target}] (按阶段 id); 缺省按阶段顺序成线性前驱链 */
+  edges: { type: Array, default: () => [] },
   height: { type: Number, default: 150 },
 })
 
@@ -46,11 +48,16 @@ function buildData() {
     id: s.key || `s${i}`,
     data: { label: s.icon ? `${s.icon} ${s.label}` : s.label, status: s.status, current: !!s.current },
   }))
-  const edges = nodes.slice(1).map((n, i) => ({
-    id: `e${i}`,
-    source: nodes[i].id,
-    target: n.id,
-  }))
+  const ids = new Set(nodes.map((n) => n.id))
+  let edges
+  if (props.edges && props.edges.length) {
+    // 显式边 (依赖拓扑): 只保留两端都属于当前阶段的边
+    edges = props.edges
+      .filter((e) => e && ids.has(e.source) && ids.has(e.target))
+      .map((e, i) => ({ id: `e${i}`, source: e.source, target: e.target }))
+  } else {
+    edges = nodes.slice(1).map((n, i) => ({ id: `e${i}`, source: nodes[i].id, target: n.id }))
+  }
   return { nodes, edges }
 }
 

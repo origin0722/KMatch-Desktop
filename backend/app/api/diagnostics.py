@@ -27,6 +27,7 @@ from app.agents.diagnostics import (
     prepare_questions,
 )
 from app.agents.domain_bootstrap import bootstrap_domain, resolve_direction
+from app.agents import flow_transactions as flow_tx
 from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
@@ -253,6 +254,59 @@ def get_workflow_api(workflow_id: str):
     if wf is None:
         raise HTTPException(status_code=404, detail=f"流程定义不存在: {workflow_id}")
     return wf
+
+
+class DraftRequest(BaseModel):
+    """流程定义草稿 (Phase 3b: 未提交编辑, WIP 可过不了严格校验)。"""
+
+    definition: dict = Field(..., description="流程定义草稿 (含 id)")
+
+
+class CommitRequest(BaseModel):
+    """流程定义提交 (Phase 3b: 校验→原子 revision 保存[→AI 审查记录])。"""
+
+    definition: dict = Field(..., description="流程定义 (需通过严格校验, 内置 id 被拒)")
+    note: str = Field("", description="提交说明 (审计)")
+    reviewed_by: str = Field("", description="审查记录 (可选, 如 current-session agent label)")
+
+
+class RestoreRequest(BaseModel):
+    """流程定义回滚 (Phase 3b)。"""
+
+    revision: str = Field(..., description="目标 revision (来自 revisions 列表)")
+
+
+@router.put("/workflows/{workflow_id}/draft", summary="保存流程定义草稿 (Phase 3b)")
+def save_workflow_draft_api(workflow_id: str, req: DraftRequest):
+    """草稿 WIP 不强制通过校验; 返回 warnings/valid 供前端提示。"""
+    res = flow_tx.save_draft(req.definition)
+    if not res["ok"]:
+        raise HTTPException(status_code=400, detail="; ".join(res.get("errors", [])))
+    return res
+
+
+@router.post("/workflows/{workflow_id}/commit", summary="提交发布流程定义 (Phase 3b, revision 化)")
+def commit_workflow_api(workflow_id: str, req: CommitRequest):
+    res = flow_tx.commit_definition(req.definition, note=req.note, reviewed_by=req.reviewed_by)
+    if not res["ok"]:
+        # 内置禁改 → 409; 校验失败 → 400
+        code = 409 if any("内置" in e for e in res.get("errors", [])) else 400
+        raise HTTPException(status_code=code, detail="; ".join(res.get("errors", [])))
+    return {"id": res["id"], "revision": res["revision"], "committed": res["committed"]}
+
+
+@router.get("/workflows/{workflow_id}/revisions", summary="流程定义 revision 列表 (Phase 3b)")
+def list_workflow_revisions_api(workflow_id: str):
+    return {"workflow_id": workflow_id, "revisions": flow_tx.list_revisions(workflow_id)}
+
+
+@router.post("/workflows/{workflow_id}/restore", summary="回滚流程定义到指定 revision (Phase 3b)")
+def restore_workflow_api(workflow_id: str, req: RestoreRequest):
+    res = flow_tx.restore_revision(workflow_id, req.revision)
+    if not res["ok"]:
+        code = 404 if any("revision 不存在" in e for e in res.get("errors", [])) else 400
+        raise HTTPException(status_code=code, detail="; ".join(res.get("errors", [])))
+    return {"id": res["id"], "restored": res["restored"], "definition": res["definition"]}
 
 
 @router.get("/runs/{session_id}", summary="读取一次 run 记录 (Phase 1: 复盘/续跑)")

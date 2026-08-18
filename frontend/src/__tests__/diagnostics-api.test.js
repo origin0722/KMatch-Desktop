@@ -12,6 +12,7 @@ vi.mock('@/api/index', () => ({
   default: {
     post: vi.fn(),
     get: vi.fn(),
+    put: vi.fn(),
   },
 }))
 
@@ -24,6 +25,10 @@ import {
   fetchRuns,
   fetchWorkflows,
   fetchWorkflowEvaluate,
+  saveWorkflowDraft,
+  commitWorkflow,
+  fetchWorkflowRevisions,
+  restoreWorkflowRevision,
 } from '@/api/diagnostics'
 
 describe('api/diagnostics', () => {
@@ -176,6 +181,27 @@ describe('api/diagnostics', () => {
         context: { correct_ratio: 0.9 },
       })
       expect(res.decisions[0].chosen).toBe('advance')
+    })
+
+    it('Phase 3b 事务: 草稿/提交/版本/回滚路径与 body 形态', async () => {
+      const def = { format: 'kmatch.workflow', version: 1, id: 'my-flow', stages: [] }
+      http.put.mockResolvedValueOnce({ data: { ok: true, valid: true, warnings: [] } })
+      await saveWorkflowDraft('my-flow', def)
+      expect(http.put).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/draft', { definition: def })
+
+      http.post.mockResolvedValueOnce({ data: { id: 'my-flow', revision: 'R1' } })
+      await commitWorkflow('my-flow', def, { note: 'n', reviewedBy: 'me' })
+      expect(http.post).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/commit', {
+        definition: def, note: 'n', reviewed_by: 'me',
+      })
+
+      http.get.mockResolvedValueOnce({ data: { workflow_id: 'my-flow', revisions: [] } })
+      await fetchWorkflowRevisions('my-flow')
+      expect(http.get).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/revisions')
+
+      http.post.mockResolvedValueOnce({ data: { id: 'my-flow', restored: 'R1' } })
+      await restoreWorkflowRevision('my-flow', 'R1')
+      expect(http.post).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/restore', { revision: 'R1' })
     })
   })
 })

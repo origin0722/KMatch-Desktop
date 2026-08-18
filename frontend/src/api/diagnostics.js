@@ -111,6 +111,48 @@ export async function fetchWorkflowEvaluate(workflowId, context = {}) {
   return data
 }
 
+/**
+ * Phase 3b: 保存流程定义草稿 (未提交, WIP 可不通过严格校验)。
+ */
+export async function saveWorkflowDraft(workflowId, definition) {
+  const { data } = await http.put(
+    `/api/diagnostics/workflows/${encodeURIComponent(workflowId)}/draft`,
+    { definition },
+  )
+  return data
+}
+
+/**
+ * Phase 3b: 提交发布流程定义 (校验→原子 revision 保存)。
+ * @returns {Promise<{id, revision, committed}>} 内置 id 会被后端以 409 拒绝
+ */
+export async function commitWorkflow(workflowId, definition, { note = '', reviewedBy = '' } = {}) {
+  const { data } = await http.post(
+    `/api/diagnostics/workflows/${encodeURIComponent(workflowId)}/commit`,
+    { definition, note, reviewed_by: reviewedBy },
+  )
+  return data
+}
+
+/**
+ * Phase 3b: 流程定义 revision 列表 (可回滚)。
+ */
+export async function fetchWorkflowRevisions(workflowId) {
+  const { data } = await http.get(`/api/diagnostics/workflows/${encodeURIComponent(workflowId)}/revisions`)
+  return data
+}
+
+/**
+ * Phase 3b: 回滚流程定义到指定 revision。
+ */
+export async function restoreWorkflowRevision(workflowId, revision) {
+  const { data } = await http.post(
+    `/api/diagnostics/workflows/${encodeURIComponent(workflowId)}/restore`,
+    { revision },
+  )
+  return data
+}
+
 // ============================================================
 // W5 — interactive 答题闭环（assess(interactive) → submit → feedback）
 // ============================================================
