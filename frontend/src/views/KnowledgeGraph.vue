@@ -436,6 +436,8 @@ function getLayoutConfig(cfg) {
 // 图谱状态
 // ---------------------------------------------------------------
 const graphContainer = ref(null)
+// 容器尺寸自适应 ResizeObserver (AI 分屏显隐/面板拖宽时画布跟随)
+let _ro = null
 const graphReady = ref(false)
 const pathFinderVisible = ref(false)
 const panelCollapsed = ref(false)
@@ -911,6 +913,16 @@ onMounted(async () => {
     await fetchPrerequisites()
     initGraph()
   }
+  // 容器尺寸自适应: AI 助手分屏显隐 / ResizablePanel 拖宽 / 窗口缩放时画布跟随,
+  // 否则隐藏右侧分屏后图谱仍停在旧宽度, 留大片空白 (用户反馈"占不满全屏")
+  if (typeof ResizeObserver !== 'undefined') {
+    _ro = new ResizeObserver(() => {
+      if (graph && graphContainer.value) {
+        graph.resize()
+      }
+    })
+    if (graphContainer.value) _ro.observe(graphContainer.value)
+  }
 })
 
 // 当 store 的 learning_path 变化时（测评完成后跳转过来）
@@ -932,6 +944,8 @@ onMounted(() => { window.addEventListener('keydown', handleKeydown) })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  _ro?.disconnect()
+  _ro = null
   destroyGraph()
 })
 

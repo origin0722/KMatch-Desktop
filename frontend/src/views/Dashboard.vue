@@ -541,11 +541,13 @@ const pathData = computed(() => {
 // ============================================================
 const qualityMetrics = computed(() => {
   // 1. 优先用后端真实指标 (compute_quality_metrics 产出, 含真实幻觉率/适配率/覆盖率)
+  //    契约键: hallucination_rate/adaptation_rate/coverage_rate (各为 {rate,...}) —— issue-03 修复:
+  //    旧实现判 real.hallucination(假想键) 永不命中, 后端真实 M5 数字恒被绕过
   const real = store.learningReport?.quality_metrics
-  if (real && (real.hallucination || real.adaptation || real.coverage)) {
-    const h = real.hallucination?.rate ?? 0
-    const a = real.adaptation?.rate ?? 0
-    const c = real.coverage?.rate ?? 0
+  if (real && (real.hallucination_rate || real.adaptation_rate || real.coverage_rate)) {
+    const h = real.hallucination_rate?.rate ?? 0
+    const a = real.adaptation_rate?.rate ?? 0
+    const c = real.coverage_rate?.rate ?? 0
     return {
       hallucination_rate: h,
       adaptation_rate: a,

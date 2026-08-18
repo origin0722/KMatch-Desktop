@@ -948,7 +948,9 @@ export const useChatStore = defineStore('chat', () => {
 
   /** 发送用户消息并获取 AI 回复 (SSE 流式 + 工具循环) */
   async function sendMessage(userContent) {
-    if (streaming.value || !userContent.trim()) return
+    // issue-07/m3: 统一用 isBusy (流中 + 审批门 + 工具执行窗口) 做防并发闸,
+    // 旧实现只看 streaming, 工具循环窗口(System 程序化入口可直接调)可并发起新循环污染对话。
+    if (isBusy.value || !userContent.trim()) return
 
     error.value = null
     abortController.value = new AbortController()

@@ -34,30 +34,60 @@ function newReqId() {
 export async function streamChat({ body, signal, onBlock }) {
   // ---- 浏览器 dev 回退: fetch + ReadableStream ----
   if (!hasIpc()) {
-    const resp = await fetch('/api/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal,
-    })
+    // 本地 AbortController: 同时接收外部 signal 中止 + 内部看门狗 (90s 无数据 = 断流)
+    const ctrl = new AbortController()
+    const onOuterAbort = () => ctrl.abort()
+    signal?.addEventListener('abort', onOuterAbort, { once: true })
+    let watchdog = null
+    let watchdogFired = false
+    const arm = () => {
+      clearTimeout(watchdog)
+      watchdog = setTimeout(() => { watchdogFired = true; ctrl.abort() }, 90_000)
+    }
+    let resp
+    try {
+      resp = await fetch('/api/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl,
+      })
+    } catch (e) {
+      signal?.removeEventListener('abort', onOuterAbort)
+      throw e // 用户停止(AboortError)或网络错误, 原样抛, 由调用方按 AbortError 语义处理
+    }
     if (!resp.ok || !resp.body) {
       const text = await resp.text().catch(() => '')
+      signal?.removeEventListener('abort', onOuterAbort)
       throw new Error(text || `HTTP ${resp.status}`)
     }
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const parts = buffer.split('\n\n')
-      buffer = parts.pop()
-      for (const b of parts) {
-        const r = onBlock(b)
-        if (r instanceof Error) throw r // F2: 流内错误 → reject
+    arm()
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        arm()
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop()
+        for (const b of parts) {
+          const r = onBlock(b)
+          if (r instanceof Error) throw r // F2: 流内错误 → reject
+        }
       }
+    } catch (e) {
+      if (watchdogFired && e?.name === 'AbortError') {
+        throw new Error('SSE 流超时（后端 90s 无数据，可能已断流）')
+      }
+      throw e // 用户停止 → 保持 AbortError 语义; 流内错误 → 原样
+    } finally {
+      clearTimeout(watchdog)
+      signal?.removeEventListener('abort', onOuterAbort)
     }
+    if (watchdogFired) throw new Error('SSE 流超时（后端 90s 无数据，可能已断流）')
     return
   }
 
@@ -90,8 +120,13 @@ export async function streamChat({ body, signal, onBlock }) {
       if (rid !== reqId) return
       fail(new Error(err || 'SSE 流失败'))
     })
-    // 用户点停止: abort 时结束等待 (IPC 流无法真正中断, 后端流自然结束)
-    signal.addEventListener('abort', () => finish())
+    // 用户点停止: 对外统一 AbortError 语义 (issue-07/m4) —— 旧实现 abort 走 finish() resolve,
+    // 工具循环会把"已停止"当正常完成继续执行工具, 与浏览器 fetch abort 行为不一致。
+    signal?.addEventListener('abort', () => {
+      const e = new Error('The user aborted a request.')
+      e.name = 'AbortError'
+      fail(e)
+    })
 
     window.api.http.stream('/api/chat/completions', body, reqId).catch((e) => fail(e))
   })

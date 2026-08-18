@@ -54,9 +54,13 @@ export const useSessionStore = defineStore('session', () => {
 
   const activeStage = computed(() => {
     const a = useAssessmentStore()
+    // issue-06: interactive 答题/反馈期间阶段卡留在 quiz —— 旧优先级 graph>agent>quiz
+    // 会在 submitAssessmentAnswers 写入 profile 的瞬间 (hasResults=true) 提前跳 graph,
+    // 而用户实际还在 feedback 阶段 (判分/针对性反馈)。feedback 结束后经 reset 回 goal;
+    // demo 模式下 phase 恒 idle, hasResults 到达后正常进 graph。
+    if (a.phase === 'answering' || a.phase === 'feedback') return 'quiz'
     if (a.hasResults) return 'graph'
     if (a.loading && (a.orchestrationLog?.length || 0) > 0) return 'agent'
-    if (a.phase === 'answering' || a.phase === 'feedback') return 'quiz'
     return 'goal'
   })
 

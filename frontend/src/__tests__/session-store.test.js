@@ -96,6 +96,21 @@ describe('session store', () => {
     expect(s.activeStage).toBe('quiz')
   })
 
+  it('issue-06: phase=feedback 且 hasResults=true 仍在 quiz (不因画像落地过早跳 graph)', () => {
+    // interactive 提交答案后 profile 已写入 (hasResults=true), 但用户仍在反馈阶段
+    mockAssessment.phase = 'feedback'
+    mockAssessment.hasResults = true
+    const s = useSessionStore()
+    expect(s.activeStage).toBe('quiz')
+  })
+
+  it('issue-06: phase=answering 且 hasResults=true 仍在 quiz', () => {
+    mockAssessment.phase = 'answering'
+    mockAssessment.hasResults = true
+    const s = useSessionStore()
+    expect(s.activeStage).toBe('quiz')
+  })
+
   // ---- 优先级: graph > agent > quiz > goal ----
 
   it('优先级: hasResults 胜过 loading (graph > agent)', () => {

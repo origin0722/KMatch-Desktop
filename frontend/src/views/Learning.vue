@@ -146,11 +146,35 @@
               <div class="resource-body">
                 <MarkdownViewer :content="res.content || ''" />
               </div>
-              <!-- 答题入口：第4周后半对接 interactive 流程 -->
-              <div class="quiz-action">
-                <el-button type="primary" size="small" @click="startQuiz(res)">
-                  开始答题
-                </el-button>
+              <!-- 答题交互 (本地即时判分: 解析题目/选项/答案, 提交比对) -->
+              <!-- 门控: parsedTest(res)?.parsed —— 只有能解析出题目+答案的资源才显示答题入口 (修复 issue-02) -->
+              <div v-if="parsedTest(res)?.parsed" class="test-quiz">
+                <template v-if="!testState(res).started">
+                  <el-button type="primary" size="small" @click="startTest(res)">开始答题</el-button>
+                  <span class="test-quiz-hint">{{ parsedTest(res).options.length ? `${parsedTest(res).options.length} 个选项` : '填空/代码题' }}</span>
+                </template>
+                <template v-else>
+                  <div class="test-quiz-body">
+                    <p class="tq-question">{{ parsedTest(res).question }}</p>
+                    <el-radio-group v-if="parsedTest(res).options.length" v-model="testState(res).selected" class="tq-options">
+                      <el-radio v-for="o in parsedTest(res).options" :key="o.key" :value="o.key" class="tq-option">
+                        {{ o.text }}
+                      </el-radio>
+                    </el-radio-group>
+                    <el-input v-else v-model="testState(res).selected" placeholder="输入你的答案" class="tq-fill" />
+                    <div v-if="!testState(res).submitted" class="tq-actions">
+                      <el-button type="primary" size="small" @click="submitTest(res)">提交答案</el-button>
+                      <el-button size="small" @click="testState(res).reveal = true">直接看答案</el-button>
+                    </div>
+                    <div v-if="testState(res).submitted || testState(res).reveal" class="tq-result" :class="testState(res).correct === null ? 'neutral' : testState(res).correct ? 'ok' : 'bad'">
+                      <template v-if="testState(res).submitted">
+                        <b>{{ testState(res).correct ? '✓ 回答正确' : `✗ 回答错误, 正确答案 ${ansKey(parsedTest(res))}` }}</b>
+                      </template>
+                      <template v-else><b>参考答案: {{ ansKey(parsedTest(res)) }}</b></template>
+                      <p v-if="parsedTest(res).explanation">{{ parsedTest(res).explanation }}</p>
+                    </div>
+                  </div>
+                </template>
               </div>
               <div v-if="res.source_nodes?.length" class="source-nodes">
                 <span class="source-label">溯源：</span>
@@ -215,29 +239,6 @@
         </el-tab-pane>
       </el-tabs>
     </template>
-
-    <!-- ============================================================ -->
-    <!-- 答题对话框（第4周后半实现 QuizCard 组件） -->
-    <!-- ============================================================ -->
-    <el-dialog
-      v-model="quizDialogVisible"
-      :title="currentQuiz ? resTitle(currentQuiz, 0) : '答题'"
-      width="700px"
-      destroy-on-close
-    >
-      <div class="quiz-placeholder">
-        <p>第4周后半实现：QuizCard 交互组件</p>
-        <ul>
-          <li>选择题 / 填空题 / 代码题 三种题型</li>
-          <li>提交后展示判分结果与动态反馈（降维解释 / 进阶挑战）</li>
-          <li>对接 POST /api/diagnostics/submit + /feedback</li>
-        </ul>
-      </div>
-      <template #footer>
-        <el-button @click="quizDialogVisible = false">关闭</el-button>
-        <el-button type="primary" disabled>提交答案（待实现）</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -249,7 +250,7 @@
  * 字段对齐：content_type / difficulty_level / content（后端实际字段名）
  * 渲染：MarkdownViewer 组件（marked）
  */
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useAssessmentStore } from '@/stores/assessment'
@@ -380,14 +381,80 @@ async function searchWeakTopics() {
 }
 
 // ---------------------------------------------------------------
-// 答题对话框
+// 分阶测试题 - 本地即时判分 (纯前端, 解析 markdown 题目/选项/答案)
 // ---------------------------------------------------------------
-const quizDialogVisible = ref(false)
-const currentQuiz = ref(null)
+// 解析 test 资源 content (生成器格式: **题目**：… / A. 选项 / **答案**：X / **解析**：…)
+// 健壮化 (issue-02): 题目截断到 **答案** 之前; 答案支持选择题字母与非字母填空答案;
+// 选项只取题干段内 (避免把答案/解析里的 A. 吞进来)
+function parseTestContent(content) {
+  const c = content || ''
+  const qm = c.match(/\*\*\s*题目\s*\*\*[:：]\s*([\s\S]*?)(?=\n\s*\*\*\s*答案\s*\*\*|\n\s*[A-E][\.、．]|$)/)
+  const question = qm?.[1]?.trim() || ''
+  // 选项段 = 题干结束(qEnd) 到 **答案** 标记之间 (避免把答案/解析里的 A. 吞进来)
+  const qEnd = qm ? qm.index + qm[0].length : 0
+  const amIdx = c.search(/\*\*\s*答案\s*\*\*/)
+  const optEnd = amIdx === -1 ? c.length : amIdx
+  const optSlice = c.slice(qEnd, optEnd)
+  const opts = []
+  const re2 = /(?:^|\n)\s*([A-E])([\.、．])\s*([^\n]+)/g
+  let mm
+  while ((mm = re2.exec(optSlice))) {
+    const text = mm[3].trim()
+    if (text) opts.push({ key: mm[1], text })
+  }
+  // 答案: 选择题取字母归一; 填空/代码题取到行尾 (支持非字母答案, 如 -1 / 一句话)
+  const am = c.match(/\*\*\s*答案\s*\*\*[:：]\s*([^\n*]+)/)
+  let answer = (am?.[1] || '').trim()
+  if (opts.length) {
+    const letter = answer.match(/[A-Ea-e]/)
+    answer = letter ? letter[0].toUpperCase() : ''
+  }
+  const em = c.match(/\*\*\s*解析\s*\*\*[:：]\s*([\s\S]*?)(?=\n\s*\*\w|$)/)
+  const explanation = em?.[1]?.trim() || ''
+  return {
+    question,
+    options: opts,
+    answer,
+    explanation,
+    parsed: !!(question && answer),
+  }
+}
 
-function startQuiz(res) {
-  currentQuiz.value = res
-  quizDialogVisible.value = true
+// per-resource 答题状态。
+// 修复 issue-01: 状态对象必须经 reactive() 包装 (普通 Map+普通对象无依赖追踪,
+// mutation 不触发 Vue 重渲染 → 答题交互"点了没反应")。
+const testStates = new Map()
+const parsedCache = new Map()
+function _testId(res) {
+  return res?.target_node_id || res?.content?.slice(0, 40) || 'q'
+}
+function testState(res) {
+  const id = _testId(res)
+  if (!testStates.has(id)) {
+    testStates.set(id, reactive({ started: false, selected: '', submitted: false, correct: null, reveal: false }))
+  }
+  return testStates.get(id)
+}
+function parsedTest(res) {
+  const id = _testId(res)
+  if (!parsedCache.has(id)) parsedCache.set(id, parseTestContent(res?.content))
+  return parsedCache.get(id)
+}
+function startTest(res) { testState(res).started = true }
+function ansKey(p) { return p.answer || '—' }
+function submitTest(res) {
+  const st = testState(res)
+  const p = parsedTest(res)
+  const sel = String(st.selected || '').trim().toLowerCase()
+  const ans = String(p.answer || '').trim().toLowerCase()
+  if (p.options.length) {
+    // 选择题: 选项字母精确匹配
+    st.correct = !!sel && sel === ans
+  } else {
+    // 填空/代码题: 归一精确匹配 (多候选答案用 / 分隔; 不用 includes 子串, 避免误判)
+    st.correct = !!sel && ans.split(/[／/]/).some((a) => a.trim().toLowerCase() === sel)
+  }
+  st.submitted = true
 }
 
 // ---------------------------------------------------------------

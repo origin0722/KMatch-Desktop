@@ -262,7 +262,8 @@ describe('useAssessmentStore', () => {
       knowledge_graph: { learning_path: [{ node_id: 'PY-001' }, { node_id: 'PY-002' }] },
       generated_content: { resources: [{ content_type: 'lecture', target_node_id: 'PY-001' }], node_count: 1 },
       learning_report: {
-        quality_metrics: { hallucination: { rate: 0.02 }, adaptation: { rate: 0.9 }, coverage: { rate: 0.95 }, all_passed: true },
+        // 契约键对齐后端 compute_quality_metrics (issue-03): *_{hallucination,adaptation,coverage}_rate 各为 {rate,...}
+        quality_metrics: { hallucination_rate: { rate: 0.02 }, adaptation_rate: { rate: 0.9 }, coverage_rate: { rate: 0.95 }, all_passed: true },
       },
     }
 
@@ -278,7 +279,7 @@ describe('useAssessmentStore', () => {
       expect(store.profile).toEqual(mockResult.profile)
       expect(store.knowledgeGraph?.learning_path).toHaveLength(2)
       expect(store.generatedContent?.resources).toHaveLength(1)
-      expect(store.learningReport?.quality_metrics.hallucination.rate).toBe(0.02)
+      expect(store.learningReport?.quality_metrics.hallucination_rate.rate).toBe(0.02)
       expect(store.hasResults).toBe(true)
       expect(store.reviewPassed).toBe(true)
     })

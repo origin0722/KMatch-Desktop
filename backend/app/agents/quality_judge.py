@@ -126,10 +126,15 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
         rate = hallucinated / total (unverifiable 不计入幻觉, 单独报告)
     """
     judge, same_source = (judge_llm, False) if judge_llm is not None else get_judge_llm()
-    resources = [r for r in (resources or []) if isinstance(r, dict) and r.get("content")]
+    resources = resources or []
     verdicts = []
     counts = {"grounded": 0, "hallucinated": 0, "unverifiable": 0}
+    # 遍历原始列表, 下标即原始坐标 (issue-04): 旧实现先过滤再 enumerate, resource_index 是
+    # 过滤后下标, 与 quality_regen 用原始列表 out 索引不一致 → 含 content="" 资源时定向再生改错资源。
+    # 现在仅"跳过"无内容资源本身, 下标保持原始列表位置。
     for i, r in enumerate(resources):
+        if not (isinstance(r, dict) and r.get("content")):
+            continue
         node_id = r.get("target_node_id", "")
         facts = _node_facts_text(kg, node_id, r.get("source_nodes"))
         unverified = r.get("unverified_claims") if isinstance(r.get("unverified_claims"), list) else None
@@ -151,7 +156,7 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
             "coverage": coverage if coverage in ("full", "partial", "none") else "none",
             "reason": (result.get("reason", "") if isinstance(result, dict) else "") or "",
         })
-    total = len(resources)
+    total = len(verdicts)
     rate = round(counts["hallucinated"] / total, 3) if total else 0.0
     return {
         "rate": rate,

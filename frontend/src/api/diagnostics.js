@@ -141,9 +141,86 @@ export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, sig
  * @param {Function} callbacks.onError    — (detail: string) => void
  * @returns {Promise<void>}
  */
+// SSE block 解析 (event/data 段落, 取首行单行标记; 与 IPC 代理分帧契约一致)
+function _dispatchSseBlock(block, { onProgress, onDone, onError }) {
+  if (!block || !block.trim()) return
+  const event = block.match(/^event:\s*(.+)$/m)?.[1]
+  const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
+  if (!event || !dataStr) return
+  let data
+  try { data = JSON.parse(dataStr) } catch { return }
+  if (event === 'progress') onProgress?.(data)
+  else if (event === 'done') onDone?.(data)
+  else if (event === 'error') onError?.(data.detail || '测评流程失败')
+  // start 事件可忽略
+}
+
+// 浏览器 dev 回退: fetch + ReadableStream 直连 /api (Vite proxy → 后端)。
+// 与 useChatStream 浏览器回退同款 \n\n 分帧 + 看门狗 (60s 无数据判断流, issue-07/m5)。
+async function _streamViaFetch(url, body, cbs) {
+  let settled = false
+  const fail = (msg) => { if (!settled) { settled = true; cbs.onError?.(msg) } }
+  let resp
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch (e) {
+    fail(e?.message || '网络请求失败')
+    return
+  }
+  if (!resp.ok || !resp.body) {
+    const text = await resp.text().catch(() => '')
+    fail(text || `HTTP ${resp.status}`)
+    return
+  }
+  const reader = resp.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let watchdog = null
+  const armWatchdog = () => {
+    clearTimeout(watchdog)
+    watchdog = setTimeout(() => {
+      fail('SSE 流超时（后端 60s 无数据，可能已断流）')
+      void reader.cancel().catch(() => {})
+    }, 60_000)
+  }
+  armWatchdog()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      armWatchdog()
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop()
+      for (const b of parts) _dispatchSseBlock(b, cbs)
+    }
+  } catch (e) {
+    fail(e?.message || 'SSE 流中断')
+  } finally {
+    clearTimeout(watchdog)
+  }
+}
+
+/**
+ * SSE 流式测评 — 仅 demo 模式使用
+ *
+ * 用 fetch + ReadableStream 手动解析 SSE（EventSource 只支持 GET）。
+ * 逐步推送节点进度，跑完推最终结果，不会因 axios 60s 超时而中断。
+ *
+ * 双环境: Electron 走 IPC SSE 代理; 浏览器 dev 走 fetch 回退 (issue-07)。
+ *
+ * @param {Object} payload — { targetDirection, scene, maxRetries } (mode 固定 demo)
+ * @param {Object} callbacks
+ * @param {Function} callbacks.onProgress — ({node, message, log_tail}) => void
+ * @param {Function} callbacks.onDone     — (AssessResponse) => void
+ * @param {Function} callbacks.onError    — (detail: string) => void
+ * @returns {Promise<void>}
+ */
 export async function startAssessmentStream(payload, { onProgress, onDone, onError }) {
-  // S1: 走 IPC SSE 代理 (window.api.http.stream), 桌面应用无需浏览器 fetch。
-  // http-proxy.js 转发后端 SSE, 逐块推 'http:stream:chunk' 事件。
   const body = withOverrides({
     target_direction: payload.targetDirection,
     mode: 'demo',
@@ -151,21 +228,19 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
     max_retries: payload.maxRetries ?? 3,
   })
 
+  // 浏览器 dev 回退: 无 Electron window.api.http
+  if (typeof window === 'undefined' || !window.api?.http) {
+    return _streamViaFetch('/api/diagnostics/assess/stream', body, { onProgress, onDone, onError })
+  }
+
+  // S1: 走 IPC SSE 代理 (window.api.http.stream), 桌面应用无需浏览器 fetch。
+  // http-proxy.js 转发后端 SSE, 逐块推 'http:stream:chunk' 事件。
   // F3: 生成 reqId 并按之过滤 IPC 事件, 避免与 chat 等并发 SSE 流串扰。
   // http-proxy 已按 \n\n 分帧, 每个 http:stream:chunk 就是一个完整 SSE block, 直接解析。
   const reqId = `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
   const offChunk = window.api.http.onChunk((rid, block) => {
     if (rid !== reqId) return
-    if (!block.trim()) return
-    const event = block.match(/^event:\s*(.+)$/m)?.[1]
-    const dataStr = block.match(/^data:\s*(.+)$/m)?.[1]
-    if (!event || !dataStr) return
-    let data
-    try { data = JSON.parse(dataStr) } catch { return }
-    if (event === 'progress') onProgress?.(data)
-    else if (event === 'done') onDone?.(data)
-    else if (event === 'error') onError?.(data.detail || '测评流程失败')
-    // start 事件可忽略
+    _dispatchSseBlock(block, { onProgress, onDone, onError })
   })
   const offDone = window.api.http.onDone((rid) => { if (rid === reqId) { offChunk(); offDone(); offError() } })
   const offError = window.api.http.onError((rid, err) => {

@@ -678,7 +678,18 @@ onMounted(async () => {
   // P2: 无图谱时尝试从后端恢复上次解析结果 (localStorage 记 projectId)
   if (!pg.graph) pg.restorePersisted()
   if (pg.graph) initGraph()
+  // 容器尺寸自适应: AI 助手分屏显隐 / ResizablePanel 拖宽时画布跟随,
+  // 否则隐藏右分屏后图谱仍停在旧宽度留空白
+  if (typeof ResizeObserver !== 'undefined') {
+    pgResizeObs = new ResizeObserver(() => {
+      if (g6 && containerRef.value) g6.resize()
+    })
+    if (containerRef.value) pgResizeObs.observe(containerRef.value)
+  }
 })
+
+// ResizeObserver 句柄 (生命周期清理)
+let pgResizeObs = null
 
 watch(() => pg.graph, async () => {
   destroyGraph()
@@ -689,7 +700,11 @@ watch(() => pg.graph, async () => {
 // 视图模式切换 (分层 <-> 模块分组) -> 重建图谱
 watch(viewMode, () => { rebuildGraph() })
 
-onBeforeUnmount(destroyGraph)
+onBeforeUnmount(() => {
+  pgResizeObs?.disconnect()
+  pgResizeObs = null
+  destroyGraph()
+})
 
 function goCode() { sidebar.setView('code') }
 

@@ -79,6 +79,27 @@ def test_hallucination_llm_error_falls_to_unverifiable():
     assert result["unverifiable"] == 2
     assert result["rate"] == 0.0
 
+def test_hallucination_front_empty_content_keeps_original_index():
+    """issue-04: 前位 content="" 资源被跳过但不下标左移。
+
+    旧实现先过滤再 enumerate → resource_index 是过滤后下标, 与 quality_regen 的原始列表
+    out 索引不一致 (定向再生改错资源)。修复后仅跳过空内容资源, 下标保持原始列表坐标。
+    """
+    judge = _FakeJudge([
+        json.dumps({"verdict": "hallucinated", "reason": "编造了图谱外事实"}, ensure_ascii=False),
+        json.dumps({"verdict": "grounded", "reason": "ok"}, ensure_ascii=False),
+    ])
+    resources = [
+        {"content": "", "target_node_id": "PY-001", "content_type": "讲义"},  # 空内容 → 跳过, 不产出 verdict
+        _res("b", node="PY-002"),
+        _res("c", node="PY-003"),
+    ]
+    result = qj.judge_hallucination(resources, judge_llm=judge)
+    assert result["total"] == 2
+    assert result["hallucinated"] == 1
+    assert [v["resource_index"] for v in result["verdicts"]] == [1, 2]  # 原始坐标
+    assert result["verdicts"][0]["verdict"] == "hallucinated"
+
 def test_hallucination_invalid_verdict_falls_to_unverifiable():
     """裁判输出非法 verdict → 保守计 unverifiable。"""
     judge = _FakeJudge(['{"verdict": "maybe", "reason": "x"}'])
