@@ -26,6 +26,18 @@
           </span>
         </div>
 
+        <!-- Phase 3a: 只读流程进度 DAG (当前步/完成阶段可视化) -->
+        <div v-if="flow.stages.value.length" class="flow-block">
+          <div class="flow-head">
+            <span class="flow-title">流程进度</span>
+            <span class="flow-count">
+              ✅ {{ flow.doneCount.value }}/{{ flow.stages.value.length }}
+              <template v-if="flow.currentLabel.value"> · 正在 {{ flow.currentLabel.value }}</template>
+            </span>
+          </div>
+          <FlowDiagram :stages="flow.stages.value" class="flow-canvas" :height="150" />
+        </div>
+
         <!-- 每 Agent 产出概览 (主视图, 替代原三栏 cockpit) -->
         <div class="prod-list">
           <div v-for="agent in status.agentNodes.value" :key="agent.key"
@@ -65,10 +77,13 @@ import { ref, computed, watch } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
 import { useAgentStatus } from '@/composables/useAgentStatus'
+import { useFlowStatus } from '@/composables/useFlowStatus'
+import FlowDiagram from '@/ide/workflow/FlowDiagram.vue'
 
 const store = useAssessmentStore()
 const session = useSessionStore()
 const status = useAgentStatus()
+const flow = useFlowStatus()
 
 const expanded = ref(false)
 
@@ -158,6 +173,13 @@ watch([() => session.showCollab, hasLogs], () => {
 .progress-done { color: var(--km-success); font-weight: 600; }
 .progress-pending { color: var(--km-gray-500); }
 .progress-live { color: var(--km-warning); font-weight: 600; }
+
+/* Phase 3a: 只读流程进度 DAG */
+.flow-block { margin-top: 4px; }
+.flow-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px; font-size: 12px; color: var(--km-gray-600); }
+.flow-title { font-weight: 600; }
+.flow-count { color: var(--km-gray-500); }
+.flow-canvas { border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); background: var(--km-bg-layer-2); }
 
 /* 每 Agent 产出概览行 */
 .prod-list { display: flex; flex-direction: column; gap: 8px; }
