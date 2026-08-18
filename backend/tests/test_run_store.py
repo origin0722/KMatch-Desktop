@@ -34,6 +34,7 @@ def test_save_load_roundtrip(monkeypatch, tmp_path):
         events=evs,
         log=["[ts] 🔧 学情检测: 判分 7/10", "[ts] ✅ 流程结束"],
         summary={"path_nodes": 3},
+        workflow={"id": "scene1-loop", "name": "场景一·学情闭环", "stages": []},
     )
     data = run_store.load_run("sid-abc-123")
     assert data is not None
@@ -43,6 +44,8 @@ def test_save_load_roundtrip(monkeypatch, tmp_path):
     assert run["request"]["target_direction"] == "Python"
     assert len(run["orchestration_events"]) == 2
     assert len(run["orchestration_log"]) == 2
+    # Phase 2: 流程定义快照溯源
+    assert run["workflow"]["id"] == "scene1-loop"
     # events.jsonl 有 seq 递增
     seqs = [e["seq"] for e in data["events"]]
     assert seqs == [0, 1]

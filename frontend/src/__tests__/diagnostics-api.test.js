@@ -20,6 +20,9 @@ import {
   submitAssessment,
   submitAnswers,
   requestFeedback,
+  fetchRun,
+  fetchRuns,
+  fetchWorkflows,
 } from '@/api/diagnostics'
 
 describe('api/diagnostics', () => {
@@ -134,6 +137,34 @@ describe('api/diagnostics', () => {
         requestFeedback({ sessionId: 's', strategy, profile: {} })
       }
       expect(http.post).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe('Phase 1/2 run 与 workflow API', () => {
+    it('fetchRun 打到 /api/diagnostics/runs/{sid} 且 path 编码', async () => {
+      http.get.mockResolvedValueOnce({ data: { session_id: 'sid-1' } })
+      const run = await fetchRun('sid-1')
+      expect(http.get).toHaveBeenCalledWith('/api/diagnostics/runs/sid-1')
+      expect(run.session_id).toBe('sid-1')
+    })
+
+    it('fetchRun 对带斜杠的 sid 做 encodeURIComponent', async () => {
+      http.get.mockResolvedValueOnce({ data: {} })
+      await fetchRun('a/b')
+      expect(http.get).toHaveBeenCalledWith('/api/diagnostics/runs/a%2Fb')
+    })
+
+    it('fetchRuns 带 limit 参数', async () => {
+      http.get.mockResolvedValueOnce({ data: { count: 2, runs: [] } })
+      await fetchRuns(5)
+      expect(http.get).toHaveBeenCalledWith('/api/diagnostics/runs', { params: { limit: 5 } })
+    })
+
+    it('fetchWorkflows 打到 /api/diagnostics/workflows', async () => {
+      http.get.mockResolvedValueOnce({ data: { workflows: [{ id: 'scene1-loop' }] } })
+      const res = await fetchWorkflows()
+      expect(http.get).toHaveBeenCalledWith('/api/diagnostics/workflows')
+      expect(res.workflows[0].id).toBe('scene1-loop')
     })
   })
 })

@@ -88,6 +88,15 @@ export async function fetchRuns(limit = 20) {
   return data
 }
 
+/**
+ * Phase 2: 流程定义列表 (流程即数据; Phase 3 画布的数据底座)。
+ * @returns {Promise<{workflows: Array<{id,name,description,stages}>}>}
+ */
+export async function fetchWorkflows() {
+  const { data } = await http.get('/api/diagnostics/workflows')
+  return data
+}
+
 // ============================================================
 // W5 — interactive 答题闭环（assess(interactive) → submit → feedback）
 // ============================================================

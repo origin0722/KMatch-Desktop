@@ -75,9 +75,11 @@ def save_run(
     events: Optional[list] = None,
     log: Optional[list] = None,
     summary: Optional[dict] = None,
+    workflow: Optional[dict] = None,
 ) -> str:
     """持久化一次 run (可重复调用, 覆盖 run.json + 追加 events.jsonl)。
 
+    workflow: Phase 2 流程定义快照 (provenance, 复盘可知当时跑的拓扑)。
     返回安全 session_id。
     """
     sid = _safe_session_id(session_id)
@@ -112,6 +114,7 @@ def save_run(
         "mode": mode,
         "request": request or {},
         "summary": summary or {},
+        "workflow": workflow or {},
         "created_at": _read_meta(d).get("created_at", now),
         "updated_at": now,
         "orchestration_events": evs,

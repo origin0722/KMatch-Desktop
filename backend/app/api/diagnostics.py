@@ -32,6 +32,7 @@ from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
 from app.agents.run_store import list_runs, load_run, save_run
+from app.agents.workflow_def import get_workflow, list_workflows, preflight, workflow_for
 from app.config import settings
 from app.utils.logging import get_logger
 from app.utils.web_search import search_weak_topics
@@ -143,8 +144,9 @@ def _get_workflow(request: Request):
 
 
 def _persist_run(*, session_id: str, mode: str, request: dict | None = None,
-                 orchestration_log: list | None = None, summary: dict | None = None) -> None:
-    """Phase 1: 把一次 run 落盘 (run.json + events.jsonl)。失败不影响主流程。"""
+                 orchestration_log: list | None = None, summary: dict | None = None,
+                 workflow: dict | None = None) -> None:
+    """Phase 1/2: 把一次 run 落盘 (run.json + events.jsonl + 流程定义快照)。失败不影响主流程。"""
     try:
         save_run(
             session_id=session_id,
@@ -153,9 +155,75 @@ def _persist_run(*, session_id: str, mode: str, request: dict | None = None,
             events=[to_log_event(l) for l in (orchestration_log or [])],
             log=orchestration_log or [],
             summary=summary or {},
+            workflow=workflow,
         )
     except Exception as e:  # noqa: BLE001  run 落盘是尽力而为
         logger.warning("run_store 落盘失败 session=%s err=%s", session_id, e)
+
+
+def _resolve_workflow(req) -> dict:
+    """按 mode/scene 解析流程定义 (Phase 2: 流程即数据)。未知/缺失回落场景一。"""
+    wf_id = workflow_for(req.mode, req.scene)
+    wf = get_workflow(wf_id)
+    if wf is None:
+        wf = get_workflow("scene1-loop")
+    return wf or {"id": "scene1-loop", "name": "场景一·学情闭环", "stages": []}
+
+
+def _stage_labels(wf: dict) -> dict:
+    """阶段 id → 展示文案 (流程定义驱动 SSE 进度, 改定义即可改文案)。"""
+    return {
+        s["id"]: s["label"]
+        for s in wf.get("stages", [])
+        if isinstance(s, dict) and s.get("id") and s.get("label")
+    }
+
+
+def _preflight_or_400(req) -> dict:
+    """运行前校验 (坏请求/坏定义在启动前被拒)。返回已解析流程定义。"""
+    wf_id = workflow_for(req.mode, req.scene)
+    ok, errs = preflight(wf_id, target_direction=req.target_direction,
+                         scene=req.scene, max_retries=req.max_retries)
+    if not ok:
+        raise HTTPException(status_code=400, detail="; ".join(errs))
+    wf = get_workflow(wf_id) or get_workflow("scene1-loop")
+    return wf
+
+
+class PreflightRequest(BaseModel):
+    """流程运行前校验请求 (Phase 2, 干跑)。"""
+
+    workflow_id: str = Field(..., description="流程定义 id")
+    target_direction: str = Field(..., description="拟请求的学习目标方向")
+    scene: str = Field("no_project", description="no_project | with_project")
+    max_retries: int = Field(3, ge=1, le=5)
+
+
+@router.get("/workflows", summary="流程定义列表 (Phase 2: 流程即数据)")
+def list_workflows_api():
+    return {"workflows": [
+        {k: w.get(k) for k in ("id", "name", "description", "stages")}
+        for w in list_workflows()
+    ]}
+
+
+@router.post("/workflows/preflight", response_model=None, summary="流程运行前校验 (干跑)")
+def preflight_api(req: PreflightRequest):
+    ok, errs = preflight(
+        req.workflow_id,
+        target_direction=req.target_direction,
+        scene=req.scene,
+        max_retries=req.max_retries,
+    )
+    return {"workflow_id": req.workflow_id, "ok": ok, "errors": errs}
+
+
+@router.get("/workflows/{workflow_id}", summary="流程定义详情 (Phase 2)")
+def get_workflow_api(workflow_id: str):
+    wf = get_workflow(workflow_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail=f"流程定义不存在: {workflow_id}")
+    return wf
 
 
 @router.get("/runs/{session_id}", summary="读取一次 run 记录 (Phase 1: 复盘/续跑)")
@@ -235,6 +303,7 @@ def assess(req: AssessRequest, request: Request):
 
     # --- demo 模式: 走完整工作流 ---
     workflow = _get_workflow(request)
+    wf = _preflight_or_400(req)  # Phase 2: 流程定义/请求运行前校验 (坏定义启动前被拒)
     initial = make_initial_state(
         target_direction=req.target_direction,
         mode=req.mode,
@@ -274,7 +343,7 @@ def assess(req: AssessRequest, request: Request):
         orchestration_log=result.get("orchestration_log", []),
         orchestration_events=[to_log_event(l) for l in result.get("orchestration_log", [])],
     )
-    # Phase 1: 落盘 run 记录 (复盘/续跑耐久)
+    # Phase 1/2: 落盘 run 记录 (复盘/续跑耐久 + 流程定义快照溯源)
     _persist_run(
         session_id=initial["session_id"],
         mode="demo",
@@ -282,6 +351,7 @@ def assess(req: AssessRequest, request: Request):
             "target_direction": req.target_direction,
             "scene": req.scene,
             "max_retries": req.max_retries,
+            "workflow_id": wf.get("id"),
         },
         orchestration_log=result.get("orchestration_log", []),
         summary={
@@ -292,6 +362,7 @@ def assess(req: AssessRequest, request: Request):
             if result.get("generated_content") else 0,
             "review_passed": bool(result.get("review_results", {}).get("passed")),
         },
+        workflow=wf,
     )
 
 
@@ -335,6 +406,8 @@ def assess_stream(req: AssessRequest, request: Request):
 
     kg = _get_kg(request)
     workflow = _get_workflow(request)
+    wf = _preflight_or_400(req)  # Phase 2: 运行前校验 (坏定义/坏请求启动前被拒)
+    stage_labels = _stage_labels(wf)
 
     # interactive 模式不需要流式 (出题快), 仍走原 /assess
     if req.mode == "interactive":
@@ -368,7 +441,8 @@ def assess_stream(req: AssessRequest, request: Request):
                     ol = update.get("orchestration_log")
                     if isinstance(ol, list) and ol:
                         log_tail = ol[-3:]
-                    message = _NODE_PROGRESS.get(node_name, node_name)
+                    # Phase 2: 流程定义驱动进度文案 (阶段 label 优先, 可改定义不改代码)
+                    message = stage_labels.get(node_name) or _NODE_PROGRESS.get(node_name, node_name)
                     yield _sse("progress", {
                         "node": node_name,
                         "message": message,
@@ -399,7 +473,7 @@ def assess_stream(req: AssessRequest, request: Request):
                 "orchestration_log": final_state.get("orchestration_log", []),
                 "orchestration_events": [to_log_event(l) for l in final_state.get("orchestration_log", [])],
             }
-            # Phase 1: 落盘 run 记录 (SSE done)
+            # Phase 1/2: 落盘 run 记录 (SSE done + 流程定义快照)
             _persist_run(
                 session_id=session_id,
                 mode="demo",
@@ -407,6 +481,7 @@ def assess_stream(req: AssessRequest, request: Request):
                     "target_direction": req.target_direction,
                     "scene": req.scene,
                     "max_retries": req.max_retries,
+                    "workflow_id": wf.get("id"),
                 },
                 orchestration_log=final_state.get("orchestration_log", []),
                 summary={
@@ -417,6 +492,7 @@ def assess_stream(req: AssessRequest, request: Request):
                     if final_state.get("generated_content") else 0,
                     "review_passed": bool(final_state.get("review_results", {}).get("passed")),
                 },
+                workflow=wf,
             )
             yield _sse("done", result)
             logger.info("SSE 测评完成 session=%s", session_id)
@@ -511,11 +587,11 @@ def submit(req: SubmitRequest, request: Request):
         orchestration_log=orchestration_log,
         orchestration_events=[to_log_event(l) for l in orchestration_log],
     )
-    # Phase 1: 落盘 run 记录 (interactive submit)
+    # Phase 1/2: 落盘 run 记录 (interactive submit + 流程定义快照)
     _persist_run(
         session_id=req.session_id,
         mode="interactive",
-        request={"target_direction": target},
+        request={"target_direction": target, "workflow_id": "scene1-interactive"},
         orchestration_log=orchestration_log,
         summary={
             "correct_count": grading["correct_count"],
@@ -524,6 +600,7 @@ def submit(req: SubmitRequest, request: Request):
             "theory_level": profile.get("theory_level"),
             "path_nodes": len(knowledge_graph.get("learning_path", [])) if knowledge_graph else 0,
         },
+        workflow=get_workflow("scene1-interactive"),
     )
 
 
