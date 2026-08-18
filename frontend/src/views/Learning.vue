@@ -144,7 +144,9 @@
                 </div>
               </template>
               <div class="resource-body">
-                <MarkdownViewer :content="res.content || ''" />
+                <!-- 分阶测试题: 提交/显式对照前不渲染原文(生成原文内嵌 **答案**/**解析**,
+                     避免答题前直接泄露答案); 其他资源正常渲染 -->
+                <MarkdownViewer v-if="!isTestResource(res) || testRevealed(res)" :content="res.content || ''" />
               </div>
               <!-- 答题交互 (本地即时判分: 解析题目/选项/答案, 提交比对) -->
               <!-- 门控: parsedTest(res)?.parsed —— 只有能解析出题目+答案的资源才显示答题入口 (修复 issue-02) -->
@@ -434,6 +436,16 @@ function testState(res) {
     testStates.set(id, reactive({ started: false, selected: '', submitted: false, correct: null, reveal: false }))
   }
   return testStates.get(id)
+}
+
+/** 分阶测试题资源 (答题交互门控: 提交/对照前隐藏原文, 防答案泄露) */
+function isTestResource(res) {
+  return res?.content_type === 'test'
+}
+
+function testRevealed(res) {
+  const st = testState(res)
+  return !isTestResource(res) || st.submitted || st.reveal
 }
 function parsedTest(res) {
   const id = _testId(res)

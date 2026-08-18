@@ -16,7 +16,8 @@ export const ACTIVITY_ITEMS = [
   { id: 'project-graph', icon: 'Connection', title: '项目图谱' },
   { id: 'learning', icon: 'Reading', title: '学习资源' },
   { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
-  { id: 'workflow-studio', icon: 'SetUp', title: '流程工作台' },
+  // 流程工作台 (workflow-studio) 导航默认隐藏: 用户反馈非必需; 代码/数据/API 保留
+  // (MainArea 分支仍在, 未来"定义驱动执行"接线后可恢复)
 ]
 
 export const useSidebarStore = defineStore('sidebar', () => {

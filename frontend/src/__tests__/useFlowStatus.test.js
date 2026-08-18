@@ -40,6 +40,42 @@ describe('useFlowStatus (Phase 3a 流程进度)', () => {
     reset()
   })
 
+  it('定义驱动: 按 workflow 阶段渲染真实拓扑 + agents 聚合状态 + 依赖边', async () => {
+    mockAssessment.loading = true
+    mockAssessment.orchestrationEvents = [
+      ev('agent-end', 'diagnostics', 'done', '学情检测完成'),
+      ev('agent-start', 'reviewer', 'running', '内容审核: 开始'),
+    ]
+    const DEF = {
+      id: 'x', name: 'X',
+      stages: [
+        { id: 'diagnostics', label: '学情检测', agents: ['diagnostics'], dependencies: [] },
+        { id: 'graph', label: '图谱组装', agents: ['graph_controller'], dependencies: ['diagnostics'] },
+        { id: 'review-content', label: '内容审核', agents: ['reviewer'], dependencies: ['graph'] },
+      ],
+    }
+    const flow = useFlowStatus(DEF)
+    await nextTick()
+    expect(flow.stages.value.map((s) => s.key)).toEqual(['diagnostics', 'graph', 'review-content'])
+    expect(flow.stages.value.find((s) => s.key === 'diagnostics').status).toBe('done')
+    expect(flow.stages.value.find((s) => s.key === 'graph').status).toBe('idle')
+    expect(flow.stages.value.find((s) => s.key === 'review-content').status).toBe('running')
+    expect(flow.stages.value.find((s) => s.key === 'review-content').current).toBe(true)
+    expect(flow.edges.value).toEqual([
+      { source: 'diagnostics', target: 'graph' },
+      { source: 'graph', target: 'review-content' },
+    ])
+    expect(flow.currentLabel.value).toBe('内容审核')
+    expect(flow.doneCount.value).toBe(1)
+  })
+
+  it('有定义但 stages 为空 → 回退 AGENT_DEFS 线性链', async () => {
+    const flow = useFlowStatus({ id: 'empty', stages: [] })
+    await nextTick()
+    expect(flow.stages.value.length).toBeGreaterThan(0)
+    expect(flow.edges.value).toBeNull() // 回退时不提供边, FlowDiagram 默认线性
+  })
+
   it('事件驱动阶段状态: done/running/failed 映射 + current 落在首个 running', async () => {
     mockAssessment.loading = true
     mockAssessment.orchestrationEvents = [

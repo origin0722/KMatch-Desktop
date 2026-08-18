@@ -262,15 +262,23 @@
                   </el-tag>
                 </div>
               </div>
-              <!-- 不懂就问: 节点上下文预填到 AI 助手 (可编辑后发送, 不自动发) -->
-              <el-button
-                type="primary"
-                plain
-                size="small"
-                class="ask-ai-btn"
-                data-test="ask-ai"
-                @click="askAiAboutNode"
-              >问 AI 助手</el-button>
+              <!-- 不懂就问 / 重测该点: 概念不熟→问 AI; 想判断"会不会"→重测该知识点 -->
+              <div class="detail-actions">
+                <el-button
+                  type="primary"
+                  plain
+                  size="small"
+                  class="ask-ai-btn"
+                  data-test="ask-ai"
+                  @click="askAiAboutNode"
+                >问 AI 助手</el-button>
+                <el-button
+                  size="small"
+                  data-test="reassess-node"
+                  @click="reassessNode"
+                >重测该点</el-button>
+                <span class="detail-hint">概念不熟→问 AI · 想判掌握度→重测该知识点</span>
+              </div>
             </div>
             </template>
             <el-empty v-else description="点击图谱节点查看详情" :image-size="60" />
@@ -362,6 +370,15 @@ function askAiAboutNode() {
   chat.setDraft(buildNodeQuestion(
     n, (prereqNodes.value || []).map((p) => p.name || p.node_id)))
   sidebar.setView('chat')
+}
+
+// 重测该点: 以该知识点为目标方向重新测评 (判掌握度), 进入学习会话
+function reassessNode() {
+  const n = selectedNode.value
+  if (!n) return
+  const target = n.name || n.node_id
+  store.startAssessment({ targetDirection: target })
+  sidebar.setView('learning-session')
 }
 
 // ---------------------------------------------------------------
@@ -1144,7 +1161,9 @@ watch(layoutMode, () => { rebuildGraph() })
   color: var(--km-gray-700); font-size: 13px; line-height: 1.7;
 }
 .prereq-section { margin-top: 12px; }
-.ask-ai-btn { margin-top: 14px; width: 100%; }
+.ask-ai-btn { margin-top: 14px; }
+.detail-actions { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.detail-hint { font-size: 11px; color: var(--km-gray-500); }
 .prereq-section > .label {
   display: block; color: var(--km-gray-500);
   font-size: 13px; margin-bottom: 6px;

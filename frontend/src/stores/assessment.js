@@ -383,6 +383,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
       mode: 'demo',
       request: { target_direction: targetDirection, scene, max_retries: 3 },
       summary: lastRun.value?.summary || null,
+      workflow: null, // 直播无定义快照 → DAG 回退 AGENT_DEFS 线性链
     }
 
     await startAssessmentStream(
@@ -445,6 +446,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
       mode: data.mode || 'demo',
       request: data.request || {},
       summary: data.summary || {},
+      workflow: data.workflow || null, // Phase 2 快照: 协同 DAG 真实拓扑/阶段 label
     }
     return data
   }

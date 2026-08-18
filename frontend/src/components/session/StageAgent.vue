@@ -35,7 +35,7 @@
               <template v-if="flow.currentLabel.value"> · 正在 {{ flow.currentLabel.value }}</template>
             </span>
           </div>
-          <FlowDiagram :stages="flow.stages.value" class="flow-canvas" :height="150" />
+          <FlowDiagram :stages="flow.stages.value" :edges="flow.edges.value || undefined" class="flow-canvas" :height="150" />
         </div>
 
         <!-- 每 Agent 产出概览 (主视图, 替代原三栏 cockpit) -->
@@ -83,7 +83,9 @@ import FlowDiagram from '@/ide/workflow/FlowDiagram.vue'
 const store = useAssessmentStore()
 const session = useSessionStore()
 const status = useAgentStatus()
-const flow = useFlowStatus()
+// 有 run 落盘的 workflow 快照 → 协同 DAG 用真实阶段拓扑/label; 直播/无快照回退线性链
+const flowDef = computed(() => store.lastRun?.workflow || null)
+const flow = useFlowStatus(flowDef)
 
 const expanded = ref(false)
 
