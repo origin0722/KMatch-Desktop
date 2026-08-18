@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-OO010-001",
+    "source_node_id": "OO-010",
+    "type": "choice",
+    "question": "若用子类对象替换父类对象后程序行为出错，这违反了下列哪项原则？",
+    "options": [
+      "A. 单一职责原则",
+      "B. 开闭原则",
+      "C. 里氏替换原则",
+      "D. 接口隔离原则"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "里氏替换原则要求子类可以替换父类而不破坏程序。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  },
+  {
+    "qid": "Q-OO010-002",
+    "source_node_id": "OO-010",
+    "type": "fill",
+    "question": "____原则强调软件实体应对扩展开放，对修改关闭。",
+    "options": [],
+    "answer": "开闭原则",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "开闭原则要求对扩展开放，对修改关闭。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  }
+]
