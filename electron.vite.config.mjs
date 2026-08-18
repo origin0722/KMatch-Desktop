@@ -48,7 +48,10 @@ export default defineConfig({
       },
     },
     server: {
-      port: 5173,
+      // 端口固定在 Windows 动态端口保留段(5153-6352, WSL2/Docker 保留)之外:
+      // 5173 落在保留段内 → EACCES 起不来 (依赖 winnat 时会随时间扩展保留段)
+      port: 6373,
+      strictPort: true,
       proxy: {
         // 阶段1: 渲染层经 IPC 代理后端, 此 proxy 仅 dev 浏览器调试用
         '/api': {

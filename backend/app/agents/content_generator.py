@@ -163,10 +163,12 @@ def _finalize_resource(data: dict, node: dict, content_type: str, adaptation_lab
     """LLM 输出 → 资源契约的统一兜底 (_generate_one 与 _generate_feedback_one 共用)。
 
     - 难度由系统按知识点难度统一赋值 (BUG-043: 资源难度对齐节点难度, 强制覆盖 LLM 自填值)
+    - content_type 由调用方指定, 强制覆盖 LLM 自填值 (防模型回错类型导致 tab 分类错位:
+      practice_guide/test 被 LLM 写成 lecture 等)
     - source_nodes 非法时回退节点 summary 引用
     - unverified_claims (认识状态自声明): 非 list 强转空 (缺失视为完全锚定, 由裁判复核)
     """
-    data.setdefault("content_type", content_type)
+    data["content_type"] = content_type
     data.setdefault("target_node_id", node.get("node_id"))
     node_diff = node.get("difficulty", 1)
     data["difficulty_level"] = node_diff if isinstance(node_diff, (int, float)) else 1
@@ -403,22 +405,23 @@ def regenerate_for_feedback(
         return _empty_feedback_result(strategy)
 
     theory_level = profile.get("theory_level", 2) or 2
-    content_type = FEEDBACK_STRATEGY_SPEC[strategy]["content_type"]
+    # 全类型生成: 每个目标节点都产 lecture + practice_guide + test,
+    # 保证"针对性反馈"后学习资源四 tab (讲义/实操/测试) 都有内容, 不随策略单类型缺失。
     resources = []
     failures = 0
     overrides = _current_overrides.get()  # Spec B: 捕获主线程 override, worker 内重设 (ContextVar 不跨线程)
 
-    # 并行再生: target_nodes 通常 1-2 个, 全并发即可 (wall-clock ≈ 单次调用, 而非 N×串行)。
-    # 串行模式下 2 节点 × 富 prompt(单次可达 60s+) 易超 150s 前端超时; 并行后 ≈ 单次耗时。
+    # 任务 = 目标节点 × 三种内容类型 (通常 1-2 节点 × 3 = 3-6 次 LLM 调用)
+    tasks = [(node, ctype) for node in target_nodes for ctype in CONTENT_TYPES]
+    # 并行生成: 全部任务并发 (wall-clock ≈ 单次调用, 而非 N×串行)。
     # _generate_feedback_one 是无共享状态的纯 LLM 调用 (LangChain ChatModel 线程安全)。
-    # safe_llm_call 在 worker 内重设 ContextVar (Spec B overrides 不跨线程传播)。
-    with ThreadPoolExecutor(max_workers=len(target_nodes)) as pool:
+    with ThreadPoolExecutor(max_workers=min(len(tasks), 6)) as pool:
         results = list(pool.map(
-            lambda node: safe_llm_call(
-                _generate_feedback_one, node, theory_level, content_type, log_hint,
+            lambda task: safe_llm_call(
+                _generate_feedback_one, task[0], theory_level, task[1], log_hint,
                 overrides=overrides, logger=logger,
-                label=f"feedback node={node.get('node_id')}"),
-            target_nodes,
+                label=f"feedback node={task[0].get('node_id')} {task[1]}"),
+            tasks,
         ))
 
     for ok, res in results:
@@ -456,6 +459,12 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         "lecture": (
             "生成【降维/补基础讲义】: 针对该节点用类比简明重讲 1 个核心 key_point, 并纠正 1 个 common_mistake; "
             "正文 250 字内, 只用节点已有事实, 禁编造。"
+        ),
+        "practice_guide": (
+            "生成【阶梯式实操指南】: 含任务目标、环境准备、步骤1-N(每步含目标/提示/检查点)、反思问题(引导思考不给答案)。"
+            "脚手架式引导: 给出渐进提示阶梯——第1级只给功能描述与预期输入输出; 第2级补算法思路提示; "
+            "第3级给伪代码框架; 第4级给关键代码片段(含空白); 第5级给完整参考代码+注释。正文 250 字内, "
+            "只用节点已有事实, 禁编造。"
         ),
         "test": (
             "生成【进阶挑战题】1 道跨知识点进阶选择题, 附答案字母与一句解析; "

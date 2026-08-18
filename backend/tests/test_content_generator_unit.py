@@ -538,7 +538,7 @@ def _fake_model_recording(seen):
 
 
 def test_regenerate_for_feedback_parallel_generates_all_nodes(monkeypatch):
-    """并行再生: 多个目标节点全部生成资源 (不因并发丢漏)。"""
+    """并行再生: 每个目标节点生成全部三种类型 (lecture/practice_guide/test), 不随策略单类型。"""
     from app.agents.content_generator import regenerate_for_feedback
 
     seen = {"node_ids": [], "worker_overrides": []}
@@ -555,10 +555,12 @@ def test_regenerate_for_feedback_parallel_generates_all_nodes(monkeypatch):
     ]}
     result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
     assert result["strategy"] == "remediate"
-    assert result["node_count"] == 1
-    assert len(result["resources"]) == 1
-    assert result["resources"][0]["target_node_id"] == "DA-001"
-    assert seen["node_ids"] == ["DA-001"]
+    assert result["node_count"] == 1          # 目标节点数 (remediate 选 1)
+    assert len(result["resources"]) == 3      # 每节点 lecture/practice_guide/test 三种
+    types = {r["content_type"] for r in result["resources"]}
+    assert types == {"lecture", "practice_guide", "test"}
+    assert all(r["target_node_id"] == "DA-001" for r in result["resources"])
+    assert seen["node_ids"] == ["DA-001", "DA-001", "DA-001"]
 
 
 def test_regenerate_for_feedback_overrides_propagate_to_workers(monkeypatch):
@@ -582,7 +584,7 @@ def test_regenerate_for_feedback_overrides_propagate_to_workers(monkeypatch):
     ]}
     with use_llm_overrides(overrides):
         result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
-    assert len(result["resources"]) == 1
+    assert len(result["resources"]) == 3   # 1 节点 × 3 类型
     assert all(o == overrides for o in seen["worker_overrides"]), \
         f"worker 线程未读到主线程 overrides: {seen['worker_overrides']}"
 
@@ -622,4 +624,5 @@ def test_regenerate_for_feedback_partial_failure_tolerated(monkeypatch):
     ]}
     result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
     assert result["node_count"] == 1
-    assert len(result["resources"]) == 0, "失败节点跳过, 0 资源, 不外抛"
+    # remediate 选出 1 节点 (PY-005), 其 3 种类型全失败被跳过 → 0 资源, 失败不外抛
+    assert len(result["resources"]) == 0
