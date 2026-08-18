@@ -68,6 +68,26 @@ export function getVersion() {
   return http.get('/api/version')
 }
 
+/**
+ * Phase 1: 读取已落盘的 run 记录 (复盘/续跑)。404 表示无运行记录。
+ * @param {string} sessionId
+ * @returns {Promise<Object|null>} run 记录 (含 request/summary/orchestration_events/orchestration_log)
+ */
+export async function fetchRun(sessionId) {
+  const { data } = await http.get(`/api/diagnostics/runs/${encodeURIComponent(sessionId)}`)
+  return data
+}
+
+/**
+ * Phase 1: 最近 run 摘要列表 (历史运行入口)。
+ * @param {number} [limit=20]
+ * @returns {Promise<{count:number, runs:Array}>}
+ */
+export async function fetchRuns(limit = 20) {
+  const { data } = await http.get('/api/diagnostics/runs', { params: { limit } })
+  return data
+}
+
 // ============================================================
 // W5 — interactive 答题闭环（assess(interactive) → submit → feedback）
 // ============================================================

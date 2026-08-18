@@ -24,6 +24,13 @@ class _FakeWorkflow:
 
 def _build_app(monkeypatch, chunks, fail=False):
     diag_api._INTERACTIVE_SESSIONS.clear()
+    # Phase 1: SSE done 会经 _persist_run 落盘 settings.DATA_DIR → 指向临时目录,
+    # 避免测试往仓库 data/workflow_runs 写真实 run 文件。
+    from tempfile import mkdtemp
+    from pathlib import Path as _Path
+    from app.config import settings as _settings
+    monkeypatch.setattr(_settings, "DATA_DIR", _Path(mkdtemp(prefix="kmatch-run-store-test-")))
+
     workflow = _FakeWorkflow(chunks)
     monkeypatch.setattr(diag_api, "_get_workflow", lambda request: workflow)
     monkeypatch.setattr(diag_api, "_get_kg", lambda request: MagicMock())

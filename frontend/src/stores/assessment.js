@@ -12,7 +12,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback } from '@/api/diagnostics'
+import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback, fetchRun } from '@/api/diagnostics'
 import { fetchLearningReport } from '@/api/learning'
 
 export const useAssessmentStore = defineStore('assessment', () => {
@@ -66,6 +66,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
    * 驱动 useAgentStatus 做确定性状态推导 (正则仅作降级兜底)。
    */
   const orchestrationEvents = ref([])
+
+  /**
+   * Phase 1: 最近一次持久化 run 的续跑信息
+   * 结构: { sessionId, mode, request: {target_direction, scene, max_retries}, summary }
+   * 由 loadRun / submit / demo done 填入, 供"按此流程重跑"与复盘。
+   */
+  const lastRun = ref(null)
 
   /**
    * 学习路径图谱 (graph_controller 产出, BUG-030)
@@ -146,6 +153,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     reviewResults.value = null
     orchestrationLog.value = []
     orchestrationEvents.value = []
+    lastRun.value = null
     knowledgeGraph.value = null
     generatedContent.value = null
     learningReport.value = null
@@ -369,6 +377,14 @@ export const useAssessmentStore = defineStore('assessment', () => {
     feedbackStrategy.value = null
     feedbackContent.value = null
 
+    // Phase 1: 记录本次 demo 的请求 meta, 供"按此流程重跑" (续跑)
+    lastRun.value = {
+      sessionId: null,
+      mode: 'demo',
+      request: { target_direction: targetDirection, scene, max_retries: 3 },
+      summary: lastRun.value?.summary || null,
+    }
+
     await startAssessmentStream(
       { targetDirection, scene, maxRetries: 3 },
       {
@@ -393,6 +409,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
         },
         onDone: (data) => {
           _applyResult(data)
+          if (lastRun.value) lastRun.value.sessionId = data.session_id
           loading.value = false
           currentStep.value = null
         },
@@ -403,6 +420,46 @@ export const useAssessmentStore = defineStore('assessment', () => {
         },
       },
     )
+  }
+
+  /**
+   * Phase 1: 读取已持久化的 run 记录并回灌 (复盘), 填充 lastRun 供续跑。
+   * @param {string} sid 已落盘的 session_id
+   * @returns {Promise<Object|null>} run 记录; 无运行记录返回 null。
+   */
+  async function loadRun(sid) {
+    if (!sid) return null
+    let data
+    try {
+      data = await fetchRun(sid)
+    } catch (e) {
+      if (e?.response?.status === 404) return null // 无持久 run 记录
+      throw e
+    }
+    if (!data) return null
+    orchestrationLog.value = data.orchestration_log || []
+    orchestrationEvents.value = data.orchestration_events || []
+    sessionId.value = data.session_id || sid
+    lastRun.value = {
+      sessionId: data.session_id || sid,
+      mode: data.mode || 'demo',
+      request: data.request || {},
+      summary: data.summary || {},
+    }
+    return data
+  }
+
+  /**
+   * Phase 1: 按上次 demo 的请求参数一键重跑 (续跑)。
+   * @returns {Promise<void>|null} 无 demo run 记录时返回 null。
+   */
+  async function resumeRunDemo() {
+    const r = lastRun.value
+    if (!r || r.mode !== 'demo' || !r.request?.target_direction) return null
+    return startDemoStream({
+      targetDirection: r.request.target_direction,
+      scene: r.request.scene || 'no_project',
+    })
   }
 
   /** 清空所有状态，回到输入页 */
@@ -442,6 +499,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers,
     feedbackStrategy,
     feedbackContent,
+    // Phase 1: 持久 run (复盘/续跑)
+    lastRun,
     // computed
     hasResults,
     reviewPassed,
@@ -454,6 +513,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     submitAssessmentAnswers,
     fetchFeedback,
     loadLearningReport,
+    loadRun,
+    resumeRunDemo,
     backToInput,
     reset,
   }

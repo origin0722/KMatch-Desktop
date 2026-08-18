@@ -53,3 +53,6 @@ AGENTS.md
 .zcode/
 
 data/vision_cache.json
+
+# 运行时 run 记录 (Phase 1: 耐久 run 复盘/审计, 本地生成不进库)
+data/workflow_runs/

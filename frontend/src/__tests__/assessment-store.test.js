@@ -16,10 +16,11 @@ vi.mock('@/api/diagnostics', () => ({
   startAssessmentStream: vi.fn(),
   submitAnswers: vi.fn(),
   requestFeedback: vi.fn(),
+  fetchRun: vi.fn(),
 }))
 
 import { useAssessmentStore } from '@/stores/assessment'
-import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback } from '@/api/diagnostics'
+import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback, fetchRun } from '@/api/diagnostics'
 
 describe('useAssessmentStore', () => {
   beforeEach(() => {

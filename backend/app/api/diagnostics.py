@@ -31,6 +31,7 @@ from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
+from app.agents.run_store import list_runs, load_run, save_run
 from app.config import settings
 from app.utils.logging import get_logger
 from app.utils.web_search import search_weak_topics
@@ -141,6 +142,37 @@ def _get_workflow(request: Request):
     return workflow
 
 
+def _persist_run(*, session_id: str, mode: str, request: dict | None = None,
+                 orchestration_log: list | None = None, summary: dict | None = None) -> None:
+    """Phase 1: 把一次 run 落盘 (run.json + events.jsonl)。失败不影响主流程。"""
+    try:
+        save_run(
+            session_id=session_id,
+            mode=mode,
+            request=request,
+            events=[to_log_event(l) for l in (orchestration_log or [])],
+            log=orchestration_log or [],
+            summary=summary or {},
+        )
+    except Exception as e:  # noqa: BLE001  run 落盘是尽力而为
+        logger.warning("run_store 落盘失败 session=%s err=%s", session_id, e)
+
+
+@router.get("/runs/{session_id}", summary="读取一次 run 记录 (Phase 1: 复盘/续跑)")
+def get_run(session_id: str):
+    """返回已落盘的 run 记录 (含请求 meta/汇总/完整结构化事件/原始日志)。"""
+    data = load_run(session_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"run {session_id} 不存在")
+    return data["run"]
+
+
+@router.get("/runs", summary="最近 run 摘要列表 (Phase 1: 历史运行入口)")
+def get_runs(limit: int = 20):
+    runs = list_runs(limit)
+    return {"count": len(runs), "runs": runs}
+
+
 @router.post("/assess", response_model=AssessResponse, summary="学情测评（demo 跑全流程 / interactive 仅出题）")
 def assess(req: AssessRequest, request: Request):
     """触发学情测评。
@@ -241,6 +273,25 @@ def assess(req: AssessRequest, request: Request):
         learning_report=report,
         orchestration_log=result.get("orchestration_log", []),
         orchestration_events=[to_log_event(l) for l in result.get("orchestration_log", [])],
+    )
+    # Phase 1: 落盘 run 记录 (复盘/续跑耐久)
+    _persist_run(
+        session_id=initial["session_id"],
+        mode="demo",
+        request={
+            "target_direction": req.target_direction,
+            "scene": req.scene,
+            "max_retries": req.max_retries,
+        },
+        orchestration_log=result.get("orchestration_log", []),
+        summary={
+            "theory_level": result.get("user_profile", {}).get("theory_level"),
+            "path_nodes": len(result.get("knowledge_graph", {}).get("learning_path", []))
+            if result.get("knowledge_graph") else 0,
+            "resources_count": len(result.get("generated_content", {}).get("resources", []))
+            if result.get("generated_content") else 0,
+            "review_passed": bool(result.get("review_results", {}).get("passed")),
+        },
     )
 
 
@@ -348,6 +399,25 @@ def assess_stream(req: AssessRequest, request: Request):
                 "orchestration_log": final_state.get("orchestration_log", []),
                 "orchestration_events": [to_log_event(l) for l in final_state.get("orchestration_log", [])],
             }
+            # Phase 1: 落盘 run 记录 (SSE done)
+            _persist_run(
+                session_id=session_id,
+                mode="demo",
+                request={
+                    "target_direction": req.target_direction,
+                    "scene": req.scene,
+                    "max_retries": req.max_retries,
+                },
+                orchestration_log=final_state.get("orchestration_log", []),
+                summary={
+                    "theory_level": final_state.get("user_profile", {}).get("theory_level"),
+                    "path_nodes": len(final_state.get("knowledge_graph", {}).get("learning_path", []))
+                    if final_state.get("knowledge_graph") else 0,
+                    "resources_count": len(final_state.get("generated_content", {}).get("resources", []))
+                    if final_state.get("generated_content") else 0,
+                    "review_passed": bool(final_state.get("review_results", {}).get("passed")),
+                },
+            )
             yield _sse("done", result)
             logger.info("SSE 测评完成 session=%s", session_id)
         except Exception as e:
@@ -440,6 +510,20 @@ def submit(req: SubmitRequest, request: Request):
         knowledge_graph=knowledge_graph,
         orchestration_log=orchestration_log,
         orchestration_events=[to_log_event(l) for l in orchestration_log],
+    )
+    # Phase 1: 落盘 run 记录 (interactive submit)
+    _persist_run(
+        session_id=req.session_id,
+        mode="interactive",
+        request={"target_direction": target},
+        orchestration_log=orchestration_log,
+        summary={
+            "correct_count": grading["correct_count"],
+            "total_count": grading["total_count"],
+            "strategy": feedback["strategy"],
+            "theory_level": profile.get("theory_level"),
+            "path_nodes": len(knowledge_graph.get("learning_path", [])) if knowledge_graph else 0,
+        },
     )
 
 

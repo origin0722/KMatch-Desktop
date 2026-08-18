@@ -51,6 +51,8 @@
               <p>{{ entry.msg }}</p>
             </article>
           </div>
+          <!-- Phase 1: 按上次 demo 流程一键续跑 -->
+          <button v-if="canResume" class="resume-btn" type="button" @click="onResume">↻ 按此流程重新执行</button>
         </details>
       </div>
     </transition>
@@ -73,6 +75,12 @@ const expanded = ref(false)
 const isActive = computed(() => session.activeStage === 'agent')
 const rawLogs = computed(() => store.orchestrationLog || [])
 const hasLogs = computed(() => rawLogs.value.length > 0)
+
+// Phase 1: 上次有 demo run 请求 meta 且非运行中 → 可"按此流程重跑"
+const canResume = computed(() => !!store.lastRun?.request?.target_direction && !store.loading)
+async function onResume() {
+  await store.resumeRunDemo()
+}
 
 // #30: 答题完成默认展示 AI 协同 - showCollab 点亮 (session store 由 assessment.phase=feedback 自动触发)
 const collabOn = computed(() => session.showCollab && hasLogs.value)
@@ -178,6 +186,14 @@ watch([() => session.showCollab, hasLogs], () => {
 .thread-message.reject { border-color: var(--km-danger); }
 .thread-time { font-family: var(--km-font-mono); font-size: 10px; color: var(--km-gray-500); }
 .thread-message p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+/* Phase 1: 续跑按钮 */
+.resume-btn {
+  margin-top: 10px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--km-primary); color: var(--km-primary);
+  background: transparent; border-radius: var(--km-radius-sm);
+}
+.resume-btn:hover { background: rgba(79,70,229,0.08); }
 
 .agent-expand-enter-active, .agent-expand-leave-active { transition: all 0.3s var(--km-ease); overflow: hidden; }
 .agent-expand-enter-from, .agent-expand-leave-to { opacity: 0; max-height: 0; }
