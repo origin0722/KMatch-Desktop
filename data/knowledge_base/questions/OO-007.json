@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-OO007-001",
+    "source_node_id": "OO-007",
+    "type": "choice",
+    "question": "下列关于方法重载的说法，正确的是哪一项？",
+    "options": [
+      "A. 仅返回类型不同就能构成方法重载",
+      "B. 方法重载发生在父子类之间",
+      "C. 同一个类中方法名相同但参数列表不同",
+      "D. 方法名不同且参数列表相同"
+    ],
+    "answer": "C",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "方法重载发生在同一个类中，方法名相同但参数列表不同。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  },
+  {
+    "qid": "Q-OO007-002",
+    "source_node_id": "OO-007",
+    "type": "fill",
+    "question": "方法重载要求方法名相同，但____不同。",
+    "options": [],
+    "answer": "参数列表",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "方法重载通过参数列表不同进行区分。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  }
+]

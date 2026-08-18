@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-OO003-001",
+    "source_node_id": "OO-003",
+    "type": "choice",
+    "question": "方法签名通常包含以下哪组内容？",
+    "options": [
+      "A. 方法名、参数列表和返回类型",
+      "B. 方法名、参数列表和访问修饰符",
+      "C. 方法名、返回类型和类名",
+      "D. 参数列表、返回类型和对象名"
+    ],
+    "answer": "A",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "方法签名通常包含方法名、参数列表和返回类型。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  },
+  {
+    "qid": "Q-OO003-002",
+    "source_node_id": "OO-003",
+    "type": "fill",
+    "question": "实例方法需要通过____来调用，并可以访问该对象的属性。",
+    "options": [],
+    "answer": "对象",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "实例方法需要通过对象来调用。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  }
+]

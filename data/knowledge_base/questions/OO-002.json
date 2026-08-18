@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-OO002-001",
+    "source_node_id": "OO-002",
+    "type": "choice",
+    "question": "关于类和对象的说法，下列正确的是？",
+    "options": [
+      "A. 对象是类的抽象模板",
+      "B. 一个类只能创建一个对象",
+      "C. 类定义对象的属性和方法，对象是运行时实际存在的实例",
+      "D. 对象引用变量保存的是对象本身"
+    ],
+    "answer": "C",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "类定义属性和方法，对象是运行时实际存在的实例。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  },
+  {
+    "qid": "Q-OO002-002",
+    "source_node_id": "OO-002",
+    "type": "fill",
+    "question": "通过类名调用____过程可以获得新对象。",
+    "options": [],
+    "answer": "构造",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "通过类名调用构造过程获得新对象。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-OO005-001",
+    "source_node_id": "OO-005",
+    "type": "choice",
+    "question": "关于封装的核心思想，下列哪一项最准确？",
+    "options": [
+      "A. 隐藏对象的内部状态和实现细节",
+      "B. 将所有成员都设置为公开访问",
+      "C. 通过继承复用父类代码",
+      "D. 让多个方法拥有相同名称"
+    ],
+    "answer": "A",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "封装的核心是隐藏对象的内部状态和实现细节。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  },
+  {
+    "qid": "Q-OO005-002",
+    "source_node_id": "OO-005",
+    "type": "fill",
+    "question": "在封装中，通常使用哪两类方法提供受控的数据访问？（答案格式：xxx 和 xxx）",
+    "options": [],
+    "answer": "getter 和 setter",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "使用 getter 和 setter 等方法可以提供受控的数据访问。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  }
+]

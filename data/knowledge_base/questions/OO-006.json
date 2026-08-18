@@ -1,0 +1,31 @@
+[
+  {
+    "qid": "Q-OO006-001",
+    "source_node_id": "OO-006",
+    "type": "choice",
+    "question": "下列关于继承的说法，正确的是哪一项？",
+    "options": [
+      "A. 子类会继承父类的私有成员",
+      "B. 继承表达的是“是一个”关系",
+      "C. 子类不能覆盖父类的方法",
+      "D. 继承绝不会增加类层次耦合"
+    ],
+    "answer": "B",
+    "difficulty": 2,
+    "hint": "",
+    "explanation": "继承表达的是“是一个”关系，例如学生是一个人。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  },
+  {
+    "qid": "Q-OO006-002",
+    "source_node_id": "OO-006",
+    "type": "fill",
+    "question": "继承表达的是“____”关系，例如学生是一个人。",
+    "options": [],
+    "answer": "是一个",
+    "difficulty": 1,
+    "hint": "",
+    "explanation": "继承表达“是一个”关系，如学生是一个人。",
+    "created_at": "2026-08-17T15:26:25.640911Z"
+  }
+]
