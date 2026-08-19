@@ -33,6 +33,7 @@ from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
 from app.agents.run_store import list_runs, load_run, save_run
+from app.agents import profile_store
 from app.agents.workflow_def import (
     evaluate_def_decisions,
     get_workflow,
@@ -102,6 +103,7 @@ class SubmitRequest(BaseModel):
     session_id: str = Field(..., description="assess(interactive) 返回的 session_id")
     answers: list = Field(..., description="逐题作答，顺序与 questions 一致；选择题给选项内容/字母，判断题给'对'/'错'")
     llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
+    learner_key: str | None = Field(None, description="稳定学习者标识 (画像跨次累积/进化档案, 防路径穿越)")
 
 
 class SubmitResponse(BaseModel):
@@ -114,6 +116,8 @@ class SubmitResponse(BaseModel):
     knowledge_graph: dict = Field(default_factory=dict, description="专属学习路径图谱 (submit 后由 graph_controller 组装)")
     orchestration_log: list = Field(default_factory=list, description="Agent 协同执行日志 (判分/画像/图谱)")
     orchestration_events: list = Field(default_factory=list, description="结构化执行事件 (Phase 0: to_log_event 规范化)")
+    learner_key: str | None = Field(None, description="回显学习者标识 (画像档案)")
+    profile_diff: dict | None = Field(None, description="画像版本 diff (跨次进化: recovered/newly_known/newly_weak/regressed)")
 
 
 class FeedbackRequest(BaseModel):
@@ -655,9 +659,28 @@ def submit(req: SubmitRequest, request: Request):
     session["profile"] = profile
     session["knowledge_graph"] = knowledge_graph
 
+    # 画像跨次累积/进化 (档案): 复用之前画像 → 加权合并掌握度 → 落库 → 返回版本 diff
+    profile_diff = None
+    learner_key = None
+    if req.learner_key:
+        try:
+            key = profile_store.safe_key(req.learner_key)
+            prev = profile_store.load_profile(key)
+            evolved, diff = profile_store.merge_profiles(prev, profile)
+            if prev is not None:
+                profile = evolved
+                session["profile"] = profile  # 进化版画像写回 session, 供学习报告补跑读取
+            profile_store.save_profile(key, profile)
+            profile_diff = diff
+            learner_key = req.learner_key
+        except Exception as e:  # noqa: BLE001  画像档案尽力而为, 不影响判分主流程
+            logger.warning("画像档案 merge 失败 learner=%r err=%s", getattr(req, 'learner_key', None), e)
+
     return SubmitResponse(
         session_id=req.session_id,
         profile=profile,
+        learner_key=learner_key,
+        profile_diff=profile_diff,
         assessment={
             "questions": questions,
             "answers": answers,

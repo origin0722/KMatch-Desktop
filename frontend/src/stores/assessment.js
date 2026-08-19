@@ -68,6 +68,23 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const orchestrationEvents = ref([])
 
   /**
+   * 稳定学习者标识 (画像跨次累积/进化档案): 首次生成并持久化, 每次测评复用,
+   * 后端据此把当次画像与历史合并 (profile_id 复用 + profile_diff 版本变化)。
+   */
+  const learnerKey = ref('')
+  try { learnerKey.value = localStorage.getItem('kmatch-learner') || '' } catch { /* private */ }
+  if (!learnerKey.value) {
+    const bytes = typeof crypto !== 'undefined' && crypto.getRandomValues
+      ? Array.from(crypto.getRandomValues(new Uint8Array(9)), (x) => x.toString(16).padStart(2, '0')).join('')
+      : Math.random().toString(36).slice(2, 12)
+    learnerKey.value = `learner-${bytes}`
+    try { localStorage.setItem('kmatch-learner', learnerKey.value) } catch { /* private */ }
+  }
+
+  /** 本次画像相对上次的版本变化 (backend merge diff) */
+  const profileDiff = ref(null)
+
+  /**
    * Phase 1: 最近一次持久化 run 的续跑信息
    * 结构: { sessionId, mode, request: {target_direction, scene, max_retries}, summary }
    * 由 loadRun / submit / demo done 填入, 供"按此流程重跑"与复盘。
@@ -154,6 +171,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     orchestrationLog.value = []
     orchestrationEvents.value = []
     lastRun.value = null
+    profileDiff.value = null
     knowledgeGraph.value = null
     generatedContent.value = null
     learningReport.value = null
@@ -257,8 +275,12 @@ export const useAssessmentStore = defineStore('assessment', () => {
     loading.value = true
     error.value = null
     try {
-      const data = await submitAnswers({ sessionId: sessionId.value, answers: userAnswers.value })
-      // submit 返回: { session_id, profile, assessment, review_results, feedback:{strategy,...} }
+      const data = await submitAnswers({
+        sessionId: sessionId.value,
+        answers: userAnswers.value,
+        learnerKey: learnerKey.value,
+      })
+      // submit 返回: { session_id, profile, assessment, review_results, feedback:{strategy,...}, profile_diff }
       profile.value = data.profile
       assessment.value = data.assessment
       reviewResults.value = data.review_results
@@ -266,6 +288,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
       knowledgeGraph.value = data.knowledge_graph || null
       orchestrationLog.value = data.orchestration_log || []
       orchestrationEvents.value = data.orchestration_events || []
+      profileDiff.value = data.profile_diff || null
       phase.value = 'feedback'
     } catch (e) {
       error.value = e.response?.data?.detail || e.message || '提交答题失败'
@@ -503,6 +526,9 @@ export const useAssessmentStore = defineStore('assessment', () => {
     feedbackContent,
     // Phase 1: 持久 run (复盘/续跑)
     lastRun,
+    // 画像档案: 稳定 learner 标识 + 版本 diff
+    learnerKey,
+    profileDiff,
     // computed
     hasResults,
     reviewPassed,

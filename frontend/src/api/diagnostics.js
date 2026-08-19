@@ -175,10 +175,11 @@ export async function restoreWorkflowRevision(workflowId, revision) {
  *   orchestration_log: string[]
  * }>}
  */
-export function submitAnswers({ sessionId, answers }, signal) {
+export function submitAnswers({ sessionId, answers, learnerKey }, signal) {
   return http.post('/api/diagnostics/submit', withOverrides({
     session_id: sessionId,
     answers,
+    learner_key: learnerKey || undefined,
   }), signal ? { signal } : undefined)
 }
 

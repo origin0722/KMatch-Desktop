@@ -111,6 +111,17 @@ describe('api/diagnostics', () => {
       submitAnswers({ sessionId: 's', answers: [] }, ac.signal)
       expect(http.post.mock.calls[0][2]).toEqual({ signal: ac.signal })
     })
+
+    it('传 learnerKey → body 带 learner_key (画像跨次进化)', () => {
+      http.post.mockResolvedValueOnce({})
+      submitAnswers({ sessionId: 's', answers: [], learnerKey: 'learner-abc' })
+      // withOverrides 未开时 body 原样透传
+      expect(http.post).toHaveBeenCalledWith(
+        '/api/diagnostics/submit',
+        { session_id: 's', answers: [], learner_key: 'learner-abc' },
+        undefined,
+      )
+    })
   })
 
   describe('requestFeedback (W5)', () => {

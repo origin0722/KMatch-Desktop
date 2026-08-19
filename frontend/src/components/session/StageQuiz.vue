@@ -43,6 +43,14 @@
             <el-tag :type="strategyTagType(store.feedbackStrategy)" size="small">{{ strategyLabel(store.feedbackStrategy) }}</el-tag>
           </el-descriptions-item>
         </el-descriptions>
+        <!-- 画像跨次进化: 本次相对上次的变化 -->
+        <div v-if="store.profileDiff" class="profile-diff">
+          <div class="pd-title">📈 画像进化 · 本次变化</div>
+          <div class="pd-list">
+            <span v-for="(p, i) in diffParts" :key="i" class="pd-item" :class="p.kind">{{ p.text }}</span>
+            <span v-if="!diffParts.length" class="pd-none">掌握度稳定，无新增变化</span>
+          </div>
+        </div>
         <div style="margin-bottom: 12px;">
           <ProfileRadar :profile="store.profile" />
         </div>
@@ -102,6 +110,19 @@ const STRATEGY = { advance: '进阶挑战（正确率高，提升难度）', rem
 function strategyLabel(s) { return STRATEGY[s] || s || '-' }
 function strategyTagType(s) { return { advance: 'success', remediate: 'warning', scaffold: 'danger' }[s] || 'info' }
 
+// 画像进化 diff 展示：diff.summary 计数 + recovered/regressed 节点名
+const diffParts = computed(() => {
+  const d = store.profileDiff
+  if (!d || !d.summary) return []
+  const parts = []
+  const names = (k) => (Array.isArray(d[k]) && d[k].length ? d[k].join('、') : '')
+  if (d.summary.recovered) parts.push({ kind: 'up', text: `✅ 恢复掌握 ×${d.summary.recovered}` + (names('recovered') ? `（${names('recovered')}）` : '') })
+  if (d.summary.newly_known) parts.push({ kind: 'up', text: `✨ 新掌握 ×${d.summary.newly_known}` + (names('newly_known') ? `（${names('newly_known')}）` : '') })
+  if (d.summary.newly_weak) parts.push({ kind: 'down', text: `🔻 新薄弱 ×${d.summary.newly_weak}` + (names('newly_weak') ? `（${names('newly_weak')}）` : '') })
+  if (d.summary.regressed) parts.push({ kind: 'down', text: `⚠️ 掌握回落 ×${d.summary.regressed}` + (names('regressed') ? `（${names('regressed')}）` : '') })
+  return parts
+})
+
 async function handleSubmitAnswers() {
   const unanswered = store.userAnswers.filter((a) => !a || String(a).trim() === '').length
   if (unanswered === store.pendingQuestions.length) return
@@ -125,6 +146,13 @@ function openLearning() {
 .progress-text { font-size: 12px; color: var(--km-gray-600); white-space: nowrap; }
 .progress-track { flex: 1; height: 6px; border-radius: 3px; background: var(--km-bg-layer-3); overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 3px; background: var(--km-primary); transition: width 0.3s var(--km-ease); }
+.profile-diff { margin: 8px 0 12px; padding: 8px 12px; border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); background: var(--km-bg-layer-2); }
+.pd-title { font-size: 12px; font-weight: 650; color: var(--km-gray-700); margin-bottom: 6px; }
+.pd-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-item { font-size: 12px; padding: 2px 8px; border-radius: 8px; }
+.pd-item.up { background: rgba(52,179,126,0.12); color: var(--km-success); }
+.pd-item.down { background: rgba(217,139,60,0.14); color: #b9680d; }
+.pd-none { font-size: 12px; color: var(--km-gray-500); }
 .quiz-item {
   padding: 14px 16px; margin-bottom: 10px;
   border: 1px solid var(--km-border-light); border-left: 3px solid var(--km-border-light);
