@@ -51,4 +51,5 @@ async def agents_ping(req: PingRequest):
         return {"ok": True, "content": str(content)[:100], "protocol": req.protocol}
     except Exception as exc:
         logger.warning("llm ping 失败 protocol=%s: %s", req.protocol, exc)
-        return {"ok": False, "error": str(exc), "protocol": req.protocol}
+        # error 恒非空: 前端兜底显示真实原因而非"未知错误"
+        return {"ok": False, "error": str(exc) or exc.__class__.__name__, "protocol": req.protocol}

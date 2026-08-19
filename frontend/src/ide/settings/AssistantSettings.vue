@@ -1,5 +1,8 @@
 <template>
   <div class="assistant-settings">
+    <div v-if="apiUnified" class="unified-banner">
+      已启用「统一 API 配置」（设置 → API 设置）：AI 助手与出题引擎共用一份 Key，此处独立配置的修改会被统一配置覆盖；如需修改请到「API 设置」统一改。
+    </div>
     <!-- 厂商 / API Key / Base URL / 模型 -->
     <SettingCard title="厂商" info="AI 助手对话使用的模型供应商">
       <el-select :model-value="ai.provider" size="small" style="width: 220px" @change="onProviderChange">
@@ -106,6 +109,9 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { useApiSettingsStore } from '@/stores/apiSettings'
+// 统一 API 配置接管时, 顶部提示用户此处独立配置属冗余入口 (减配置点)
+const apiUnified = computed(() => useApiSettingsStore().mode === 'unified')
 import { ElMessageBox } from 'element-plus'
 import { useAiSettingsStore, isCustomProvider, customProviderUuid, PROVIDERS } from '@/stores/aiSettings'
 import { useCustomProvidersStore } from '@/stores/customProviders'
@@ -244,6 +250,11 @@ async function onClearHistory() {
 }
 .tool-perm-row:last-child { border-bottom: 0; }
 .tool-info { display: flex; flex-direction: column; min-width: 0; }
+.unified-banner {
+  padding: 8px 12px; font-size: 12px; line-height: 1.6;
+  border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-2); color: var(--km-gray-700);
+}
 .tool-name { font-size: 13px; font-weight: 600; color: var(--km-gray-800); }
 .tool-desc { font-size: 11.5px; color: var(--km-gray-500); margin-top: 2px; }
 .perm-seg { width: 168px; }

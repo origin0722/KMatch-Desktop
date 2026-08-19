@@ -298,3 +298,21 @@ def test_hybrid_graph_only(store):
     res = store.hybrid_retrieve(known_ids=["PY-001"], weak_ids=["PY-004"], top_k=10)
     assert res and all(n["_source"] == "graph" for n in res)
     assert all(n["node_id"] not in {"PY-001"} for n in res)
+
+
+def test_questions_nested_domain_dirs(kb: Path, tmp_path: Path):
+    """真实题库含嵌套子目录 (questions/DA/ 等, 见 import_knowledge_base.rglob)。
+
+    回归: 旧实现只扫顶层 glob('*.json') → 嵌套域题目漏载 → 该域「题库为空」。
+    """
+    nested = kb / "questions" / "DA"
+    nested.mkdir()
+    (nested / "Q-DA001-001.json").write_text(json.dumps([
+        {"qid": "Q-DA001-001", "source_node_id": "DA-001", "type": "choice",
+         "question": "嵌套域题目", "options": ["A"], "answer": "A", "difficulty": 1,
+         "hint": "", "explanation": "e"}], ensure_ascii=False), encoding="utf-8")
+    s = EmbeddedGraphStore(kb_dir=kb, local_dir=tmp_path / "local2", embedding_client=None)
+    q = s.get_question("Q-DA001-001")
+    assert q is not None and q["node_id"] == "DA-001"
+    assert {x["qid"] for x in s.get_questions_by_node("DA-001")} == {"Q-DA001-001"}
+    assert {x["qid"] for x in s.get_questions_for_nodes(["DA-001"], max_per_node=1)} == {"Q-DA001-001"}

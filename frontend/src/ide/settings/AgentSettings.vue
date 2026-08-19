@@ -1,5 +1,8 @@
 <template>
   <div class="agent-settings">
+    <div v-if="apiUnified" class="unified-banner">
+      已启用「统一 API 配置」（设置 → API 设置）：Agent 独立配置已被统一 Key 接管，此处修改会被覆盖；如需修改请到「API 设置」统一改。
+    </div>
     <SettingCard title="启用 Agent 独立配置"
                  info="开启后，学情检测/资源生成/代码审查等 Agent 使用下方配置；关闭则走后端默认 .env">
       <el-switch :model-value="agent.state.useOverrides" @change="agent.setUseOverrides" />
@@ -45,12 +48,15 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAgentLlmStore } from '@/stores/agentLlm'
 import { PROVIDERS, isCustomProvider } from '@/stores/aiSettings'
+import { useApiSettingsStore } from '@/stores/apiSettings'
 import SettingCard from './SettingCard.vue'
 
 const agent = useAgentLlmStore()
+// 统一 API 配置接管时, 顶部提示用户此处为冗余入口 (减配置点)
+const apiUnified = computed(() => useApiSettingsStore().mode === 'unified')
 const testing = ref(false)
 const testResult = ref(null)
 
@@ -85,4 +91,9 @@ async function testConn() {
 <style scoped>
 .conn-ok { color: var(--km-success, #67c23a); margin-left: 8px; font-size: 12.5px; }
 .conn-err { color: var(--km-danger, #f56c6c); margin-left: 8px; font-size: 12.5px; }
+.unified-banner {
+  padding: 8px 12px; font-size: 12px; line-height: 1.6;
+  border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-2); color: var(--km-gray-700);
+}
 </style>

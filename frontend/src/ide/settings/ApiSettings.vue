@@ -164,7 +164,7 @@ async function onTest(providerId, baseUrl, model, apiKey, protocol = 'openai') {
     const meta = PROVIDERS.find((p) => p.id === providerId)
     const url = baseUrl || meta?.baseUrl || ''
     const r = await api.testConnectivity({ apiKey, baseUrl: url, model, protocol })
-    setStatus(r?.ok ? `连接成功 · 模型响应: ${(r.content || '').slice(0, 60) || 'ok'}` : `连接失败: ${r?.error || '未知错误'}`)
+    setStatus(r?.ok ? `连接成功 · 模型响应: ${(r.content || '').slice(0, 60) || 'ok'}` : `连接失败: ${r?.error || r?.detail || JSON.stringify(r) || '未知错误'}`)
     if (!r?.ok) statusErr.value = true
   } catch (e) {
     setStatus(e?.response?.data?.detail || e?.message || '连接失败', true)

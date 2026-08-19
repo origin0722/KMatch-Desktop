@@ -339,27 +339,31 @@ def assess(req: AssessRequest, request: Request):
 
     # --- interactive 模式: 仅出题，不走工作流 ---
     if req.mode == "interactive":
-        try:
-            # 域判定 (阶段16): 目标命中既有域 → 方向相关选点; 未命中 → 动态建域;
-            # LLM/向量都不可用 → 回退旧选点行为 (零基础难度入口)。
-            nodes = None
-            resolution, dir_nodes = resolve_direction(kg, req.target_direction, req.known_topics)
-            if resolution == "miss":
-                if not llm_configured():
-                    raise ValueError(
-                        f"学习领域「{req.target_direction}」暂未收录, 且未配置 LLM 无法动态建域; "
-                        "请在设置中配置 AI 后重试, 或选择已收录方向 (Python/数据分析/机器学习等)")
-                logger.info("学习目标未命中既有域, 触发动态建域: %s", req.target_direction)
-                nodes = bootstrap_domain(
-                    kg, req.target_direction, tavily_key=req.tavily_key or settings.TAVILY_API_KEY)
-            elif resolution == "hit" and dir_nodes:
-                nodes = dir_nodes
-            questions, nodes = prepare_questions(kg, req.target_direction, req.known_topics, nodes=nodes)
-        except ValueError as e:
-            raise HTTPException(status_code=503, detail=str(e))
-        except Exception as e:
-            logger.error("interactive 出题失败", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"出题失败: {e}")
+        # Spec B: 前端 UI 配置的 key 经 req.llm_overrides 覆写, 必须在此建 ContextVar —
+        # 否则 prepare_questions 里的 llm_configured()/动态建域判定读不到, 导致 UI 配置后
+        # 仍报 "LLM 未配置且题库为空,无法出题" (与 submit/regenerate 的 use_llm_overrides 用法对齐)。
+        with use_llm_overrides(req.llm_overrides):
+            try:
+                # 域判定 (阶段16): 目标命中既有域 → 方向相关选点; 未命中 → 动态建域;
+                # LLM/向量都不可用 → 回退旧选点行为 (零基础难度入口)。
+                nodes = None
+                resolution, dir_nodes = resolve_direction(kg, req.target_direction, req.known_topics)
+                if resolution == "miss":
+                    if not llm_configured():
+                        raise ValueError(
+                            f"学习领域「{req.target_direction}」暂未收录, 且未配置 LLM 无法动态建域; "
+                            "请在设置中配置 AI 后重试, 或选择已收录方向 (Python/数据分析/机器学习等)")
+                    logger.info("学习目标未命中既有域, 触发动态建域: %s", req.target_direction)
+                    nodes = bootstrap_domain(
+                        kg, req.target_direction, tavily_key=req.tavily_key or settings.TAVILY_API_KEY)
+                elif resolution == "hit" and dir_nodes:
+                    nodes = dir_nodes
+                questions, nodes = prepare_questions(kg, req.target_direction, req.known_topics, nodes=nodes)
+            except ValueError as e:
+                raise HTTPException(status_code=503, detail=str(e))
+            except Exception as e:
+                logger.error("interactive 出题失败", exc_info=True)
+                raise HTTPException(status_code=500, detail=f"出题失败: {e}")
 
         session_id = str(uuid.uuid4())
         _cache_session(session_id, {

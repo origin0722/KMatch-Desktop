@@ -188,7 +188,8 @@ class EmbeddedGraphStore:
         # --- 题目 ---
         qdir = self.kb_dir / "questions"
         if qdir.is_dir():
-            for fpath in sorted(qdir.glob("*.json")):
+            # 递归: 真实题库含嵌套子目录 (DA/DB/WD/... 每域一夹), 只扫顶层会漏 → 题库为空 (BUG 回归)
+            for fpath in sorted(qdir.glob("**/*.json")):
                 if fpath.name == "schema.json":
                     continue
                 try:
@@ -914,7 +915,7 @@ class EmbeddedGraphStore:
         new_idx = {}
         qdir = self.kb_dir / "questions"
         if qdir.is_dir():
-            for fpath in sorted(qdir.glob("*.json")):
+            for fpath in sorted(qdir.glob("**/*.json")):  # 递归含嵌套域目录
                 if fpath.name == "schema.json":
                     continue
                 try:
