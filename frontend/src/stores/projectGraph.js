@@ -83,28 +83,36 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   }
 
   // ---- P2: 项目自动解析 ----
+  // 性能(D): 大项目解析(读文件+Neo4j+大 JSON 回填)可能秒级 — 先让"解析中"状态渲染出来
+  // (setTimeout 让出主线程), 并带 token 丢弃过期调用, 避免旧结果覆盖新项目/UI 冻结。
+  let _parseToken = { n: 0 }
   /** 后台解析当前工作区项目 -> 落 Neo4j + 填充 graph (不阻塞文件树交互) */
   async function parseCurrentProject() {
     const ws = useWorkspaceStore()
     if (!ws.root) return // 无项目, 跳过
+    const token = ++_parseToken.n
     parsing.value = true
     parseError.value = null
+    await new Promise((r) => setTimeout(r, 0)) // 先渲染"解析中", 再进 CPU 密集段
     try {
       const sources = await readProjectPyFiles('')
+      if (token !== _parseToken.n) return // 已被更新的解析取代 → 丢弃
       if (!Object.keys(sources).length) {
         parseError.value = '项目中没有可解析的 .py 文件'
         return
       }
       const data = await parseProjectFiles(sources)
+      if (token !== _parseToken.n) return // 过期结果不覆盖
       const result = normalizeGraphResponse(data, ws.root)
       setGraph(result, ws.root)
       try { localStorage.setItem(LS_KEY, result.projectId) } catch { /* ignore */ }
       ElMessage.success(`项目图谱已生成: ${result.entities.length} 个实体, ${result.relations.length} 条关系`)
     } catch (e) {
+      if (token !== _parseToken.n) return
       parseError.value = e?.message || '项目解析失败'
       ElMessage.error(`项目解析失败: ${parseError.value}`)
     } finally {
-      parsing.value = false
+      if (token === _parseToken.n) parsing.value = false
     }
   }
 

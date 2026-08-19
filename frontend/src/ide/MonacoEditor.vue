@@ -175,9 +175,11 @@ watch(() => ws.root, () => {
   editor.setModel(null)
 })
 
-// ---- 阶段8: 外部文件变动响应 ----
+// 阶段8: 外部文件变动响应
 // watch externalChanges: 对已打开的非脏文件失效 model (下次 getOrCreateModel 重读磁盘);
 //                       对脏文件设 conflictPath 弹 banner。
+// 性能(B): externalChanges 是响应式 Map(useReactiveMap, mutation 即触发),
+// 去掉 deep 深度代理遍历 — 保存/外部同步时不再每次深度遍历整表。
 watch(() => ws.externalChanges, (changes) => {
   if (!changes || changes.size === 0) return
   for (const [relPath, info] of changes) {
@@ -200,7 +202,7 @@ watch(() => ws.externalChanges, (changes) => {
       ws.clearExternalChange(relPath)
     }
   }
-}, { deep: true })
+})
 
 /** dispose 单个 model 并从缓存移除 (下次 getOrCreateModel 重读磁盘) */
 function disposeModel(relPath) {

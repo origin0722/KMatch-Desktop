@@ -84,6 +84,19 @@ export const useAssessmentStore = defineStore('assessment', () => {
   /** 本次画像相对上次的版本变化 (backend merge diff) */
   const profileDiff = ref(null)
 
+  // 性能(E/G): 流式事件/日志去重用 Set(O(1)) 替代 .includes 线性扫描(二次方劣化);
+  // 数组窗口上限 _MAX_TAIL 防长会话内存/渲染膨胀。
+  const _evSeen = new Set()
+  const _logSeen = new Set()
+  const _MAX_TAIL = 500
+  function _capTail(arr) { if (arr.length > _MAX_TAIL) arr.splice(0, arr.length - _MAX_TAIL) }
+  function _syncSeenSets() {
+    _evSeen.clear()
+    _logSeen.clear()
+    for (const l of orchestrationLog.value) _logSeen.add(l)
+    for (const e of orchestrationEvents.value) { if (e?.log) _evSeen.add(e.log) }
+  }
+
   /**
    * Phase 1: 最近一次持久化 run 的续跑信息
    * 结构: { sessionId, mode, request: {target_direction, scene, max_retries}, summary }
@@ -177,6 +190,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     learningReport.value = null
     reportLoading.value = false
     reportLoaded.value = false
+    _syncSeenSets()
   }
 
   // ============================================================
@@ -192,6 +206,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     knowledgeGraph.value = data.knowledge_graph || null
     generatedContent.value = data.generated_content || null
     learningReport.value = data.learning_report || null
+    _syncSeenSets() // done 终态整体替换后同步去重集合 (防 stale 判定)
 
     // BUG-028: demo 模式空画像 → 错误提示
     // (interactive 模式空画像是正常的出题阶段, 由 startAssessment 单独处理, 不会走到这)
@@ -420,14 +435,17 @@ export const useAssessmentStore = defineStore('assessment', () => {
           }
           // Phase 0: demo 流式期间实时累加事件与日志 (原有行为只在 done 后填充;
           // 修复 2-4 分钟流式期间 Agent 协同卡片空白), 去重后 at done 由终态整体替换
+          // 性能(E/G): Set 去重 O(1) + 窗口上限 _MAX_TAIL
           const lt = Array.isArray(p.log_tail) ? p.log_tail : []
           for (const line of lt) {
-            if (!orchestrationLog.value.includes(line)) orchestrationLog.value.push(line)
+            if (!_logSeen.has(line)) { _logSeen.add(line); orchestrationLog.value.push(line); _capTail(orchestrationLog.value) }
           }
           const evs = Array.isArray(p.log_events) ? p.log_events : []
           for (const ev of evs) {
-            if (ev && !orchestrationEvents.value.some((e) => e.log === ev.log)) {
+            if (ev && ev.log && !_evSeen.has(ev.log)) {
+              _evSeen.add(ev.log)
               orchestrationEvents.value.push(ev)
+              _capTail(orchestrationEvents.value)
             }
           }
         },

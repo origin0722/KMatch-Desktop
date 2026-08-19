@@ -921,6 +921,13 @@ function rebuildGraph() {
   }
 }
 
+// 性能(C): persona/Layout 快速切换 → rAF 合并重建 (一帧内多次只重建一次, 防大图谱重排卡顿)
+let _rebuildRaf = 0
+function scheduleRebuild() {
+  if (_rebuildRaf) return
+  _rebuildRaf = requestAnimationFrame(() => { _rebuildRaf = 0; rebuildGraph() })
+}
+
 // ---------------------------------------------------------------
 // 生命周期
 // ---------------------------------------------------------------
@@ -961,16 +968,17 @@ onMounted(() => { window.addEventListener('keydown', handleKeydown) })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  if (_rebuildRaf) { cancelAnimationFrame(_rebuildRaf); _rebuildRaf = 0 }
   _ro?.disconnect()
   _ro = null
   destroyGraph()
 })
 
-// 角色切换 -> 重建图谱 (节点详略变化, 借鉴 PersonaSelector)
-watch(() => sidebar.persona, () => { rebuildGraph() })
+// 角色切换 -> 重建图谱 (节点详略变化)   (rAF 合并防连点卡顿)
+watch(() => sidebar.persona, () => { scheduleRebuild() })
 
 // 布局切换 -> 重建图谱 (layout 配置在 init 时注入)
-watch(layoutMode, () => { rebuildGraph() })
+watch(layoutMode, () => { scheduleRebuild() })
 </script>
 
 <style scoped>

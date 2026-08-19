@@ -39,7 +39,8 @@ import { useSidebarStore } from '@/stores/sidebar'
 import FileExplorer from './FileExplorer.vue'
 import ResizablePanel from './ResizablePanel.vue'
 import EditorTabs from './EditorTabs.vue'
-import MonacoEditor from './MonacoEditor.vue'
+// 性能(A): Monaco 本体 ~数 MB, 改 defineAsyncComponent 惰性下载 — 首屏(默认 learning/* 视图)不再背 Monaco 的包
+const MonacoEditor = defineAsyncComponent(() => import('./MonacoEditor.vue'))
 // 非当前视图懒加载: KnowledgeGraph(@antv/g6)、Learning(echarts)、Dashboard(echarts)、
 // LearningSession、ProjectGraphView、SettingsView 都是重组件, 静态 import 会全打进首屏 chunk。
 // 改 defineAsyncComponent 按 tab 切换才下载, code 视图(默认)首屏只载 Monaco。

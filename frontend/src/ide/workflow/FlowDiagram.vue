@@ -129,12 +129,18 @@ function destroy() {
 }
 
 // 状态/拓扑变化 → setData + 重绘 (不改节点位置语义, 只读)
+// 性能(C): SSE 阶段推进频繁触发 — rAF 合并, 一帧内多次变化只重排一次, 防卡顿。
+let _raf = 0
+function scheduleRefresh() {
+  if (_raf || !graph) return
+  _raf = requestAnimationFrame(() => {
+    _raf = 0
+    try { graph.setData(buildData()); graph.render() } catch { /* ignore */ }
+  })
+}
 watch(
   () => props.stages,
-  (val) => {
-    if (!graph || !Array.isArray(val) || !val.length) return
-    try { graph.setData(buildData()); graph.render() } catch { /* ignore */ }
-  },
+  () => scheduleRefresh(),
   { deep: true },
 )
 

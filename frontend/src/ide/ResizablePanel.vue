@@ -32,6 +32,7 @@ const width = ref(clamp(Number(localStorage.getItem(props.panelKey)) || props.in
 const dragging = ref(false)
 let startX = 0
 let startW = 0
+let rafId = 0
 
 function onDown(e) {
   dragging.value = true
@@ -42,11 +43,17 @@ function onDown(e) {
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
 }
+// 性能(F): pointermove 高频 → rAF 合并, 一帧只写一次宽度 (少布局抖动)
 function onMove(e) {
+  if (rafId) return
   const d = props.side === 'right' ? e.clientX - startX : startX - e.clientX
-  width.value = clamp(startW + d)
+  rafId = requestAnimationFrame(() => {
+    rafId = 0
+    width.value = clamp(startW + d)
+  })
 }
 function onUp() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
   dragging.value = false
   document.body.style.userSelect = ''
   document.body.style.cursor = ''
@@ -62,6 +69,7 @@ onUnmounted(onUp)
 <style scoped>
 .resizable-panel {
   position: relative;
+  will-change: width; /* 性能(F): 拖动时提示合成器独立层, 减少重排范围 */
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
