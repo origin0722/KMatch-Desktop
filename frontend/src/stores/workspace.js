@@ -6,6 +6,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useReactiveMap, useReactiveSet } from '@/ide/useReactiveCollection'
+import { isPreviewFile } from '@/utils/fileKind'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const root = ref(null) // 项目根绝对路径
@@ -165,8 +166,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       activeFile.value = relPath
       return
     }
-    // 预读一次确认可读 (MonacoEditor 会再读, 此处仅校验)
-    await window.api.fs.readFile(relPath)
+    // 预览类文件 (图片/PDF/Markdown/HTML) 不走文本预读 (避免把大二进制当 utf-8 读),
+    // 由 FilePreview 按 kind 走 readBase64/readFile。
+    if (!isPreviewFile(relPath)) await window.api.fs.readFile(relPath)
     openFiles.value.push(relPath)
     activeFile.value = relPath
   }

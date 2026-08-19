@@ -1,34 +1,40 @@
 <template>
   <div class="monaco-wrap">
-    <div ref="containerRef" class="monaco-container"></div>
-    <div v-if="!ws.activeFile" class="monaco-empty">
-      <el-icon :size="48" color="var(--ktext-muted)"><DocumentCopy /></el-icon>
-      <p class="empty-title">KMatch·知链 工作区</p>
-      <p class="empty-hint">从左侧资源管理器打开文件, 或点击活动栏 📁 打开项目</p>
-      <p class="empty-hint dim">阶段1: 文件浏览 + Monaco 编辑 (Ctrl+S 保存) · 阶段2 起: AI 助手 + 图谱委派</p>
-    </div>
-    <!-- 阶段8: 外部改动冲突确认 (已打开且脏的文件被外部修改) -->
-    <div v-if="conflictPath" class="conflict-banner">
-      <span class="conflict-text">
-        <el-icon><WarningFilled /></el-icon>
-        {{ conflictPath }} 已被外部修改
-      </span>
-      <div class="conflict-actions">
-        <el-button size="small" @click="keepLocal">保留我的编辑</el-button>
-        <el-button size="small" type="primary" @click="loadDisk">加载磁盘版本</el-button>
+    <!-- 文件内联预览 (图片/Markdown/HTML/PDF) → 不再进 Monaco 看乱码 -->
+    <FilePreview v-if="showPreview && ws.activeFile" :rel-path="ws.activeFile" :kind="currentKind" />
+    <template v-else>
+      <div ref="containerRef" class="monaco-container"></div>
+      <div v-if="!ws.activeFile" class="monaco-empty">
+        <el-icon :size="48" color="var(--ktext-muted)"><DocumentCopy /></el-icon>
+        <p class="empty-title">KMatch·知链 工作区</p>
+        <p class="empty-hint">从左侧资源管理器打开文件, 或点击活动栏 📁 打开项目</p>
+        <p class="empty-hint dim">阶段1: 文件浏览 + Monaco 编辑 (Ctrl+S 保存) · 阶段2 起: AI 助手 + 图谱委派</p>
       </div>
-    </div>
+      <!-- 阶段8: 外部改动冲突确认 (已打开且脏的文件被外部修改) -->
+      <div v-if="conflictPath" class="conflict-banner">
+        <span class="conflict-text">
+          <el-icon><WarningFilled /></el-icon>
+          {{ conflictPath }} 已被外部修改
+        </span>
+        <div class="conflict-actions">
+          <el-button size="small" @click="keepLocal">保留我的编辑</el-button>
+          <el-button size="small" type="primary" @click="loadDisk">加载磁盘版本</el-button>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { WarningFilled, DocumentCopy } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useThemeStore } from '@/stores/theme'
 import { useProjectGraphStore } from '@/stores/projectGraph'
+import FilePreview from './FilePreview.vue'
+import { fileKind, isPreviewKind, isPreviewFile } from '@/utils/fileKind'
 
 // Monaco worker (阶段1 仅 editor 通用 worker; ts/js 智能提示阶段4 按需加)
 self.MonacoEnvironment = { getWorker: () => new editorWorker() }
@@ -36,6 +42,10 @@ self.MonacoEnvironment = { getWorker: () => new editorWorker() }
 const ws = useWorkspaceStore()
 const theme = useThemeStore()
 const projectGraph = useProjectGraphStore()
+
+// 文件内联预览: 图片/Markdown/HTML/PDF → 预览视图, 其余进 Monaco
+const currentKind = computed(() => (ws.activeFile ? fileKind(ws.activeFile) : 'text'))
+const showPreview = computed(() => isPreviewKind(currentKind.value))
 
 const containerRef = ref(null)
 let editor = null
@@ -71,6 +81,7 @@ function applyTheme() {
 
 onMounted(async () => {
   await nextTick()
+  if (showPreview.value) return // 预览文件不初始化 Monaco (避免把二进制当文本创建 model)
   editor = monaco.editor.create(containerRef.value, {
     automaticLayout: true,
     fontSize: 14,
@@ -103,7 +114,14 @@ onMounted(async () => {
 
 // 阶段4b: chat 实体点击 → 跳转 + 高亮符号区间
 async function revealSymbol(target) {
-  if (!editor || !target) return
+  if (!target) return
+  // 预览类文件 (图片/MD/PDF...): 只打开预览视图, 不做编辑器跳转/高亮
+  if (isPreviewFile(target.path)) {
+    if (target.path !== ws.activeFile) await ws.openFile(target.path)
+    projectGraph.consumeReveal()
+    return
+  }
+  if (!editor) return
   try {
     // 若目标文件非当前激活, 先打开并切 model (主动切, 不依赖 watcher 时序)
     if (target.path !== ws.activeFile) {
@@ -132,6 +150,7 @@ watch(() => projectGraph.revealTarget, (t) => {
 })
 
 watch(() => ws.activeFile, async (p) => {
+  if (showPreview.value) return // 预览文件 → 渲染 FilePreview, 不进 Monaco
   if (!editor) return
   if (!p) { editor.setModel(null); return }
   await switchTo(p)

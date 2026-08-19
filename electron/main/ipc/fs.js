@@ -99,6 +99,12 @@ export function registerFsIpc() {
     return fs.readFile(abs, 'utf-8')
   })
 
+  // 文件内联预览: 二进制 (图片/PDF) 以 base64 读 (预览用, 不落 Monaco)
+  ipcMain.handle('fs:readBase64', async (_e, filePath) => {
+    const abs = resolveSafe(filePath)
+    return fs.readFile(abs).toString('base64')
+  })
+
   ipcMain.handle('fs:stat', async (_e, filePath) => {
     const abs = resolveSafe(filePath)
     const st = await fs.stat(abs)

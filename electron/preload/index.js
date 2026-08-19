@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   fs: {
     readFile: (p) => ipcRenderer.invoke('fs:readFile', p),
+    readBase64: (p) => ipcRenderer.invoke('fs:readBase64', p), // 文件内联预览 (图片/PDF base64)
     stat: (p) => ipcRenderer.invoke('fs:stat', p),
     listDirectory: (p, opts) => ipcRenderer.invoke('fs:listDirectory', p, opts || {}),
     writeFile: (p, content) => ipcRenderer.invoke('fs:writeFile', p, content),

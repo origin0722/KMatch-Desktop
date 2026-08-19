@@ -96,4 +96,13 @@ describe('workspace 懒加载目录树', () => {
     expect(ws.expandedDirs.has('src')).toBe(false)
     expect(ws.dirChildren.get('src')).toBeUndefined()
   })
+
+  it('openFile: 预览类文件跳过文本预读, 普通文件预读', async () => {
+    const ws = useWorkspaceStore()
+    await ws.openFile('assets/x.png')
+    expect(window.api.fs.readFile).not.toHaveBeenCalled() // 二进制不 utf-8 预读
+    expect(ws.openFiles).toContain('assets/x.png')
+    await ws.openFile('main.py')
+    expect(window.api.fs.readFile).toHaveBeenCalledWith('main.py')
+  })
 })
