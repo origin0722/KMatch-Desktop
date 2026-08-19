@@ -2,6 +2,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 
+// mock mermaid 动态 import → render 抛错 (测试失败降级路径; 成功渲染由浏览器真机覆盖)
+vi.mock('mermaid', () => ({ default: {
+  initialize() {},
+  render: async () => { throw new Error('no-dom') },
+} }))
+
 function installApi({ readBase64 = null, readFile = null }) {
   globalThis.window = globalThis.window || {}
   window.api = {
@@ -58,5 +64,14 @@ describe('FilePreview', () => {
     const w = mount(FilePreview, { props: { relPath: 'x.png', kind: 'image' } })
     await flushPromises()
     expect(w.find('.pv-error').text()).toContain('ENOENT')
+  })
+
+  it('Markdown 含 mermaid 代码块: 渲染失败 → 降级源码块 + 提示 (不崩)', async () => {
+    installApi({ readFile: vi.fn(async () => '```mermaid\ngraph TD\nA-->B\n```\n') })
+    const w = mount(FilePreview, { props: { relPath: 'd.md', kind: 'markdown' } })
+    await flushPromises()
+    expect(w.find('.mmd-fallback').exists()).toBe(true)
+    expect(w.text()).toContain('Mermaid 渲染失败')
+    expect(w.text()).toContain('graph TD')
   })
 })
