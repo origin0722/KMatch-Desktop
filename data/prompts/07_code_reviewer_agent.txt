@@ -1,3 +1,5 @@
+> 全局契约：见 data/prompts/00_shared_contracts.md（JSON 严格性 / 溯源标记 / 日志事件词汇 / 阈值常量）。
+
 # ============================================================
 # Agent 07: 代码审查Agent (Code Reviewer Agent) — 场景二 Step6①
 # 负责人: C | 版本: v0.3-final | 日期: 2026/06/19

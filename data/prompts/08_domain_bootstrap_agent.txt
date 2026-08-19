@@ -1,3 +1,5 @@
+> 全局契约：见 data/prompts/00_shared_contracts.md（JSON 严格性 / 溯源标记 / 日志事件词汇 / 阈值常量）。
+
 # 08 Domain Bootstrap Agent — 动态建域
 
 > 状态: v0.1 (阶段16, 2026-08-14)。提示词内联于 backend/app/agents/domain_bootstrap.py，

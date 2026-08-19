@@ -73,3 +73,22 @@ def test_event_vocabulary_matches_log_events():
     assert set(log_events.AGENT_KEYS) == {
         "orchestrator", "diagnostics", "reviewer", "graph_controller", "content_generator",
     }
+
+
+def test_shared_contracts_page_pinned():
+    """00_shared_contracts.md 共享契约页必须存在且与代码常量一致。"""
+    t = _read("00_shared_contracts.md")
+    assert "0.85" in t
+    assert "REVIEW_PASS_THRESHOLD" in t
+    assert settings.REVIEW_PASS_THRESHOLD == 0.85
+    assert "max_retries" in t                    # 打回最大轮数
+    assert "agent-start" in t and "agent-end" in t and "degraded" in t  # 事件词汇
+    assert "advance" in t and "remediate" in t and "scaffold" in t      # 反馈分档
+
+
+def test_agent_prompts_reference_shared_contracts():
+    """01-08 主链提示词头部都引用共享契约页 (单一来源防漂移)。"""
+    for name in ("01_orchestrator_agent.txt", "02_diagnostics_agent.txt", "03_graph_controller_agent.txt",
+                 "04_content_generator_agent.txt", "05_content_reviewer_agent.txt", "06_code_tester_agent.txt",
+                 "07_code_reviewer_agent.txt", "08_domain_bootstrap_agent.txt"):
+        assert "00_shared_contracts" in _read(name), f"{name} 缺共享契约页引用"
