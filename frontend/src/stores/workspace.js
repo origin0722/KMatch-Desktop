@@ -50,6 +50,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!res) return false
     root.value = res.root
     rootName.value = res.name
+    _resetTreeCache()
     await refreshTree()
     await loadRecent()
     openFiles.value = []
@@ -67,15 +68,51 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!res) return
     root.value = res.root
     rootName.value = res.name
+    _resetTreeCache()
     await refreshTree()
     await loadRecent()
     if (dir) startWatching()
     else stopWatching()
   }
 
+  // ---- 懒加载目录树 (借鉴 DSH-better-sidebar 资源管理器) ----
+  // 顶层列表 + 展开时逐层拉取子项, 避免大项目全量深遍历卡顿。
+  const expandedDirs = useReactiveSet()      // 已展开的目录(相对路径)
+  const loadingDirs = useReactiveSet()       // 正在拉取的目录
+  const dirChildren = useReactiveMap()       // 目录(相对路径) → 子项 [] (缓存; '' => 根)
+  const expandedDirsRef = expandedDirs.ref
+  const loadingDirsRef = loadingDirs.ref
+  const dirChildrenRef = dirChildren.ref
+
+  function _resetTreeCache() {
+    expandedDirs.clear()
+    dirChildren.clear()
+    loadingDirs.clear()
+  }
+
   async function refreshTree() {
     if (!root.value) return
-    tree.value = await window.api.fs.listDirectory(null, { deep: true })
+    // 只取顶层, 子目录惰性展开
+    tree.value = await window.api.fs.listDirectory(null)
+  }
+
+  /** 展开/收起目录 (首次展开才拉取子项, 之后折叠/再展开命中缓存) */
+  async function toggleDir(dirPath) {
+    if (expandedDirs.has(dirPath)) {
+      expandedDirs.delete(dirPath)
+      return
+    }
+    if (!dirChildren.has(dirPath) && !loadingDirs.has(dirPath)) {
+      loadingDirs.add(dirPath)
+      try {
+        const children = await window.api.fs.listDirectory(dirPath)
+        dirChildren.set(dirPath, children || [])
+      } catch { /* 读取失败: 视为空, 仍允许展开 */}
+      finally {
+        loadingDirs.delete(dirPath)
+      }
+    }
+    expandedDirs.add(dirPath)
   }
 
   async function loadRecent() {
@@ -163,6 +200,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   return {
     root, rootName, tree, openFiles, activeFile, dirtyFiles, recent,
     externalChanges,
+    // 懒加载目录树状态
+    expandedDirs: expandedDirsRef,
+    loadingDirs: loadingDirsRef,
+    dirChildren: dirChildrenRef,
+    toggleDir,
     hasProject, openCount,
     openProject, setRoot, refreshTree, loadRecent,
     openFile, closeFile, setActive, markDirty, saveFile,
