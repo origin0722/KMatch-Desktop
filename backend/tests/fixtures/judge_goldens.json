@@ -1,0 +1,138 @@
+{
+  "_comment": "裁判 golden 回归集 (⑥)。用于 test_judge_goldens.py (离线假模型驱动 harness) 与 scripts/run_judge_golden.py (有 key 时跑真裁判)。案例取材历次 M5 质检真实抓到的高置信错误族。verdict: grounded|hallucinated|unverifiable",
+  "hallucination": [
+    {
+      "id": "fabricate-int-internal",
+      "note": "编造图谱外实现细节(字节宽度/对象头) → 幻觉",
+      "content": "Python 的 int 类型在 CPython 内部用 30 位/15 位数组表示，对象头占 28 字节。",
+      "facts": {
+        "PY-001": {
+          "summary": "整数在 Python 中为任意精度，支持 int() 转换与大数运算",
+          "key_points": ["整数任意精度", "int() 类型转换", "0b/0o/0x 各进制书写"]
+        }
+      },
+      "expected_verdict": "hallucinated",
+      "expected_coverage": "none"
+    },
+    {
+      "id": "grounded-restate",
+      "note": "复述图谱事实 → grounded full",
+      "content": "整数在 Python 中支持任意精度；可用 int() 做类型转换；也可用 0b/0o/0x 书写二进制/八进制/十六进制。",
+      "facts": {
+        "PY-001": {
+          "summary": "整数在 Python 中为任意精度，支持 int() 转换与大数运算",
+          "key_points": ["整数任意精度", "int() 类型转换", "0b/0o/0x 各进制书写"]
+        }
+      },
+      "expected_verdict": "grounded",
+      "expected_coverage": "full"
+    },
+    {
+      "id": "beyond-facts-but-true",
+      "note": "超出图谱细节但领域公认正确(标准 API) → grounded (判据: 图谱没写≠幻觉)",
+      "content": "字符串 str.find() 找不到子串时返回 -1，而不是返回 False。",
+      "facts": {
+        "PY-003": {
+          "summary": "字符串常用方法",
+          "key_points": ["字符串不可变", "索引与切片"]
+        }
+      },
+      "expected_verdict": "grounded",
+      "expected_coverage": "partial"
+    },
+    {
+      "id": "contradicts-dict-mutation",
+      "note": "与图谱事实相悖(字典迭代改大小) → 幻觉",
+      "content": "遍历 dict.items() 期间增删键不会出错，视图会立即反映新数据。",
+      "facts": {
+        "PY-004": {
+          "summary": "字典",
+          "key_points": ["字典键必须可哈希", "遍历期间增删键会抛 RuntimeError: dictionary changed size during iteration"]
+        }
+      },
+      "expected_verdict": "hallucinated",
+      "expected_coverage": "partial"
+    },
+    {
+      "id": "no-facts-node-missing",
+      "note": "图谱事实缺失 → unverifiable",
+      "content": "假设 RA-001 支持向量机可用于分类任务。",
+      "facts": {},
+      "expected_verdict": "unverifiable",
+      "expected_coverage": "none"
+    },
+    {
+      "id": "slicing-boundary-wrong",
+      "note": "切片左闭右开放答案错误 → 幻觉",
+      "content": "name = ' Alice! '，则 name[1:5] == 'lice'。",
+      "facts": {
+        "PY-005": {
+          "summary": "序列切片",
+          "key_points": ["索引从 0 起，负索引从 -1 起", "切片 s[a:b] 左闭右开，不含 b"]
+        }
+      },
+      "expected_verdict": "hallucinated",
+      "expected_coverage": "partial"
+    },
+    {
+      "id": "sorted-order-wrong",
+      "note": "排序预期输出错误 → 幻觉",
+      "content": "sorted([('Jerry',17),('Bob',15)], key=lambda x:x[1]) 返回 [('Jerry',17),('Bob',15)]。",
+      "facts": {
+        "PY-006": {
+          "summary": "排序与比较",
+          "key_points": ["sorted() 返回新列表", "key 指定排序依据，15<17 时 Bob 应在前"]
+        }
+      },
+      "expected_verdict": "hallucinated",
+      "expected_coverage": "partial"
+    },
+    {
+      "id": "unrelated-to-node",
+      "note": "内容与节点无关(常识但与图谱无关) → unverifiable",
+      "content": "深海鱼油富含不饱和脂肪酸。",
+      "facts": {
+        "PY-002": {
+          "summary": "循环控制",
+          "key_points": ["while 循环", "for 循环与 break/continue"]
+        }
+      },
+      "expected_verdict": "unverifiable",
+      "expected_coverage": "none"
+    }
+  ],
+  "difficulty": [
+    {
+      "id": "beginner-vs-advanced",
+      "note": "入门内容 vs 高级画像 → 不匹配",
+      "content": "变量与 print 输出。",
+      "theory_level": 4,
+      "expected_difficulty": 1,
+      "expected_matched": false
+    },
+    {
+      "id": "advanced-vs-advanced",
+      "note": "高级内容 vs 高级画像 → 匹配",
+      "content": "用装饰器与生成器优化流水线处理。",
+      "theory_level": 4,
+      "expected_difficulty": 4,
+      "expected_matched": true
+    },
+    {
+      "id": "basic-vs-beginner",
+      "note": "基础内容 vs 入门画像 → 匹配",
+      "content": "条件判断 if/else 的基本写法。",
+      "theory_level": 1,
+      "expected_difficulty": 2,
+      "expected_matched": true
+    },
+    {
+      "id": "judge-fail-nonnumeric",
+      "note": "裁判返回非数值 → 判定失败(matched=false, 路径健壮性)",
+      "content": "某段内容。",
+      "theory_level": 2,
+      "expected_difficulty": "oops",
+      "expected_matched": false
+    }
+  ]
+}
