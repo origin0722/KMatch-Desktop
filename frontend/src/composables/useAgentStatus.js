@@ -169,12 +169,16 @@ export function useAgentStatus() {
     if (asm && p) {
       out.diagnostics = `判分 ${asm.correct_count}/${asm.total_count} · 理论 L${p.theory_level ?? '?'}/实操 L${p.practical_level ?? '?'} · 薄弱 ${p.weak_topics?.length ?? 0} 点`
     }
-    // 图谱管控: 学习路径节点数 + 预估时长
+    // 图谱管控: 学习路径节点数 + 预估时长 + 节奏语境 (连续学时 → 约 N 周)
     const kg = store.knowledgeGraph
     if (kg) {
       const n = kg.learning_path?.length ?? kg.path_node_ids?.length ?? 0
       const h = kg.estimated_total_hours
-      out.graph_controller = `${n} 节点学习路径` + (h ? ` · 预估 ${h}h` : '')
+      let txt = `${n} 节点学习路径` + (h ? ` · 预估 ${h}h` : '')
+      // pacing 来自后端 report (按每周可学时折周, 避免"连续 5.2h"显得吓人)
+      const p = store.learningReport?.pacing
+      if (p && p.weeks) txt += ` · 约 ${p.weeks} 周节奏（每周 ${p.hours_per_week}h）`
+      out.graph_controller = txt
     }
     // 内容生成: 优先 generatedContent, 回落 针对性反馈 feedbackContent
     const gc = store.generatedContent

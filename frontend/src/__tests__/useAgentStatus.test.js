@@ -53,6 +53,14 @@ describe('useAgentStatus 产出概览', () => {
     expect(productions.value.graph_controller).toBe('12 节点学习路径 · 预估 4.2h')
   })
 
+  it('productions.graph_controller: 有 report pacing → 展示节奏语境 (约 N 周)', async () => {
+    mockAssessment.knowledgeGraph = { learning_path: new Array(12), estimated_total_hours: 5.2 }
+    mockAssessment.learningReport = { pacing: { total_hours: 5.2, hours_per_week: 6, weeks: 1 } }
+    const { productions } = useAgentStatus()
+    await nextTick()
+    expect(productions.value.graph_controller).toBe('12 节点学习路径 · 预估 5.2h · 约 1 周节奏（每周 6h）')
+  })
+
   it('productions.content_generator: 优先 generatedContent, 回落 feedbackContent', async () => {
     mockAssessment.generatedContent = { resources: new Array(6), node_count: 2 }
     const { productions } = useAgentStatus()

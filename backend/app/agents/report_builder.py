@@ -322,11 +322,22 @@ def build_learning_report(
         learning_report={"difficulty_match": difficulty_match},
     )
 
+    # 节奏语境: "连续 5.2h" 显得吓人, 按每周可学时长折成"完成约 N 周 (每周 Xh)" (估时修正)。
+    hours = learning_path_graph.get("estimated_total_hours", 0.0) or 0.0
+    hours_per_week = max(1, int(profile.get("time_per_week") or 6))
+    import math
+    pacing = {
+        "total_hours": round(hours, 1),
+        "hours_per_week": hours_per_week,
+        "weeks": max(1, math.ceil(hours / hours_per_week)) if hours else 0,
+    }
+
     return {
         "blind_spots": blind_spots,
         "difficulty_match": difficulty_match,
         "learning_path": learning_path_graph,
         "review_status": review_status,
         "quality_metrics": quality_metrics,
+        "pacing": pacing,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
