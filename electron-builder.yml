@@ -8,9 +8,20 @@ directories:
 files:
   - out/**/*
 # backend PyInstaller 产物 + data: 打入 extraResources (S3)
+# data 仅含产品内容 (knowledge_base/prompts/user_profiles/example_projects);
+# 排除本地运行痕迹/隐私 (profile_archive 用户档案, workflow_runs 复盘记录,
+# vision_cache/quality_report 分析缓存, local 嵌入式运行时数据) — 隐私核验见
+# docs/交付材料/真机核验清单_v1.0.0.md 第 6 节
 extraResources:
   - from: data
     to: data
+    filter:
+      - "**/*"
+      - "!profile_archive/**"
+      - "!workflow_runs/**"
+      - "!local/**"
+      - "!vision_cache.json"
+      - "!quality_report.json"
   - from: backend-dist
     to: backend
 asarUnpack:
