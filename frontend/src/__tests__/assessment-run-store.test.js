@@ -69,6 +69,20 @@ describe('assessment store — Phase 1 持久 run', () => {
     await expect(store.loadRun('x')).rejects.toThrow('网络错误')
   })
 
+  it('loadRun 回灌 summary.profile_diff (④ 复盘见画像版本变化)', async () => {
+    fetchRun.mockResolvedValue({
+      ...SAMPLE_RUN,
+      summary: {
+        path_nodes: 7,
+        profile_diff: { summary: { recovered: 1, newly_known: 0, newly_weak: 1, regressed: 0 } },
+      },
+    })
+    const store = useAssessmentStore()
+    await store.loadRun('sid-persisted-1')
+    expect(store.profileDiff.summary.recovered).toBe(1)
+    expect(store.profileDiff.summary.newly_weak).toBe(1)
+  })
+
   it('startDemoStream 记录 lastRun 请求 meta, done 后填 sessionId', async () => {
     const cbsCapture = {}
     startAssessmentStream.mockImplementation((payload, cbs) => {

@@ -463,6 +463,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     if (!data) return null
     orchestrationLog.value = data.orchestration_log || []
     orchestrationEvents.value = data.orchestration_events || []
+    profileDiff.value = data.summary?.profile_diff || null // ① 复盘: run 落盘的画像版本 diff(④)
     sessionId.value = data.session_id || sid
     lastRun.value = {
       sessionId: data.session_id || sid,

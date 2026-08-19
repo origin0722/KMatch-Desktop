@@ -676,6 +676,24 @@ def submit(req: SubmitRequest, request: Request):
         except Exception as e:  # noqa: BLE001  画像档案尽力而为, 不影响判分主流程
             logger.warning("画像档案 merge 失败 learner=%r err=%s", getattr(req, 'learner_key', None), e)
 
+    # Phase 1/2: 落盘 run 记录 (interactive submit + 流程定义快照 + 画像版本 diff)
+    # 注意: 必须在 return 之前调用 (此前的写法在 return 之后 → 死代码, interactive run 从未落盘)。
+    _persist_run(
+        session_id=req.session_id,
+        mode="interactive",
+        request={"target_direction": target, "workflow_id": "scene1-interactive"},
+        orchestration_log=orchestration_log,
+        summary={
+            "correct_count": grading["correct_count"],
+            "total_count": grading["total_count"],
+            "strategy": feedback["strategy"],
+            "theory_level": profile.get("theory_level"),
+            "path_nodes": len(knowledge_graph.get("learning_path", [])) if knowledge_graph else 0,
+            **({"profile_diff": profile_diff, "learner_key": learner_key} if profile_diff else {}),
+        },
+        workflow=get_workflow("scene1-interactive"),
+    )
+
     return SubmitResponse(
         session_id=req.session_id,
         profile=profile,
@@ -692,21 +710,6 @@ def submit(req: SubmitRequest, request: Request):
         knowledge_graph=knowledge_graph,
         orchestration_log=orchestration_log,
         orchestration_events=[to_log_event(l) for l in orchestration_log],
-    )
-    # Phase 1/2: 落盘 run 记录 (interactive submit + 流程定义快照)
-    _persist_run(
-        session_id=req.session_id,
-        mode="interactive",
-        request={"target_direction": target, "workflow_id": "scene1-interactive"},
-        orchestration_log=orchestration_log,
-        summary={
-            "correct_count": grading["correct_count"],
-            "total_count": grading["total_count"],
-            "strategy": feedback["strategy"],
-            "theory_level": profile.get("theory_level"),
-            "path_nodes": len(knowledge_graph.get("learning_path", [])) if knowledge_graph else 0,
-        },
-        workflow=get_workflow("scene1-interactive"),
     )
 
 

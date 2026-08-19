@@ -49,6 +49,7 @@
           <div class="pd-list">
             <span v-for="(p, i) in diffParts" :key="i" class="pd-item" :class="p.kind">{{ p.text }}</span>
             <span v-if="!diffParts.length" class="pd-none">掌握度稳定，无新增变化</span>
+            <span v-if="staleCount" class="pd-item warn">⚠️ {{ staleCount }} 个知识点已超 30 天未重测，建议复习/重测</span>
           </div>
         </div>
         <div style="margin-bottom: 12px;">
@@ -123,6 +124,12 @@ const diffParts = computed(() => {
   return parts
 })
 
+const staleCount = computed(() => {
+  const p = store.profile
+  const items = [...(p?.known_topics || []), ...(p?.weak_topics || [])]
+  return items.filter((it) => it && it.recheck_due).length
+})
+
 async function handleSubmitAnswers() {
   const unanswered = store.userAnswers.filter((a) => !a || String(a).trim() === '').length
   if (unanswered === store.pendingQuestions.length) return
@@ -152,6 +159,7 @@ function openLearning() {
 .pd-item { font-size: 12px; padding: 2px 8px; border-radius: 8px; }
 .pd-item.up { background: rgba(52,179,126,0.12); color: var(--km-success); }
 .pd-item.down { background: rgba(217,139,60,0.14); color: #b9680d; }
+.pd-item.warn { background: rgba(240,160,64,0.14); color: #b9680d; }
 .pd-none { font-size: 12px; color: var(--km-gray-500); }
 .quiz-item {
   padding: 14px 16px; margin-bottom: 10px;

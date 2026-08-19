@@ -44,6 +44,8 @@ def _archive_dir() -> Path:
 
 
 _MASTERY_BOUND = 0.8
+# 遗忘/时效: known 超该天数未重测 → 标 recheck_due (待重验)
+STALE_AFTER_DAYS = 30
 
 
 def _entry_map(profile) -> tuple[dict, dict]:
@@ -67,15 +69,20 @@ def _classify(mastery: float) -> str:
     return "known" if mastery >= _MASTERY_BOUND else "weak"
 
 
-def merge_profiles(prev: Optional[dict], new: dict) -> tuple[dict, Optional[dict]]:
+def merge_profiles(prev: Optional[dict], new: dict,
+                   now: Optional[datetime] = None) -> tuple[dict, Optional[dict]]:
     """纯函数：加权合并 prev 与 new 的掌握度，返回 (evolved, diff)。
 
     - prev 为空 → 首次: 原样返回 new, diff=None
     - 规则: 本轮重测节点 merged=0.4*prev_m + 0.6*new_m (多轮更相信近期);
             未重测旧节点原样结转; 阈值 0.8 分段 known/weak。
+    - 时效(②): 本轮实测条目记 last_test_at；结转的 known 若超 STALE_AFTER_DAYS
+      未验证 → 标 recheck_due (待重验), UI 层提示复习/重测。
     - diff: recovered(旧薄弱→已掌握) / newly_known(首见→已掌握) /
             regressed(旧掌握→薄弱) / newly_weak(首见→薄弱)
     """
+    now = now or datetime.utcnow()
+    now_iso = now.isoformat() + "Z"
     if prev is None:
         return dict(new), None
     new_master, new_kind = _entry_map(new)
@@ -95,7 +102,7 @@ def merge_profiles(prev: Optional[dict], new: dict) -> tuple[dict, Optional[dict
             m = max(m, _MASTERY_BOUND)
         else:
             m = min(m, _MASTERY_BOUND - 0.01)
-        entry = {"node_id": nid, "mastery": m}
+        entry = {"node_id": nid, "mastery": m, "last_test_at": now_iso}
         kind = _classify(m)
         if kind == "weak":
             patterns = set()
@@ -115,6 +122,16 @@ def merge_profiles(prev: Optional[dict], new: dict) -> tuple[dict, Optional[dict
             src = (prev.get("known_topics") or prev.get("weak_topics") or [])
             old = next((x for x in src if isinstance(x, dict) and x.get("node_id") == nid), {})
             merged[nid] = dict(old)
+            # 时效降级(②): 未重测 known 超过 STALE_AFTER_DAYS → 标待重验
+            last_at = merged[nid].get("last_test_at")
+            if last_at:
+                try:
+                    dt = datetime.fromisoformat(last_at.replace("Z", "+00:00"))
+                    dt = dt.replace(tzinfo=None)
+                    if (now - dt).days > STALE_AFTER_DAYS and _classify(merged[nid]["mastery"]) == "known":
+                        merged[nid]["recheck_due"] = True
+                except (ValueError, TypeError):
+                    pass
 
     evolved_known = [merged[n] for n in merged if _classify(merged[n]["mastery"]) == "known"]
     evolved_weak = [merged[n] for n in merged if _classify(merged[n]["mastery"]) == "weak"]

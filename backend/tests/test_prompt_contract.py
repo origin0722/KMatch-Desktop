@@ -92,3 +92,11 @@ def test_agent_prompts_reference_shared_contracts():
                  "04_content_generator_agent.txt", "05_content_reviewer_agent.txt", "06_code_tester_agent.txt",
                  "07_code_reviewer_agent.txt", "08_domain_bootstrap_agent.txt"):
         assert "00_shared_contracts" in _read(name), f"{name} 缺共享契约页引用"
+
+
+def test_graph_controller_embedding_degradation_clause():
+    """⑦: 03 提示词须显式声明无 embedding 时语义检索降级为仅图遍历。"""
+    t = _read("03_graph_controller_agent.txt")
+    assert "降级" in t
+    assert "semantic_search" in t and "hybrid_retrieve" in t
+    assert "图遍历" in t

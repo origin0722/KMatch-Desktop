@@ -6,12 +6,14 @@ key 去安全化、submit API 带 learner_key 返回 profile_diff。
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.agents import profile_store as ps
+from app.agents import run_store
 from app.api import diagnostics as diag_api
 
 
@@ -84,6 +86,22 @@ def test_merge_diff_recovered_regressed_newly():
     assert any(x["node_id"] == "R" and "last_test_score" in x for x in evolved["known_topics"])
 
 
+def test_merge_adds_last_test_at_and_stale_recheck_due():
+    """② 时效: 实测条目记 last_test_at; 超 STALE_AFTER_DAYS 未重测的结转 known 标 recheck_due。"""
+    prev = _profile(known_topics=[
+        {"node_id": "K1", "mastery": 0.95, "last_test_at": "2020-01-01T00:00:00Z"},  # 六年未测 → stale
+        {"node_id": "K2", "mastery": 0.9, "last_test_at": "2026-08-10T00:00:00Z"},   # 最近 → 不标
+    ], weak_topics=[])
+    new = _profile(weak_topics=[{"node_id": "N", "mastery": 0.3}])
+    evolved, _ = ps.merge_profiles(prev, new, now=datetime(2026, 8, 18))
+    n = next(x for x in evolved["weak_topics"] if x["node_id"] == "N")
+    assert n.get("last_test_at")  # 本轮实测带时间戳
+    k1 = next(x for x in evolved["known_topics"] if x["node_id"] == "K1")
+    assert k1.get("recheck_due") is True
+    k2 = next(x for x in evolved["known_topics"] if x["node_id"] == "K2")
+    assert k2.get("recheck_due") is None
+
+
 def test_save_load_roundtrip_and_sanitize(monkeypatch, tmp_path):
     _patch(monkeypatch, tmp_path)
     p = _profile()
@@ -153,3 +171,7 @@ def test_submit_with_learner_key_returns_diff_and_reuses_id(monkeypatch, tmp_pat
     # 档案已落库 latest
     loaded = ps.load_profile("learner-9")
     assert loaded["profile_id"] == "UP-DIA-run0"
+    # ④ 复盘联动: submit 落盘的 run summary 含 profile_diff (需 _persist_run 走到)
+    rec = run_store.load_run("s1")
+    assert rec is not None
+    assert rec["run"]["summary"].get("profile_diff") is not None
