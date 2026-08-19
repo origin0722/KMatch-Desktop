@@ -80,5 +80,11 @@ class Settings:
     DATA_DIR: Path = Path(_data_dir_env) if _data_dir_env else Path(__file__).parent.parent.parent / "data"
     KB_DIR: Path = DATA_DIR / "knowledge_base"  # 供 scripts/ 引用知识库路径
 
+    # 嵌入式存储可变数据 (掌握状态/项目图谱/向量缓存) 目录 — ADR-0008
+    # 安装包 resources/data 只读, 打包态由 Electron sidecar 注入 KMATCH_LOCAL_DIR 到用户
+    # appData 可写目录; 开发态 fallback 到 DATA_DIR/local.
+    _local_env = os.getenv("KMATCH_LOCAL_DIR")
+    LOCAL_DIR: Path = Path(_local_env) if _local_env else DATA_DIR / "local"
+
 
 settings = Settings()

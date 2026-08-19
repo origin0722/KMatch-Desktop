@@ -34,3 +34,10 @@
 - 测试：后端 651（含嵌入式 14）全绿，前端 434 全绿；等价性胶水测试待 Neo4j 环境可选补。
 - 行为差异（均为正向）：嵌入式下 kg 恒就绪 → 多 Agent workflow 恒编译，原"Neo4j 未起即 503"面大幅收窄；health 新增 `graph_store`/`semantic_search` 字段。
 - 已知边界：语义检索需云端 embedding（query 编码）；旧 Neo4j 上的项目图/状态数据不自动迁移（可重新解析 / 重置 / 回填）。
+
+## 跟进（同日 2026-08-19）
+
+- **打包就绪修复**：新增 `KMATCH_LOCAL_DIR`（Electron sidecar 在 packaged 态注入 `userData/data/local`），解决"安装包 resources/data 只读、嵌入式可变数据写不动"的生产问题；开发态 fallback `DATA_DIR/local`。
+- **离线种子导出**：新增 `scripts/export_embeddings.py`（Neo4j 读 `n.embedding` → 原子写 `data/local/embeddings.json`），打包前运行可让端用户首跑即语义可用（省首跑回填）。
+- **回归测试扩充**：`tests/test_engine_parity.py`（真实 222 节点库回归 + embedded↔Neo4j 等价性胶水，Neo4j 不可达自动 skip）、`tests/test_export_embeddings.py`。
+- 后端测试总数 → **657 通过 + 2 skip**（2 skip = Neo4j 不可达时自动跳过的等价性胶水）。

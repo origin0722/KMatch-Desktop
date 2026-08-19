@@ -68,7 +68,7 @@ class EmbeddedGraphStore:
         embedding_client=None,
     ):
         self.kb_dir = Path(kb_dir) if kb_dir else settings.KB_DIR
-        self.local_dir = Path(local_dir) if local_dir else settings.DATA_DIR / "local"
+        self.local_dir = Path(local_dir) if local_dir else settings.LOCAL_DIR
         self.embedding_model = embedding_model or settings.EMBEDDING_MODEL
         self.embedding_client = embedding_client  # 属性语义与 Neo4j 后端一致 (可为 None)
 

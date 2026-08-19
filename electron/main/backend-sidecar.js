@@ -62,6 +62,11 @@ function spawnBackend() {
   // UnicodeEncodeError 刷 "Logging error" 噪音 (实测)。
   // issue-49: 注入已落盘的代理 env (Spec B 18-19), 使 LLM/搜索出站走代理; NO_PROXY 排除本地回环
   const env = { ...process.env, PYTHONIOENCODING: 'utf-8', ...proxyEnv() }
+  // 端用户免 Docker (ADR-0008): 安装包 resources/data 只读, 嵌入式运行时可变数据
+  // (掌握状态/项目图谱/向量缓存) 落用户 appData 可写目录, 否则 Program Files 安装会写失败
+  if (usePackaged) {
+    env.KMATCH_LOCAL_DIR = path.join(app.getPath('userData'), 'data', 'local')
+  }
   const proc = usePackaged
     ? spawn(exe, [], { cwd, stdio: ['ignore', 'pipe', 'pipe'], env })
     : spawn(process.env.PYTHON || 'python', [
