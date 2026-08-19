@@ -59,3 +59,6 @@ data/workflow_runs/
 
 # 画像档案 (跨次累积/进化, 运行时本地生成不进库)
 data/profile_archive/
+
+# 嵌入式存储运行时可变数据 (端用户免 Docker: 掌握状态/项目图谱/向量缓存, ADR-0008)
+data/local/

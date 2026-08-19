@@ -17,6 +17,10 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
   const lastError = ref('')
   // Neo4j 状态: 'unknown'=后端未确认 / 'connected'=后端已连上图库 / 'down'=后端活着但图库不可用
   const neo4jStatus = ref('unknown')
+  // 图存储后端 (embedded=嵌入式无 Docker / neo4j / ''=未知) — 端用户免 Docker 改造
+  const graphStore = ref('')
+  // 语义检索状态: ready / degraded / unavailable
+  const semanticState = ref('')
   let _timer = null
   let _started = false
 
@@ -28,6 +32,16 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     return status.value ? '后端就绪' : '后端未起'
   })
 
+  function applyHealth(body) {
+    const b = body || {}
+    const neo4j = b.neo4j || ''
+    neo4jStatus.value = typeof neo4j === 'string' && neo4j.startsWith('connected')
+      ? 'connected'
+      : 'down'
+    graphStore.value = b.graph_store || ''
+    semanticState.value = b.semantic_search || 'unavailable'
+  }
+
   async function check() {
     try {
       if (window.api?.http) {
@@ -36,11 +50,7 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
         status.value = !!res.ok
         if (res.ok) {
           lastError.value = ''
-          // 后端 main.py /api/health 返回 neo4j 字段 (connected / unavailable...)
-          const neo4j = res.body?.neo4j || ''
-          neo4jStatus.value = typeof neo4j === 'string' && neo4j.startsWith('connected')
-            ? 'connected'
-            : 'down'
+          applyHealth(res.body)
         } else {
           lastError.value = `HTTP ${res.status}`
         }
@@ -50,10 +60,7 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
         const ret = await http.get('/api/health')
         status.value = true
         lastError.value = ''
-        const neo4j = ret.data?.neo4j || ''
-        neo4jStatus.value = typeof neo4j === 'string' && neo4j.startsWith('connected')
-          ? 'connected'
-          : 'down'
+        applyHealth(ret.data)
       }
     } catch (e) {
       status.value = false
@@ -75,5 +82,5 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     _started = false
   }
 
-  return { status, backendUp, backendUnknown, neo4jStatus, neo4jConnected, label, lastError, check, start, stop }
+  return { status, backendUp, backendUnknown, neo4jStatus, neo4jConnected, graphStore, semanticState, label, lastError, check, start, stop }
 })

@@ -16,6 +16,8 @@ if getattr(sys, 'frozen', False):
     # data 目录: electron-builder 打入 resources/data, exe 在 resources/backend/KMatchBackend/
     # data 在同级 ../data
     os.environ.setdefault('KMATCH_DATA_DIR', os.path.join(base, '..', '..', 'data'))
+    # 端用户免 Docker: 安装包态强制嵌入式存储 (无 Docker/JVM/端口, 见 架构与设计/方案文档)
+    os.environ.setdefault('GRAPH_STORE', 'embedded')
 
 import uvicorn
 from app.main import app

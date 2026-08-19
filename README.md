@@ -52,6 +52,8 @@ docker-compose up -d
 cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
 ```
 
+> **免 Docker 运行**：装好安装包后零配置（默认进程内嵌入式存储 `EmbeddedGraphStore`，无 Docker/JVM/端口）；开发期无 Docker 可设 `GRAPH_STORE=embedded` 单进程跑后端，或 `GRAPH_STORE=auto` 自动探测（Neo4j 可达则用 neo4j）。方案见 [docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md](docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md)。
+
 环境变量：复制 `.env.example` → `.env`（`LLM_API_KEY` / `NEO4J_PASSWORD` 等，Neo4j 密码 `kmatch2026`）。首次 `docker-compose up` 前先跑 `scripts/setup_docker_mirror.*` 配置镜像源（国内网络）。
 
 ## 打包（Windows 安装包）
@@ -65,7 +67,7 @@ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-
   npm run build:win
 ```
 
-产物 `release/KMatch·知链-0.1.0-x64.exe`，装后 sidecar 自启；Neo4j 仍需用户 Docker 起。首次打包需开 Windows 开发者模式（winCodeSign 符号链接）。详见 [CLAUDE.md](CLAUDE.md)。
+产物 `release/KMatch·知链-1.0.0-x64.exe`，装后 sidecar 自启；**端用户免 Docker**（安装包默认嵌入式存储，Neo4j 仅为可选 dev/演示后端）。首次打包需开 Windows 开发者模式（winCodeSign 符号链接）。详见 [CLAUDE.md](CLAUDE.md)。
 
 ## 项目结构
 

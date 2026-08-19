@@ -20,6 +20,9 @@ cd frontend && npm install && npm run dev
 # 全栈启动 (Neo4j + FastAPI + 前端)
 docker-compose up -d
 cd backend  && pip install -r requirements.txt && uvicorn app.main:app --reload
+
+# 免 Docker 后端 (安装包默认): GRAPH_STORE=embedded 单进程运行 (Neo4j 仅可选)
+cd backend && GRAPH_STORE=embedded uvicorn app.main:app --reload
 ```
 
 ## 打包 (出 Windows 安装包)
@@ -40,7 +43,7 @@ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-
 - 首次打包需开 **Windows 开发者模式** (设置→系统→开发者选项), 否则 winCodeSign 解压 macOS 符号链接报"客户端没有所需特权"。
 - `backend-dist/`、`build/`、`release/`、`out/` 均已 gitignore, 不进仓库。
 - 改前端 UI 用 `npm run dev` (HMR 热更新), 不要靠重打安装包迭代; 仅后端 Python 变动才需重跑步骤 1。
-- 安装包 `release/KMatch·知链-0.1.0-x64.exe` 可直接分发, 装后 sidecar (KMatchBackend.exe) 自启; Neo4j 仍需用户 Docker 起。
+- 安装包 `release/KMatch·知链-1.0.0-x64.exe` 可直接分发, 装后 sidecar (KMatchBackend.exe) 自启; **端用户免 Docker** —— 安装包默认进程内嵌入式存储 (GRAPH_STORE=embedded, `backend/app/graph/embedded.py`), Neo4j 仅为可选 dev/演示后端 (GRAPH_STORE=neo4j)。方案见 [docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md](docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md)。
 
 ## 架构速览
 
@@ -151,7 +154,9 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 
 ## 当前开发阶段
 
-**最新 (2026/08/18)：工作流可观测 & 多智能体协同资产化**（来源：对 dsh_workflow / dsh-deepseek-flow 逐文件对比后落地的六阶段）——
+**最新 (2026/08/19)：端用户免 Docker — 嵌入式图存储 (v1.0.0)**（方案 [轻量化改造方案_免Docker_嵌入式存储.md](docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md)，ADR-0008，issue #50-56）：新增 `EmbeddedGraphStore`（`backend/app/graph/embedded.py`，~700 行）+ 14 个嵌入式单测。`GRAPH_STORE=neo4j|embedded|auto`——安装包 frozen 态默认 `embedded`（run_server 兜底）、dev/测试默认 `neo4j`（保现有集成测试零漂移）。嵌入式以 `data/knowledge_base` JSON 为真相源 + `data/local/` 落盘可变数据（项目图谱/掌握状态/风险/向量），查询零网络往返（BFS 等价变长 Cypher），向量语义本地缓存 + 后台自动回填 + 降级纯图（语义守卫切 `semantic_ready`，唯一 1 行契约改动在 `graph.py:108`）。前端 StatusBar 增「本地存储 / 纯图模式」状态点，Docker 引导弹层嵌入式下自动隐藏。后端 **651 测** + 前端 **434 测**全过。devlog 见 [docs/devlogs/A_后端/2026-08-19_端用户免Docker_嵌入式存储.md](docs/devlogs/A_后端/2026-08-19_端用户免Docker_嵌入式存储.md)。
+
+**此前 (2026/08/18)：工作流可观测 & 多智能体协同资产化**（来源：对 dsh_workflow / dsh-deepseek-flow 逐文件对比后落地的六阶段）——
 Phase0 结构化 run 事件（`log_events.to_log_event`，事件驱动状态替代正则）✅ / Phase1 耐久 run 记录（`run_store`：run.json+events.jsonl、GET /runs 复盘、一键续跑）✅ / Phase2 流程即数据（`workflow_def` + preflight + /workflows API，SSE 阶段文案由定义驱动）✅ / Phase3a 只读流程进度 DAG（`FlowDiagram` + `useFlowStatus`）✅ / Phase4 逻辑门自适应决策（`evaluate_gate`/decisions，strategy 与 decide_feedback 对齐）✅ / Phase3b 可编辑流程工作台（`flow_transactions` 提交事务 + revision 回滚；导航默认隐藏，待"定义驱动执行"接线后恢复）✅。
 同日另有：提示词-代码契约漂移测试（`test_prompt_contract`）、设置页「API 设置」栏目（`apiSettings`：AI 助手与出题引擎 API 统一/分开 + 预设模型 + 连通性测试支持 openai/anthropic）、分阶测试题先自测后对答案、知识图谱详情「重测该点」/「问 AI 助手」双入口、Agent 协同降级(`degraded`)可视化、动态建域 PU 迷你域入库（292 节点/648 题/11 画像）、**画像跨次进化档案**（`profile_store`：稳定 learner 档案 + 加权合并掌握度 + 版本 diff，答题反馈展示"本次变化"；diff 落 run 复盘 + 遗忘/时效降级 recheck_due 30 天）、**提示词共享契约页** `data/prompts/00_shared_contracts.md`（01-08 头部引用 + 契约测试钉新页；03 embedding 降级显式条款）、**裁判 golden 回归集**（`backend/tests/fixtures/judge_goldens.json` + `test_judge_goldens` 离线全量 12 例 + `scripts/run_judge_golden.py` 真模型 live，判据措辞钉住护 M5 口径）、**懒加载目录树**（`FileTreeBranch` 递归分支 + workspace 惰性展开，修复大项目文件树卡顿）、**估时节奏语境**（report `pacing`：连续学时→按每周可学时折周展示）、**文件内联预览**（`FilePreview`：图片 base64 / Markdown(marked+DOMPurify) / HTML sandbox / PDF；`fs:readBase64` IPC；Monaco 预览分发+守卫）、**后台任务页**（`RunsPanel`：运行历史列表/事件时间线/按此重跑/重新测评，复用 P1 run 资产）、**Mermaid 图表**（Markdown 预览惰性渲染 + 失败降级，依赖 mermaid@^11）、**性能优化 A–G**（Monaco 惰性加载 / externalChanges 去深 / G6 rAF 节流 / 项目解析让主线程+过期丢弃 / 流式去重 Set+窗口上限 / Resizable rAF+will-change）。测试：前端 434 / 后端 242+ 宽回归全过（含修复 interactive run 未落盘死代码）。devlogs 见 [docs/devlogs/B_前端/](docs/devlogs/B_前端/)。
 

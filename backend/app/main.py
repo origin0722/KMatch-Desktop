@@ -22,6 +22,36 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+
+def _build_store(embedding_client=None):
+    """按 GRAPH_STORE 选择图存储后端 (端用户免 Docker: embedded 进程内 JSON 存储)。
+
+    模式: embedded(安装包默认, 无 Docker/JVM/端口) / neo4j(开发/演示默认, 保测试零漂移)
+          / auto(探测 Neo4j 可达则 neo4j, 否则 embedded)。
+    """
+    from app.graph.embedded import EmbeddedGraphStore
+
+    mode = settings.GRAPH_STORE
+    if mode == "embedded":
+        logger.info("✅ 图存储: 嵌入式后端已就绪 (无 Docker/JVM/端口)")
+        return EmbeddedGraphStore(embedding_client=embedding_client)
+    if mode == "neo4j":
+        store = KnowledgeGraph.from_settings(embedding_client=embedding_client)
+        if store.test_connection():
+            logger.info("✅ 图存储: Neo4j 已连接")
+            return store
+        logger.warning("⚠️ Neo4j 不可达，知识图谱引擎未就绪，业务路由将返回 503")
+        store.close()
+        return None
+    # auto: Neo4j 可达 → neo4j, 否则嵌入式
+    probe = KnowledgeGraph.from_settings(embedding_client=embedding_client)
+    if probe.test_connection():
+        logger.info("✅ 图存储: Neo4j 已连接 (auto)")
+        return probe
+    probe.close()
+    logger.info("✅ 图存储: Neo4j 不可达，已切换嵌入式后端 (auto)")
+    return EmbeddedGraphStore(embedding_client=embedding_client)
+
 # ============================================================
 # Lifespan: 全局 KnowledgeGraph 单例 (BUG-011 修复)
 # ============================================================
@@ -32,7 +62,7 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期: 启动时创建全局单例 (KG + OpenAI)，关闭时释放连接。"""
-    # --- KnowledgeGraph 单例 ---
+    # --- 图存储后端单例 (Neo4j / 嵌入式, 按 GRAPH_STORE) ---
     # 接入 embedding 客户端：未配置或探测失败时返回 None（语义检索降级为纯图模式）
     embedding_client = KnowledgeGraph.create_embedding_client()
     if embedding_client is not None:
@@ -40,17 +70,8 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("⚠️ Embedding 客户端未就绪，语义/混合检索将降级为纯图模式")
 
-    kg = KnowledgeGraph.from_settings(embedding_client=embedding_client)
-    connected = kg.test_connection()
-    if connected:
-        logger.info("✅ KnowledgeGraph 全局单例已创建，Neo4j 已连接")
-        app.state.kg = kg
-    else:
-        # Neo4j 不可达时不阻塞启动（开发环境常未起服务），路由层会返回 503。
-        # 必须关闭已建的 driver 连接池, 否则每次启动失败都泄漏一个 (BUG A3)。
-        logger.warning("⚠️ Neo4j 不可达，KnowledgeGraph 单例未就绪，业务路由将返回 503")
-        kg.close()
-        app.state.kg = None
+    kg = _build_store(embedding_client)
+    app.state.kg = kg
 
     # --- OpenAI 客户端单例 (BUG-011 同类: 避免 health check 反复建连) ---
     if settings.LLM_API_KEY not in ("", "sk-placeholder"):
@@ -117,12 +138,16 @@ async def health_check():
         "version": settings.APP_VERSION,
     }
 
-    # Neo4j 连通性检查（复用 lifespan 创建的全局单例，不再每次新建连接）
+    # Neo4j/嵌入式连通性检查（复用 lifespan 创建的全局单例，不再每次新建连接）
     kg = getattr(app.state, "kg", None)
     if kg is not None and kg.test_connection():
         checks["neo4j"] = "connected"
+        checks["graph_store"] = getattr(kg, "kind", "neo4j")
+        checks["semantic_search"] = "ready" if getattr(kg, "semantic_ready", False) else "degraded"
     else:
         checks["neo4j"] = "unavailable (global singleton not ready)"
+        checks["graph_store"] = "none"
+        checks["semantic_search"] = "unavailable"
 
     # LLM API 连通性检查（复用 lifespan 创建的全局 OpenAI 客户端，不再每次建连 — BUG-011 同类）
     openai_client = getattr(app.state, "openai_client", None)

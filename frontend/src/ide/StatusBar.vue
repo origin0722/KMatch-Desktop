@@ -55,6 +55,18 @@
         </div>
       </el-popover>
 
+      <!-- 端用户免 Docker: 嵌入式存储状态 (无 Docker/JVM/端口) -->
+      <span v-if="backend.backendUp && backend.graphStore === 'embedded'"
+        class="status-item ok" title="进程内嵌入式存储, 无需 Docker / JVM / 端口">
+        <span class="dot"></span>本地存储
+      </span>
+      <!-- 语义检索降级: 温和提示而非报错 -->
+      <span v-if="backend.backendUp && backend.semanticState === 'degraded'"
+        class="status-item semantic-degraded"
+        title="语义检索未就绪(配置 Embedding key 后自动启用), 当前使用图谱精准检索, 功能不受影响">
+        <span class="dot"></span>纯图模式
+      </span>
+
       <span class="status-item" :class="backendClass" :title="backendTitle">
         <span class="dot"></span>{{ backend.label }}
       </span>
@@ -142,4 +154,6 @@ onMounted(() => {
 .neo4j-item { color: var(--km-warning); }
 .neo4j-item:hover { color: var(--km-warning); }
 .neo4j-dot { background: var(--km-warning); box-shadow: 0 0 4px var(--km-warning); }
+.semantic-degraded { color: var(--km-warning); }
+.semantic-degraded .dot { background: var(--km-warning); box-shadow: 0 0 4px var(--km-warning); }
 </style>

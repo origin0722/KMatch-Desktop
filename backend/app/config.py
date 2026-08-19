@@ -14,13 +14,19 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 class Settings:
     # --- 应用 ---
     APP_NAME: str = "KMatch·知链 API"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "1.0.0"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # --- Neo4j ---
     NEO4J_URI: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     NEO4J_USER: str = os.getenv("NEO4J_USER", "neo4j")
     NEO4J_PASSWORD: str = os.getenv("NEO4J_PASSWORD", "kmatch2026")
+
+    # --- 图存储后端 (端用户免 Docker, 见 架构与设计/轻量化改造方案_免Docker_嵌入式存储.md) ---
+    # neo4j   : 现有 Neo4j 后端 (开发/演示默认, 保测试零漂移)
+    # embedded: 进程内 JSON 存储 (无 Docker/JVM/端口, 安装包端用户默认; run_server frozen 态翻此值)
+    # auto    : 探测 Neo4j 可达用 neo4j, 否则 embedded (零配置开发)
+    GRAPH_STORE: str = os.getenv("GRAPH_STORE", "neo4j")
 
     # --- LLM ---
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "sk-placeholder")

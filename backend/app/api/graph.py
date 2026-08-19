@@ -105,10 +105,10 @@ def semantic_search(
     difficulty_max: int = Query(None, ge=1, le=5, description="可选难度上限过滤"),
 ):
     kg = _get_kg(request)
-    if kg.embedding_client is None:
+    if not getattr(kg, "semantic_ready", kg.embedding_client is not None):
         raise HTTPException(
             status_code=503,
-            detail="语义检索不可用（Embedding 客户端未配置），请使用图遍历类查询",
+            detail="语义检索不可用（Embedding 未就绪），请使用图遍历类查询",
         )
     nodes = kg.semantic_search(q, top_k=top_k, difficulty_max=difficulty_max)
     return {"query": q, "count": len(nodes), "nodes": nodes}

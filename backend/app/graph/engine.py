@@ -80,6 +80,14 @@ class KnowledgeGraph:
     def close(self):
         self.driver.close()
 
+    @property
+    def semantic_ready(self) -> bool:
+        """语义检索可用性 (Neo4j 后端: 取决于 embedding 客户端)。嵌入式为向量矩阵就绪。
+
+        供 api/graph.py 语义守卫与 health 使用; 两后端同一属性名 (契约保持项 §4.3)。
+        """
+        return self.embedding_client is not None
+
     def test_connection(self) -> bool:
         try:
             self.driver.verify_connectivity()
