@@ -17,9 +17,10 @@
     <!-- 其他视图: 全宽装载 (导航由左侧活动栏统一, 无顶部 Tab)
          套浅色卡片: 赛题视图原为浅色设计, 暗色主题下作为嵌入式浅色面板 -->
     <div v-if="sidebar.activeView !== 'code'" class="view-host">
-      <div class="view-card" :class="{ 'no-pad': ['learning-session', 'settings', 'project-graph', 'chat', 'workflow-studio'].includes(sidebar.activeView) }">
+      <div class="view-card" :class="{ 'no-pad': ['learning-session', 'settings', 'project-graph', 'chat', 'workflow-studio', 'runs'].includes(sidebar.activeView) }">
         <SettingsView v-if="sidebar.activeView === 'settings'" />
         <LearningSession v-else-if="sidebar.activeView === 'learning-session'" />
+        <RunsPanel v-else-if="sidebar.activeView === 'runs'" />
         <!-- T4 双形态: chat 视图 = 居中大留白对话 (chat store 与右侧侧栏共享) -->
         <AssistantPanel v-else-if="sidebar.activeView === 'chat'" variant="wide" />
         <KnowledgeGraph v-else-if="sidebar.activeView === 'graph'" />
@@ -50,6 +51,7 @@ const LearningSession = defineAsyncComponent(() => import('@/views/LearningSessi
 const Learning = defineAsyncComponent(() => import('@/views/Learning.vue'))
 const Dashboard = defineAsyncComponent(() => import('@/views/Dashboard.vue'))
 const WorkflowStudio = defineAsyncComponent(() => import('@/ide/workflow/WorkflowStudioView.vue'))
+const RunsPanel = defineAsyncComponent(() => import('@/ide/RunsPanel.vue')) // 后台任务页
 
 const sidebar = useSidebarStore()
 

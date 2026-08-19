@@ -16,6 +16,7 @@ export const ACTIVITY_ITEMS = [
   { id: 'project-graph', icon: 'Connection', title: '项目图谱' },
   { id: 'learning', icon: 'Reading', title: '学习资源' },
   { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
+  { id: 'runs', icon: 'Clock', title: '运行历史' }, // 后台任务页: P1 耐久 run + 协同事件复用
   // 流程工作台 (workflow-studio) 导航默认隐藏: 用户反馈非必需; 代码/数据/API 保留
   // (MainArea 分支仍在, 未来"定义驱动执行"接线后可恢复)
 ]
