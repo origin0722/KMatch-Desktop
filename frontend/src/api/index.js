@@ -13,7 +13,7 @@ const hasIpc = typeof window !== 'undefined' && !!window.api?.http
 
 const http = axios.create({
   baseURL: '',
-  timeout: 60_000, // LLM 调用可能 15~30 秒
+  timeout: 150_000, // LLM 调用可能 15~30s; 判分/反馈等关键路径放宽到 150s (防 60s 误杀慢判分)
   headers: { 'Content-Type': 'application/json' },
 })
 

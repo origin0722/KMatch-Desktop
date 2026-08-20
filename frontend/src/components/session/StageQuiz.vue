@@ -30,6 +30,14 @@
         <div class="quiz-submit">
           <el-button type="primary" size="large" :disabled="answeredCount === 0" @click="handleSubmitAnswers">提交答题 →</el-button>
         </div>
+        <!-- 判分失败/超时: 内联错误 + 重试, 不白屏不卡死 (成功则 phase 切 feedback) -->
+        <div v-if="store.error" class="quiz-error">
+          <el-alert type="error" :title="store.error" :closable="false" show-icon />
+          <div class="quiz-error-actions">
+            <el-button type="primary" size="small" @click="handleSubmitAnswers">重试提交</el-button>
+            <el-button size="small" @click="store.backToInput()">返回修改</el-button>
+          </div>
+        </div>
       </template>
 
       <!-- feedback 阶段 -->
@@ -78,13 +86,12 @@
       </template>
 
       <!-- interactive loading: 按 phase 区分文案 (出题 / 判分 / 取反馈), 三阶段都不白屏 -->
-      <div v-if="store.loading" class="quiz-loading" v-loading="true" :element-loading-text="loadingText"></div>
-    </div>
+      <div v-if="store.loading" class="quiz-loading" v-loading="true" :element-loading-text="loadingText"></div>    </div>
   </section>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
 import AssessmentReport from '@/components/AssessmentReport.vue'
@@ -95,10 +102,21 @@ const session = useSessionStore()
 const isActive = computed(() => session.activeStage === 'quiz')
 
 const answeredCount = computed(() => store.userAnswers.filter((a) => a && String(a).trim()).length)
+
+// 加载等待计时: 判分/生成期间显示已等待秒数, 杜绝"卡死"错觉 (一直卡 = 无反馈)
+const loadingElapsed = ref(0)
+let _timer = null
+watch(() => store.loading, (v) => {
+  if (_timer) { clearInterval(_timer); _timer = null }
+  loadingElapsed.value = 0
+  if (v) _timer = setInterval(() => { loadingElapsed.value += 1 }, 1000)
+})
+onBeforeUnmount(() => { if (_timer) clearInterval(_timer) })
+
 // loading 文案按阶段: 出题(idle, 新领域含建域) / 判分(answering) / 取反馈(feeddown) -- 内容生成只在提交答题之后
 const loadingText = computed(() => {
-  if (store.phase === 'answering') return '正在判分并生成学情画像…'
-  if (store.phase === 'feedback') return '正在生成针对性学习内容（约 1 分钟，含联网搜索）…'
+  if (store.phase === 'answering') return `正在判分并生成学情画像…（已等待 ${loadingElapsed.value}s，最长约 2 分钟）`
+  if (store.phase === 'feedback') return `正在生成针对性学习内容（约 1 分钟，含联网搜索；已等待 ${loadingElapsed.value}s）…`
   return '正在根据学习目标定制题目（若为新领域将检索资料并构建知识图谱，最长约 3 分钟）…'
 })
 const progressPct = computed(() => store.pendingQuestions.length ? (answeredCount.value / store.pendingQuestions.length) * 100 : 0)
@@ -175,6 +193,8 @@ function openLearning() {
 .quiz-option :deep(.el-radio__label) { white-space: normal; word-break: break-word; line-height: 1.5; }
 .quiz-fill { max-width: 360px; }
 .quiz-submit { display: flex; gap: 12px; margin-top: 16px; }
+.quiz-error { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.quiz-error-actions { display: flex; gap: 8px; }
 .feedback-actions { display: flex; gap: 8px; margin-bottom: 12px; }
 .feedback-done {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;

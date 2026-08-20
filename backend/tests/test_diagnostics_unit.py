@@ -379,10 +379,10 @@ def test_build_profile_all_mastered_no_contradiction():
 # ============================================================
 
 def _patch_model(monkeypatch, content):
-    monkeypatch.setattr(
-        "app.agents.diagnostics.get_default_chat_model",
-        lambda: _FakeModel(content),
-    )
+    # _grade 走 get_chat_model(max_retries=1), 其它节点走 get_default_chat_model —— 两者都钉到假模型
+    fake = lambda *a, **k: _FakeModel(content)
+    monkeypatch.setattr("app.agents.diagnostics.get_default_chat_model", fake)
+    monkeypatch.setattr("app.agents.diagnostics.get_chat_model", fake)
 
 
 def test_grade_disordered_question_index(monkeypatch):

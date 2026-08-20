@@ -248,6 +248,21 @@ describe('useAssessmentStore', () => {
       const { useSessionStore } = await import('@/stores/session')
       expect(useSessionStore().splitView).toBeNull()
     })
+
+    it('submit 失败 → 记录 error、phase 保持 answering、loading 复位 (判分卡死自愈)', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's', assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockRejectedValueOnce({
+        response: { data: { detail: '判分失败: LLM 调用失败: 401' } },
+      })
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      await store.submitAssessmentAnswers()
+      expect(store.error).toContain('判分失败')
+      expect(store.phase).toBe('answering')   // 不切阶段, 题目与错误条可见, 可重试
+      expect(store.loading).toBe(false)
+    })
   })
 
   // ============================================================

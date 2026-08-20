@@ -22,7 +22,7 @@ from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured, with_state_overrides
+from app.agents.llm import _current_overrides, get_chat_model, get_default_chat_model, llm_configured, with_state_overrides
 from app.graph.engine import KnowledgeGraph
 from app.utils.json_utils import parse_llm_json
 from app.utils.logging import get_logger
@@ -107,8 +107,12 @@ def _demo_answer(questions: list[dict], target_direction: str) -> list:
 
 
 def _grade(questions: list[dict], answers: list) -> dict:
-    """LLM 逐题判分，返回逐题得分与汇总。"""
-    model = get_default_chat_model()
+    """LLM 逐题判分，返回逐题得分与汇总。
+
+    用 max_retries=1 收紧最坏等待 (LLM 超时×2 而非 ×3): 判分是用户等待的关键路径,
+    重试收益低, 前端 60s+ 会掐断 → 快速失败 + 显性报错优于长挂。
+    """
+    model = get_chat_model(max_retries=1)
     pairs = []
     for q, a in zip(questions, answers):
         pairs.append({
