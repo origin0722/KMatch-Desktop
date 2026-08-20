@@ -23,7 +23,10 @@ export function createMainWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // preload 需用 contextBridge; sandbox:false 让 preload 能用 require/process
+      // #60 加固: preload 仅用 electron 的 contextBridge/ipcRenderer, 与 sandbox:true 兼容
+      // (sandboxed preload 可 require electron 子集, 无需 Node 内置模块)。
+      // 渲染层另经 CSP meta 收紧 (frontend/index.html)。
+      sandbox: true,
     },
   })
 

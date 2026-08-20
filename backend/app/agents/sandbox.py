@@ -110,6 +110,24 @@ _SANDBOX_ENV_ALLOWLIST = (
 )
 
 
+def _python_executable() -> str:
+    """选择运行 pytest 的解释器 (#59 安装包代码测试缓解):
+
+    - 打包态 (sys.frozen): 优先捆绑便携运行时 resources/backend/runtime-python/python.exe
+      (由 scripts/build_portable_python.ps1 构建, 随 backend-dist 进安装包),
+      使场景二「代码测试」在端用户安装包内可用; 缺失时回退 sys.executable (exe 非解释器,
+      pytest 无法运行, 调用方会给出可读提示)。
+    - 开发态: sys.executable (开发环境装有 pytest)。
+    """
+    if getattr(sys, "frozen", False):
+        bundled = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(sys.executable)), "..", "runtime-python", "python.exe",
+        ))
+        if os.path.isfile(bundled):
+            return bundled
+    return sys.executable
+
+
 def _sandbox_env() -> dict:
     """构造沙箱环境变量: 白名单制, 仅保留运行必需项 (S5)。
 
@@ -132,7 +150,7 @@ class SubprocessSandboxExecutor(SandboxExecutor):
 
     def run(self, workdir, module_name, test_filename, cov_module, timeout=30):
         cmd = [
-            sys.executable, "-m", "pytest",
+            _python_executable(), "-m", "pytest",
             f"--rootdir={workdir}",
             "-p", "no:cacheprovider",       # 不污染全局缓存
             "-o", "addopts=",               # 清掉用户 conftest 的 addopts

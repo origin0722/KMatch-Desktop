@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KMatch·知链</title>
+  <!--
+    #60 加固: 渲染层 CSP。
+    - script-src 含 'unsafe-eval' 供 Vue 模板编译与 Vite dev HMR (收紧到仅本源 + eval 仍需评估降级, 见 issue #60)
+    - style-src 'unsafe-inline' (Element Plus 内联样式, Vue scoped style 编译产物)
+    - connect-src 放行本机后端 127.0.0.1:8000 与 dev server ws (HMR)
+    - worker-src blob: (Monaco 加载 worker 脚本)
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:5173 ws://localhost:5173 blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'self'" />
 </head>
 <body>
   <div id="app"></div>
