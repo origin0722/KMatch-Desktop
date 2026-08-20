@@ -60,7 +60,7 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
         const ret = await http.get('/api/health')
         status.value = true
         lastError.value = ''
-        applyHealth(ret.data)
+        applyHealth(ret)   // 拦截器已解包 → ret 即 body, 不要再取 ret.data
       }
     } catch (e) {
       status.value = false

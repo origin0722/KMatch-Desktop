@@ -159,33 +159,34 @@ describe('api/diagnostics', () => {
 
   describe('Phase 1/2 run 与 workflow API', () => {
     it('fetchRun 打到 /api/diagnostics/runs/{sid} 且 path 编码', async () => {
-      http.get.mockResolvedValueOnce({ data: { session_id: 'sid-1' } })
+      http.get.mockResolvedValueOnce({ session_id: 'sid-1' })   // 拦截器已解包, mock 直接给 body
       const run = await fetchRun('sid-1')
       expect(http.get).toHaveBeenCalledWith('/api/diagnostics/runs/sid-1')
       expect(run.session_id).toBe('sid-1')
     })
 
     it('fetchRun 对带斜杠的 sid 做 encodeURIComponent', async () => {
-      http.get.mockResolvedValueOnce({ data: {} })
+      http.get.mockResolvedValueOnce({})
       await fetchRun('a/b')
       expect(http.get).toHaveBeenCalledWith('/api/diagnostics/runs/a%2Fb')
     })
 
     it('fetchRuns 带 limit 参数', async () => {
-      http.get.mockResolvedValueOnce({ data: { count: 2, runs: [] } })
-      await fetchRuns(5)
+      http.get.mockResolvedValueOnce({ count: 2, runs: [] })
+      const res = await fetchRuns(5)
       expect(http.get).toHaveBeenCalledWith('/api/diagnostics/runs', { params: { limit: 5 } })
+      expect(res.count).toBe(2)
     })
 
     it('fetchWorkflows 打到 /api/diagnostics/workflows', async () => {
-      http.get.mockResolvedValueOnce({ data: { workflows: [{ id: 'scene1-loop' }] } })
+      http.get.mockResolvedValueOnce({ workflows: [{ id: 'scene1-loop' }] })
       const res = await fetchWorkflows()
       expect(http.get).toHaveBeenCalledWith('/api/diagnostics/workflows')
       expect(res.workflows[0].id).toBe('scene1-loop')
     })
 
     it('fetchWorkflowEvaluate 打到 /workflows/evaluate (Phase 4 确定性求值)', async () => {
-      http.post.mockResolvedValueOnce({ data: { ok: true, decisions: [{ id: 'strategy', label: '反馈策略', chosen: 'advance' }] } })
+      http.post.mockResolvedValueOnce({ ok: true, decisions: [{ id: 'strategy', label: '反馈策略', chosen: 'advance' }] })
       const res = await fetchWorkflowEvaluate('scene1-loop', { correct_ratio: 0.9 })
       expect(http.post).toHaveBeenCalledWith('/api/diagnostics/workflows/evaluate', {
         workflow_id: 'scene1-loop',
@@ -196,21 +197,21 @@ describe('api/diagnostics', () => {
 
     it('Phase 3b 事务: 草稿/提交/版本/回滚路径与 body 形态', async () => {
       const def = { format: 'kmatch.workflow', version: 1, id: 'my-flow', stages: [] }
-      http.put.mockResolvedValueOnce({ data: { ok: true, valid: true, warnings: [] } })
+      http.put.mockResolvedValueOnce({ ok: true, valid: true, warnings: [] })
       await saveWorkflowDraft('my-flow', def)
       expect(http.put).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/draft', { definition: def })
 
-      http.post.mockResolvedValueOnce({ data: { id: 'my-flow', revision: 'R1' } })
+      http.post.mockResolvedValueOnce({ id: 'my-flow', revision: 'R1' })
       await commitWorkflow('my-flow', def, { note: 'n', reviewedBy: 'me' })
       expect(http.post).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/commit', {
         definition: def, note: 'n', reviewed_by: 'me',
       })
 
-      http.get.mockResolvedValueOnce({ data: { workflow_id: 'my-flow', revisions: [] } })
+      http.get.mockResolvedValueOnce({ workflow_id: 'my-flow', revisions: [] })
       await fetchWorkflowRevisions('my-flow')
       expect(http.get).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/revisions')
 
-      http.post.mockResolvedValueOnce({ data: { id: 'my-flow', restored: 'R1' } })
+      http.post.mockResolvedValueOnce({ id: 'my-flow', restored: 'R1' })
       await restoreWorkflowRevision('my-flow', 'R1')
       expect(http.post).toHaveBeenCalledWith('/api/diagnostics/workflows/my-flow/restore', { revision: 'R1' })
     })

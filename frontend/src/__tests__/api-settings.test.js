@@ -62,7 +62,7 @@ describe('ApiSettings.vue (API 设置栏目)', () => {
   })
 
   it('测试连通性调用 /api/agents/ping 并显示成功', async () => {
-    httpMock.post.mockResolvedValue({ data: { ok: true, content: 'pong-123' } })
+    httpMock.post.mockResolvedValue({ ok: true, content: 'pong-123' })   // 拦截器解包 → store 直接返回 body
     aiMock.apiKey = 'sk-chat' // mount 前设置 (普通属性不响应式, 避免按钮 :disabled 不刷新)
     const w = mount(ApiSettings)
     await nextTick()
@@ -78,7 +78,7 @@ describe('ApiSettings.vue (API 设置栏目)', () => {
   })
 
   it('AI 助手行选 anthropic → 连通性带 protocol=anthropic', async () => {
-    httpMock.post.mockResolvedValue({ data: { ok: true, content: 'hi' } })
+    httpMock.post.mockResolvedValue({ ok: true, content: 'hi' })
     aiMock.provider = 'anthropic'
     aiMock.apiKey = 'sk-ant'
     const w = mount(ApiSettings)

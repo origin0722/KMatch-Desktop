@@ -77,7 +77,7 @@ describe('apiSettings (统一 API 设置)', () => {
   })
 
   it('testConnectivity 走到 /api/agents/ping (支持 protocol)', async () => {
-    http.post.mockResolvedValue({ data: { ok: true, content: 'pong' } })
+    http.post.mockResolvedValue({ ok: true, content: 'pong' })   // 拦截器已解包, mock 直接给 body
     const s = useApiSettingsStore()
     const r = await s.testConnectivity({ apiKey: 'k', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' })
     expect(http.post).toHaveBeenCalledWith('/api/agents/ping', {
@@ -91,5 +91,13 @@ describe('apiSettings (统一 API 设置)', () => {
       llm_overrides: { api_key: 'k', base_url: 'https://api.anthropic.com', model: 'claude-x' },
       protocol: 'anthropic',
     })
+  })
+
+  it('testConnectivity 失败返回真实 error (回归: 不再因解构 undefined 显示"未知错误")', async () => {
+    http.post.mockResolvedValue({ ok: false, error: '401 Authorization Error: invalid api key' })
+    const s = useApiSettingsStore()
+    const r = await s.testConnectivity({ apiKey: 'bad', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' })
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('401')  // 前端 onTest 会展示该真实原因
   })
 })

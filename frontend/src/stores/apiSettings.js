@@ -107,7 +107,9 @@ export const useApiSettingsStore = defineStore('apiSettings', () => {
    * @returns {Promise<{ok:boolean, content?:string, error?:string, protocol?:string}>}
    */
   async function testConnectivity({ apiKey, baseUrl, model, protocol = 'openai' }) {
-    const { data } = await http.post('/api/agents/ping', {
+    // 关键: axios 响应拦截器已解包 → http.post 直接返回 body({ok,error,...}),
+    // 不能 `const { data } =` 解构 (会得 undefined → 永远"未知错误", BUG 回归)
+    const data = await http.post('/api/agents/ping', {
       llm_overrides: { api_key: apiKey, base_url: baseUrl, model },
       protocol,
     })
