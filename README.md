@@ -70,7 +70,7 @@ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-
   npm run build:win
 ```
 
-产物 `release/KMatch·知链-1.0.2-x64.exe`，装后 sidecar 自启；**端用户免 Docker**（安装包默认嵌入式存储，Neo4j 仅为可选 dev/演示后端）。首次打包需开 Windows 开发者模式（winCodeSign 符号链接）。详见 [CLAUDE.md](CLAUDE.md)。
+产物 `release/KMatch·知链-1.0.3-x64.exe`，装后 sidecar 自启；**端用户免 Docker**（安装包默认嵌入式存储，Neo4j 仅为可选 dev/演示后端）。首次打包需开 Windows 开发者模式（winCodeSign 符号链接）。详见 [CLAUDE.md](CLAUDE.md)。
 
 > **可选：语义检索离线种子** — 先在 Neo4j 模式向量化后运行 `cd backend && python scripts/export_embeddings.py`，生成的 `data/local/embeddings.json` 会随 extraResources 打进安装包，端用户首跑即语义可用（免首跑自动回填）。嵌入式运行时可变数据（掌握状态/项目图谱/向量缓存）落用户 appData（`KMATCH_LOCAL_DIR`），安装包内 `data/local` 不在本库提交（gitignore）。
 
