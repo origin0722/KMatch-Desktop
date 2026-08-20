@@ -610,9 +610,11 @@ def submit(req: SubmitRequest, request: Request):
     """
     kg = _get_kg(request)  # 前置检查 + 供 graph_controller 组装路径
 
-    # _grade 调 LLM 判分，未配置时提前 503 (与 assess interactive 一致)
-    if not llm_configured():
-        raise HTTPException(status_code=503, detail="LLM 未配置，无法判分（请配置 LLM_API_KEY）")
+    # 预检必须落在 use_llm_overrides 作用域内: 否则 UI 配置的 key (req.llm_overrides)
+    # 在预检时 ContextVar 未设 → llm_configured() 读不到 → 配了也报 "LLM 未配置" (BUG 回归)
+    with use_llm_overrides(req.llm_overrides):
+        if not llm_configured():
+            raise HTTPException(status_code=503, detail="LLM 未配置，无法判分（请配置 LLM_API_KEY）")
 
     session = _INTERACTIVE_SESSIONS.get(req.session_id)
     if session is None:
@@ -734,8 +736,10 @@ def feedback(req: FeedbackRequest, request: Request):
             status_code=404,
             detail=f"会话 {req.session_id} 不存在或已过期（缓存上限 {_MAX_CACHED_SESSIONS}）",
         )
-    if not llm_configured():
-        raise HTTPException(status_code=503, detail="LLM 未配置，无法再生内容")
+    # 预检同样须在 overrides 作用域内 (UI 独立 key 在预检可见, 否则配了也报未配置)
+    with use_llm_overrides(req.llm_overrides):
+        if not llm_configured():
+            raise HTTPException(status_code=503, detail="LLM 未配置，无法再生内容")
     kg = _get_kg(request)  # scaffold 策略需 kg.get_prerequisites
 
     # learning_path 用缓存的出题节点 (interactive 模式未跑 graph_controller,

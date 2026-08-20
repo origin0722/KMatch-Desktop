@@ -66,3 +66,93 @@ def test_interactive_without_overrides_sees_unconfigured(app, monkeypatch):
     })
     assert resp.status_code == 200
     assert seen.get("llm_configured") is False
+
+
+# ============================================================
+# submit / feedback 预检必须在 overrides 作用域内 (BUG: 配了 key 提交判分仍报 "LLM 未配置")
+# ============================================================
+
+def _seed_session(sid, questions=None):
+    diag._cache_session(sid, {
+        "questions": questions or [{
+            "qid": "Q-1", "source_node_id": "PY-001", "type": "choice", "question": "q",
+            "options": ["A", "B"], "answer": "A", "difficulty": 1, "hint": "",
+            "explanation": "e"}],
+        "nodes": [{"node_id": "PY-001"}],
+        "target_direction": "Python",
+        "created_at": "",
+    })
+
+
+def _stub_submit_body(monkeypatch, seen):
+    def fake_grade(questions, answers):
+        seen["llm_configured"] = llm.llm_configured()
+        return {"correct_count": 1, "total_count": 1, "per_node": {}}
+    monkeypatch.setattr(diag, "_grade", fake_grade)
+    monkeypatch.setattr(
+        diag, "_build_profile",
+        lambda target, nodes, grading, questions=None:
+        {"theory_level": 1, "weak_topics": [], "known_topics": [], "mastery_by_node": {}})
+    monkeypatch.setattr(diag, "decide_feedback", lambda cc, tc: {"strategy": "advance", "reason": ""})
+    monkeypatch.setattr(
+        diag, "graph_controller_node",
+        lambda kg: lambda state: {"knowledge_graph": {}, "orchestration_log": []})
+    monkeypatch.setattr(diag, "_persist_run", lambda **kw: None)
+
+
+def test_submit_with_overrides_sees_configured(app, monkeypatch):
+    """UI 独立 key (llm_overrides) 提交判分 → 预检 llm_configured() 为 True, 不再误报 503。"""
+    a, _ = app
+    monkeypatch.setattr(llm.settings, "LLM_API_KEY", "sk-placeholder")
+    seen = {}
+    _seed_session("s-submit-1")
+    _stub_submit_body(monkeypatch, seen)
+    resp = TestClient(a).post("/api/diagnostics/submit", json={
+        "session_id": "s-submit-1", "answers": ["A"],
+        "llm_overrides": {"api_key": "sk-real-key", "base_url": "https://x/v1", "model": "m"},
+    })
+    assert resp.status_code == 200, resp.text
+    assert seen.get("llm_configured") is True
+
+
+def test_submit_without_overrides_503(app, monkeypatch):
+    """无 overrides 且后端占位 → 判分预检 503 (语义保持)。"""
+    a, _ = app
+    monkeypatch.setattr(llm.settings, "LLM_API_KEY", "sk-placeholder")
+    seen = {}
+    _seed_session("s-submit-2")
+    _stub_submit_body(monkeypatch, seen)
+    resp = TestClient(a).post("/api/diagnostics/submit", json={
+        "session_id": "s-submit-2", "answers": ["A"]})
+    assert resp.status_code == 503
+    assert "LLM 未配置" in resp.json()["detail"]
+
+
+def test_feedback_with_overrides_sees_configured(app, monkeypatch):
+    """feedback 再生预检同样在 overrides 作用域内。"""
+    a, _ = app
+    monkeypatch.setattr(llm.settings, "LLM_API_KEY", "sk-placeholder")
+    seen = {}
+    _seed_session("s-fb-1")
+
+    def fake_regen(strategy, profile, learning_path, kg):
+        seen["llm_configured"] = llm.llm_configured()
+        return {"resources": [], "node_count": 0}
+
+    monkeypatch.setattr(diag, "regenerate_for_feedback", fake_regen)
+    resp = TestClient(a).post("/api/diagnostics/feedback", json={
+        "session_id": "s-fb-1", "strategy": "advance", "profile": {"theory_level": 1},
+        "llm_overrides": {"api_key": "sk-real-key", "base_url": "https://x/v1", "model": "m"},
+    })
+    assert resp.status_code == 200, resp.text
+    assert seen.get("llm_configured") is True
+
+
+def test_feedback_without_overrides_503(app, monkeypatch):
+    a, _ = app
+    monkeypatch.setattr(llm.settings, "LLM_API_KEY", "sk-placeholder")
+    _seed_session("s-fb-2")
+    resp = TestClient(a).post("/api/diagnostics/feedback", json={
+        "session_id": "s-fb-2", "strategy": "advance", "profile": {"theory_level": 1}})
+    assert resp.status_code == 503
+    assert "LLM 未配置" in resp.json()["detail"]

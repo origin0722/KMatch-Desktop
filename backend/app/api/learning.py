@@ -148,9 +148,10 @@ def learning_report(req: LearningReportRequest, request: Request):
             orchestration_log=session.get("report_log", []),
         )
 
-    # ④ 环境依赖
-    if not llm_configured():
-        raise HTTPException(status_code=503, detail="LLM 未配置，无法补跑内容生成")
+    # ④ 环境依赖 — 预检须在 overrides 作用域内 (UI 独立 key 可见, 否则配了也报未配置)
+    with use_llm_overrides(req.llm_overrides):
+        if not llm_configured():
+            raise HTTPException(status_code=503, detail="LLM 未配置，无法补跑内容生成")
     kg = _get_kg(request)
 
     # ⑤ 补跑 (Spec B: 用 use_llm_overrides 包裹主线程节点; llm_overrides 经 state
