@@ -10,6 +10,7 @@ POST /api/diagnostics/submit
   - 复用 diagnostics 的 _grade/_build_profile/decide_feedback 纯函数
 """
 
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -632,10 +633,28 @@ def submit(req: SubmitRequest, request: Request):
 
     orchestration_log = []
     knowledge_graph = {}
+    _t = time.perf_counter()  # 步骤耗时打点 (排查"判分卡 200s"定位卡在哪一步)
+
+    def _tick(tag: str):
+        nonlocal _t
+        el = int((time.perf_counter() - _t) * 1000)
+        _t = time.perf_counter()
+        logger.info("submit 步骤耗时 session=%s %s=%dms", req.session_id, tag, el)
+        orchestration_log.append(f"[{datetime.utcnow().isoformat()}] ⏱ {tag} {el}ms")
+
+    # 记录本次判分实际使用的 LLM 端点/模型 (key 脱敏, 便于核对"连的是哪家/哪个模型")
+    ovr = req.llm_overrides or {}
+    _burl = ovr.get("base_url") or settings.LLM_BASE_URL
+    _model = ovr.get("model") or settings.LLM_MODEL
+    logger.info("submit 判分 LLM 端点 session=%s model=%s base_url=%s",
+                req.session_id, _model, _burl)
+
     try:
         with use_llm_overrides(req.llm_overrides):
             grading = _grade(questions, answers)
+            _tick("判分(grading)")
             profile = _build_profile(target, nodes, grading, questions=questions)
+            _tick("画像(profile)")
         feedback = decide_feedback(grading["correct_count"], grading["total_count"])
 
         # 记录判分 + 画像协同日志 (供前端 StageAgent 展示)
@@ -651,6 +670,7 @@ def submit(req: SubmitRequest, request: Request):
         # 复用 graph_controller 节点组装专属学习路径 (同 demo 工作流, 产出 knowledge_graph + log)
         graph_node = graph_controller_node(kg)
         graph_update = graph_node({"user_profile": profile})
+        _tick("路径组装(path)")
         knowledge_graph = graph_update.get("knowledge_graph", {})
         orchestration_log.extend(graph_update.get("orchestration_log", []))
     except Exception as e:

@@ -65,6 +65,7 @@ def get_chat_model(
     temperature: float = None,
     overrides: Optional[dict] = None,
     max_retries: int = 2,
+    timeout: Optional[int] = None,
 ) -> ChatOpenAI:
     """创建 Chat 模型实例。
 
@@ -73,7 +74,9 @@ def get_chat_model(
         overrides: 显式覆写（优先于 ContextVar）；None 时读 _current_overrides。
                    字段缺省时回退 settings 默认（部分覆写，不整体替换）。
         max_retries: 超时/5xx 重试次数。默认 2 (对齐 orchestrator prompt「重试 2 次」)；
-                     关键交互路径 (判分) 可传 1 收紧最坏等待 (超时×2)。
+                     交互等待路径 (判分) 可传 0 快速失败。
+        timeout: 单次请求超时秒数；None 用 settings.LLM_TIMEOUT (60)。判分可用更短值(45)
+                 让慢/坏的端点快速失败, 而不是长挂被前端掐断。
 
     Returns:
         ChatOpenAI 实例（OpenAI 兼容）
@@ -99,7 +102,7 @@ def get_chat_model(
         base_url=base_url,
         temperature=temperature if temperature is not None else settings.LLM_TEMPERATURE,
         max_retries=max_retries,
-        timeout=settings.LLM_TIMEOUT,
+        timeout=timeout if timeout is not None else settings.LLM_TIMEOUT,
     )
 
 

@@ -43,7 +43,7 @@ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-
 - 首次打包需开 **Windows 开发者模式** (设置→系统→开发者选项), 否则 winCodeSign 解压 macOS 符号链接报"客户端没有所需特权"。
 - `backend-dist/`、`build/`、`release/`、`out/` 均已 gitignore, 不进仓库。
 - 改前端 UI 用 `npm run dev` (HMR 热更新), 不要靠重打安装包迭代; 仅后端 Python 变动才需重跑步骤 1。
-- 安装包 `release/KMatch·知链-1.0.5-x64.exe` 可直接分发, 装后 sidecar (KMatchBackend.exe) 自启; **端用户免 Docker** —— 安装包默认进程内嵌入式存储 (GRAPH_STORE=embedded, `backend/app/graph/embedded.py`), Neo4j 仅为可选 dev/演示后端 (GRAPH_STORE=neo4j)。#59/#60 已落地: 随包便携 Python 运行时(安装包内代码测试可用) + Electron sandbox/CSP 加固。v1.0.3 修复判分/再生/报告补跑预检未应用 llm_overrides (1361d5f); v1.0.4 判分"卡死"(超时 60→150s + 重试收紧 + 等待计时 + 错误条); v1.0.5 HTTP 0 真实错误上浮 + submit/feedback 超时放宽 300s + IPC 失败日志。方案见 [docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md](docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md)。
+- 安装包 `release/KMatch·知链-1.0.6-x64.exe` 可直接分发, 装后 sidecar (KMatchBackend.exe) 自启; **端用户免 Docker** —— 安装包默认进程内嵌入式存储 (GRAPH_STORE=embedded, `backend/app/graph/embedded.py`), Neo4j 仅为可选 dev/演示后端 (GRAPH_STORE=neo4j)。#59/#60 已落地: 随包便携 Python 运行时(安装包内代码测试可用) + Electron sandbox/CSP 加固。v1.0.3 判分/再生/补跑预检应用 llm_overrides (1361d5f); v1.0.4 判分"卡死"(超时放宽+等待计时+错误条); v1.0.5 HTTP 0/未知错误 真实错误上浮 + axios 解构误用横扫; v1.0.6 判分专属 45s/0 重试快失败 + submit 步骤耗时日志。方案见 [docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md](docs/架构与设计/轻量化改造方案_免Docker_嵌入式存储.md)。
 
 ## 架构速览
 

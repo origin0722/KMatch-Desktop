@@ -109,10 +109,10 @@ def _demo_answer(questions: list[dict], target_direction: str) -> list:
 def _grade(questions: list[dict], answers: list) -> dict:
     """LLM 逐题判分，返回逐题得分与汇总。
 
-    用 max_retries=1 收紧最坏等待 (LLM 超时×2 而非 ×3): 判分是用户等待的关键路径,
-    重试收益低, 前端 60s+ 会掐断 → 快速失败 + 显性报错优于长挂。
+    判分是用户交互等待的关键路径: 用**专属短超时 45s + 零重试**, 失败立刻抛可读错误
+    (用户据此改 key/模型/网络), 而非 60s×N 长挂 → 前端"已等待 2 分钟"的根因之一。
     """
-    model = get_chat_model(max_retries=1)
+    model = get_chat_model(max_retries=0, timeout=45)
     pairs = []
     for q, a in zip(questions, answers):
         pairs.append({
@@ -129,7 +129,14 @@ def _grade(questions: list[dict], answers: list) -> dict:
         "不要输出 JSON 以外文字。"
     ))
     user = HumanMessage(content="题目与作答:\n" + json.dumps(pairs, ensure_ascii=False))
-    resp = model.invoke([system, user])
+    try:
+        resp = model.invoke([system, user])
+    except Exception as exc:  # noqa: BLE001
+        logger.error("判分 LLM 调用失败", exc_info=True)
+        raise ValueError(
+            f"判分 LLM 调用失败（45s 内未完成）：{str(exc) or exc.__class__.__name__}。"
+            "请到设置→API 设置→测试连通性确认 key/模型/网络。"
+        ) from exc
     grades = parse_llm_json(resp.content)
     if not isinstance(grades, list):
         grades = []

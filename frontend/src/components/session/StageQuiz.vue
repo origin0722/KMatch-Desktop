@@ -115,7 +115,7 @@ onBeforeUnmount(() => { if (_timer) clearInterval(_timer) })
 
 // loading 文案按阶段: 出题(idle, 新领域含建域) / 判分(answering) / 取反馈(feeddown) -- 内容生成只在提交答题之后
 const loadingText = computed(() => {
-  if (store.phase === 'answering') return `正在判分并生成学情画像…（已等待 ${loadingElapsed.value}s，最长约 2 分钟）`
+  if (store.phase === 'answering') return `正在判分并生成学情画像…（已等待 ${loadingElapsed.value}s，最长约 1 分钟，超时会自动提示）`
   if (store.phase === 'feedback') return `正在生成针对性学习内容（约 1 分钟，含联网搜索；已等待 ${loadingElapsed.value}s）…`
   return '正在根据学习目标定制题目（若为新领域将检索资料并构建知识图谱，最长约 3 分钟）…'
 })
