@@ -176,11 +176,14 @@ export async function restoreWorkflowRevision(workflowId, revision) {
  * }>}
  */
 export function submitAnswers({ sessionId, answers, learnerKey }, signal) {
+  // 判分+画像+图谱组装为 LLM 关键路径, 显式放宽到 300s (慢网络/慢模型不误杀)
+  const cfg = { timeout: 300_000 }
+  if (signal) cfg.signal = signal
   return http.post('/api/diagnostics/submit', withOverrides({
     session_id: sessionId,
     answers,
     learner_key: learnerKey || undefined,
-  }), signal ? { signal } : undefined)
+  }), cfg)
 }
 
 /**
@@ -207,7 +210,7 @@ export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, sig
     strategy,
     profile,
     tavily_key: tavilyKey || undefined,
-  }), { signal, timeout: 150_000 })
+  }), { signal, timeout: 300_000 })
 }
 
 // ============================================================

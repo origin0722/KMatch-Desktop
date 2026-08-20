@@ -13,7 +13,7 @@ const hasIpc = typeof window !== 'undefined' && !!window.api?.http
 
 const http = axios.create({
   baseURL: '',
-  timeout: 150_000, // LLM 调用可能 15~30s; 判分/反馈等关键路径放宽到 150s (防 60s 误杀慢判分)
+  timeout: 240_000, // LLM 长调用: 判分/反馈/报告, 默认放宽; 特殊调用可经请求级 timeout 覆盖
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -31,7 +31,19 @@ if (hasIpc) {
     const res = await window.api.http.request(method, url, body, params, { timeoutMs: config.timeout })
     const data = res.body
     if (!res.ok) {
-      const err = new Error(`HTTP ${res.status}`)
+      // 错误上浮: 主进程 fetch 失败(status=0, 超时/连接失败)或后端 HTTP 错误,
+      // 都给出真实原因, 不再裸 "HTTP 0" (用户反馈卡死/报 HTTP 0 的排查入口)
+      const bodyErr = data && (data.error || data.detail)
+      let msg
+      if (res.status === 0) {
+        const s = String(bodyErr || '').trim()
+        msg = /timeout|abort/i.test(s)
+          ? '请求超时（后端长时间无响应，已中断）—— 可稍后重试，或检查网络/代理设置'
+          : s ? `后端无响应：${s}` : '后端无响应（网络错误）'
+      } else {
+        msg = `HTTP ${res.status}${bodyErr ? `：${String(bodyErr).slice(0, 120)}` : ''}`
+      }
+      const err = new Error(msg)
       err.response = { status: res.status, data }
       throw err
     }

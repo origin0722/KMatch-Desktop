@@ -94,22 +94,22 @@ describe('api/diagnostics', () => {
   })
 
   describe('submitAnswers (W5)', () => {
-    it('打到 /api/diagnostics/submit，session_id 与 answers 直传', () => {
+    it('打到 /api/diagnostics/submit，session_id 与 answers 直传 + 判分超时放宽 300s', () => {
       http.post.mockResolvedValueOnce({})
       submitAnswers({ sessionId: 'sess-001', answers: ['A', 'B', 'C'] })
 
       expect(http.post).toHaveBeenCalledWith(
         '/api/diagnostics/submit',
         { session_id: 'sess-001', answers: ['A', 'B', 'C'] },
-        undefined,
+        { timeout: 300_000 },
       )
     })
 
-    it('signal 透传', () => {
+    it('signal 透传 (与 timeout 一并传入)', () => {
       const ac = new AbortController()
       http.post.mockResolvedValueOnce({})
       submitAnswers({ sessionId: 's', answers: [] }, ac.signal)
-      expect(http.post.mock.calls[0][2]).toEqual({ signal: ac.signal })
+      expect(http.post.mock.calls[0][2]).toEqual({ timeout: 300_000, signal: ac.signal })
     })
 
     it('传 learnerKey → body 带 learner_key (画像跨次进化)', () => {
@@ -119,7 +119,7 @@ describe('api/diagnostics', () => {
       expect(http.post).toHaveBeenCalledWith(
         '/api/diagnostics/submit',
         { session_id: 's', answers: [], learner_key: 'learner-abc' },
-        undefined,
+        { timeout: 300_000 },
       )
     })
   })
@@ -143,8 +143,8 @@ describe('api/diagnostics', () => {
           // 反馈快模型: 独立配置关时部分覆写仅 model, key/baseUrl 走后端 .env
           llm_overrides: { model: 'deepseek-v4-flash' },
         },
-        // #30 反馈: timeout 150s (逐节点 LLM 再生常超默认 60s, 经 axios config.timeout 透传主进程代理)
-        { signal: undefined, timeout: 150000 },
+        // #30 反馈: timeout 300s (逐节点并发 LLM 再生 + Tavily, 防掐断)
+        { signal: undefined, timeout: 300000 },
       )
     })
 

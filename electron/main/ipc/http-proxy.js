@@ -38,6 +38,8 @@ export function registerHttpProxyIpc() {
       try { parsed = JSON.parse(text) } catch { parsed = text }
       return { status: resp.status, body: parsed, ok: resp.ok }
     } catch (err) {
+      // 记录真实原因 (超时/连接失败等), 渲染层据 body.error 上浮, 不再只见 "HTTP 0"
+      console.error(`[http-proxy] request fail ${method} ${urlPath}: ${String(err)}`)
       return { status: 0, body: { error: String(err) }, ok: false }
     }
   })
