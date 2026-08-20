@@ -215,6 +215,15 @@ def test_status_persist(store):
     assert s2.get_node_status("PY-002") is None
 
 
+def test_status_second_write_no_deadlock(store):
+    """回归: 状态文件已存在时的第二次写 — 曾因 _read_status 与 update_node_status
+    嵌套获取同一非可重入锁而自锁死锁 (PUT /status 超时), 现应秒回。"""
+    store.update_node_status("PY-001", "mastered")      # 首写: 建文件
+    store.update_node_status("PY-002", "in_progress")   # 二写: 文件已存在 (曾死锁)
+    assert store.get_node_status("PY-001") == "mastered"
+    assert store.get_node_status("PY-002") == "in_progress"
+
+
 def test_kb_sync_refresh(store):
     # 新增节点: JSON 已写 → upsert 刷新内存
     store.upsert_knowledge_node({

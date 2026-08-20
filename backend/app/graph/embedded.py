@@ -686,12 +686,16 @@ class EmbeddedGraphStore:
         return self.local_dir / "mastery_status.json"
 
     def _read_status(self) -> dict:
+        """读状态文件 (不加锁): 锁由调用方 update_node_status 持有。
+
+        切勿在此再加 _lock_for(path) — 与 update_node_status 外层同一把非可重入锁
+        嵌套获取会**自锁死锁**(第二次写状态时文件已存在即触发, 扫描实测 PUT status 超时)。
+        """
         path = self._status_path()
         if not path.is_file():
             return {}
         try:
-            with self._lock_for(path):
-                data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8"))
             return data if isinstance(data, dict) else {}
         except Exception:
             return {}
@@ -700,7 +704,7 @@ class EmbeddedGraphStore:
         if status not in _VALID_STATUSES:
             raise ValueError(f"无效状态 '{status}'，有效值: {sorted(_VALID_STATUSES)}")
         path = self._status_path()
-        with self._lock_for(path):
+        with self._lock_for(path):  # 唯一持锁点: 读-改-写整体串行化
             data = self._read_status()
             data[node_id] = status
             _atomic_write(path, json.dumps(data, ensure_ascii=False))
