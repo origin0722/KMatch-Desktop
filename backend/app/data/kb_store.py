@@ -203,7 +203,8 @@ def find_question(base: Path, qid: str) -> Optional[tuple[Path, int, dict]]:
     qdir = base / "questions"
     if not qdir.is_dir():
         return None
-    for path in sorted(qdir.glob("*.json")):
+    # 递归: 真实题库含嵌套域子目录 (DA/DB/WD/...), 只扫顶层会漏查/漏删嵌套题目
+    for path in sorted(qdir.glob("**/*.json")):
         if path.name == "schema.json":
             continue
         with _lock_for(path):

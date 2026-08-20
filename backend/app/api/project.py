@@ -12,12 +12,13 @@ W6 第一批: AST 解析 + 项目图谱生成 (落 Neo4j 四层图谱第2/3层 +
 B 端项目图谱页 (AntV G6) 对接本组路由。
 """
 
+import re
 import uuid
 from pathlib import Path
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.code_parser import (
     ParsedProject,
@@ -50,8 +51,14 @@ def _get_kg(request: Request):
 
 class ParseRequest(BaseModel):
     source_type: Literal["example", "text", "files"] = "example"
-    project_id: Optional[str] = None     # 缺省: example→example_name; text→text-{uuid8}
-    example_name: Optional[str] = None   # source_type=example 时必填
+    project_id: Optional[str] = Field(
+        None, pattern=r"^[A-Za-z0-9_-]{1,64}$",
+        description="项目 ID（仅字母/数字/下划线/连字符, 防路径穿越）"
+    )
+    example_name: Optional[str] = Field(
+        None, pattern=r"^[A-Za-z0-9_.-]{1,64}$",
+        description="示例项目名（单段, 防路径穿越）"
+    )
     code: Optional[str] = None           # source_type=text 时必填
     filename: str = "main.py"            # text 源文件名
     sources: Optional[dict] = None       # source_type=files 时必填 {module_name: source}
@@ -121,8 +128,18 @@ def parse_project_api(req: ParseRequest, request: Request):
 # GET /graph/{project_id}
 # ============================================================
 
+_PROJECT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _require_valid_project_id(project_id: str):
+    """路径参数无法用 Pydantic pattern, 显式校验 — 防路径穿越 (project_id 自由字符串)。"""
+    if not _PROJECT_ID_RE.fullmatch(project_id or ""):
+        raise HTTPException(status_code=400, detail=f"非法 project_id: {project_id!r}")
+
+
 @router.get("/graph/{project_id}", response_model=ProjectGraphResponse, summary="查询已落库的项目图谱")
 def get_project_graph_api(project_id: str, request: Request):
+    _require_valid_project_id(project_id)
     kg = _get_kg(request)
     graph = kg.get_project_graph(project_id)
     if graph is None:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -36,6 +37,9 @@ _VALID_STATUSES = {"mastered", "in_progress", "unlearned", "difficult"}
 
 # 自动回填 embedding 的批量大小 (与 engine.generate_embeddings 一致)
 _EMBED_BATCH = 20
+
+# project_id 白名单 (防路径穿越: 只允许 [A-Za-z0-9_-], 长度≤64; API 输入自由字符串)
+_PROJECT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def _utc_now_iso() -> str:
@@ -88,6 +92,7 @@ class EmbeddedGraphStore:
 
         # --- 并发/生命周期 ---
         self._load_lock = threading.Lock()
+        self._vector_lock = threading.Lock()  # embeddings 读改写互斥 (自动回填 vs 单节点回填并发)
         self._loaded = False
         self._file_locks: dict[Path, threading.Lock] = defaultdict(threading.Lock)
         self._backfill_thread: Optional[threading.Thread] = None
@@ -385,9 +390,10 @@ class EmbeddedGraphStore:
     def _write_embeddings(self, items: dict) -> None:
         if not items:
             return
-        merged = dict(self._embeddings)
-        merged.update(items)
-        self._embeddings = merged
+        with self._vector_lock:  # 读改写互斥, 防并发回填丢条目
+            merged = dict(self._embeddings)
+            merged.update(items)
+            self._embeddings = merged
         path = self.local_dir / "embeddings.json"
         with self._lock_for(path):
             _atomic_write(
@@ -707,6 +713,10 @@ class EmbeddedGraphStore:
     # ------------------------------------------------------------
 
     def _project_path(self, project_id: str) -> Path:
+        """项目图落盘路径。project_id 白名单校验 — 防路径穿越 (API 输入为自由字符串)。"""
+        if not _PROJECT_ID_RE.fullmatch(project_id or ""):
+            raise ValueError(
+                f"非法 project_id: {project_id!r} (仅允许字母/数字/下划线/连字符, 长度≤64)")
         return self.local_dir / "projects" / f"{project_id}.json"
 
     def _project_files(self):

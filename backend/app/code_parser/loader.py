@@ -26,8 +26,14 @@ def load_example_project(name: str) -> dict[str, str]:
     """扫示例项目目录下所有 .py → {module_name(stem): source}。
 
     跳过 test_*.py (测试文件非项目本体) 和 __pycache__。
+    路径安全: 拒绝多段/绝对路径 (防路径穿越 — name 为 API 输入)。
     """
-    project_dir = EXAMPLE_PROJECTS_DIR / name
+    if not name or "/" in name or "\\" in name or name in (".", "..") or Path(name).is_absolute():
+        raise FileNotFoundError(f"示例项目不存在: {name}")
+    base = EXAMPLE_PROJECTS_DIR.resolve()
+    project_dir = (base / name).resolve()
+    if not project_dir.is_relative_to(base):
+        raise FileNotFoundError(f"示例项目不存在: {name}")
     if not project_dir.is_dir():
         raise FileNotFoundError(f"示例项目不存在: {name}")
 

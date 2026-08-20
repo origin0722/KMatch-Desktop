@@ -49,7 +49,7 @@ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-
 
 ```
 KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
-  ├── 活动栏 (ActivityBar) — 视图切换 + 工具开关
+  ├── 导航侧栏 (NavSidebar) — 视图切换 + 工具开关 (取代旧 ActivityBar, 已删)
   ├── 资源管理器 (FileExplorer) — 文件树 + 打开项目
   ├── 主区 (MainArea)
   │     ├── 代码视图: EditorTabs + MonacoEditor
@@ -130,9 +130,9 @@ KMatch-Desktop (Electron + Monaco, 本地桌面 IDE)
 - [frontend/src/api/graph.js](frontend/src/api/graph.js) — 知识图谱 API
 
 ### 数据与文档
-- [data/knowledge_base/](data/knowledge_base/) — 92 个 Python 知识点 (JSON)
-- [data/prompts/](data/prompts/) — 7 个 Agent 系统提示词
-- [data/user_profiles/](data/user_profiles/) — 3 组用户画像
+- [data/knowledge_base/](data/knowledge_base/) — 222 个知识节点 (6 域, JSON) + 93 题库文件
+- [data/prompts/](data/prompts/) — 8 个 Agent 系统提示词 (01-07 主链 + 08 动态建域)
+- [data/user_profiles/](data/user_profiles/) — 10 组用户画像 (M5 升级扩样)
 - [docs/项目规划/项目开发计划书.md](docs/项目规划/项目开发计划书.md) — 9 周排期 + 赛题对标
 - [docs/缺陷管理/BUG决策日志.md](docs/缺陷管理/BUG决策日志.md) — BUG 记录与决策
 - [docs/devlogs/](docs/devlogs/) — 开发日志
@@ -162,13 +162,13 @@ Phase0 结构化 run 事件（`log_events.to_log_event`，事件驱动状态替�
 
 **此前里程碑：阶段14** (2026/08/02) 联网搜索 + 图谱增强 + 代码梳理 - F1 Tavily 联网搜索（web_search 工具 + 设置页 key + Learning 联网资源 tab）✅ / F2 图谱路径查找（BFS 最短学习路径）✅ / F3 项目代码图谱视图（场景二可视化）✅ / F4 双 agent 代码审查修复（snippet 字段 bug + SettingsView 拼写回归 + tooltip 死代码清理）✅。阶段13 学情报告组件回填（T1 ScaffoldGuide / T2 ReviewReport / T3 AssessmentReport）已全部收官。上一个里程碑：Spec B (2026/07/19) 设置页 + Agent 独立 key - Task 1-17 已合并 main (a38cd98)。完整阶段日志见 [docs/devlogs/Desktop_阶段总览.md](docs/devlogs/Desktop_阶段总览.md)。248 前端 + 471 后端测试全过。
 
-**Spec B 进度**：Task 1-7 后端 (ContextVar per-request llm_overrides + AgentState 字段 + 5 agent 透传 + 8 路由 + /api/agents/ping) ✅；Task 8-17 前端 (设置页主壳 + AI 助手 / Agent 独立 key / 供应商管理 CRUD + 视觉探测 + 网络代理 UI) ✅；Task 18-19 代理主进程落盘 (preload setProxyConfig/restartBackend + sidecar env 注入) ⏳ 待做；Task 20 全量收尾 ⏳。
+**Spec B 进度**：Task 1-7 后端 (ContextVar per-request llm_overrides + AgentState 字段 + 5 agent 透传 + 8 路由 + /api/agents/ping) ✅；Task 8-17 前端 (设置页主壳 + AI 助手 / Agent 独立 key / 供应商管理 CRUD + 视觉探测 + 网络代理 UI) ✅；**Task 18-19 代理主进程落盘 ✅ 已接线**（`electron/main/ipc/proxy.js` + `backend-sidecar.js` proxyEnv 注入）；Task 20 全量收尾 ✅（v1.0.1）。
 
-**已知待修**：沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现见 [backend/app/agents/sandbox.py](backend/app/agents/sandbox.py)，Dockerfile 见 `backend/sandbox/`）；feature/regularization 分支（F 系列脆弱点修复 + C1-C4 解耦 + 24 GitHub Issues）已合并 main（见 [docs/架构与设计/重构方案_解耦.md](docs/架构与设计/重构方案_解耦.md) + ADR-0006）；Apix 审查 S1-S9 全部已修（ADR-0005）；Spec B Task 18-19 代理落盘未接线（UI 已就绪，preload/IPC/env 注入待做）。
+**已知待修**：沙箱强化已落地（DockerSandboxExecutor + SANDBOX_MODE auto/subprocess/docker，实现见 [backend/app/agents/sandbox.py](backend/app/agents/sandbox.py)，Dockerfile 见 `backend/sandbox/`）；feature/regularization 分支（F 系列脆弱点修复 + C1-C4 解耦 + 24 GitHub Issues）已合并 main（见 [docs/架构与设计/重构方案_解耦.md](docs/架构与设计/重构方案_解耦.md) + ADR-0006）；Apix 审查 S1-S9 全部已修（ADR-0005）；Spec B Task 18-19 代理落盘已接线（见上）。
 
 ### 原 KMatch 后端已交付项
-- ✅ 92 个 Python 元知识节点 + Neo4j 导入 + 验证
-- ✅ 7 个 Agent 系统提示词 (全部 v0.3-final)
+- ✅ 222 个元知识节点 (6 域) + Neo4j 导入 + 验证
+- ✅ 8 个 Agent 系统提示词 (01-07 主链 + 08 动态建域, 全部 v0.3-final)
 - ✅ 6 个 Agent 全部实现 (orchestrator/diagnostics/graph_controller/content_generator/reviewer/code_reviewer/code_tester)
 - ✅ 场景一全流程闭环 (学情画像→图谱组装→资源生成→审核→交付→反馈迭代)
 - ✅ 场景二全链路 (代码解析→项目图谱→代码审查→代码测试)
