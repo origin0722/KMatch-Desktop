@@ -10,6 +10,7 @@ POST /api/diagnostics/submit
   - 复用 diagnostics 的 _grade/_build_profile/decide_feedback 纯函数
 """
 
+import asyncio
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -604,7 +605,24 @@ def assess_stream(req: AssessRequest, request: Request):
 
 
 @router.post("/submit", response_model=SubmitResponse, summary="提交答题（interactive 模式判分+动态反馈+图谱组装）")
-def submit(req: SubmitRequest, request: Request):
+async def submit(req: SubmitRequest, request: Request):
+    """异步入口: LLM 同步调用经 asyncio.to_thread 跑。
+
+    WHY: 判分/反馈路由原为同步 def → 跑 FastAPI 线程池; 一旦被卡住的同步 LLM 请求占满,
+    新请求只能排队 → 前端"连通性秒通(异步 ping)、判分却 300s 静默超时"(线程池排队假死)。
+    async + to_thread + wait_for 硬上限: 走事件循环不排队, 90s 内必给结果(成功或 504)。
+    """
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(_run_submit, req, request), timeout=90)
+    except asyncio.TimeoutError:
+        logger.error("submit 判分处理超时(>90s) session=%s", getattr(req, "session_id", None))
+        raise HTTPException(
+            status_code=504,
+            detail="判分处理超时（>90s）。请稍后重试；若持续，请到设置→API 设置→测试连通性确认 LLM 可用（或换更快的模型/网络）。",
+        ) from None
+
+
+def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
     """提交 interactive 模式的答题，后端判分并产出画像 + 动态反馈策略。
 
     流程: 取缓存题目 → _grade 判分 → _build_profile 画像 → decide_feedback 动态反馈。
@@ -740,7 +758,19 @@ def submit(req: SubmitRequest, request: Request):
 
 
 @router.post("/feedback", response_model=FeedbackResponse, summary="动态反馈内容再生（按策略针对性生成）")
-def feedback(req: FeedbackRequest, request: Request):
+async def feedback(req: FeedbackRequest, request: Request):
+    """异步入口: 再生走 to_thread + 120s 硬上限 (同 submit 的线程池排队防护)。"""
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(_run_feedback, req, request), timeout=120)
+    except asyncio.TimeoutError:
+        logger.error("feedback 再生处理超时(>120s) session=%s", getattr(req, "session_id", None))
+        raise HTTPException(
+            status_code=504,
+            detail="内容再生超时（>120s）。可稍后重试，或检查网络/换更快的模型。",
+        ) from None
+
+
+def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
     """按动态反馈策略针对性再生学习内容 (W4 计划⑤闭环)。
 
     B 端在 submit 拿到 feedback.strategy 后，调用本接口获取针对性内容:
