@@ -337,6 +337,31 @@ describe('useAssessmentStore', () => {
       expect(store.learningReport).toBeNull()
       expect(store.phase).toBe('idle')
       expect(store.pendingQuestions).toEqual([])
+      // issue-65: 重置时目标方向一并清空
+      expect(store.pendingTargetDirection).toBe('')
+    })
+  })
+
+  describe('pendingTargetDirection (issue-65: 目标跨视图持久化)', () => {
+    it('startAssessment 记录目标; 切视图后仍在 (模拟不 reset 场景)', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's2',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: '我的自定义领域' })
+      expect(store.pendingTargetDirection).toBe('我的自定义领域')
+      // 不 reset (用户只是切走再回来), 目标保留
+      expect(store.pendingTargetDirection).toBe('我的自定义领域')
+    })
+
+    it('startAssessment 失败时目标仍保留 (stage 可显示重试目标)', async () => {
+      submitAssessment.mockRejectedValueOnce(new Error('boom'))
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: '机器学习入门' })
+      expect(store.pendingTargetDirection).toBe('机器学习入门')
+      expect(store.phase).toBe('idle')
+      expect(store.error).toBeTruthy()
     })
   })
 

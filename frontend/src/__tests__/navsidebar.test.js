@@ -75,4 +75,17 @@ describe('NavSidebar', () => {
     await firstItem.trigger('click')
     expect(useSidebarStore().activeView).toBe('code')
   })
+
+  it('issue-61: collapse toggle flips navCollapsed and adds collapsed class', async () => {
+    const wrapper = mountNav()
+    const btn = wrapper.find('[data-test="nav-collapse"]')
+    expect(btn.exists()).toBe(true)
+    await btn.trigger('click')
+    expect(useSidebarStore().navCollapsed).toBe(true)
+    expect(wrapper.find('.nav-sidebar').classes()).toContain('collapsed')
+    // 再次点击展开
+    await btn.trigger('click')
+    expect(useSidebarStore().navCollapsed).toBe(false)
+    expect(wrapper.find('.nav-sidebar').classes()).not.toContain('collapsed')
+  })
 })

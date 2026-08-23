@@ -24,20 +24,14 @@
 
     <!-- 消息列表 -->
     <div ref="msgContainer" class="assistant-body">
-      <!-- 空状态 -->
+      <!-- 空状态 (issue-64: 去掉装饰性小字与 feature 列表, 建议 chip 居中聚焦) -->
       <div v-if="!chat.hasMessages" class="placeholder">
         <div class="ph-icon-badge"><el-icon :size="26"><ChatLineSquare /></el-icon></div>
         <p class="ph-title">AI 助手</p>
-        <p class="ph-hint">基于 DeepSeek V4 Pro，可阅读项目代码并协助开发</p>
-        <div class="ph-features">
-          <div class="feat">💬 解释代码逻辑 & 提供改进建议</div>
-          <div class="feat">🐛 帮助调试 & 分析错误</div>
-          <div class="feat">📝 生成代码片段 & 单元测试</div>
-          <div class="feat">📖 解读项目架构 & 依赖关系</div>
-        </div>
         <!-- T4 wide 形态: Codex 式建议 chip (点击直接发送) -->
         <div v-if="variant === 'wide'" class="ph-chips">
           <button class="ph-chip" @click="quickAction('根据我的学情画像, 我现在最该学什么?')">🎯 我该学什么</button>
+          <button class="ph-chip" @click="quickAction(GUIDE_PROMPT)">🧭 知识图谱导读</button>
           <button class="ph-chip" @click="quickAction('给我出一道 Python 基础练习题, 我做完你帮我批改')">📝 来道练习题</button>
           <button class="ph-chip" @click="quickAction('结合知识图谱, 给我规划一条从零到爬虫的学习路径')">🕸️ 规划学习路径</button>
         </div>
@@ -547,6 +541,7 @@ import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import { capabilityOf, formatContext } from '@/services/llm/modelCapabilities'
 import { iconUrlOf } from '@/services/llm/icons'
 import { useModelVisionStore } from '@/stores/modelVision'
+import { GRAPH_GUIDE_PROMPT as GUIDE_PROMPT } from '@/utils/askAi'
 import SegmentedControl from '@/ide/settings/SegmentedControl.vue'
 
 const sidebar = useSidebarStore()
@@ -701,6 +696,7 @@ function toolSummary(chunk) {
     return `${s?.passed || 0}/${s?.total || 0} 用例通过 · 行覆盖 ${Math.round((r.report?.coverage?.line_coverage || 0) * 100)}%`
   }
   if (r.tool === 'web_search') return `搜索到 ${r.count || 0} 条结果`
+  if (r.tool === 'search_weak_topics') return `按薄弱点搜到 ${r.count || 0} 条资源`
   if (r.tool === 'search_knowledge') return `命中 ${r.count || 0} 个知识节点`
   if (r.tool === 'get_knowledge_node') return r.name || r.node_id || ''
   if (r.tool === 'get_learning_path') return r.count != null ? `路径 ${r.count} 个节点` : (r.hint ? '需先完成测评' : '')
@@ -913,7 +909,7 @@ async function copyText(text) {
 }
 
 /* ---- 头部 ---- */
-.quick-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--km-border-light); background: var(--km-bg-layer-1); }
+.quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--km-border-light); background: var(--km-bg-layer-1); }
 .assistant-header {
   height: 40px;
   display: flex;
@@ -974,25 +970,6 @@ async function copyText(text) {
   margin-bottom: 4px;
 }
 .ph-title { font-size: 17px; font-weight: 600; color: var(--km-gray-700); margin-top: 6px; letter-spacing: 0.3px; }
-.ph-hint { font-size: 12px; color: var(--km-gray-500); margin-bottom: 16px; line-height: 1.6; }
-.ph-features {
-  display: flex; flex-direction: column; gap: 8px;
-  width: 100%; text-align: left;
-}
-.feat {
-  font-size: 12px;
-  color: var(--km-gray-600);
-  background: var(--km-bg-layer-1);
-  border: 1px solid var(--km-border-light);
-  padding: 10px 14px;
-  border-radius: var(--km-radius-sm);
-  transition: all 0.2s var(--km-ease);
-  cursor: default;
-}
-.feat:hover {
-  background: var(--km-primary-light);
-  color: var(--km-primary-active);
-}
 
 /* ---- 消息 ---- */
 .message {
@@ -1594,7 +1571,6 @@ async function copyText(text) {
 .assistant-panel.wide .quick-actions { background: transparent; border-bottom: 0; padding: 10px 4px 0; }
 .assistant-panel.wide .assistant-body { padding: 24px 8px; gap: 16px; }
 .assistant-panel.wide .placeholder { padding: 48px 20px; }
-.assistant-panel.wide .ph-features { max-width: 440px; margin: 0 auto; }
 /* 建议 chip */
 .ph-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
 .ph-chip {

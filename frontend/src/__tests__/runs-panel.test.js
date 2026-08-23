@@ -30,7 +30,12 @@ const SAMPLE = {
 const SAMPLE2 = {
   session_id: 'inter-1', mode: 'interactive', created_at: '2026-08-18T09:00:00Z',
   request: { target_direction: '数据分析', scene: 'no_project' },
-  summary: { correct_count: 7, total_count: 10, strategy: 'remediate', theory_level: 3, path_nodes: 12, profile_diff: { summary: {} } },
+  summary: {
+    correct_count: 7, total_count: 10, strategy: 'remediate', theory_level: 3, path_nodes: 12,
+    profile_diff: { summary: {} },
+    weak_topics: ['缺失值处理', 'SQL 连接'],
+    pacing: { total_hours: 5.2, hours_per_week: 6, weeks: 1 },
+  },
 }
 const EVENTS = [
   { type: 'agent-end', agent: 'diagnostics', status: 'done', message: '判分完成' },
@@ -62,6 +67,28 @@ describe('RunsPanel 后台任务页', () => {
     expect(w.text()).toContain('7/10 正确')
     expect(w.text()).toContain('策略 remediate')
     expect(w.text()).toContain('📈 画像变化')
+    // issue-66: 场景标签 + 薄弱点 chips
+    expect(w.text()).toContain('初次对话')
+    expect(w.text()).toContain('薄弱 缺失值处理')
+    expect(w.text()).toContain('薄弱 SQL 连接')
+  })
+
+  it('issue-66/69: with_project 场景标签 + 详情 pacing/薄弱点摘要', async () => {
+    const PROJ = {
+      session_id: 'p-1', mode: 'demo', created_at: '2026-08-18T10:00:00Z',
+      request: { target_direction: 'Web 后端', scene: 'with_project' },
+      summary: { weak_topics: ['装饰器'], pacing: { total_hours: 3.2, hours_per_week: 6, weeks: 1 } },
+    }
+    mocks.fetchRuns.mockResolvedValue({ count: 1, runs: [PROJ] })
+    mocks.fetchRun.mockResolvedValue({ ...PROJ, orchestration_events: [] })
+    const w = mount(RunsPanel, { global: { plugins: [pinia, ElementPlus] } })
+    await flushPromises()
+    expect(w.text()).toContain('项目二次开发')
+    await w.find('.rp-row').trigger('click')
+    await flushPromises()
+    const txt = w.text()
+    expect(txt).toContain('约 1 周 · 共 3.2h')
+    expect(txt).toContain('薄弱点: 装饰器')
   })
 
   it('点击行 → 展开事件时间线 (Agent 状态/消息)', async () => {

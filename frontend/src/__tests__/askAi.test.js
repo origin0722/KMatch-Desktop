@@ -6,7 +6,16 @@
  * 断言关键字段进入文本 (节点名/难度/掌握度/关键点/实体名/调用关系)。
  */
 import { describe, it, expect } from 'vitest'
-import { buildNodeQuestion, buildEntityQuestion } from '@/utils/askAi'
+import { buildNodeQuestion, buildEntityQuestion, GRAPH_GUIDE_PROMPT, graphGuidePrompt } from '@/utils/askAi'
+
+describe('graphGuidePrompt (issue-70: 知识图谱导读对话化)', () => {
+  it('导读预填含对话式导航 + 查证要求', () => {
+    expect(GRAPH_GUIDE_PROMPT).toContain('导读')
+    expect(GRAPH_GUIDE_PROMPT).toContain('对话')
+    expect(GRAPH_GUIDE_PROMPT).toContain('查证')
+    expect(graphGuidePrompt()).toBe(GRAPH_GUIDE_PROMPT)
+  })
+})
 
 describe('buildNodeQuestion', () => {
   const node = {

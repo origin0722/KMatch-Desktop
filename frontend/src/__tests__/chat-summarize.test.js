@@ -140,6 +140,18 @@ describe('summarizeToolResults (C1.4 单一源)', () => {
     expect(out).toContain('Python 装饰器: https://x.dev')
   })
 
+  it('search_weak_topics: 含薄弱点溯源与结果清单', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'search_weak_topics' },
+      result: {
+        tool: 'search_weak_topics', count: 1, weak_topics: ['PY-003'],
+        results: [{ title: '装饰器教程', url: 'https://x.dev', snippet: '详解', target_node_id: 'PY-003' }],
+      },
+    }])
+    expect(out).toContain('薄弱点联网搜索 (PY-003)')
+    expect(out).toContain('装饰器教程: https://x.dev (PY-003)')
+  })
+
   it('generate_learning_resources: 含生成数/节点数/落位提示', () => {
     const out = summarizeToolResults([{
       call: { tool: 'generate_learning_resources' },

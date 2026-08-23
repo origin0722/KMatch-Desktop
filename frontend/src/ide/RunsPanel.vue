@@ -16,7 +16,9 @@
       <div v-for="r in runs" :key="r.session_id" class="rp-row" @click="toggle(r.session_id)">
         <div class="rp-row-head">
           <span class="rp-mode" :class="r.mode">{{ modeLabel(r.mode) }}</span>
-          <span class="rp-target">{{ targetOf(r) }}</span>
+          <!-- issue-66: 场景标识 (初次对话 vs 项目二次开发) -->
+          <span v-if="sceneLabel(sceneOf(r))" class="rp-scene">{{ sceneLabel(sceneOf(r)) }}</span>
+          <span class="rp-target" :title="targetOf(r)">{{ targetOf(r) }}</span>
           <span class="rp-time">{{ fmt(r.created_at) }}</span>
         </div>
         <div class="rp-meta">
@@ -71,6 +73,9 @@ const shownEvents = computed(() => (detail.value?.orchestration_events || []).sl
 
 const modeLabel = (m) => ({ demo: '演示测评', interactive: '自定义测评' }[m] || m || 'run')
 const targetOf = (r) => r?.request?.target_direction || r?.summary?.target_direction || r?.request?.direction || '—'
+/** issue-66: 场景标识 — 初次对话(场景一·无项目) / 项目二次开发(场景二·有项目) */
+const sceneOf = (r) => r?.request?.scene || ''
+const sceneLabel = (s) => ({ no_project: '初次对话', with_project: '项目二次开发' }[s] || '')
 function fmt(ts) {
   if (!ts) return ''
   try { return new Date(ts).toLocaleString('zh-CN', { hour12: false }) } catch { return ts }
@@ -82,6 +87,11 @@ function chips(r) {
   if (s.strategy) out.push(`策略 ${s.strategy}`)
   if (s.theory_level != null) out.push(`Lv.${s.theory_level}`)
   if (s.path_nodes != null) out.push(`${s.path_nodes} 节点`)
+  // issue-66: 薄弱点名称 (最多 3 个, 让用户一眼知道这次测出哪些薄弱点)
+  for (const w of (Array.isArray(s.weak_topics) ? s.weak_topics : []).slice(0, 3)) {
+    out.push(`薄弱 ${w}`)
+  }
+  if (s.weak_topics?.length > 3) out.push(`+${s.weak_topics.length - 3}`)
   if (!out.length) out.push('—')
   return out
 }
@@ -90,7 +100,11 @@ function summaryLine(d) {
   const parts = []
   if (s.review_passed != null) parts.push(s.review_passed ? '审核通过' : '审核打回')
   if (s.review_rounds != null) parts.push(`打回 ${s.review_rounds} 轮`)
-  if (s.pacing?.weeks) parts.push(`约 ${s.pacing.weeks} 周节奏`)
+  // issue-69: 真实节奏 (实际学时 / 每周可学时)
+  if (s.pacing?.weeks) parts.push(`约 ${s.pacing.weeks} 周 · 共 ${s.pacing.total_hours ?? '?'}h`)
+  // issue-66: 详情内薄弱点全列表
+  const weaks = Array.isArray(s.weak_topics) ? s.weak_topics : []
+  if (weaks.length) parts.push(`薄弱点: ${weaks.join('、')}`)
   return parts.join(' · ') || '（无摘要）'
 }
 
@@ -158,6 +172,8 @@ onMounted(refresh)
 .rp-mode { font-size: 11px; padding: 1px 8px; border-radius: 8px; flex-shrink: 0; }
 .rp-mode.demo { background: rgba(240,160,64,0.14); color: #b9680d; }
 .rp-mode.interactive { background: rgba(24,144,255,0.12); color: var(--km-primary); }
+/* issue-66: 场景标签 (初次对话/项目二次开发) */
+.rp-scene { font-size: 11px; padding: 1px 8px; border-radius: 8px; flex-shrink: 0; background: rgba(52,179,126,0.12); color: var(--km-success); }
 .rp-target { font-weight: 550; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rp-time { margin-left: auto; font-size: 11px; color: var(--km-gray-400); flex-shrink: 0; }
 .rp-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

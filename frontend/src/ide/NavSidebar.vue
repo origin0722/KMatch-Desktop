@@ -1,9 +1,17 @@
 <template>
-  <!-- Codex 风格左侧导航栏: 240px 带 label (替代 48px 图标活动栏) -->
-  <div class="nav-sidebar">
-    <!-- 顶部: 菜单行 (品牌名收敛进窗口标题, #26 去除品牌框) -->
+  <!-- Codex 风格左侧导航栏: 208px 带 label, 可折叠为 48px 图标轨 (issue-61) -->
+  <div class="nav-sidebar" :class="{ collapsed: sidebar.navCollapsed }">
+    <!-- 顶部: 菜单行 (品牌名收敛进窗口标题, #26 去除品牌框) + 折叠/展开按钮 -->
     <div class="nav-head">
       <TitlebarMenu class="nav-menu" />
+      <button
+        class="nav-collapse-btn"
+        :title="sidebar.navCollapsed ? '展开导航栏' : '折叠导航栏 (节约空间)'"
+        data-test="nav-collapse"
+        @click="sidebar.toggleNavCollapsed()"
+      >
+        <el-icon :size="14"><Expand v-if="sidebar.navCollapsed" /><Fold v-else /></el-icon>
+      </button>
     </div>
 
     <!-- 中部: 视图导航 (icon + label, 复用 ACTIVITY_ITEMS) -->
@@ -68,6 +76,7 @@
  * 复用 ACTIVITY_ITEMS + 单一指示模型 (activeView); 图标走 main.js 全局注册 (字符串 :is).
  */
 import { computed } from 'vue'
+import { Fold, Expand } from '@element-plus/icons-vue'
 import { ACTIVITY_ITEMS, useSidebarStore } from '@/stores/sidebar'
 import { useThemeStore } from '@/stores/theme'
 import TitlebarMenu from '@/ide/TitlebarMenu.vue'
@@ -94,15 +103,15 @@ function onViewClick(id) {
 <style scoped>
 .nav-sidebar {
   width: 100%; /* #25 宽度由外层 ResizablePanel 控制 */
-  /* #27 玻璃感: 提高透明度让层次可见 + 背景模糊 + 顶部高光/右缘投影 */
-  background: color-mix(in srgb, var(--km-bg-layer-0) 80%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 1px 0 6px rgba(0, 0, 0, 0.05);
+  /* #27 玻璃感 + issue-61 更透明: 提高透明度让层次可见 + 背景模糊 + 弱化硬边 */
+  background: color-mix(in srgb, var(--km-bg-layer-0) 62%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 1px 0 6px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: 1px solid var(--km-border-light);
+  border-right: 1px solid color-mix(in srgb, var(--km-border-light) 55%, transparent);
   padding: 10px 8px;
 }
 /* ---- 顶部菜单行 (#26 无品牌框: 紧凑菜单行, 无底边线) ---- */
@@ -114,7 +123,20 @@ function onViewClick(id) {
 }
 .nav-menu {
   -webkit-app-region: no-drag;
+  flex: 1;
+  min-width: 0;
 }
+/* issue-61: 折叠/展开切换按钮 */
+.nav-collapse-btn {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; border-radius: var(--km-radius-xs);
+  background: transparent; color: var(--km-gray-500);
+  cursor: pointer; transition: all 0.15s var(--km-ease);
+  -webkit-app-region: no-drag;
+}
+.nav-collapse-btn:hover { color: var(--km-primary-active); background: var(--km-gray-100); border-color: var(--km-border-light); }
 /* ---- 视图导航项 ---- */
 .nav-items {
   display: flex;
@@ -171,6 +193,14 @@ function onViewClick(id) {
   font-weight: 500;
   white-space: nowrap;
 }
+/* ---- issue-61: 折叠态 (图标轨) ---- */
+.nav-sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 0;
+}
+.nav-sidebar.collapsed .nav-item-label { display: none; }
+.nav-sidebar.collapsed .nav-head { justify-content: flex-end; }
+.nav-sidebar.collapsed .nav-foot .nav-item { justify-content: center; }
 .nav-spacer { flex: 1; }
 /* ---- 底部工具入口 ---- */
 .nav-foot {

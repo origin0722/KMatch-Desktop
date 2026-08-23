@@ -74,6 +74,14 @@ export const TOOLS = Object.freeze([
     },
   },
   {
+    name: 'search_weak_topics',
+    description: '按用户学情画像的薄弱知识点联网搜索教程 (Tavily), 每条结果带知识点溯源并自动落入「学习资源」页。用户想补薄弱点/已测评时优先用它, 比泛泛搜索更贴合。参数: topics (可选, 缺省用画像薄弱点)。',
+    parameters: {
+      topics: 'string[] (可选, 薄弱点节点ID列表, 缺省自动取画像 weak_topics)',
+      max_per_topic: 'number (每点条数, 默认2, 1-5)',
+    },
+  },
+  {
     name: 'get_knowledge_node',
     description: '按知识点编号查详情 (name/summary/difficulty/category)。不知道 PY-xxx 编号对应什么主题时调它, 不要反问用户。',
     parameters: { node_id: 'string (知识点编号, 如 PY-002)' },
@@ -120,6 +128,7 @@ export const DEFAULT_TOOL_PERMISSIONS = Object.freeze({
   code_review: TOOL_PERMISSION.ALLOW,
   code_test: TOOL_PERMISSION.ALLOW,
   web_search: TOOL_PERMISSION.ALLOW,
+  search_weak_topics: TOOL_PERMISSION.ALLOW,
   get_knowledge_node: TOOL_PERMISSION.ALLOW,
   generate_learning_resources: TOOL_PERMISSION.ALLOW,
   search_knowledge: TOOL_PERMISSION.ALLOW,
@@ -135,6 +144,7 @@ const TOOL_CALL_EXAMPLES = {
   code_review: '{"tool": "code_review", "path": "相对路径", "target_direction": "开发目标方向"}',
   code_test: '{"tool": "code_test", "path": "相对路径", "target_direction": "开发目标方向", "mode": "generate"}',
   web_search: '{"tool": "web_search", "query": "Python 装饰器原理与用法"}',
+  search_weak_topics: '{"tool": "search_weak_topics", "max_per_topic": 2}',
   get_knowledge_node: '{"tool": "get_knowledge_node", "node_id": "PY-002"}',
   generate_learning_resources: '{"tool": "generate_learning_resources", "strategy": "scaffold"}',
   search_knowledge: '{"tool": "search_knowledge", "query": "列表推导式怎么用", "top_k": 5}',
@@ -195,6 +205,9 @@ export function buildToolBlock(allowedTools) {
   }
   if (allow.has('web_search')) {
     notes.push('- web_search: 联网搜索 (Tavily) 查领域知识/教程/文档, 返回 web_link 资源并自动落入学习资源模块; 遇不确定的领域概念或需要最新文档时主动调, 减少幻觉。')
+  }
+  if (allow.has('search_weak_topics')) {
+    notes.push('- search_weak_topics: 基于学情画像薄弱点联网搜索 (每点默认 2 条, 结果带 target_node_id 溯源并自动落「学习资源」页); 用户想补弱项时【优先于泛泛的 web_search】, 未测评则引导先测评。')
   }
   if (allow.has('get_knowledge_node')) {
     notes.push('- get_knowledge_node: 按知识点编号 (如 PY-002) 查详情 (名称/摘要/难度/分类); 遇到不认识的 PY-xxx 编号 (如学情画像薄弱点) 时主动调, 查清主题后再生成资源, 不要反问用户。')

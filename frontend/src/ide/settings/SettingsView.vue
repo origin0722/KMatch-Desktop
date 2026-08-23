@@ -12,21 +12,20 @@
           <button class="settings-close" @click="sidebar.back()" title="关闭设置">×</button>
         </div>
         <div class="settings-content">
-          <section id="sec-api" class="settings-section">
-            <h2 class="section-title">API 设置</h2>
-            <ApiSettings />
-          </section>
+          <!-- issue-63: 设置收敛为三大配置块 + 通用: AI 助手 / 学习引擎 / 联网搜索 -->
           <section id="sec-assistant" ref="secAssistant" class="settings-section">
             <h2 class="section-title">AI 助手</h2>
             <AssistantSettings />
+            <!-- 自定义厂商 + 视觉探测并入 AI 助手段 (学习引擎共用同一厂商池) -->
+            <ProvidersSettings />
           </section>
           <section id="sec-agent" ref="secAgent" class="settings-section">
-            <h2 class="section-title">Agent 学习引擎</h2>
+            <h2 class="section-title">学习引擎</h2>
             <AgentSettings />
           </section>
-          <section id="sec-providers" ref="secProviders" class="settings-section">
-            <h2 class="section-title">供应商管理</h2>
-            <ProvidersSettings />
+          <section id="sec-web" ref="secWeb" class="settings-section">
+            <h2 class="section-title">联网搜索</h2>
+            <WebSearchSettings />
           </section>
           <section id="sec-general" class="settings-section">
             <h2 class="section-title">通用</h2>
@@ -99,7 +98,7 @@ import { ElMessage } from 'element-plus'
 import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
 import ProvidersSettings from './ProvidersSettings.vue'
-import ApiSettings from './ApiSettings.vue'
+import WebSearchSettings from './WebSearchSettings.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 
@@ -145,10 +144,9 @@ onMounted(() => {
 })
 
 const anchors = [
-  { id: 'sec-api', label: 'API 设置' },
   { id: 'sec-assistant', label: 'AI 助手' },
-  { id: 'sec-agent', label: 'Agent 学习引擎' },
-  { id: 'sec-providers', label: '供应商管理' },
+  { id: 'sec-agent', label: '学习引擎' },
+  { id: 'sec-web', label: '联网搜索' },
   { id: 'sec-general', label: '通用' },
 ]
 

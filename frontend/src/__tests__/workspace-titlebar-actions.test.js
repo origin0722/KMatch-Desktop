@@ -5,7 +5,7 @@
  * 这里 stub 重子组件, 只验壳层组合 (动作联动已下沉到 NavSidebar 自身测试, 见 navsidebar.test.js).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import Workspace from '@/views/Workspace.vue'
 
@@ -13,6 +13,14 @@ vi.mock('@/ide/NavSidebar.vue', () => ({ default: { template: '<nav data-test="n
 vi.mock('@/ide/MainArea.vue', () => ({ default: { template: '<main data-test="main-area" />' } }))
 vi.mock('@/ide/AssistantPanel.vue', () => ({ default: { template: '<aside data-test="assistant-panel" />' } }))
 vi.mock('@/ide/StatusBar.vue', () => ({ default: { template: '<footer data-test="status-bar" />' } }))
+// issue-62: ReadyGate 是壳层前置门, 单测中挂载即放行 (就绪门自身逻辑见 ready-gate.test.js)
+vi.mock('@/ide/ReadyGate.vue', () => ({
+  default: {
+    emits: ['ready', 'skip'],
+    mounted() { this.$emit('ready') },
+    template: '<div />',
+  },
+}))
 
 vi.mock('@/stores/workspace', () => ({
   useWorkspaceStore: () => ({ hasProject: false, rootName: '', loadRecent: vi.fn() }),
@@ -38,15 +46,17 @@ describe('Workspace shell composition', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders NavSidebar and MainArea in the body', () => {
+  it('renders NavSidebar and MainArea in the body', async () => {
     const wrapper = mountWorkspace()
+    await flushPromises()
     expect(wrapper.find('[data-test="nav-sidebar"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="main-area"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="status-bar"]').exists()).toBe(true)
   })
 
-  it('titlebar is a slim drag bar; AI settings gear moved to NavSidebar', () => {
+  it('titlebar is a slim drag bar; AI settings gear moved to NavSidebar', async () => {
     const wrapper = mountWorkspace()
+    await flushPromises()
     expect(wrapper.find('.ide-titlebar').exists()).toBe(true)
     // 标题栏已精简, gear 不在 Workspace 壳层 (在 NavSidebar 内)
     expect(wrapper.find('.ide-titlebar [data-test="ai-settings-gear"]').exists()).toBe(false)

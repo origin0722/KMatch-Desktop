@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ElementPlus from 'element-plus'
-import ProvidersSettings from '@/ide/settings/ProvidersSettings.vue'
+import ProvidersSettings from '@/ide/settings/WebSearchSettings.vue'
 import { useAiSettingsStore } from '@/stores/aiSettings'
 
 describe('proxy settings', () => {

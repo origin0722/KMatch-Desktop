@@ -1,4 +1,5 @@
 <template>
+  <!-- issue-63: 自定义厂商 + 视觉探测 (并入「AI 助手」段; Tavily/网络代理已移至「联网搜索」段) -->
   <div class="providers-settings">
     <SettingCard title="自定义厂商" info="新增 OpenRouter / 内部代理 / 302.ai 等自定义厂商，各自模型列表+key 独立">
       <div class="cp-list" style="width: 100%">
@@ -25,58 +26,20 @@
       <el-button size="small" type="danger" plain data-test="vision-clear" @click="clearVisionCache">🗑 清除视觉缓存</el-button>
     </SettingCard>
 
-    <SettingCard title="网络代理" info="所有 LLM 出站请求通过此代理（影响后端 sidecar 进程）；改后需重启后端生效">
-      <el-switch :model-value="ai.proxy.enabled" data-test="proxy-enabled"
-                 @change="onProxyChange({ enabled: $event })" />
-      <template v-if="ai.proxy.enabled">
-        <el-input :model-value="ai.proxy.url" size="small" style="width: 240px"
-                  placeholder="http://127.0.0.1:7890" data-test="proxy-url"
-                  @change="onProxyChange({ url: $event })" />
-        <el-select :model-value="ai.proxy.type" size="small" style="width: 110px"
-                   @change="onProxyChange({ type: $event })">
-          <el-option label="HTTP" value="http" />
-          <el-option label="SOCKS5" value="socks5" />
-        </el-select>
-        <el-button size="small" type="primary" @click="restartBackend" :loading="restarting">重启后端</el-button>
-      </template>
-    </SettingCard>
-
-    <SettingCard title="联网搜索" info="学情反馈时搜索薄弱知识点相关网站 (Tavily); 配置后下次反馈生效">
-      <div class="tavily-guide">
-        <p>① 前往 <a href="https://tavily.com" target="_blank" rel="noopener">tavily.com</a> 注册 (免费 1000 次/月)</p>
-        <p>② 在 Dashboard 复制 API Key</p>
-        <p>③ 粘贴到下方</p>
-      </div>
-      <el-input v-model="tavilyInput" type="password" show-password size="small" style="width: 260px"
-                placeholder="tvly-..." data-test="tavily-key" @change="saveTavily" @keyup.enter="saveTavily" />
-      <el-button size="small" type="primary" @click="saveTavily">保存</el-button>
-      <span v-if="!ai.tavilyKey" class="tavily-hint">未配置则不联网搜索, 只返回 LLM 讲义</span>
-    </SettingCard>
-
     <ProviderEditDialog v-model="dialogVisible" :provider="editing" @save="onSave" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ref, computed } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import { useCustomProvidersStore } from '@/stores/customProviders'
 import { useModelVisionStore } from '@/stores/modelVision'
-import { useAiSettingsStore } from '@/stores/aiSettings'
 import SettingCard from './SettingCard.vue'
 import ProviderEditDialog from './ProviderEditDialog.vue'
 
 const cps = useCustomProvidersStore()
 const modelVision = useModelVisionStore()
-const ai = useAiSettingsStore()
-// Tavily key 本地镜像: v-model 双向输入流畅, 失焦 @change 持久化
-// (修: 原 :model-value 受控 + @change 导致粘贴/输入后被 store 空值重置, 表现为"粘贴不了")
-const tavilyInput = ref(ai.tavilyKey || '')
-watch(() => ai.tavilyKey, (v) => { tavilyInput.value = v || '' })
-function saveTavily() {
-  ai.setTavilyKey(tavilyInput.value)
-  ElMessage.success(tavilyInput.value ? 'Tavily Key 已保存' : '已清除 Tavily Key')
-}
 const dialogVisible = ref(false)
 const editing = ref(null)
 
@@ -128,21 +91,6 @@ async function batchProbeVision() {
 async function clearVisionCache() {
   await modelVision.clearAll()
 }
-
-// 网络代理: 盘活 aiSettings.proxy ({enabled,type,url,scope})。UI 改 store;
-// 落盘 + sidecar env 注入已接线 (Spec B 18-19 / issue-49: preload setProxyConfig + backend:restart)
-const restarting = ref(false)
-
-function onProxyChange(patch) {
-  ai.setProxy(patch)
-  // 通知 main 进程落盘 + 准备下次 spawn 注入
-  window.api?.setProxyConfig?.(ai.proxy)
-}
-
-async function restartBackend() {
-  restarting.value = true
-  try { await window.api?.restartBackend?.() } finally { restarting.value = false }
-}
 </script>
 
 <style scoped>
@@ -155,9 +103,4 @@ async function restartBackend() {
 .cp-name { font-size: 13px; font-weight: 600; color: var(--km-gray-800); }
 .cp-baseurl { font-size: 11.5px; color: var(--km-gray-500); }
 .cp-models { font-size: 11.5px; color: var(--km-gray-400); }
-.tavily-guide { font-size: 12px; color: var(--km-gray-500); margin-bottom: 8px; line-height: 1.6; }
-.tavily-guide p { margin: 0; }
-.tavily-guide a { color: var(--km-primary); text-decoration: none; }
-.tavily-guide a:hover { text-decoration: underline; }
-.tavily-hint { margin-left: 8px; color: var(--km-gray-400); font-size: 12px; }
 </style>

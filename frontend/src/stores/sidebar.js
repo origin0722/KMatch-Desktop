@@ -28,6 +28,9 @@ export const useSidebarStore = defineStore('sidebar', () => {
   const aiPanelVisible = ref(true) // AI 助手面板
   const persona = ref('beginner') // 学习角色: beginner/intermediate/advanced, 调整图谱节点详略
   const onboardingActive = ref(false) // 首次引导覆盖层 (设置页「重新引导」可再触发)
+  // issue-61: 左侧导航栏折叠态 (48px 图标轨, 节约空间), localStorage 持久化
+  const navCollapsed = ref(false)
+  try { navCollapsed.value = localStorage.getItem('kmatch-nav-collapsed') === '1' } catch { /* ignore */ }
 
   function setView(id) {
     if (id !== activeView.value) prevView.value = activeView.value
@@ -46,6 +49,11 @@ export const useSidebarStore = defineStore('sidebar', () => {
     aiPanelVisible.value = !aiPanelVisible.value
   }
 
+  function toggleNavCollapsed() {
+    navCollapsed.value = !navCollapsed.value
+    try { localStorage.setItem('kmatch-nav-collapsed', navCollapsed.value ? '1' : '0') } catch { /* ignore */ }
+  }
+
   function setPersona(p) { persona.value = p }
 
   // 首次引导: 完成时写 onboarded 标记 (OnboardingOverlay emit done -> 此处收口)
@@ -55,5 +63,5 @@ export const useSidebarStore = defineStore('sidebar', () => {
     onboardingActive.value = false
   }
 
-  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, onboardingActive, setView, back, setPersona, toggleSidebar, toggleAiPanel, startOnboarding, finishOnboarding }
+  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, onboardingActive, navCollapsed, setView, back, setPersona, toggleSidebar, toggleAiPanel, toggleNavCollapsed, startOnboarding, finishOnboarding }
 })

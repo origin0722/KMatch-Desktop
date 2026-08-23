@@ -263,8 +263,9 @@ def test_build_profile_recommended_start_weak_priority():
     assert path["current_node"] == "PY-002"
     # next_nodes 取候选中 PY-002 之后的节点（此处为空，PY-002 是最后一个候选）
     assert path["next_nodes"] == []
-    # BUG-038: 有 1 个弱项 → estimated_weeks = max(2, 2+1) = 3
-    assert path["estimated_completion_weeks"] == 3
+    # issue-69: 预计周数按实际学时折算 (2 节点 × 20min = 0.67h → ceil(0.67/6) = 1 周),
+    # 不再随弱项数线性膨胀 (旧公式给 3 周)
+    assert path["estimated_completion_weeks"] == 1
 
 
 def test_build_profile_recommended_path_next_nodes_sequence():

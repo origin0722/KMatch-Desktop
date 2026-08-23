@@ -240,7 +240,7 @@
 
         <!-- 联网资源 (AI 助手 web_search 结果 + 页内直接搜索/批量丰富, transition-group 平滑入场) -->
         <el-tab-pane label="联网资源" name="web_link">
-          <!-- 工具行: 任意搜索 + 按薄弱点批量丰富 (让联网资源从几篇变十几篇) -->
+          <!-- 工具行: 任意搜索 + 按薄弱点批量丰富 + 薄弱点筛选 (让联网资源从几篇变十几篇且可追溯) -->
           <div class="web-tools">
             <el-input
               v-model="webQuery"
@@ -254,13 +254,16 @@
             <el-button :loading="weakSearching" :disabled="!weakTopics.length" @click="searchWeakTopics">
               按薄弱点批量丰富
             </el-button>
+            <el-button :type="webOnlyWeak ? 'warning' : ''" :disabled="!webList.length" @click="webOnlyWeak = !webOnlyWeak">
+              {{ webOnlyWeak ? '显示全部' : '只看薄弱点' }}
+            </el-button>
             <span v-if="weakTopics.length" class="web-weak-hint">
               {{ weakTopics.length }} 个薄弱点可搜
             </span>
           </div>
 
           <div v-if="webList.length === 0" class="empty-tab">
-            <el-empty description="尚无联网资源 — 在上方搜索, 或在 AI 助手中让它搜索某个知识点" :image-size="80" />
+            <el-empty :description="webOnlyWeak ? '暂无匹配薄弱点的联网资源 — 试试「按薄弱点批量丰富」' : '尚无联网资源 — 在上方搜索, 或在 AI 助手中让它搜索某个知识点'" :image-size="80" />
           </div>
           <transition-group v-else name="res-flow" tag="div" class="resource-list">
             <el-card
@@ -272,6 +275,8 @@
               <template #header>
                 <div class="resource-card-header">
                   <span class="resource-title">{{ res.title || res.url }}</span>
+                  <!-- issue-68: 命中画像薄弱点的联网资源打标识, 贴合度一目了然 -->
+                  <el-tag v-if="isWeakResource(res)" size="small" type="warning">薄弱点</el-tag>
                   <el-tag size="small" type="success">🌐 联网</el-tag>
                 </div>
               </template>
@@ -351,7 +356,19 @@ const guideList = computed(() =>
 const testList = computed(() =>
   resources.value.filter((r) => r.content_type === 'test'),
 )
-const webList = computed(() => webResources.value)
+const webList = computed(() => {
+  const all = webResources.value
+  return webOnlyWeak.value ? all.filter((r) => isWeakResource(r)) : all
+})
+
+// ---- issue-68: 薄弱点标识与筛选 ----
+const webOnlyWeak = ref(false)
+const weakNodeIds = computed(() => new Set(
+  (store.profile?.weak_topics || []).map((t) => t.node_id).filter(Boolean),
+))
+function isWeakResource(res) {
+  return !!(res?.target_node_id && weakNodeIds.value.has(res.target_node_id))
+}
 
 // ---------------------------------------------------------------
 // 资源标题：从 markdown 首行提取，fallback 到类型中文名+序号

@@ -16,6 +16,7 @@ engine.assemble_learning_path / get_by_difficulty 已内置处理。
 """
 
 import json
+import math
 import random
 import uuid
 from datetime import datetime
@@ -263,12 +264,22 @@ def _build_profile(target_direction, nodes, grading, questions: list = None) -> 
     # BUG-034: 排除已掌握节点，避免推荐 mastery=1.0 的节点造成逻辑矛盾
     next_nodes = _suggest_next_nodes(nodes, recommended_start, known_ids=known_ids)
 
-    # 预估完成周数: 弱项越多周期越长
-    # BUG-038: 无弱项 (全掌握) → 巩固周数 1-2 周，不再固定 4 周 (避免矛盾)
-    if weak_topics:
-        estimated_weeks = max(2, 2 + len(weak_topics))
+    # 预估完成周数 (issue-69): 按候选节点实际学时 / 每周可学时长折算, 不再随弱项数线性膨胀
+    # (旧公式 max(2, 2+弱项数) 在弱项 10 个时给出 12 周, 明显失真)。
+    # 节点无 estimated_minutes 时按 20min/节点估算; time_per_week 取画像投入 (默认 6h); 上限 8 周。
+    total_minutes = sum(
+        int(n.get("estimated_minutes", 20) or 20)
+        for n in nodes if isinstance(n, dict)
+    )
+    total_hours = total_minutes / 60
+    time_per_week = 6
+    hours_based_weeks = math.ceil(total_hours / time_per_week) if total_hours else 0
+    if hours_based_weeks > 0:
+        estimated_weeks = max(1, min(8, hours_based_weeks))
+    elif weak_topics:
+        estimated_weeks = max(1, min(6, 2 + len(weak_topics)))
     else:
-        estimated_weeks = max(1, len(unmastered_nodes))  # 仅未掌握节点数，全掌握→1周巩固
+        estimated_weeks = max(1, min(6, len(unmastered_nodes)))
 
     return {
         "profile_id": f"UP-DIA-{uuid.uuid4().hex[:6]}",

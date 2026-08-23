@@ -5,6 +5,16 @@
  * 助手输入框 (用户可编辑后发送, 不自动发送)。
  */
 
+/** issue-70: 知识图谱专业导读预填 (对话式导航, AI 依 get_learning_path/search_knowledge 工具回答)。 */
+export const GRAPH_GUIDE_PROMPT =
+  '请以对话形式带我导读当前知识图谱：先结合我的学情画像说明学习路径的起点，'
+  + '然后逐个知识点讲解「它是什么、为什么要学、怎么检验我是否掌握」，'
+  + '每讲完一个知识点就停下来问我是否继续或有什么疑问，'
+  + '如果我想深入某个点，就先用知识图谱工具查证再展开，不要凭记忆编造。'
+
+/** issue-70: 图谱详情面板"图谱导读"按钮预填 (与空态 chip 同源)。 */
+export const graphGuidePrompt = () => GRAPH_GUIDE_PROMPT
+
 /**
  * 知识点节点 → 苏格拉底式提问预填
  * @param {Object} node 选中节点 {node_id, name, difficulty, mastery, summary, key_points}

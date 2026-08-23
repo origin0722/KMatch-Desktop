@@ -139,6 +139,12 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const feedbackStrategy = ref(null)
   /** 动态反馈再生资源 (feedback 接口返回) */
   const feedbackContent = ref(null)
+  /**
+   * 当前/最近一次的学习目标方向 (issue-65):
+   * StageGoal 表单与 store 双向同步 — 切视图返回不再被引导默认值覆盖,
+   * 在途"准备题目"请求期间返回仍显示原目标与加载态。
+   */
+  const pendingTargetDirection = ref('')
 
   /** 请求取消控制器 */
   const abortController = ref(null)
@@ -249,6 +255,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers.value = []
     feedbackStrategy.value = null
     feedbackContent.value = null
+    pendingTargetDirection.value = targetDirection
 
     try {
       // 动态建域 (阶段16): 新领域联网检索资料用, 与 feedback 阶段同源 (aiSettings, 懒加载避循环依赖)
@@ -414,6 +421,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers.value = []
     feedbackStrategy.value = null
     feedbackContent.value = null
+    pendingTargetDirection.value = targetDirection
 
     // Phase 1: 记录本次 demo 的请求 meta, 供"按此流程重跑" (续跑)
     lastRun.value = {
@@ -519,6 +527,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers.value = []
     feedbackStrategy.value = null
     feedbackContent.value = null
+    pendingTargetDirection.value = ''
   }
 
   return {
@@ -543,6 +552,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers,
     feedbackStrategy,
     feedbackContent,
+    // issue-65: 目标方向持久化 (切视图返回不被引导默认值覆盖)
+    pendingTargetDirection,
     // Phase 1: 持久 run (复盘/续跑)
     lastRun,
     // 画像档案: 稳定 learner 标识 + 版本 diff

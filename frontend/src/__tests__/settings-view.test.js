@@ -11,21 +11,20 @@ describe('SettingsView', () => {
     window.api = window.api || {}
   })
 
-  it('renders five section titles + five anchors (含 API 设置)', () => {
-    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'ApiSettings'] } })
+  it('renders four section titles + four anchors (AI 助手/学习引擎/联网搜索/通用)', () => {
+    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'ApiSettings'] } })
     const text = w.text()
-    expect(text).toContain('API 设置')
     expect(text).toContain('AI 助手')
-    expect(text).toContain('Agent 学习引擎')
-    expect(text).toContain('供应商管理')
+    expect(text).toContain('学习引擎')
+    expect(text).toContain('联网搜索')
     expect(text).toContain('通用')
-    expect(w.findAll('.settings-anchor')).toHaveLength(5)
+    expect(w.findAll('.settings-anchor')).toHaveLength(4)
   })
 
   it('clicking re-onboard button activates onboarding via sidebar store', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
-    const w = mount(SettingsView, { global: { plugins: [pinia], stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'ApiSettings', 'el-button'] } })
+    const w = mount(SettingsView, { global: { plugins: [pinia], stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'ApiSettings', 'el-button'] } })
     const sidebar = useSidebarStore()
     expect(sidebar.onboardingActive).toBe(false)
     await w.find('[data-test="re-onboard"]').trigger('click')
@@ -33,9 +32,9 @@ describe('SettingsView', () => {
   })
 
   it('clicking anchor sets active anchor', async () => {
-    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'ApiSettings'] } })
+    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'ApiSettings'] } })
     // 按 label 定位, 而非固定下标 (避免新增栏目时下标漂移)
-    const anchor = w.findAll('.settings-anchor').find((a) => a.text().includes('Agent 学习引擎'))
+    const anchor = w.findAll('.settings-anchor').find((a) => a.text().includes('学习引擎'))
     await anchor.trigger('click')
     expect(w.vm.activeAnchor).toBe('sec-agent')
   })

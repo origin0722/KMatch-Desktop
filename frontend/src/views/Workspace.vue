@@ -1,5 +1,7 @@
 <template>
-  <div class="ide-shell">
+  <!-- issue-62: 启动就绪门 — 后端就绪后才进入主界面 (避免 AI 一进来就报错); 超时可重试/跳过 -->
+  <ReadyGate v-if="!gateReady" @ready="gateReady = true" @skip="gateReady = true" />
+  <div v-else class="ide-shell">
     <!-- 顶部标题栏: 精简为拖拽条 + 工作区名 (品牌/菜单/工具入口已移至 NavSidebar) -->
     <div class="ide-titlebar">
       <div class="title-left">
@@ -10,9 +12,17 @@
       </div>
     </div>
 
-    <!-- IDE 主体: 左导航栏(可拖宽) | 主区(文件树+编辑器/视图) | AI面板(可拖宽) -->
+    <!-- IDE 主体: 左导航栏(可拖宽/可折叠图标轨) | 主区(文件树+编辑器/视图) | AI面板(可拖宽) -->
     <div class="ide-body">
-      <ResizablePanel panel-key="km.nav-w" :min="180" :max="280" :initial="208" side="right">
+      <!-- issue-61: 折叠态用独立 panel-key 重挂载 → 宽度自动收成 48px 图标轨 -->
+      <ResizablePanel
+        :key="sidebar.navCollapsed ? 'nav-mini' : 'nav-full'"
+        :panel-key="sidebar.navCollapsed ? 'km.nav-w-mini' : 'km.nav-w'"
+        :min="sidebar.navCollapsed ? 44 : 180"
+        :max="sidebar.navCollapsed ? 60 : 280"
+        :initial="sidebar.navCollapsed ? 48 : 208"
+        side="right"
+      >
         <NavSidebar />
       </ResizablePanel>
       <MainArea />
@@ -30,7 +40,7 @@
 </template>
 
 <script setup>
-import { onMounted, defineAsyncComponent } from 'vue'
+import { ref, onMounted, defineAsyncComponent } from 'vue'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -39,11 +49,14 @@ import MainArea from '@/ide/MainArea.vue'
 import ResizablePanel from '@/ide/ResizablePanel.vue'
 import StatusBar from '@/ide/StatusBar.vue'
 import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
+import ReadyGate from '@/ide/ReadyGate.vue'
 // 右侧 AI 分栏懒加载: AssistantPanel 依赖 MarkdownViewer + 重组件, 默认视图是 code 首屏无需它
 const AssistantPanel = defineAsyncComponent(() => import('@/ide/AssistantPanel.vue'))
 
 const ws = useWorkspaceStore()
 const sidebar = useSidebarStore()
+// issue-62: 就绪门状态 (后端就绪/用户跳过后进入主界面)
+const gateReady = ref(false)
 
 // 首次使用 (无 onboarded 标记) 自动弹引导; 重新触发入口在设置页「通用」段
 if (!localStorage.getItem('kmatch-onboarded')) sidebar.startOnboarding()

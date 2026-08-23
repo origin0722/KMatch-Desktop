@@ -500,6 +500,9 @@ const pathData = computed(() => {
   const learningPath = kg.learning_path || []
   const statusUpdates = kg.node_status_updates || {}
   const recPath = profile.recommended_path || {}
+  // issue-69: 优先后端 learningReport.pacing (按实际学时/每周可学时折算),
+  // 不再使用 recommended_path 里"随弱项数线性膨胀"的旧估算 (10 弱项曾显示 12 周)
+  const pacing = store.learningReport?.pacing || null
 
   const masteryByNode = {}
   for (const section of ['known_topics', 'weak_topics']) {
@@ -533,11 +536,11 @@ const pathData = computed(() => {
 
   return {
     nodes,
-    estimated_total_hours: kg.estimated_total_hours || 0,
+    estimated_total_hours: pacing?.total_hours != null ? pacing.total_hours : (kg.estimated_total_hours || 0),
     path_length: nodes.length,
     current_node: recPath.current_node || '',
     next_nodes: recPath.next_nodes || [],
-    estimated_completion_weeks: recPath.estimated_completion_weeks || 0,
+    estimated_completion_weeks: pacing?.weeks || recPath.estimated_completion_weeks || 0,
   }
 })
 

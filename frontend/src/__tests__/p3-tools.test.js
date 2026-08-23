@@ -81,3 +81,18 @@ describe('P3 generate_learning_resources 降级文案', () => {
     expect(block).toContain('引导先去学习会话')
   })
 })
+
+describe('P4 search_weak_topics (issue-68: 按薄弱点联网搜索)', () => {
+  it('已注册 + 默认 ALLOW + 有示例', () => {
+    expect(TOOL_NAMES).toContain('search_weak_topics')
+    expect(DEFAULT_TOOL_PERMISSIONS.search_weak_topics).toBe(TOOL_PERMISSION.ALLOW)
+    const ex = toolCallExample('search_weak_topics')
+    expect(ex).toContain('search_weak_topics')
+    expect(ex).toContain('max_per_topic')
+  })
+
+  it('广告文案强调"优先于泛泛 web_search"', () => {
+    const block = buildToolBlock(['search_weak_topics', 'web_search'])
+    expect(block).toContain('优先于泛泛的 web_search')
+  })
+})

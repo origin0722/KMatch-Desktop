@@ -324,6 +324,12 @@ export function summarizeToolResults(toolResults) {
         .join('\n')
       return `联网搜索 (${r.query}): ${r.count || 0} 条结果\n${results || '(无)'}`
     }
+    if (r.tool === 'search_weak_topics') {
+      const results = (r.results || []).slice(0, 8)
+        .map((x) => `- ${x.title}: ${x.url} (${x.target_node_id || '无溯源'})${x.snippet ? '\n  ' + String(x.snippet).slice(0, 100) : ''}`)
+        .join('\n')
+      return `薄弱点联网搜索 (${(r.weak_topics || []).join('、') || '画像薄弱点'}): ${r.count || 0} 条结果, 已落入「学习资源」页\n${results || '(无)'}`
+    }
     if (r.tool === 'generate_learning_resources') {
       return `学习资源生成完成 (strategy=${r.strategy}): 新增 ${r.generated ?? 0} 份资源, 覆盖 ${r.node_count ?? 0} 个节点。${r.hint || '资源已落入「学习资源」页'}`
     }
@@ -532,7 +538,11 @@ export const useChatStore = defineStore('chat', () => {
       const data = JSON.parse(dataStr)
       if (data.error) {
         error.value = data.error
-        appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${data.error}`)
+        // issue-62: LLM 未配置 → 引导性文案 (非阻塞提示, 不再是一句冰冷报错)
+        const friendly = /LLM 未配置|未设置 API Key|API Key/i.test(String(data.error))
+          ? 'LLM 未配置，请到 设置 → AI 助手 配置厂商/模型/API Key 后再试'
+          : data.error
+        appendTextChunk(activeChunksOf(assistantMsg), 'content', `❌ ${friendly}`)
         const e = new Error(data.error)
         e.streamError = true // 已渲染 chunk, 调用方勿重复
         return e
@@ -773,6 +783,41 @@ export const useChatStore = defineStore('chat', () => {
         // 结果落学习资源模块 (Learning.vue "联网资源" tab 读取)
         try { useLearningResourcesStore().addWebResources(call.query, results) } catch { /* store 未就绪不影响 */ }
         return { tool: 'web_search', query: call.query, results, count: results.length }
+      }
+
+      if (call.tool === 'search_weak_topics') {
+        // 按画像薄弱点批量联网搜索 (issue-68): 结果带 target_node_id 溯源, 比泛泛 web_search 更贴合
+        const { useAssessmentStore } = await import('@/stores/assessment')
+        const aStore = useAssessmentStore()
+        const weak = (Array.isArray(aStore.profile?.weak_topics) ? aStore.profile.weak_topics : []).slice(0, 5)
+        if (!weak.length) {
+          return {
+            tool: 'search_weak_topics',
+            hint: '用户尚未完成学情测评或暂无薄弱点, 无法按薄弱点搜索。请引导用户先完成测评, 或改用 web_search 泛搜索。',
+          }
+        }
+        const topics = (Array.isArray(call.topics) && call.topics.length ? call.topics : weak.map((t) => t.node_id))
+          .map((nid) => {
+            const hit = weak.find((t) => t.node_id === nid)
+            return { node_id: nid, name: (hit && (hit.name || '')) || '' }
+          })
+          .filter((t) => t.node_id)
+        const maxPerTopic = Math.min(5, Math.max(1, parseInt(call.max_per_topic, 10) || 2))
+        const r = await _delegate('/api/search/weak-topics', {
+          topics,
+          max_per_topic: maxPerTopic,
+          direction: aStore.profile.target_direction || undefined,
+          tavily_key: aiSettings.tavilyKey || undefined,
+        })
+        if (!r.ok) return { error: r.error }
+        const results = (r.data?.results || []).map((x) => ({
+          title: x.title, url: x.url, snippet: x.content || x.snippet || '', target_node_id: x.target_node_id,
+        }))
+        try { useLearningResourcesStore().addFeedbackLinks(results) } catch { /* store 未就绪不影响 */ }
+        return {
+          tool: 'search_weak_topics', count: results.length, results,
+          weak_topics: topics.map((t) => t.node_id),
+        }
       }
 
       if (call.tool === 'get_knowledge_node') {

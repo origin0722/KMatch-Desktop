@@ -279,12 +279,18 @@
                   data-test="ask-ai"
                   @click="askAiAboutNode"
                 >问 AI 助手</el-button>
+                <!-- issue-70: 以对话形式导读图谱 (预填导读请求 → 切 chat 视图) -->
+                <el-button
+                  size="small"
+                  data-test="graph-guide"
+                  @click="graphGuide"
+                >图谱导读</el-button>
                 <el-button
                   size="small"
                   data-test="reassess-node"
                   @click="reassessNode"
                 >重测该点</el-button>
-                <span class="detail-hint">概念不熟→问 AI · 想判掌握度→重测该知识点</span>
+                <!-- issue-64: 移除装饰性引导小字 (按钮文案已自说明) -->
               </div>
             </div>
             </template>
@@ -322,7 +328,7 @@ import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisit
 import { ElMessage } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
-import { buildNodeQuestion } from '@/utils/askAi'
+import { buildNodeQuestion, graphGuidePrompt } from '@/utils/askAi'
 import PathFinderModal from '@/components/PathFinderModal.vue'
 
 const store = useAssessmentStore()
@@ -376,6 +382,12 @@ function askAiAboutNode() {
   if (!n) return
   chat.setDraft(buildNodeQuestion(
     n, (prereqNodes.value || []).map((p) => p.name || p.node_id)))
+  sidebar.setView('chat')
+}
+
+// issue-70: 知识图谱专业导读 — 以对话形式在 AI 助手中逐步导航 (预填导读请求)
+function graphGuide() {
+  chat.setDraft(graphGuidePrompt())
   sidebar.setView('chat')
 }
 
@@ -1190,7 +1202,6 @@ watch(layoutMode, () => { scheduleRebuild() })
 .prereq-section { margin-top: 12px; }
 .ask-ai-btn { margin-top: 14px; }
 .detail-actions { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.detail-hint { font-size: 11px; color: var(--km-gray-500); }
 .prereq-section > .label {
   display: block; color: var(--km-gray-500);
   font-size: 13px; margin-bottom: 6px;

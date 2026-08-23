@@ -29,17 +29,32 @@
         </el-button>
         <span v-if="!canStart" class="hint-text">请选择或输入学习目标方向</span>
       </div>
+
+      <!-- issue-65: 返回学习会话时题目仍在准备 → 明确展示在途状态, 不误以为卡住/重置 -->
+      <div v-if="store.loading && store.phase === 'idle'" class="preparing-hint">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>正在准备「{{ form.targetDirection }}」的题目… 可先浏览其他功能，就绪后自动出题</span>
+      </div>
+
+      <!-- issue-65: 准备失败 → 目标卡内直接展示错误 + 重试 (此前静默无提示) -->
+      <div v-if="store.error && store.phase === 'idle' && !store.loading" class="goal-error">
+        <span class="err-text">{{ store.error }}</span>
+        <el-button size="small" type="primary" @click="handleStart">重试测评</el-button>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { reactive, computed, onMounted } from 'vue'
+import { reactive, computed, onMounted, watch } from 'vue'
+import { Loading } from '@element-plus/icons-vue'
 import { useAssessmentStore } from '@/stores/assessment'
 
 const store = useAssessmentStore()
 
-const form = reactive({ targetDirection: '' })
+// issue-65: 目标方向与 store 双向同步 — 优先恢复最近一次目标 (切视图返回不丢),
+// 仅当从未选择过时才用引导预填值兜底
+const form = reactive({ targetDirection: store.pendingTargetDirection || '' })
 const presetDirections = [
   'Python 基础语法入门', '数据结构与算法', '面向对象编程',
   'Python 进阶', '常用库与工具', '项目实战',
@@ -48,12 +63,18 @@ const presetDirections = [
 ]
 const canStart = computed(() => form.targetDirection.trim().length > 0)
 
-// P4: 引导选的方向 (kmatch-onboard-direction) 预填一次, tag 选中态自动高亮
+// P4: 引导选的方向 (kmatch-onboard-direction) 仅在本地表单为空时预填一次
 onMounted(() => {
+  if (form.targetDirection) return
   try {
     const dir = localStorage.getItem('kmatch-onboard-direction')
     if (dir) form.targetDirection = dir
   } catch { /* localStorage 不可用时忽略 */ }
+})
+
+// 用户改目标即时写回 store (供 StageGoal 重挂载恢复)
+watch(() => form.targetDirection, (v) => {
+  if (store.pendingTargetDirection !== v) store.pendingTargetDirection = v
 })
 
 async function handleStart() {
@@ -80,4 +101,21 @@ async function handleStart() {
 .field-label { font-size: 13px; font-weight: 600; color: var(--km-gray-700); flex-shrink: 0; }
 .actions { margin-top: 16px; }
 .hint-text { color: var(--km-gray-500); font-size: 13px; }
+/* issue-65: 在途准备态提示 */
+.preparing-hint {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; padding: 10px 12px;
+  border-radius: var(--km-radius-sm);
+  background: rgba(108,124,224,0.08);
+  color: var(--km-gray-600); font-size: 13px;
+}
+/* issue-65: 准备失败 → 错误 + 重试 */
+.goal-error {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 12px; padding: 10px 12px;
+  border-radius: var(--km-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--km-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--km-danger) 6%, transparent);
+}
+.err-text { flex: 1; min-width: 200px; font-size: 12.5px; color: var(--km-danger); }
 </style>

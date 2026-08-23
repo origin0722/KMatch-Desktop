@@ -11,6 +11,7 @@ POST /api/diagnostics/submit
 """
 
 import asyncio
+import math
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -173,6 +174,21 @@ def _persist_run(*, session_id: str, mode: str, request: dict | None = None,
         )
     except Exception as e:  # noqa: BLE001  run 落盘是尽力而为
         logger.warning("run_store 落盘失败 session=%s err=%s", session_id, e)
+
+
+def _pacing_of(profile: dict, kg: dict | None = None) -> dict:
+    """按实际学时折算学习节奏 (issue-69): {total_hours, hours_per_week, weeks}。
+
+    与 report_builder.pacing 口径一致 (总学时 / 每周可学时长), 供运行历史与看板展示;
+    不再使用"弱项数线性膨胀"的旧估算。
+    """
+    hours = float((kg or {}).get("estimated_total_hours", 0) or 0)
+    hours_per_week = max(1, int((profile or {}).get("time_per_week") or 6))
+    return {
+        "total_hours": round(hours, 1),
+        "hours_per_week": hours_per_week,
+        "weeks": max(1, math.ceil(hours / hours_per_week)) if hours else 0,
+    }
 
 
 def _resolve_workflow(req) -> dict:
@@ -584,6 +600,16 @@ def assess_stream(req: AssessRequest, request: Request):
                     "resources_count": len(final_state.get("generated_content", {}).get("resources", []))
                     if final_state.get("generated_content") else 0,
                     "review_passed": bool(final_state.get("review_results", {}).get("passed")),
+                    # issue-66/69: 薄弱点名称 + 真实节奏 (运行历史/看板展示)
+                    "weak_topics": [
+                        (t.get("name") or t.get("node_id"))
+                        for t in (final_state.get("user_profile", {}).get("weak_topics") or [])
+                        if isinstance(t, dict)
+                    ][:5],
+                    "pacing": _pacing_of(
+                        final_state.get("user_profile", {}),
+                        final_state.get("knowledge_graph", {}),
+                    ),
                 },
                 workflow=wf,
             )
@@ -725,7 +751,7 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
     _persist_run(
         session_id=req.session_id,
         mode="interactive",
-        request={"target_direction": target, "workflow_id": "scene1-interactive"},
+        request={"target_direction": target, "scene": "no_project", "workflow_id": "scene1-interactive"},
         orchestration_log=orchestration_log,
         summary={
             "correct_count": grading["correct_count"],
@@ -733,6 +759,13 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
             "strategy": feedback["strategy"],
             "theory_level": profile.get("theory_level"),
             "path_nodes": len(knowledge_graph.get("learning_path", [])) if knowledge_graph else 0,
+            # issue-66: 薄弱点名称 (名称优先, 缺则 node_id), 供运行历史展示"薄弱点"
+            "weak_topics": [
+                (t.get("name") or t.get("node_id"))
+                for t in (profile.get("weak_topics") or []) if isinstance(t, dict)
+            ][:5],
+            # issue-69: 节奏按实际学时折算
+            "pacing": _pacing_of(profile, knowledge_graph),
             **({"profile_diff": profile_diff, "learner_key": learner_key} if profile_diff else {}),
         },
         workflow=get_workflow("scene1-interactive"),
