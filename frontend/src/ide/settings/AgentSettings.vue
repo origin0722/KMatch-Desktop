@@ -8,6 +8,14 @@
       <el-switch :model-value="agent.state.useOverrides" @change="agent.setUseOverrides" />
     </SettingCard>
 
+    <!-- issue: 未配置/占位符 → 401 预警 (出题失败根因: .env 为 sk-placeholder) -->
+    <div v-if="!agent.state.useOverrides || !agent.state.apiKey?.trim()" class="agent-warn">
+      ⚠️ {{ agent.state.useOverrides ? 'API Key 为空：出题/判分会回退到后端 .env 的 LLM_API_KEY。'
+          : '未开启独立配置：出题/判分/资源生成使用后端 .env 的 LLM_API_KEY。' }}
+      若 .env 未配置有效 key（如占位符 sk-placeholder），调用将返回 <b>401 认证失败</b>——
+      请开启独立配置并填入有效 key，或配置 .env。
+    </div>
+
     <template v-if="agent.state.useOverrides">
       <SettingCard title="厂商" info="Agent 本期仅支持 OpenAI 兼容协议（Anthropic 暂不支持）">
         <el-select data-test="agent-provider" :model-value="agent.state.provider" size="small" style="width: 220px"
@@ -96,4 +104,12 @@ async function testConn() {
   border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);
   background: var(--km-bg-layer-2); color: var(--km-gray-700);
 }
+.agent-warn {
+  padding: 10px 12px; font-size: 12.5px; line-height: 1.7; margin-bottom: 12px;
+  border: 1px dashed color-mix(in srgb, var(--km-warning) 60%, transparent);
+  border-radius: var(--km-radius-sm);
+  background: color-mix(in srgb, var(--km-warning) 8%, transparent);
+  color: var(--km-gray-700);
+}
+.agent-warn b { color: var(--km-danger); }
 </style>

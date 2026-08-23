@@ -142,6 +142,31 @@ def llm_configured() -> bool:
     return settings.LLM_API_KEY not in ("", "sk-placeholder")
 
 
+def is_auth_error(exc: BaseException) -> bool:
+    """判断异常是否为 API Key 认证类错误 (401 / invalid key / authentication)。"""
+    text = str(exc).lower()
+    return any(k in text for k in (
+        "401", "authentication", "invalid api key", "unauthorized",
+        "incorrect api key", "api key is invalid",
+    ))
+
+
+def friendly_llm_error(exc: BaseException) -> str:
+    """把 LLM 调用异常转为用户可读中文提示。
+
+    - 401/认证类 → 明确的配置引导 (指向 设置→学习引擎 / 后端 .env)
+    - 其余 → 首行原文 (保留排查线索), 不吞错误
+    """
+    if is_auth_error(exc):
+        return (
+            "学习引擎 API Key 无效（401）。请到 设置 → 学习引擎 检查 API Key "
+            "（需要真实 sk-... 而非占位符），点击「测试连接」验证；"
+            "若未开启独立配置，请配置后端 .env 的 LLM_API_KEY。"
+        )
+    text = str(exc)
+    return text.splitlines()[0] if text else "LLM 调用失败"
+
+
 # ============================================================
 # Spec B 工作流节点 / 线程池复用 helpers
 # ============================================================

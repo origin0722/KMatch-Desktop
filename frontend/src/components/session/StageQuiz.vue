@@ -34,6 +34,7 @@
         <div v-if="store.error" class="quiz-error">
           <el-alert type="error" :title="store.error" :closable="false" show-icon />
           <div class="quiz-error-actions">
+            <el-button v-if="isAuthError(store.error)" size="small" @click="goSettings">前往设置</el-button>
             <el-button type="primary" size="small" @click="handleSubmitAnswers">重试提交</el-button>
             <el-button size="small" @click="store.backToInput()">返回修改</el-button>
           </div>
@@ -94,11 +95,19 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSessionStore } from '@/stores/session'
+import { useSidebarStore } from '@/stores/sidebar'
 import AssessmentReport from '@/components/AssessmentReport.vue'
 import ProfileRadar from '@/components/ProfileRadar.vue'
 
 const store = useAssessmentStore()
 const session = useSessionStore()
+const sidebar = useSidebarStore()
+
+// issue: 401/API Key 错误 → "前往设置" 入口
+function isAuthError(text) {
+  return /401|API Key|api key/i.test(text || '')
+}
+function goSettings() { sidebar.setView('settings') }
 const isActive = computed(() => session.activeStage === 'quiz')
 
 const answeredCount = computed(() => store.userAnswers.filter((a) => a && String(a).trim()).length)

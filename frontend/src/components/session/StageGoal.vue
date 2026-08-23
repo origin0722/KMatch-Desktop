@@ -39,6 +39,7 @@
       <!-- issue-65: 准备失败 → 目标卡内直接展示错误 + 重试 (此前静默无提示) -->
       <div v-if="store.error && store.phase === 'idle' && !store.loading" class="goal-error">
         <span class="err-text">{{ store.error }}</span>
+        <el-button v-if="isAuthError(store.error)" size="small" @click="goSettings">前往设置</el-button>
         <el-button size="small" type="primary" @click="handleStart">重试测评</el-button>
       </div>
     </div>
@@ -49,8 +50,16 @@
 import { reactive, computed, onMounted, watch } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useSidebarStore } from '@/stores/sidebar'
 
 const store = useAssessmentStore()
+const sidebar = useSidebarStore()
+
+// issue: 401/API Key 错误 → 给"前往设置"入口
+function isAuthError(text) {
+  return /401|API Key|api key/i.test(text || '')
+}
+function goSettings() { sidebar.setView('settings') }
 
 // issue-65: 目标方向与 store 双向同步 — 优先恢复最近一次目标 (切视图返回不丢),
 // 仅当从未选择过时才用引导预填值兜底

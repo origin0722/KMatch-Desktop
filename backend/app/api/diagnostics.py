@@ -32,7 +32,7 @@ from app.agents.diagnostics import (
 from app.agents.domain_bootstrap import bootstrap_domain, resolve_direction
 from app.agents import flow_transactions as flow_tx
 from app.agents.graph_controller import graph_controller_node
-from app.agents.llm import llm_configured, use_llm_overrides
+from app.agents.llm import friendly_llm_error, is_auth_error, llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
 from app.agents.run_store import delete_run, list_runs, load_run, save_run
@@ -389,7 +389,9 @@ def assess(req: AssessRequest, request: Request):
                 raise HTTPException(status_code=503, detail=str(e))
             except Exception as e:
                 logger.error("interactive 出题失败", exc_info=True)
-                raise HTTPException(status_code=500, detail=f"出题失败: {e}")
+                # issue: 401 → 可读配置引导 (占位符/错 key 不再糊原始英文)
+                code = 401 if is_auth_error(e) else 500
+                raise HTTPException(status_code=code, detail=f"出题失败: {friendly_llm_error(e)}")
 
         session_id = str(uuid.uuid4())
         _cache_session(session_id, {
@@ -727,7 +729,8 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
         orchestration_log.extend(graph_update.get("orchestration_log", []))
     except Exception as e:
         logger.error("答题判分失败 session=%s", req.session_id, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"判分失败: {e}")
+        code = 401 if is_auth_error(e) else 500
+        raise HTTPException(status_code=code, detail=f"判分失败: {friendly_llm_error(e)}")
 
     logger.info("答题提交 session=%s 正确率=%d/%d 策略=%s 路径节点=%d",
                 req.session_id, grading["correct_count"], grading["total_count"], feedback["strategy"],
@@ -855,7 +858,8 @@ def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
         logger.error("feedback 再生失败 session=%s", req.session_id, exc_info=True)
         if tavily_pool is not None:
             tavily_pool.shutdown(wait=False)
-        raise HTTPException(status_code=500, detail=f"内容再生失败: {e}")
+        code = 401 if is_auth_error(e) else 500
+        raise HTTPException(status_code=code, detail=f"内容再生失败: {friendly_llm_error(e)}")
 
     # 收 Tavily 结果 (LLM 耗时 ~15-30s > Tavily ~7s, 此处通常已就绪)
     if tavily_future is not None:
