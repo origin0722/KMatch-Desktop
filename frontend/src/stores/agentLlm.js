@@ -8,7 +8,7 @@
  */
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { PROVIDERS, isCustomProvider, customProviderUuid } from './aiSettings'
+import { PROVIDERS, isCustomProvider, customProviderUuid, useAiSettingsStore } from './aiSettings'
 import { useCustomProvidersStore } from './customProviders'
 
 const STORAGE_KEY = 'kmatch-agent-llm'
@@ -73,16 +73,51 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
   function setModel(m) { state.value.model = m; persist() }
   function setFeedbackModel(m) { state.value.feedbackModel = m; persist() }
 
-  /** 返回供请求体注入的 overrides；关闭/无 key 时返回 null（走后端 .env 默认）。 */
-  function buildOverrides() {
-    if (!state.value.useOverrides) return null
-    if (!state.value.apiKey?.trim()) return null
+  /** 回退来源: AI 助手 Key (OpenAI 兼容厂商), 用于学习引擎未独立配置时。 */
+  function aiFallbackOverrides() {
+    const ai = useAiSettingsStore()
+    const key = ai.apiKey?.trim()
+    if (!key) return null
+    const meta = PROVIDERS.find((p) => p.id === ai.provider)
+    // Agent 引擎仅支持 OpenAI 兼容协议; Anthropic 等不回退 (走后端 .env)
+    if (meta?.protocol === 'anthropic') return null
     return {
-      api_key: state.value.apiKey,
-      base_url: state.value.baseUrl,
-      model: state.value.model,
-      protocol: state.value.protocol,   // 本期固定 'openai'
+      api_key: key,
+      base_url: ai.getBaseUrl() || '',
+      model: ai.model || '',
+      protocol: 'openai',
     }
+  }
+
+  /**
+   * 返回供请求体注入的 overrides；优先级:
+   * 1. 独立配置开启且有 key → 独立 key
+   * 2. 未开启/空 key → 回退 AI 助手 Key (OpenAI 兼容, 消除"明明配了 AI 助手还 401")
+   * 3. 两者皆无 → null (走后端 .env)
+   */
+  function buildOverrides() {
+    if (state.value.useOverrides && state.value.apiKey?.trim()) {
+      return {
+        api_key: state.value.apiKey,
+        base_url: state.value.baseUrl,
+        model: state.value.model,
+        protocol: state.value.protocol,   // 本期固定 'openai'
+      }
+    }
+    return aiFallbackOverrides()
+  }
+
+  /** 设置页提示: 当前出题/判分实际生效的密钥来源。 */
+  function effectiveSource() {
+    const mask = (k) => (k?.length > 6 ? `…${k.slice(-4)}` : (k ? '已配置' : '未配置'))
+    if (state.value.useOverrides && state.value.apiKey?.trim()) {
+      return { type: 'engine', text: `学习引擎独立 Key（${mask(state.value.apiKey)}）` }
+    }
+    const ai = useAiSettingsStore()
+    if (ai.apiKey?.trim()) {
+      return { type: 'ai', text: `回退到 AI 助手 Key（${mask(ai.apiKey)}）` }
+    }
+    return { type: 'env', text: '后端 .env 的 LLM_API_KEY（若为占位符 sk-placeholder 将 401）' }
   }
 
   /**
@@ -102,7 +137,7 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
 
   return {
     state, setUseOverrides, setProvider, setApiKey, setBaseUrl, setModel, setFeedbackModel,
-    buildOverrides, buildFeedbackOverrides,
+    buildOverrides, buildFeedbackOverrides, effectiveSource,
   }
 })
 

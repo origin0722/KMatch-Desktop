@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAgentLlmStore, withOverrides, withFeedbackOverrides } from '@/stores/agentLlm'
+import { useAiSettingsStore } from '@/stores/aiSettings'
 
 describe('agentLlm store', () => {
   beforeEach(() => {
@@ -138,5 +139,47 @@ describe('agentLlm store', () => {
     s.setFeedbackModel('qwen3-turbo')
     s.setProvider('glm')
     expect(s.state.feedbackModel).toBe('qwen3-turbo')
+  })
+
+  // ---- 回退链: 学习引擎未配 → AI 助手 Key (消除"明明配了 AI 助手还 401") ----
+
+  it('fallback: 未开启独立配置 + AI 助手有 key → 回退使用 AI 助手 Key', async () => {
+    const ai = useAiSettingsStore()
+    await ai.setApiKey('sk-ai-key')
+    const s = useAgentLlmStore()
+    s.setUseOverrides(false)
+    const ov = s.buildOverrides()
+    expect(ov).not.toBeNull()
+    expect(ov.api_key).toBe('sk-ai-key')
+    expect(ov.protocol).toBe('openai')
+    expect(s.effectiveSource().type).toBe('ai')
+  })
+
+  it('fallback: AI 助手也无 key → null (走后端 .env), effectiveSource=env', () => {
+    const s = useAgentLlmStore()
+    s.setUseOverrides(false)
+    expect(s.buildOverrides()).toBeNull()
+    expect(s.effectiveSource().type).toBe('env')
+  })
+
+  it('fallback: 独立配置优先于 AI 助手 Key', async () => {
+    const ai = useAiSettingsStore()
+    await ai.setApiKey('sk-ai-key')
+    const s = useAgentLlmStore()
+    s.setUseOverrides(true)
+    s.setApiKey('sk-engine')
+    s.setProvider('deepseek')
+    s.setBaseUrl('https://api.deepseek.com/v1')
+    s.setModel('deepseek-v4-pro')
+    const ov = s.buildOverrides()
+    expect(ov.api_key).toBe('sk-engine')
+    expect(s.effectiveSource().type).toBe('engine')
+  })
+
+  it('withOverrides 注入 AI 回退 key 到请求体', async () => {
+    const ai = useAiSettingsStore()
+    await ai.setApiKey('sk-ai-key')
+    const body = withOverrides({ target_direction: 'x' })
+    expect(body.llm_overrides.api_key).toBe('sk-ai-key')
   })
 })

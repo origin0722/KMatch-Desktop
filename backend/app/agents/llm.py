@@ -159,9 +159,10 @@ def friendly_llm_error(exc: BaseException) -> str:
     """
     if is_auth_error(exc):
         return (
-            "学习引擎 API Key 无效（401）。请到 设置 → 学习引擎 检查 API Key "
-            "（需要真实 sk-... 而非占位符），点击「测试连接」验证；"
-            "若未开启独立配置，请配置后端 .env 的 LLM_API_KEY。"
+            "学习引擎 API Key 无效（401）。出题/判分优先级：设置 → 学习引擎 独立 Key → "
+            "AI 助手 Key（未开启独立配置时自动回退）→ 后端 .env 的 LLM_API_KEY。"
+            "请检查当前生效来源（后端 .env 为占位符 sk-placeholder 时必 401），"
+            "点击「测试连接」验证后重试。"
         )
     text = str(exc)
     return text.splitlines()[0] if text else "LLM 调用失败"

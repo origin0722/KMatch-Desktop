@@ -8,12 +8,12 @@
       <el-switch :model-value="agent.state.useOverrides" @change="agent.setUseOverrides" />
     </SettingCard>
 
-    <!-- issue: 未配置/占位符 → 401 预警 (出题失败根因: .env 为 sk-placeholder) -->
-    <div v-if="!agent.state.useOverrides || !agent.state.apiKey?.trim()" class="agent-warn">
-      ⚠️ {{ agent.state.useOverrides ? 'API Key 为空：出题/判分会回退到后端 .env 的 LLM_API_KEY。'
-          : '未开启独立配置：出题/判分/资源生成使用后端 .env 的 LLM_API_KEY。' }}
-      若 .env 未配置有效 key（如占位符 sk-placeholder），调用将返回 <b>401 认证失败</b>——
-      请开启独立配置并填入有效 key，或配置 .env。
+    <!-- issue: 未配置/占位符 → 401 预警; 显示实际生效密钥来源 (引擎独立 Key → AI 助手 Key → .env) -->
+    <div v-if="effectiveSrc.type !== 'engine'" class="agent-warn" data-test="effective-source">
+      ⚠️ 出题/判分当前密钥来源：<b>{{ effectiveSrc.text }}</b>
+      {{ effectiveSrc.type === 'env'
+        ? '——请开启独立配置并填入有效 key，或配置 .env 的 LLM_API_KEY（占位符 sk-placeholder 会 401）。'
+        : '——如需更稳定，可开启独立配置（优先于 AI 助手 Key）。' }}
     </div>
 
     <template v-if="agent.state.useOverrides">
@@ -63,6 +63,8 @@ import { useApiSettingsStore } from '@/stores/apiSettings'
 import SettingCard from './SettingCard.vue'
 
 const agent = useAgentLlmStore()
+// issue: 显示当前生效密钥来源 (独立 Key / AI 助手回退 / .env)
+const effectiveSrc = computed(() => agent.effectiveSource())
 // 统一 API 配置接管时, 顶部提示用户此处为冗余入口 (减配置点)
 const apiUnified = computed(() => useApiSettingsStore().mode === 'unified')
 const testing = ref(false)
