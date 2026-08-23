@@ -14,9 +14,7 @@
     <!-- 任务: 最近运行历史 -->
     <div v-if="activeTab === 'tasks'" class="side-body">
       <div v-if="runsLoading" class="side-note">加载中…</div>
-      <div v-else-if="!runs.length" class="side-note">
-        暂无运行记录 — 完成一次测评/答题后这里会显示
-      </div>
+      <div v-else-if="!runs.length" class="side-note">暂无运行记录</div>
       <div v-else class="side-list">
         <div v-for="r in runs" :key="r.session_id" class="side-item" @click="goRuns">
           <span class="si-mode" :class="r.mode">{{ r.mode === 'demo' ? '演示' : '自定义' }}</span>
@@ -28,7 +26,7 @@
 
     <!-- 文件: 当前项目文件树精简版 -->
     <div v-else-if="activeTab === 'files'" class="side-body">
-      <div v-if="!ws.hasProject" class="side-note">尚未打开项目 — 在「代码」视图打开项目文件夹</div>
+      <div v-if="!ws.hasProject" class="side-note">尚未打开项目</div>
       <div v-else-if="!files.length" class="side-note">项目为空或文件树未加载</div>
       <div v-else class="side-list">
         <div
@@ -45,9 +43,7 @@
 
     <!-- 日志: 最近一次运行的结构化事件 -->
     <div v-else class="side-body">
-      <div v-if="!events.length" class="side-note">
-        暂无协同日志 — 完成一次测评后可见 Agent 事件
-      </div>
+      <div v-if="!events.length" class="side-note">暂无协同日志</div>
       <div v-else class="side-list mono">
         <div v-for="(ev, i) in events" :key="i" class="side-event">
           <span class="ev-st" :class="ev.status || ''">{{ ev.status || 'run' }}</span>

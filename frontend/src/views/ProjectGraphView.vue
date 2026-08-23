@@ -586,18 +586,18 @@ function initGraph() {
     // layered: dagre 分层, nodeSize 用最大可能宽度 220 保守估防宽节点重叠
     layout: grouped
       ? { type: 'combo-combined', comboPadding: 30, comboSpacing: 90, layout: { type: 'grid' } }
-      : { type: 'dagre', rankdir: 'TB', nodesep: 40, ranksep: 80, nodeSize: [220, 44] },
+      : { type: 'dagre', rankdir: 'TB', nodesep: 50, ranksep: 90, nodeSize: [250, 58] },
     data: { nodes, edges, ...(grouped ? { combos } : {}) },
     node: {
       type: 'rect',
       style: {
         fill: (d) => KIND_COLORS[d.data?.kind] || KIND_COLORS.default,
-        size: (d) => [d.data?.w || 160, 34],
+        size: (d) => [d.data?.w || 190, 48],
         labelText: (d) => d.data?.label || d.id,
         labelPlacement: 'center',
-        labelFontSize: 11,
+        labelFontSize: 12.5,
         labelFill: '#ffffff',
-        labelMaxWidth: 200,
+        labelMaxWidth: 220,
         // 导读模式: 当前站 primary 强调 / 邻居细描边 / 其余淡化; 平时浅灰描边
         stroke: (d) => (d.data?.tourCurrent || d.data?.tourNeighbor) ? '#6c7ce0' : '#e4e3e1',
         lineWidth: (d) => d.data?.tourCurrent ? 3 : d.data?.tourNeighbor ? 1.5 : 1,

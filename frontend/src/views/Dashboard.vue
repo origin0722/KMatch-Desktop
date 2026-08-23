@@ -1,17 +1,16 @@
 <template>
   <div class="dashboard-page km-workbench">
-    <!-- ============================================================ -->
-    <!-- 空状态 -->
-    <!-- ============================================================ -->
-    <el-empty
-      v-if="!hasData"
-      description="尚未完成学情测评，无报告数据"
-      :image-size="120"
-    >
-      <el-button type="primary" @click="sidebar.setView('learning-session')">
-        前往学习会话
-      </el-button>
-    </el-empty>
+    <!-- issue-91: 空态 = 页面标题 + 一句话说明 + 主按钮, 居中 -->
+    <div v-if="!hasData" class="page-empty" data-test="dashboard-empty">
+      <div class="pe-badge">📊</div>
+      <h2 class="pe-title">数据看板</h2>
+      <p class="pe-line">完成学情测评后，这里汇总你的掌握度、薄弱点与学习路径</p>
+      <div class="empty-actions">
+        <el-button type="primary" @click="sidebar.setView('learning-session')">
+          前往学习会话
+        </el-button>
+      </div>
+    </div>
 
     <!-- ============================================================ -->
     <!-- 有数据时 -->

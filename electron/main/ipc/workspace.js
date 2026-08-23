@@ -70,5 +70,12 @@ export function registerWorkspaceIpc({ getMainWindow } = {}) {
   ipcMain.handle('workspace:getRoot', () => getWorkspaceRoot())
 
   ipcMain.handle('workspace:listRecent', () => loadRecent())
+
+  // issue-90: 从最近打开中删除单条 (持久化写回)
+  ipcMain.handle('workspace:removeRecent', async (_e, dir) => {
+    const list = (await loadRecent()).filter((p) => p !== dir)
+    await saveRecent(list)
+    return list
+  })
 }
 

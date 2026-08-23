@@ -325,3 +325,19 @@ html[data-kmatch-accent="teal"], html[data-kmatch-accent="violet"] {
   --el-color-primary-light-7: color-mix(in srgb, var(--km-primary) 40%, #ffffff);
   --el-color-primary-light-8: color-mix(in srgb, var(--km-primary) 28%, #ffffff);
 }
+
+/* ============================================================
+   issue-91: 功能页空态 (标题 + 一句话说明 + 主按钮, 居中)
+   ============================================================ */
+.page-empty {
+  flex: 1;
+  min-height: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; text-align: center;
+  padding: 24px;
+}
+.pe-badge { font-size: 44px; line-height: 1.2; }
+.pe-title { margin: 0; font-size: 21px; font-weight: 700; color: var(--km-gray-800); }
+.pe-line { margin: 0; font-size: 13px; color: var(--km-gray-500); max-width: 460px; line-height: 1.7; }
+.empty-actions { display: flex; gap: 10px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }

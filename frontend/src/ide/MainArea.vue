@@ -110,7 +110,11 @@ watch(() => sidebar.activeView, async () => {
   padding: 22px 26px;
   box-shadow: var(--km-shadow-sm);
   font-size: 14px; /* #29 各功能页统一继承字号 (原各自 12-13.5px 不同步) */
+  /* issue-91: 子页面撑满卡片 → 空态可垂直居中 */
+  display: flex;
+  flex-direction: column;
 }
+.view-card > * { flex: 1; min-height: 0; }
 .view-card :deep(.el-card) {
   --el-card-bg-color: var(--km-bg-layer-2);
   --el-text-color-primary: var(--km-gray-800);

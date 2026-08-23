@@ -13,8 +13,6 @@
       <div v-if="!ws.activeFile" class="monaco-empty">
         <el-icon :size="48" color="var(--ktext-muted)"><DocumentCopy /></el-icon>
         <p class="empty-title">KMatch·知链 工作区</p>
-        <p class="empty-hint">从左侧资源管理器打开文件, 或点击活动栏 📁 打开项目</p>
-        <p class="empty-hint dim">阶段1: 文件浏览 + Monaco 编辑 (Ctrl+S 保存) · 阶段2 起: AI 助手 + 图谱委派</p>
       </div>
       <!-- 阶段8: 外部改动冲突确认 (已打开且脏的文件被外部修改) -->
       <div v-if="conflictPath" class="conflict-banner">

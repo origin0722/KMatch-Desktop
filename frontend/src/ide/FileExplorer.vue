@@ -14,6 +14,7 @@
       <el-button type="primary" plain @click="ws.openProject()">
         <el-icon><FolderOpened /></el-icon>&nbsp;打开项目文件夹
       </el-button>
+      <!-- issue-90: 最近打开可删除单条 -->
       <div v-if="ws.recent.length" class="recent-list">
         <div class="recent-title">最近打开</div>
         <div
@@ -24,9 +25,13 @@
         >
           <el-icon><Folder /></el-icon>
           <span>{{ basename(p) }}</span>
+          <button
+            class="recent-del"
+            title="从最近打开中移除"
+            @click.stop="ws.removeRecent(p)"
+          >✕</button>
         </div>
       </div>
-      <div class="hint">提示: 可打开仓库内 <code>data/example_projects/simple_crawler</code> 体验</div>
     </div>
 
     <!-- 文件树 (懒加载目录树: 顶层 + 展开时逐层拉取, 大项目不卡) -->
@@ -108,8 +113,17 @@ function basename(p) {
   transition: background 0.15s var(--km-ease);
 }
 .recent-item:hover { background: var(--km-gray-200); }
-.hint { font-size: 11px; color: var(--km-gray-500); margin-top: 8px; line-height: 1.5; }
-.hint code { background: var(--km-gray-200); padding: 1px 4px; border-radius: 3px; }
+.recent-del {
+  margin-left: auto;
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--km-radius-xs);
+  background: transparent; color: var(--km-gray-400);
+  font-size: 10px; cursor: pointer;
+  opacity: 0; transition: all 0.14s var(--km-ease);
+}
+.recent-item:hover .recent-del { opacity: 1; }
+.recent-del:hover { color: var(--km-danger); background: var(--km-danger-light); }
 
 .tree { flex: 1; overflow-y: auto; padding: 4px 0; }
 .ftb-empty { padding: 10px 12px; font-size: 12px; color: var(--km-gray-500); }

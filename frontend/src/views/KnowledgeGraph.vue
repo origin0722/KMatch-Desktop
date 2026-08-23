@@ -1,17 +1,14 @@
 <template>
   <div class="graph-page km-workbench">
-    <!-- ============================================================ -->
-    <!-- 空状态：无学习路径时显示引导 -->
-    <!-- ============================================================ -->
-    <el-empty
-      v-if="!hasPathData && !graphReady"
-      description="尚未生成学习路径图谱"
-      :image-size="120"
-    >
-      <el-button type="primary" @click="goSession">
-        前往学习会话
-      </el-button>
-    </el-empty>
+    <!-- issue-91: 空态 = 页面标题 + 一句话说明 + 主按钮, 居中 -->
+    <div v-if="!hasPathData && !graphReady" class="page-empty" data-test="graph-empty">
+      <div class="pe-badge">🕸️</div>
+      <h2 class="pe-title">知识图谱</h2>
+      <p class="pe-line">完成学情测评后，这里展示你的个性化学习路径图谱</p>
+      <div class="empty-actions">
+        <el-button type="primary" @click="goSession">前往学习会话</el-button>
+      </div>
+    </div>
 
     <!-- ============================================================ -->
     <!-- 有数据时：工具栏 + 主内容区 -->
@@ -367,9 +364,9 @@ const categoryColor = (cat) => CATEGORY_COLORS[cat] || THEME.gray400
 // beginner 显示分类+难度(信息全), intermediate 仅难度, advanced 仅名称(最紧凑 -> 画布最不挤)
 // 阶段C 图谱待办"矩形加大": 节点尺寸整体上调, labelMax 同步, 治"节点太小看不清"
 const PERSONA = {
-  beginner:     { node: [215, 70], layout: [235, 105], labelMax: 205, label: (d) => `${d?.label || d.id}\n${d?.category || ''} · ${'⭐'.repeat(d?.difficulty || 1)}` },
-  intermediate: { node: [190, 60], layout: [210, 90], labelMax: 180, label: (d) => `${d?.label || d.id}\n${'⭐'.repeat(d?.difficulty || 1)}` },
-  advanced:     { node: [160, 48], layout: [180, 75], labelMax: 150, label: (d) => `${d?.label || d.id}` },
+  beginner:     { node: [240, 84], layout: [260, 110], labelMax: 228, label: (d) => `${d?.label || d.id}\n${d?.category || ''} · ${'⭐'.repeat(d?.difficulty || 1)}` },
+  intermediate: { node: [215, 72], layout: [235, 96], labelMax: 204, label: (d) => `${d?.label || d.id}\n${'⭐'.repeat(d?.difficulty || 1)}` },
+  advanced:     { node: [185, 60], layout: [205, 82], labelMax: 175, label: (d) => `${d?.label || d.id}` },
 }
 const personaCfg = () => PERSONA[sidebar.persona] || PERSONA.intermediate
 
@@ -668,10 +665,10 @@ function initGraph() {
           size: cfg.node,
           labelText: (d) => cfg.label(d.data),
           labelPlacement: 'center',
-          labelFontSize: 12,
+          labelFontSize: 13,
           labelFill: '#ffffff',
           labelMaxWidth: cfg.labelMax,
-          labelLineHeight: 18,
+          labelLineHeight: 20,
           // 掌握度改由边框表达 (已掌握 ≥0.8 绿色加粗)
           stroke: (d) => (d.data?.mastery ?? 0) >= 0.8 ? '#34b37e' : THEME.gray300,
           lineWidth: (d) => (d.data?.mastery ?? 0) >= 0.8 ? 2.5 : 1,

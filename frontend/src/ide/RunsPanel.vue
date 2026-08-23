@@ -9,7 +9,7 @@
 
     <div v-if="error" class="rp-error">{{ error }}</div>
     <div v-else-if="!runs.length && !loading" class="rp-empty">
-      暂无运行记录 — 跑一次测评 / 答题提交后这里会留痕（run.json + events.jsonl）
+      暂无运行记录
     </div>
 
     <div class="rp-list">

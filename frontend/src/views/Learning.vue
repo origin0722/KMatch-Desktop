@@ -3,17 +3,11 @@
     <!-- ============================================================ -->
     <!-- 空状态：尚未生成资源 -->
     <!-- ============================================================ -->
-    <el-empty
-      v-if="!hasResources"
-      description="尚未生成学习资源"
-      :image-size="120"
-    >
-      <template #description>
-        <p class="empty-desc">
-          讲义/实操/测试由「学情测评 → 获取针对性反馈」或 AI 助手「生成学习资源」产出（需配置 LLM）；
-          联网资源另需 Tavily Key。
-        </p>
-      </template>
+    <!-- issue-91: 空态 = 页面标题 + 一句话说明 + 主按钮, 居中展示 -->
+    <div v-if="!hasResources" class="page-empty" data-test="learning-empty">
+      <div class="pe-badge">📚</div>
+      <h2 class="pe-title">学习资源</h2>
+      <p class="pe-line">按你的学情生成讲义、实操与测试，联网搜索补充教程</p>
       <div class="empty-actions">
         <el-button
           v-if="store.profile && store.feedbackStrategy"
@@ -32,7 +26,7 @@
         class="gen-error"
         @close="generateError = null"
       />
-    </el-empty>
+    </div>
 
     <!-- ============================================================ -->
     <!-- 有资源时 -->
@@ -58,19 +52,12 @@
         <el-tab-pane label="分层讲义" name="lecture">
           <div v-if="lectureList.length === 0" class="empty-tab">
             <el-empty description="暂无讲义" :image-size="80">
-              <template #description>
-                <p class="empty-desc">
-                  讲义由「学情测评 → 获取针对性反馈」或 AI 助手「生成学习资源」产出（需在设置中配置 LLM）；
-                  联网资源另需 Tavily Key。
-                </p>
-              </template>
               <el-button
                 v-if="store.profile && store.feedbackStrategy"
                 type="primary"
                 :loading="store.loading"
                 @click="generateLecture"
               >生成分层讲义 →</el-button>
-              <span v-else-if="store.profile" class="empty-desc muted">完成学情测评（答题提交）后即可生成讲义</span>
             </el-empty>
             <el-alert
               v-if="generateError"

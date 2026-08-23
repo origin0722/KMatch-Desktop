@@ -120,6 +120,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     recent.value = await window.api.workspace.listRecent()
   }
 
+  // issue-90: 从最近打开中删除单条 (主进程持久化写回)
+  async function removeRecent(dir) {
+    try {
+      if (window.api?.workspace?.removeRecent) {
+        recent.value = await window.api.workspace.removeRecent(dir)
+      } else {
+        recent.value = recent.value.filter((p) => p !== dir)
+      }
+    } catch {
+      recent.value = recent.value.filter((p) => p !== dir)
+    }
+  }
+
   // ---- 阶段8: 文件监听订阅 ----
   /** 订阅 fs:watch:change; 批量变动去抖合并一次 refreshTree + 标记 externalChanges */
   function startWatching() {
@@ -208,7 +221,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     dirChildren: dirChildrenRef,
     toggleDir,
     hasProject, openCount,
-    openProject, setRoot, refreshTree, loadRecent,
+    openProject, setRoot, refreshTree, loadRecent, removeRecent,
     openFile, closeFile, setActive, markDirty, saveFile,
     startWatching, stopWatching, clearExternalChange, onExternalChange,
     onProjectOpened,

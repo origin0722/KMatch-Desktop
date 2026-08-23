@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('api', {
     setRoot: (dir) => ipcRenderer.invoke('workspace:setRoot', dir),
     getRoot: () => ipcRenderer.invoke('workspace:getRoot'),
     listRecent: () => ipcRenderer.invoke('workspace:listRecent'),
+    removeRecent: (dir) => ipcRenderer.invoke('workspace:removeRecent', dir),
   },
   fs: {
     readFile: (p) => ipcRenderer.invoke('fs:readFile', p),
