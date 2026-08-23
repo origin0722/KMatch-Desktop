@@ -234,45 +234,98 @@ async function readActiveFileCached(filePath) {
 }
 
 /**
+ * 助手消息序列化给后端 API: 剥离 ```tool_call fence。
+ * 全工具调用消息剥离后内容为空 → 用占位文本 (向厂商发空 assistant content 会使
+ * 部分模型响应异常: 重复调工具 / 输出"2"之类无意义短答, 为空消息问题的辅助修复)。
+ */
+export function assistantApiContent(msg) {
+  const stripped = stripToolCalls(contentTextOf(msg))
+  return stripped || '（工具调用已执行，结果见后续对话）'
+}
+
+/**
  * 把一轮工具执行结果汇总成回喂 AI 的 user 消息文本 (C1.4 单一源)。
  * sendMessage 与 regenMessage 共用, 消除原先 regen 的精简重复副本。
  */
 export function summarizeToolResults(toolResults) {
   return toolResults.map((tr) => {
-    if (tr.result.error) return `工具 ${tr.call.tool} 失败: ${tr.result.error}`
+    const r = tr.result
+    if (r.error) return `工具 ${tr.call.tool} 失败: ${r.error}`
+    // hint 型降级结果 (未完成测评/未解析项目的引导) 须回喂 AI——否则它会看到
+    // "0 个节点"之类的空数据而误解; 成功态也带 hint 的工具 (generate_learning_resources)
+    // 含 generated 主数据, 不会命中此分支。
+    if (r.hint && r.count == null && r.generated == null && r.entity_count == null) {
+      return `工具 ${tr.call.tool} 提示: ${r.hint}`
+    }
     // write_file 才有 written=true; generate_project_graph 的 written 是"是否落 Neo4j"语义不同,
     // 故 written 分支限定 write_file, 避免吞掉 graph 摘要 (review 发现)
-    if (tr.result.written && tr.call.tool === 'write_file') return `文件 ${tr.result.path} 已成功写入 (${tr.result.bytes} 字节)。`
-    if (tr.result.content) {
+    if (r.written && tr.call.tool === 'write_file') return `文件 ${r.path} 已成功写入 (${r.bytes} 字节)。`
+    if (r.content) {
       // F7: 截断 6000 字符时明示, 让 AI 知道被截断 (大文件推理不再静默降级)
       const max = 6000
-      const full = tr.result.content
+      const full = r.content
       const truncated = full.length > max ? full.slice(0, max) + `\n... (内容已截断, 共 ${full.length} 字符, 仅显示前 ${max}; 如需后续内容请指明行号范围)` : full
-      return `文件 ${tr.result.path} 内容:\n\`\`\`\n${truncated}\n\`\`\``
+      return `文件 ${r.path} 内容:\n\`\`\`\n${truncated}\n\`\`\``
     }
-    if (tr.result.files) return `目录 ${tr.result.path} 内容:\n${tr.result.files.join('\n')}`
-    if (tr.result.tool === 'generate_project_graph') {
-      const s = tr.result.stats || {}
-      const ents = (tr.result.entities || []).slice(0, 20)
+    if (r.files) return `目录 ${r.path} 内容:\n${r.files.join('\n')}`
+    if (r.tool === 'generate_project_graph') {
+      const s = r.stats || {}
+      const ents = (r.entities || []).slice(0, 20)
         .map((e) => `- ${e.kind} ${e.qualified_name} (行${e.line_start || '?'}-${e.line_end || '?'})`)
         .join('\n')
-      return `项目图谱已生成 (${tr.result.sourcePath}, written=${tr.result.written}). 统计: 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}.\n实体清单:\n${ents || '(无)'}`
+      return `项目图谱已生成 (${r.sourcePath}, written=${r.written}). 统计: 模块${s.module || 0}/类${s.class || 0}/函数${s.function || 0}/方法${s.method || 0}.\n实体清单:\n${ents || '(无)'}`
     }
-    if (tr.result.tool === 'code_review') {
-      const rv = tr.result.review || {}
+    if (r.tool === 'code_review') {
+      const rv = r.review || {}
       const dims = rv.dimensions || {}
       const dimLines = Object.entries(dims).map(([k, v]) => `${k}: ${((v.score ?? 0) * 100).toFixed(0)}%`).join(', ')
       const highIssues = (Object.values(dims).flatMap((d) => d.issues || []).filter((i) => i.severity === 'high')).slice(0, 5)
         .map((i) => `- [high] ${i.problem}`).join('\n')
-      return `代码审查结果 (${tr.result.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'}, 通过阈值0.85. 维度: ${dimLines}.${rv.retry_hint ? ' 提示: ' + rv.retry_hint : ''}${highIssues ? '\n高危问题:\n' + highIssues : ''}`
+      return `代码审查结果 (${r.sourcePath}): verdict=${rv.verdict}, overall=${rv.overall_score != null ? (rv.overall_score * 100).toFixed(0) + '%' : '?'}, 通过阈值0.85. 维度: ${dimLines}.${rv.retry_hint ? ' 提示: ' + rv.retry_hint : ''}${highIssues ? '\n高危问题:\n' + highIssues : ''}`
     }
-    if (tr.result.tool === 'code_test') {
-      const rp = tr.result.report || {}
+    if (r.tool === 'code_test') {
+      const rp = r.report || {}
       const sm = rp.summary || {}
       const cov = rp.coverage || {}
       const fails = (rp.failed_tests || []).slice(0, 5)
         .map((f) => `- ${f.test_name}: ${f.suggestion || f.error_type || '失败'}`).join('\n')
-      return `代码测试结果 (${tr.result.sourcePath}): ${sm.passed || 0}/${sm.total || 0} 通过, 行覆盖${((cov.line_coverage || 0) * 100).toFixed(0)}%, 分支覆盖${((cov.branch_coverage || 0) * 100).toFixed(0)}%, 函数覆盖${((cov.function_coverage || 0) * 100).toFixed(0)}%.${rp.note ? ' 备注: ' + rp.note : ''}${fails ? '\n失败用例:\n' + fails : ''}${rp.rejected ? ' (已拒绝: ' + (rp.reject_reason || '') + ')' : ''}`
+      return `代码测试结果 (${r.sourcePath}): ${sm.passed || 0}/${sm.total || 0} 通过, 行覆盖${((cov.line_coverage || 0) * 100).toFixed(0)}%, 分支覆盖${((cov.branch_coverage || 0) * 100).toFixed(0)}%, 函数覆盖${((cov.function_coverage || 0) * 100).toFixed(0)}%.${rp.note ? ' 备注: ' + rp.note : ''}${fails ? '\n失败用例:\n' + fails : ''}${rp.rejected ? ' (已拒绝: ' + (rp.reject_reason || '') + ')' : ''}`
+    }
+    // ---- P3 只读知识/图谱工具: 结果必须回喂 LLM (此前缺分支被 filter(Boolean) 静默丢弃,
+    //      模型看不到 20 个路径节点 → 重复调工具 / 胡答"2" 的根因) ----
+    if (r.tool === 'search_knowledge') {
+      const nodes = (r.nodes || []).slice(0, 20)
+        .map((n) => `- ${n.node_id} ${n.name} (${n.category || '未分类'} · 难度${n.difficulty ?? '?'})${n.summary ? ': ' + String(n.summary).slice(0, 80) : ''}`)
+        .join('\n')
+      return `知识检索结果 (${r.query}): 命中 ${r.count || 0} 个节点\n${nodes || '(无)'}`
+    }
+    if (r.tool === 'get_learning_path') {
+      const path = (r.learning_path || []).slice(0, 20)
+        .map((n, i) => `${i + 1}. ${n.node_id} ${n.name} (难度${n.difficulty ?? '?'}${n.category ? ' · ' + n.category : ''})`)
+        .join('\n')
+      const hours = r.estimated_total_hours != null ? `, 预计 ${r.estimated_total_hours}h` : ''
+      return `个性化学习路径: 共 ${r.count || 0} 个节点${hours}\n${path || '(无)'}`
+    }
+    if (r.tool === 'get_knowledge_node') {
+      return `知识点 ${r.node_id} ${r.name || ''} (难度${r.difficulty ?? '?'}${r.category ? ' · ' + r.category : ''})\n摘要: ${r.summary || '(无)'}`
+    }
+    if (r.tool === 'query_project_graph') {
+      const ents = (r.entities || []).slice(0, 20)
+        .map((e) => `- ${e.kind} ${e.qualified_name || e.name}`)
+        .join('\n')
+      const rels = (r.relations || []).slice(0, 20)
+        .map((e) => `- ${e.source} ${e.label || e.relation || '→'} ${e.target}`)
+        .join('\n')
+      return `项目图谱 ${r.project_id || ''}: ${r.entity_count ?? 0} 实体 / ${r.relation_count ?? 0} 关系\n实体:\n${ents || '(无)'}${rels ? `\n关系:\n${rels}` : ''}`
+    }
+    if (r.tool === 'web_search') {
+      const results = (r.results || []).slice(0, 8)
+        .map((x) => `- ${x.title}: ${x.url}${x.snippet ? '\n  ' + String(x.snippet).slice(0, 120) : ''}`)
+        .join('\n')
+      return `联网搜索 (${r.query}): ${r.count || 0} 条结果\n${results || '(无)'}`
+    }
+    if (r.tool === 'generate_learning_resources') {
+      return `学习资源生成完成 (strategy=${r.strategy}): 新增 ${r.generated ?? 0} 份资源, 覆盖 ${r.node_count ?? 0} 个节点。${r.hint || '资源已落入「学习资源」页'}`
     }
     return ''
   }).filter(Boolean).join('\n\n')
@@ -794,7 +847,10 @@ export const useChatStore = defineStore('chat', () => {
           const path = (data?.learning_path || data?.nodes || []).map((n) => ({
             node_id: n.node_id, name: n.name, difficulty: n.difficulty, category: n.category,
           }))
-          return { tool: 'get_learning_path', count: path.length, learning_path: path }
+          return {
+            tool: 'get_learning_path', count: path.length, learning_path: path,
+            estimated_total_hours: data?.estimated_total_hours ?? null,
+          }
         } catch (e) { return { error: e.response?.data?.detail || e.message || '学习路径查询失败' } }
       }
 
@@ -989,7 +1045,7 @@ export const useChatStore = defineStore('chat', () => {
       const systemMsg = buildSystemPrompt(context)
       const historyMsgs = visibleMessages.value.map((m) => {
         if (m.role === 'assistant') {
-          return { role: 'assistant', content: stripToolCalls(contentTextOf(m)) }
+          return { role: 'assistant', content: assistantApiContent(m) }
         }
         // user: 多模态数组原样传; 否则用文本
         return {
@@ -1035,7 +1091,7 @@ export const useChatStore = defineStore('chat', () => {
       const visibleSoFar = visibleMessages.value.filter((m) => messages.value.indexOf(m) < targetIdx)
       const historyMsgs = visibleSoFar.map((m) => {
         if (m.role === 'assistant') {
-          return { role: 'assistant', content: stripToolCalls(contentTextOf(m)) }
+          return { role: 'assistant', content: assistantApiContent(m) }
         }
         // user: 多模态数组原样传; 否则用文本
         return {

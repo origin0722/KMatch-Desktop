@@ -21,8 +21,8 @@ const MOCK_ASSESSMENT = {
   total_count: 3,
   correct_count: 2,
   questions: [
-    { question: 'Python 是编译型语言吗？', type: 'judge', difficulty: 1, node_id: 'PY-001', options: ['对', '错'], answer: '错' },
-    { question: '哪个是列表方法？', type: 'choice', difficulty: 2, node_id: 'PY-002', options: ['A. append', 'B. push', 'C. add', 'D. insert'], answer: 'A. append' },
+    { question: 'Python 是编译型语言吗？', type: 'judge', difficulty: 1, node_id: 'PY-001', options: ['对', '错'], answer: '错', explanation: 'Python 是解释型语言，逐行解释执行，不是编译型。' },
+    { question: '哪个是列表方法？', type: 'choice', difficulty: 2, node_id: 'PY-002', options: ['A. append', 'B. push', 'C. add', 'D. insert'], answer: 'A. append', explanation: 'append 是 list 的方法，push/add 不是 Python 列表 API。' },
     { question: '写一个求和函数', type: 'code', difficulty: 3, node_id: 'PY-003' },
   ],
   answers: ['错', 'B. push', null],  // q0 对, q1 错, q2 未作答
@@ -70,6 +70,18 @@ describe('AssessmentReport', () => {
     expect(text).toContain('A. append')
     // q2 未作答
     expect(text).toContain('（未作答）')
+  })
+
+  it('答案解析: 对错题都展示 explanation (不是孤零零的答案)', () => {
+    const w = mount(AssessmentReport, mountOpts(MOCK_ASSESSMENT))
+    const text = w.text()
+    expect(text).toContain('解析：')
+    // q0 正确题也显示解析
+    expect(text).toContain('Python 是解释型语言')
+    // q1 错题显示解析
+    expect(text).toContain('append 是 list 的方法')
+    // 无 explanation 的题不渲染空解析行
+    expect(text).not.toContain('解析：undefined')
   })
 
   it('空 assessment 不崩溃, 渲染 0 / 0', () => {

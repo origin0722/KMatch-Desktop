@@ -64,6 +64,15 @@
               <strong>正确答案：</strong>
               <span class="correct">{{ q.raw?.answer }}</span>
             </p>
+            <p v-if="q.grade?.correct === true">
+              <strong>正确答案：</strong>
+              <span class="correct">{{ q.raw?.answer }}</span>
+            </p>
+            <!-- 答案解析 (题库 explanation 字段): 对错都给解析, 不止孤零零的答案 -->
+            <p v-if="q.raw?.explanation" class="explanation-row">
+              <strong>解析：</strong>
+              <span class="explanation-text">{{ q.raw.explanation }}</span>
+            </p>
             <p><strong>关联节点：</strong><el-tag size="small">{{ q.raw?.node_id }}</el-tag></p>
           </div>
         </el-collapse-item>
@@ -263,4 +272,12 @@ function answerClass(correct) {
 .correct  { color: var(--km-success); font-weight: 600; }
 .wrong    { color: var(--km-danger); font-weight: 600; text-decoration: line-through; }
 .ungraded { color: var(--km-gray-400); }
+.explanation-row { margin-top: 4px; }
+.explanation-row strong { color: var(--km-gray-700); }
+.explanation-text {
+  color: var(--km-gray-600);
+  line-height: 1.7;
+  display: inline-block;
+  margin-left: 2px;
+}
 </style>

@@ -97,6 +97,13 @@
             路径查找
           </el-button>
 
+          <!-- 缩放控制 (治"放大看不全 / 缩小看不清"): 滚轮可缩放, 提供步进 + 一键适应全图 -->
+          <div class="zoom-controls">
+            <button class="persona-btn" :disabled="!graphReady" title="放大" @click="zoomIn">＋</button>
+            <button class="persona-btn" :disabled="!graphReady" title="缩小" @click="zoomOut">－</button>
+            <button class="persona-btn" :disabled="!graphReady" title="整个图谱适应画布" @click="fitGraph">适应画布</button>
+          </div>
+
           <!-- 更多 popover: 重置/导出/图例/快捷键 收纳 -->
           <el-popover placement="bottom" :width="240" trigger="click">
             <template #reference>
@@ -631,6 +638,10 @@ function initGraph() {
       height: containerHeight,
       data: { nodes, edges },
       layout: layoutConfig,
+      // 界面太小导致"放大看不全/缩小看不清": render 后自动把整个图谱适应到画布,
+      // 并限制滚轮缩放范围 (0.3 倍以下标签不可读, 4 倍以上无意义)
+      autoFit: { type: 'view', options: { when: 'always', direction: 'both' } },
+      zoomRange: [0.3, 4],
       node: {
         type: 'rect',
         style: {
@@ -914,6 +925,11 @@ function resetGraph() {
   rebuildGraph()
 }
 
+// 缩放控制: 步进放大/缩小 + 一键适应全图 (滚轮缩放由 zoom-canvas 行为提供)
+function zoomIn() { graph?.zoomBy(1.25, true) }
+function zoomOut() { graph?.zoomBy(0.8, true) }
+function fitGraph() { graph?.fitView({ when: 'always', direction: 'both' }) }
+
 function rebuildGraph() {
   destroyGraph()
   if (hasPathData.value || extraNodes.value.length > 0) {
@@ -1015,6 +1031,9 @@ watch(layoutMode, () => { scheduleRebuild() })
 .persona-btn.active { background: var(--km-primary); color: #fff; }
 /* 布局切换按钮组 (复用 persona-btn 视觉) */
 .layout-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); padding: 2px; }
+/* 缩放控制按钮组 */
+.zoom-controls { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); padding: 2px; }
+.zoom-controls .persona-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .graph-stats {
   color: var(--km-gray-500); font-size: 13px; white-space: nowrap;
   font-family: var(--km-font-mono);

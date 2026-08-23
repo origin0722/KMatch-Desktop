@@ -8,9 +8,30 @@
       description="尚未生成学习资源"
       :image-size="120"
     >
-      <el-button type="primary" @click="sidebar.setView('learning-session')">
-        前往学习会话
-      </el-button>
+      <template #description>
+        <p class="empty-desc">
+          讲义/实操/测试由「学情测评 → 获取针对性反馈」或 AI 助手「生成学习资源」产出（需配置 LLM）；
+          联网资源另需 Tavily Key。
+        </p>
+      </template>
+      <div class="empty-actions">
+        <el-button
+          v-if="store.profile && store.feedbackStrategy"
+          type="primary"
+          :loading="store.loading"
+          @click="generateLecture"
+        >生成学习资源 →</el-button>
+        <el-button @click="sidebar.setView('learning-session')">前往学习会话</el-button>
+      </div>
+      <el-alert
+        v-if="generateError"
+        type="error"
+        :title="generateError"
+        :closable="true"
+        show-icon
+        class="gen-error"
+        @close="generateError = null"
+      />
     </el-empty>
 
     <!-- ============================================================ -->
@@ -36,7 +57,30 @@
         <!-- 讲义 -->
         <el-tab-pane label="分层讲义" name="lecture">
           <div v-if="lectureList.length === 0" class="empty-tab">
-            <el-empty description="暂无讲义" :image-size="80" />
+            <el-empty description="暂无讲义" :image-size="80">
+              <template #description>
+                <p class="empty-desc">
+                  讲义由「学情测评 → 获取针对性反馈」或 AI 助手「生成学习资源」产出（需在设置中配置 LLM）；
+                  联网资源另需 Tavily Key。
+                </p>
+              </template>
+              <el-button
+                v-if="store.profile && store.feedbackStrategy"
+                type="primary"
+                :loading="store.loading"
+                @click="generateLecture"
+              >生成分层讲义 →</el-button>
+              <span v-else-if="store.profile" class="empty-desc muted">完成学情测评（答题提交）后即可生成讲义</span>
+            </el-empty>
+            <el-alert
+              v-if="generateError"
+              type="error"
+              :title="generateError"
+              :closable="true"
+              show-icon
+              class="gen-error"
+              @close="generateError = null"
+            />
           </div>
           <div v-else class="resource-list">
             <el-card
@@ -323,6 +367,21 @@ function openUrl(url) {
 }
 
 // ---------------------------------------------------------------
+// 分层讲义生成 (Learning 页空态入口: 复用学情反馈链路, 无需回学习会话再点一次)
+// 生成 lecture/practice_guide/test 三类资源并落入本页; 失败展示可读错误 (LLM 未配置等)
+// ---------------------------------------------------------------
+const generateError = ref(null)
+
+async function generateLecture() {
+  if (!store.profile || !store.feedbackStrategy || store.loading) return
+  generateError.value = null
+  store.error = null
+  await store.fetchFeedback()
+  // fetchFeedback 失败时把错误写入 store.error (不抛出), 此处转本地展示
+  generateError.value = store.error
+}
+
+// ---------------------------------------------------------------
 // 联网搜索 (资源页直接搜 + 按薄弱点批量丰富)
 // ---------------------------------------------------------------
 const webQuery = ref('')
@@ -494,6 +553,10 @@ function goToNode(nodeId) {
 
 /* ---- 资源 Tab ---- */
 .empty-tab { padding: 40px 0; }
+.empty-desc { margin: 0 0 12px; font-size: 12px; color: var(--km-gray-500); line-height: 1.6; }
+.empty-desc.muted { margin: 0; }
+.empty-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+.gen-error { margin-top: 12px; }
 
 /* ---- 资源卡片列表 ---- */
 .resource-list {

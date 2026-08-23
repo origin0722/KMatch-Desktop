@@ -79,4 +79,87 @@ describe('summarizeToolResults (C1.4 单一源)', () => {
     expect(out).toContain('模块1')          // graph 摘要
     expect(out).not.toContain('已成功写入') // 不被 write_file 分支吞
   })
+
+  // ---- P3 只读工具摘要 (此前缺失分支被静默丢弃 → LLM 看不到结果, 根因修复) ----
+
+  it('search_knowledge: 含检索词/命中数/节点清单', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'search_knowledge' },
+      result: {
+        tool: 'search_knowledge', query: '列表推导式', count: 2,
+        nodes: [{ node_id: 'PY-003', name: '列表推导式', summary: '简洁构造列表', difficulty: 2, category: '基础语法' }],
+      },
+    }])
+    expect(out).toContain('知识检索结果 (列表推导式)')
+    expect(out).toContain('命中 2 个节点')
+    expect(out).toContain('PY-003 列表推导式')
+    expect(out).toContain('基础语法 · 难度2')
+  })
+
+  it('get_learning_path: 含路径节点序列与预计学时', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'get_learning_path' },
+      result: {
+        tool: 'get_learning_path', count: 20, estimated_total_hours: 12.5,
+        learning_path: [{ node_id: 'PY-001', name: '基础语法', difficulty: 1, category: '基础语法' }],
+      },
+    }])
+    expect(out).toContain('个性化学习路径: 共 20 个节点, 预计 12.5h')
+    expect(out).toContain('1. PY-001 基础语法')
+  })
+
+  it('get_knowledge_node: 含节点详情与摘要', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'get_knowledge_node' },
+      result: { tool: 'get_knowledge_node', node_id: 'PY-002', name: '循环', difficulty: 2, category: '基础语法', summary: 'for/while' },
+    }])
+    expect(out).toContain('知识点 PY-002 循环')
+    expect(out).toContain('摘要: for/while')
+  })
+
+  it('query_project_graph: 含实体/关系统计与清单', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'query_project_graph' },
+      result: {
+        tool: 'query_project_graph', project_id: 'p1', entity_count: 2, relation_count: 1,
+        entities: [{ name: 'foo', kind: 'function', qualified_name: 'mod.foo' }],
+        relations: [{ source: 'mod.foo', label: 'CALLS', target: 'mod.bar' }],
+      },
+    }])
+    expect(out).toContain('项目图谱 p1: 2 实体 / 1 关系')
+    expect(out).toContain('function mod.foo')
+    expect(out).toContain('mod.foo CALLS mod.bar')
+  })
+
+  it('web_search: 含查询/结果数/标题链接摘要', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'web_search' },
+      result: { tool: 'web_search', query: '装饰器', count: 1, results: [{ title: 'Python 装饰器', url: 'https://x.dev', snippet: '详解' }] },
+    }])
+    expect(out).toContain('联网搜索 (装饰器): 1 条结果')
+    expect(out).toContain('Python 装饰器: https://x.dev')
+  })
+
+  it('generate_learning_resources: 含生成数/节点数/落位提示', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'generate_learning_resources' },
+      result: { tool: 'generate_learning_resources', strategy: 'scaffold', generated: 4, node_count: 2, hint: '资源已落入「学习资源」页' },
+    }])
+    expect(out).toContain('学习资源生成完成 (strategy=scaffold)')
+    expect(out).toContain('新增 4 份资源, 覆盖 2 个节点')
+  })
+
+  it('hint 型降级结果 (未完成测评) 回喂 AI, 不再被静默丢弃', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'get_learning_path' },
+      result: { tool: 'get_learning_path', hint: '用户尚未完成学情测评, 无法生成个性化学习路径。' },
+    }])
+    expect(out).toContain('工具 get_learning_path 提示')
+    expect(out).toContain('尚未完成学情测评')
+  })
+
+  it('未知工具空结果仍被过滤 (不产生空行噪音)', () => {
+    const out = summarizeToolResults([{ call: { tool: 'unknown' }, result: {} }])
+    expect(out).toBe('')
+  })
 })

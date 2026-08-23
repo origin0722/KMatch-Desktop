@@ -15,6 +15,7 @@ import {
   thinkTextOf,
   splitToolCallChunks,
   stripToolCalls,
+  assistantApiContent,
 } from '@/stores/chat'
 
 describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
@@ -98,6 +99,20 @@ describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
     const chunks = splitToolCallChunks(text)
     expect(chunks[0].tool).toBe('_malformed')
     expect(chunks[0]._malformed).toBeTruthy()
+  })
+
+  it('assistantApiContent: 剥离工具调用; 全工具调用消息给占位而非空串', () => {
+    const msg = { role: 'assistant', chunks: [
+      { type: 'content', content: '前 ```tool_call\n{"tool":"read_file","path":"a.py"}\n``` 后' },
+    ] }
+    expect(assistantApiContent(msg)).toBe('前  后')
+
+    const onlyTool = { role: 'assistant', chunks: [
+      { type: 'content', content: '```tool_call\n{"tool":"read_file","path":"a.py"}\n```' },
+    ] }
+    const c = assistantApiContent(onlyTool)
+    expect(c).not.toBe('')
+    expect(c).toContain('工具调用已执行')
   })
 })
 
