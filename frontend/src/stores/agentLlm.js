@@ -117,7 +117,7 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
     if (ai.apiKey?.trim()) {
       return { type: 'ai', text: `回退到 AI 助手 Key（${mask(ai.apiKey)}）` }
     }
-    return { type: 'env', text: '后端 .env 的 LLM_API_KEY（若为占位符 sk-placeholder 将 401）' }
+    return { type: 'env', text: '后端默认密钥（当前未从界面配置）——请在 设置 → AI 助手 或 学习引擎 填入 API Key（端用户无 .env 可改）' }
   }
 
   /**

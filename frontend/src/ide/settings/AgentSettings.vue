@@ -4,15 +4,15 @@
       已启用「统一 API 配置」（设置 → API 设置）：Agent 独立配置已被统一 Key 接管，此处修改会被覆盖；如需修改请到「API 设置」统一改。
     </div>
     <SettingCard title="启用 Agent 独立配置"
-                 info="开启后，学情检测/资源生成/代码审查等 Agent 使用下方配置；关闭则走后端默认 .env">
+                 info="开启后，学情检测/资源生成/代码审查等 Agent 使用下方配置；关闭则自动使用 AI 助手的 Key（端用户无需改 .env）">
       <el-switch :model-value="agent.state.useOverrides" @change="agent.setUseOverrides" />
     </SettingCard>
 
-    <!-- issue: 未配置/占位符 → 401 预警; 显示实际生效密钥来源 (引擎独立 Key → AI 助手 Key → .env) -->
+    <!-- issue: 未配置 → 401 预警; 显示实际生效密钥来源 (独立 Key → AI 助手 Key → 后端默认) -->
     <div v-if="effectiveSrc.type !== 'engine'" class="agent-warn" data-test="effective-source">
       ⚠️ 出题/判分当前密钥来源：<b>{{ effectiveSrc.text }}</b>
       {{ effectiveSrc.type === 'env'
-        ? '——请开启独立配置并填入有效 key，或配置 .env 的 LLM_API_KEY（占位符 sk-placeholder 会 401）。'
+        ? '——请直接在上方填入有效 Key，或先到 设置 → AI 助手 配置（端用户无需、也无法修改 .env）。'
         : '——如需更稳定，可开启独立配置（优先于 AI 助手 Key）。' }}
     </div>
 
@@ -47,7 +47,7 @@
       </SettingCard>
     </template>
 
-    <!-- 反馈快模型: 独立于独立配置开关, 未开时部分覆写仅 model, key/baseUrl 走后端 .env -->
+    <!-- 反馈快模型: 独立于独立配置开关, 未开时部分覆写仅 model; key/baseUrl 走上方回退链 -->
     <SettingCard title="反馈快模型" info="仅「获取针对性反馈」请求生效：先跑此快模型减等待；留空 = 跟随引擎模型。换厂商时请确认模型属于该厂商">
       <el-input :model-value="agent.state.feedbackModel" size="small" style="width: 280px"
                 placeholder="如 deepseek-v4-flash（留空跟随引擎）" @change="agent.setFeedbackModel" />

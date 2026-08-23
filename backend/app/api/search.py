@@ -45,7 +45,7 @@ def web_search_api(req: WebSearchRequest):
     if not key:
         raise HTTPException(
             status_code=503,
-            detail="未配置 Tavily API key (在设置页『联网搜索』处配置, 或 .env 设 TAVILY_API_KEY)",
+            detail="未配置 Tavily API key —— 请在 设置 → 联网搜索 填入 Key（安装包端用户同样适用）",
         )
     q = (req.query or "").strip()
     if not q:
@@ -66,7 +66,7 @@ def weak_topics_search_api(req: WeakTopicsSearchRequest):
     if not key:
         raise HTTPException(
             status_code=503,
-            detail="未配置 Tavily API key (在设置页『联网搜索』处配置, 或 .env 设 TAVILY_API_KEY)",
+            detail="未配置 Tavily API key —— 请在 设置 → 联网搜索 填入 Key（安装包端用户同样适用）",
         )
     topics = [t for t in (req.topics or []) if isinstance(t, dict) and t.get("node_id")]
     if not topics:
