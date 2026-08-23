@@ -89,6 +89,19 @@ def merge_profiles(prev: Optional[dict], new: dict,
     prev_master, prev_kind = _entry_map(prev)
     run_nodes = list(new_master.keys())  # 本轮实际测过的节点
 
+    # 知识点名称映射 (node_id → name): 合并条目时结转名称,
+    # 前端 Dashboard/盲区图按名称展示, 缺名会回退成 PY-xxx 编号 (混显问题根因)。
+    def _names(profile):
+        out = {}
+        for section in ("known_topics", "weak_topics"):
+            for it in profile.get(section) or []:
+                if isinstance(it, dict) and it.get("node_id") and it.get("name"):
+                    out.setdefault(it["node_id"], it["name"])
+        return out
+
+    prev_names = _names(prev)
+    new_names = _names(new)
+
     merged: dict[str, dict] = {}
     for nid in run_nodes:
         m_new = new_master[nid]
@@ -103,6 +116,9 @@ def merge_profiles(prev: Optional[dict], new: dict,
         else:
             m = min(m, _MASTERY_BOUND - 0.01)
         entry = {"node_id": nid, "mastery": m, "last_test_at": now_iso}
+        topic_name = new_names.get(nid) or prev_names.get(nid)
+        if topic_name:
+            entry["name"] = topic_name
         kind = _classify(m)
         if kind == "weak":
             patterns = set()

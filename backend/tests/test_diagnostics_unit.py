@@ -166,6 +166,19 @@ def test_build_profile_mixed():
     assert profile["weak_topics"][0]["node_id"] == "PY-002"
 
 
+def test_build_profile_topics_carry_name():
+    """画像 known/weak 条目带 name (前端盲区图按名称展示, 治理 PY-xxx 混显)。"""
+    per_node = {
+        "PY-001": [{"question_index": 0, "correct": True}],   # mastery=1.0 → known
+        "PY-002": [{"question_index": 1, "correct": False}],  # mastery=0.0 → weak
+    }
+    grading = _make_grading(per_node, total_count=2)
+    profile = _build_profile("Python 入门", NODES_MIXED[:2], grading)
+
+    assert profile["known_topics"][0]["name"] == "变量"
+    assert profile["weak_topics"][0]["name"] == "条件"
+
+
 def test_build_profile_mastery_boundary():
     """BUG-039: mastery 三段制 — ≥0.8 归 known, <0.8 (含0.5学习中) 归 weak。"""
     nodes = [

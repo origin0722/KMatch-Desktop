@@ -372,14 +372,15 @@ const blindSpots = computed(() => {
 
   const nodes = []
   const weakIds = new Set()
-
+  // 名称解析顺序: 学习路径节点 (graph_controller 返回完整 name) → 画像条目 name
+  // (后端 _build_profile 已给 known/weak 条目补 name) → 回退 node_id (治理混显 PY-xxx)
   for (const t of (profile.weak_topics || [])) {
     if (!t?.node_id) continue
     weakIds.add(t.node_id)
     const n = lookup[t.node_id] || {}
     nodes.push({
       node_id: t.node_id,
-      name: n.name || t.node_id,
+      name: n.name || t.name || t.node_id,
       difficulty: n.difficulty || 0,
       mastery: t.mastery || 0,
       status: masteryStatus(t.mastery || 0),
@@ -392,7 +393,7 @@ const blindSpots = computed(() => {
     const n = lookup[t.node_id] || {}
     nodes.push({
       node_id: t.node_id,
-      name: n.name || t.node_id,
+      name: n.name || t.name || t.node_id,
       difficulty: n.difficulty || 0,
       mastery: t.mastery || 0,
       status: masteryStatus(t.mastery || 0),
@@ -435,9 +436,14 @@ const diffMatch = computed(() => {
   }
 
   const masteryByNode = {}
+  const topicNameByNode = {}
   for (const section of ['known_topics', 'weak_topics']) {
     for (const t of (profile[section] || [])) {
-      if (t?.node_id) masteryByNode[t.node_id] = t.mastery || 0
+      if (t?.node_id) {
+        masteryByNode[t.node_id] = t.mastery || 0
+        // 名称兜底: 资源可能指向路径外节点, 用画像条目 name 补 (后端已给), 不再显 PY-xxx
+        if (!topicNameByNode[t.node_id]) topicNameByNode[t.node_id] = t.name
+      }
     }
   }
 
@@ -456,7 +462,7 @@ const diffMatch = computed(() => {
 
     points.push({
       node_id: nid,
-      name: node.name || nid,
+      name: node.name || topicNameByNode[nid] || nid,
       content_type: res.content_type || '',
       node_difficulty: nodeDiff,
       resource_difficulty: resDiff,
@@ -678,7 +684,7 @@ function renderBlindChart() {
       formatter: (p) => {
         const d = p[0]
         const item = sliced[d.dataIndex]
-        return `<b>${item.name}</b><br/>掌握度: ${d.value}%<br/>难度: Lv${item.difficulty}<br/>状态: ${statusLabel(item.status)}`
+        return `<b>${item.name}</b> <code style="color:#9a9895;font-size:11px">${item.node_id}</code><br/>掌握度: ${d.value}%<br/>难度: Lv${item.difficulty}<br/>状态: ${statusLabel(item.status)}`
       },
     },
     grid: { left: 8, right: 20, top: 8, bottom: 0, containLabel: true },

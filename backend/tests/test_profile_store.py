@@ -86,6 +86,19 @@ def test_merge_diff_recovered_regressed_newly():
     assert any(x["node_id"] == "R" and "last_test_score" in x for x in evolved["known_topics"])
 
 
+def test_merge_carries_topic_name():
+    """合并保留知识点名称 (前端按名称展示; 不结转会回退成 PY-xxx 编号)。"""
+    prev = _profile(known_topics=[
+        {"node_id": "A", "mastery": 0.9, "name": "变量", "last_test_score": 9.0},
+    ], weak_topics=[])
+    new = _profile(weak_topics=[
+        {"node_id": "B", "mastery": 0.3, "name": "条件判断"},
+    ])
+    evolved, _ = ps.merge_profiles(prev, new)
+    assert next(x for x in evolved["known_topics"] if x["node_id"] == "A")["name"] == "变量"
+    assert next(x for x in evolved["weak_topics"] if x["node_id"] == "B")["name"] == "条件判断"
+
+
 def test_merge_adds_last_test_at_and_stale_recheck_due():
     """② 时效: 实测条目记 last_test_at; 超 STALE_AFTER_DAYS 未重测的结转 known 标 recheck_due。"""
     prev = _profile(known_topics=[

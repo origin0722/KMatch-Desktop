@@ -211,7 +211,7 @@ def _build_profile(target_direction, nodes, grading, questions: list = None) -> 
         # per_node 新结构: [{question_index, correct}, ...]
         corrects = [g["correct"] for g in results if isinstance(g, dict)]
         mastery = sum(corrects) / len(corrects) if corrects else 0
-        entry = {"node_id": nid, "mastery": round(mastery, 2)}
+        entry = {"node_id": nid, "mastery": round(mastery, 2), "name": n.get("name", nid)}
         # BUG-039: 对齐 diagnostics prompt 三段制 — mastery≥0.8 已掌握(known),
         # 0.5-0.8 学习中、<0.5 困难均属"未达已掌握"→ weak (需学习)。
         # 旧 >=0.5 把"一半题错"(0.5)误归 known,致 weak 空、与错题矛盾 → reviewer 打回循环。
