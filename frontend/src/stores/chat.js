@@ -244,6 +244,26 @@ export function assistantApiContent(msg) {
   return stripped || '（工具调用已执行，结果见后续对话）'
 }
 
+// ---- issue: 流式统计 (首 token / 速率 / 缓存命中 / 输入输出 token) ----
+function _fmtTok(n) {
+  if (n == null) return ''
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k'
+  return String(n)
+}
+
+/** 把最近一次回复的流式统计格式化为展示文本 (纯函数, 单测覆盖)。 */
+export function formatChatStats(s) {
+  if (!s) return ''
+  const parts = []
+  if (s.firstTokenSec != null) parts.push(`首 token ${s.firstTokenSec}s`)
+  if (s.tokPerSec != null) parts.push(`${s.tokPerSec} tok/s`)
+  if (s.cacheHitPct != null) parts.push(`缓存命中 ${s.cacheHitPct}%`)
+  if (s.promptTokens != null) parts.push(`输入 ${_fmtTok(s.promptTokens)} tok`)
+  if (s.completionTokens != null) parts.push(`输出 ${_fmtTok(s.completionTokens)} tok`)
+  return parts.join(' · ')
+}
+
 /**
  * 把一轮工具执行结果汇总成回喂 AI 的 user 消息文本 (C1.4 单一源)。
  * sendMessage 与 regenMessage 共用, 消除原先 regen 的精简重复副本。
@@ -415,6 +435,10 @@ export const useChatStore = defineStore('chat', () => {
   const currentStreamId = ref(null)
   const error = ref(null)
   const abortController = ref(null)
+  // issue: 最近一次回复的流式统计 (input 下方展示)
+  const lastStats = ref(null)
+  let _statsStart = 0
+  let _streamStats = null
 
   // ---- 输入框草稿 (图谱/项目图谱详情面板"问 AI"预填通路) ----
   // 跨组件共享: 图谱视图 setDraft 预填 → 切到 chat 视图 AssistantPanel 绑定带出,
@@ -549,7 +573,14 @@ export const useChatStore = defineStore('chat', () => {
         return e
       }
       if (data.reasoning) appendTextChunk(activeChunksOf(assistantMsg), 'think', data.reasoning)
-      if (data.delta) appendTextChunk(activeChunksOf(assistantMsg), 'content', data.delta)
+      if (data.delta) {
+        // 首 token 计时 (流式统计)
+        if (_streamStats && _streamStats.firstDeltaMs == null) {
+          _streamStats.firstDeltaMs = performance.now() - _statsStart
+        }
+        appendTextChunk(activeChunksOf(assistantMsg), 'content', data.delta)
+      }
+      if (data.usage && _streamStats) _streamStats.usage = data.usage
     } catch { /* skip malformed block */ }
     return null
   }
@@ -998,6 +1029,9 @@ export const useChatStore = defineStore('chat', () => {
   async function _runToolRound({ apiMessages, assistantMsg, errorLabel }) {
     streaming.value = true
     currentStreamId.value = assistantMsg.id
+    // 流式统计起点
+    _statsStart = performance.now()
+    _streamStats = { firstDeltaMs: null, usage: null }
     try {
       await _streamResponse(apiMessages, assistantMsg)
     } catch (e) {
@@ -1014,6 +1048,24 @@ export const useChatStore = defineStore('chat', () => {
     }
     streaming.value = false
     currentStreamId.value = null
+
+    // issue: 结算流式统计 (首 token / tok-per-sec / 缓存命中)
+    if (_streamStats) {
+      const u = _streamStats.usage || {}
+      const complete = u.completion_tokens || 0
+      const firstMs = _streamStats.firstDeltaMs
+      const elapsed = performance.now() - (_statsStart + (firstMs || 0))
+      lastStats.value = {
+        firstTokenSec: firstMs != null ? +(firstMs / 1000).toFixed(1) : null,
+        tokPerSec: complete && elapsed > 0 ? Math.round(complete / (elapsed / 1000)) : null,
+        promptTokens: u.prompt_tokens ?? null,
+        completionTokens: complete || null,
+        cacheHitPct: (u.prompt_cache_hit_tokens != null && u.prompt_tokens)
+          ? +((u.prompt_cache_hit_tokens / u.prompt_tokens) * 100).toFixed(1)
+          : null,
+      }
+      _streamStats = null
+    }
 
     // issue-75: 长思考耗尽 token → 只有 think 无正文, 明确提示而非静默空白
     if (!contentTextOf(assistantMsg) && thinkTextOf(assistantMsg)) {
@@ -1183,12 +1235,14 @@ export const useChatStore = defineStore('chat', () => {
     currentStreamId.value = null
     toolLoopRunning.value = false
     error.value = null
+    lastStats.value = null
+    _streamStats = null
   }
 
   return {
     messages, visibleMessages, streaming, currentStreamId, error,
     hasMessages,
-    isBusy,
+    isBusy, lastStats,
     // 输入框草稿 (图谱"问 AI"预填)
     draft, setDraft,
     // write_file 审批门 (阶段3.1)

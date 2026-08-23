@@ -308,6 +308,8 @@
 
     <!-- 输入区 -->
     <div class="assistant-input">
+      <!-- issue: 流式指标 (首 token / tok/s / 缓存命中 / 输入输出) — 输入框固定底部, 统计行随之前置展示 -->
+      <div v-if="statsText" class="chat-stats" data-test="chat-stats">{{ statsText }}</div>
       <!-- F14: 后端宕机提示 (统一 backendHealth store) -->
       <el-alert
         v-if="backend.status === false"
@@ -542,7 +544,7 @@ import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight
 import AssistantSidePanel from './AssistantSidePanel.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
+import { useChatStore, contentTextOf, activeChunksOf, formatChatStats } from '@/stores/chat'
 import { useAiSettingsStore, PROVIDERS, isCustomProvider, customProviderUuid } from '@/stores/aiSettings'
 import { useCustomProvidersStore } from '@/stores/customProviders'
 import { useProjectGraphStore } from '@/stores/projectGraph'
@@ -590,6 +592,8 @@ const inputPlaceholder = computed(() => {
 const inputRef = ref(null)
 const configPopoverVisible = ref(false)
 const msgContainer = ref(null)
+// issue: 流式统计展示文本
+const statsText = computed(() => formatChatStats(chat.lastStats))
 // issue-81: wide 形态右侧辅助面板收起状态 (持久化)
 const sideCollapsed = ref(false)
 try { sideCollapsed.value = localStorage.getItem('kmatch-chat-side-collapsed') === '1' } catch { /* ignore */ }
@@ -922,6 +926,8 @@ async function copyText(text) {
   flex-direction: column;
   flex-shrink: 0;
   height: 100%;
+  min-height: 0;
+  overflow: hidden; /* issue: 输入框固定底部, 消息区内部滚动 */
   border-left: 1px solid var(--km-border);
 }
 
@@ -959,11 +965,21 @@ async function copyText(text) {
 /* ---- 消息区域 ---- */
 .assistant-body {
   flex: 1;
+  min-height: 0; /* issue: grid/flex 内锁定高度, 消息多时内部滚动而非撑开页面 */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   padding: 12px 10px;
   gap: 12px;
+}
+/* issue: 流式统计行 (输入框上方, 右对齐小字) */
+.chat-stats {
+  text-align: right;
+  font-size: 11px;
+  color: var(--km-gray-400);
+  font-family: var(--km-font-mono);
+  padding: 0 4px 6px;
+  letter-spacing: 0.2px;
 }
 
 /* 空状态 */

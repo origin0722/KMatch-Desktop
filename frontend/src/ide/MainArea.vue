@@ -120,6 +120,6 @@ watch(() => sidebar.activeView, async () => {
   --el-text-color-primary: var(--km-gray-800);
   --el-fill-color-blank: var(--km-bg-layer-2);
 }
-/* learning-session 自带内边距与滚动, view-card 不再二次包裹 */
-.view-card.no-pad { padding: 16px 0 0 0; background: transparent; border: 0; box-shadow: none; }
+/* learning-session 自带内边距与滚动, view-card 不再二次包裹; issue: 高度钉死, 页面内部滚动 */
+.view-card.no-pad { padding: 16px 0 0 0; background: transparent; border: 0; box-shadow: none; height: 100%; min-height: 0; overflow: hidden; }
 </style>

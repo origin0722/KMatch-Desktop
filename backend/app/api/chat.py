@@ -306,6 +306,8 @@ async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: 
             stream=True,
             max_tokens=max_tokens,
             temperature=0.7,
+            # issue: 透传用量 (token 数/缓存命中) — 前端统计栏展示真实指标
+            stream_options={"include_usage": True},
         )
         if extras:
             kwargs.update(extras)
@@ -321,6 +323,10 @@ async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: 
                     data['delta'] = delta.content
                 if data:
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+            # usage 事件: 流末尾最后一帧 (OpenAI 兼容 include_usage)
+            usage = getattr(chunk, 'usage', None)
+            if usage is not None:
+                yield f"data: {json.dumps({'usage': usage.model_dump() if hasattr(usage, 'model_dump') else dict(usage)}, ensure_ascii=False)}\n\n"
 
         yield "data: [DONE]\n\n"
 

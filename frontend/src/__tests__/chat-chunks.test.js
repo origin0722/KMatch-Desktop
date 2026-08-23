@@ -16,6 +16,7 @@ import {
   splitToolCallChunks,
   stripToolCalls,
   assistantApiContent,
+  formatChatStats,
 } from '@/stores/chat'
 
 describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
@@ -113,6 +114,19 @@ describe('chat chunk model helpers (借鉴 Apix MessageChunk)', () => {
     const c = assistantApiContent(onlyTool)
     expect(c).not.toBe('')
     expect(c).toContain('工具调用已执行')
+  })
+
+  it('formatChatStats: 首 token/速率/缓存命中/输入输出 token 格式化', () => {
+    expect(formatChatStats(null)).toBe('')
+    const text = formatChatStats({
+      firstTokenSec: 2.5, tokPerSec: 117, cacheHitPct: 99.8,
+      promptTokens: 324_000_000, completionTokens: 1234,
+    })
+    expect(text).toContain('首 token 2.5s')
+    expect(text).toContain('117 tok/s')
+    expect(text).toContain('缓存命中 99.8%')
+    expect(text).toContain('输入 324.0M tok')
+    expect(text).toContain('输出 1.2k tok')
   })
 })
 
