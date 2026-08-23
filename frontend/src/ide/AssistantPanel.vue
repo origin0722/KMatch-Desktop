@@ -1625,7 +1625,10 @@ async function copyText(text) {
 /* 气泡: user 右对齐收窄, assistant 加大内边距 */
 .assistant-panel.wide .user-msg .msg-content { max-width: 72%; }
 .assistant-panel.wide .user-text { border-radius: var(--km-radius); padding: 10px 14px; font-size: 13.5px; }
-.assistant-panel.wide .assistant-msg .msg-content { font-size: 14px; }
+.assistant-panel.wide .assistant-msg .msg-content { font-size: 14px; max-width: 86%; }
+/* issue-87: 长 URL/单词折行 + 代码块横向滚动不撑破气泡 */
+.assistant-panel.wide .msg-content { word-break: break-word; }
+.assistant-panel.wide .msg-content :deep(pre) { max-width: 100%; overflow-x: auto; }
 /* 输入区: 融入主区, 胶囊化 */
 .assistant-panel.wide .assistant-input { background: transparent; border-top: 0; padding: 12px 4px 20px; }
 .assistant-panel.wide .input-box {

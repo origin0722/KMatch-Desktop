@@ -110,7 +110,8 @@ function onViewClick(id) {
   flex-direction: column;
   flex-shrink: 0;
   border-right: 1px solid transparent;
-  padding: 10px 8px;
+  /* issue-85: 顶部 16px 出让给全局拖拽区 (无边框窗口), 折叠按钮不遮挡 */
+  padding: 16px 8px 10px;
 }
 /* ---- 顶部: 折叠/展开按钮行 (issue-72: 无菜单, 右对齐) ---- */
 .nav-head {

@@ -33,10 +33,10 @@ from app.config import settings
 
 router = APIRouter()
 
-# Anthropic 无 /models 端点, 硬编码列表 (按需更新)
+# Anthropic 无 /models 端点, 硬编码列表 (issue-86: 与前端 PROVIDERS 兜底对齐)
 ANTHROPIC_MODELS = [
-    'claude-fable-5', 'claude-opus-4-8', 'claude-sonnet-4-6',
-    'claude-haiku-4-5', 'claude-opus-4-7', 'claude-sonnet-4',
+    'claude-opus-5', 'claude-sonnet-5',
+    'claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5',
 ]
 
 # 76x100 PNG 写有 'test vision' 文字, 用于 vision 能力探测

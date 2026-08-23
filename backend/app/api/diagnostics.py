@@ -35,7 +35,7 @@ from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.log_events import to_log_event
 from app.agents.report_builder import build_learning_report
-from app.agents.run_store import list_runs, load_run, save_run
+from app.agents.run_store import delete_run, list_runs, load_run, save_run
 from app.agents import profile_store
 from app.agents.workflow_def import (
     evaluate_def_decisions,
@@ -344,6 +344,14 @@ def get_run(session_id: str):
 def get_runs(limit: int = 20):
     runs = list_runs(limit)
     return {"count": len(runs), "runs": runs}
+
+
+@router.delete("/runs/{session_id}", summary="删除一条运行记录 (issue-83)")
+def delete_run_api(session_id: str):
+    ok = delete_run(session_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"run {session_id} 不存在或已删除")
+    return {"session_id": session_id, "deleted": True}
 
 
 @router.post("/assess", response_model=AssessResponse, summary="学情测评（demo 跑全流程 / interactive 仅出题）")

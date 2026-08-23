@@ -89,6 +89,16 @@ export async function fetchRuns(limit = 20) {
 }
 
 /**
+ * issue-83: 删除一条运行记录 (永久删除本地 run 目录; 二次确认由 UI 层负责)。
+ * @param {string} sessionId
+ * @returns {Promise<{session_id, deleted:boolean}>}
+ */
+export async function deleteRun(sessionId) {
+  const data = await http.delete(`/api/diagnostics/runs/${encodeURIComponent(sessionId)}`)
+  return data
+}
+
+/**
  * Phase 2: 流程定义列表 (流程即数据; Phase 3 画布的数据底座)。
  * @returns {Promise<{workflows: Array<{id,name,description,stages}>}>}
  */

@@ -20,6 +20,14 @@
           <span v-if="sceneLabel(sceneOf(r))" class="rp-scene">{{ sceneLabel(sceneOf(r)) }}</span>
           <span class="rp-target" :title="targetOf(r)">{{ targetOf(r) }}</span>
           <span class="rp-time">{{ fmt(r.created_at) }}</span>
+          <!-- issue-83: 删除该条运行记录 (二次确认) -->
+          <el-button
+            size="small"
+            text
+            type="danger"
+            data-test="run-delete"
+            @click.stop="removeRun(r)"
+          >删除</el-button>
         </div>
         <div class="rp-meta">
           <span v-for="(c, i) in chips(r)" :key="i" class="rp-chip">{{ c }}</span>
@@ -55,7 +63,8 @@
  * 历史运行列表 → 展开事件时间线(Agent 状态/拓扑) → 按此重跑(续跑) / 重新测评该目标。
  */
 import { ref, computed, onMounted } from 'vue'
-import { fetchRuns, fetchRun } from '@/api/diagnostics'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { fetchRuns, fetchRun, deleteRun } from '@/api/diagnostics'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
 
@@ -151,6 +160,21 @@ function retake(run) {
     store.startAssessment({ targetDirection: target })
   }
   sidebar.setView('learning-session')
+}
+
+// issue-83: 删除单条运行记录 (二次确认 → 后端删除 → 本地刷新)
+async function removeRun(r) {
+  try {
+    await ElMessageBox.confirm(`删除本次运行记录（${targetOf(r)}）？该操作不可撤销。`, '删除运行历史', { type: 'warning' })
+  } catch { return }
+  try {
+    await deleteRun(r.session_id)
+    runs.value = runs.value.filter((x) => x.session_id !== r.session_id)
+    if (expanding.value === r.session_id) { expanding.value = null; detail.value = null }
+    ElMessage.success('运行记录已删除')
+  } catch (e) {
+    ElMessage.error(e?.message || '删除失败')
+  }
 }
 
 onMounted(refresh)

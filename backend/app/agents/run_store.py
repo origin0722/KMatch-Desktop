@@ -182,3 +182,26 @@ def list_runs(limit: int = 20) -> list:
         )
     items.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
     return items[: max(1, int(limit))]
+
+
+def delete_run(session_id: str) -> bool:
+    """删除一次 run 记录 (issue-83): 安全归一化 session_id 后删除目录。
+
+    返回是否删除成功 (不存在/已删除返回 False, 便于 API 层映射 404)。
+    删除失败 (残留) 也返回 False, 由调用方提示。
+    """
+    import shutil
+
+    sid = _safe_session_id(session_id)
+    if sid == "unknown":
+        return False
+    d = _run_dir(sid)
+    if not d.is_dir():
+        return False
+    try:
+        shutil.rmtree(d)
+    except OSError:
+        logger.warning("run_store: 删除失败 session=%s", sid, exc_info=True)
+        return False
+    logger.info("run_store: deleted run=%s", sid)
+    return not d.exists()

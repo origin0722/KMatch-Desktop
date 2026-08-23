@@ -18,6 +18,11 @@ export function createMainWindow() {
     show: false,
     backgroundColor: '#1e1e1e',
     title: 'KMatch·知链',
+    // issue-85: 去掉顶部黑色标题长框 — 隐藏原生标题栏, Windows 用 overlay 悬浮原生命令按钮
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'win32'
+      ? { titleBarOverlay: { color: '#1a1817', symbolColor: '#c8c5c2', height: 32 } }
+      : {}),
     webPreferences: {
       // electron-vite: preload 编译输出到 out/preload/ (CJS: index.js)
       preload: path.join(__dirname, '../preload/index.js'),

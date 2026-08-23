@@ -14,8 +14,10 @@ def test_models_anthropic_short_circuits_returns_hardcoded():
     })
     assert resp.status_code == 200
     body = resp.json()
-    assert "claude-fable-5" in body["models"]
+    # issue-86: 清单与前端 PROVIDERS 兜底/后端 ANTHROPIC_MODELS 对齐
+    assert "claude-opus-5" in body["models"]
     assert "claude-opus-4-8" in body["models"]
+    assert "claude-sonnet-4-6" in body["models"]
 
 
 def test_models_openai_calls_async_client():

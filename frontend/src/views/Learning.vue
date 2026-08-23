@@ -555,7 +555,12 @@ function goToNode(nodeId) {
 </script>
 
 <style scoped>
-.learning-page { padding: 0; }
+.learning-page { padding: 0; display: flex; flex-direction: column; min-height: 0; }
+/* issue-84: 空态 (无资源) 在卡片可视区域垂直+水平居中 */
+.learning-page > .el-empty {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
 
 /* ---- 摘要条 ---- */
 .summary-bar {

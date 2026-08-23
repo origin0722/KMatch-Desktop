@@ -814,7 +814,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dashboard-page { padding: 0; }
+.dashboard-page { padding: 0; display: flex; flex-direction: column; min-height: 0; }
+/* issue-84: 空态 (未测评) 在卡片可视区域垂直+水平居中 */
+.dashboard-page > .el-empty {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
 
 /* ---- 大数字卡 (C3) ---- */
 .overview-row {

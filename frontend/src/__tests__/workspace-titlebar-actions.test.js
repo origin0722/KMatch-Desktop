@@ -54,11 +54,9 @@ describe('Workspace shell composition', () => {
     expect(wrapper.find('[data-test="status-bar"]').exists()).toBe(true)
   })
 
-  it('titlebar is a slim drag bar; AI settings gear moved to NavSidebar', async () => {
+  it('issue-85: 顶部黑色标题栏已移除 (无边框窗口)', async () => {
     const wrapper = mountWorkspace()
     await flushPromises()
-    expect(wrapper.find('.ide-titlebar').exists()).toBe(true)
-    // 标题栏已精简, gear 不在 Workspace 壳层 (在 NavSidebar 内)
-    expect(wrapper.find('.ide-titlebar [data-test="ai-settings-gear"]').exists()).toBe(false)
+    expect(wrapper.find('.ide-titlebar').exists()).toBe(false)
   })
 })

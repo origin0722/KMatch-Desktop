@@ -2,16 +2,7 @@
   <!-- issue-62: 启动就绪门 — 后端就绪后才进入主界面 (避免 AI 一进来就报错); 超时可重试/跳过 -->
   <ReadyGate v-if="!gateReady" @ready="gateReady = true" @skip="gateReady = true" />
   <div v-else class="ide-shell">
-    <!-- 顶部标题栏: 精简为拖拽条 + 工作区名 (品牌/菜单/工具入口已移至 NavSidebar) -->
-    <div class="ide-titlebar">
-      <div class="title-left">
-        <span v-if="ws.hasProject" class="title-workspace">
-          <el-icon :size="12"><FolderOpened /></el-icon>
-          <span>{{ ws.rootName }}</span>
-        </span>
-      </div>
-    </div>
-
+    <!-- issue-85: 顶部黑色长框已去除 — 无边框窗口 + 原生按钮悬浮; 顶部 14px 透明拖拽区 -->
     <!-- IDE 主体: 左导航栏(可拖宽/可折叠图标轨) | 主区(文件树+编辑器/视图) | AI面板(可拖宽) -->
     <div class="ide-body">
       <!-- issue-61: 折叠态用独立 panel-key 重挂载 → 宽度自动收成 48px 图标轨 -->
@@ -41,7 +32,6 @@
 
 <script setup>
 import { ref, onMounted, defineAsyncComponent } from 'vue'
-import { FolderOpened } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSidebarStore } from '@/stores/sidebar'
 import NavSidebar from '@/ide/NavSidebar.vue'
@@ -81,41 +71,14 @@ onMounted(() => ws.loadRecent())
   color: var(--ktext);
   font-family: var(--kfont-ui);
 }
-.ide-titlebar {
-  height: 32px;
-  background: var(--kbg-elevated);
-  border-bottom: 1px solid var(--kborder);
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  flex-shrink: 0;
+/* issue-85: 无边框窗口 — 顶部 14px 透明拖拽区 (原生按钮由 overlay 提供) */
+.ide-shell::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 14px;
   -webkit-app-region: drag;
-}
-.title-left {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
-}
-.title-workspace {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  max-width: 280px;
-  padding: 0 8px;
-  height: 22px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  color: var(--km-gray-600);
-  background: var(--km-gray-200);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  -webkit-app-region: no-drag;
-}
-.title-workspace span {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  z-index: 9990;
 }
 
 .ide-body {

@@ -11,6 +11,7 @@ import ElementPlus from 'element-plus'
 const mocks = vi.hoisted(() => ({
   fetchRuns: vi.fn(),
   fetchRun: vi.fn(),
+  deleteRun: vi.fn(async () => ({ deleted: true })),
   store: {
     startAssessment: vi.fn(),
     startDemoStream: vi.fn(),
@@ -18,8 +19,16 @@ const mocks = vi.hoisted(() => ({
     resumeRunDemo: vi.fn(async () => true),
   },
 }))
-vi.mock('@/api/diagnostics', () => ({ fetchRuns: mocks.fetchRuns, fetchRun: mocks.fetchRun }))
+vi.mock('@/api/diagnostics', () => ({ fetchRuns: mocks.fetchRuns, fetchRun: mocks.fetchRun, deleteRun: mocks.deleteRun }))
 vi.mock('@/stores/assessment', () => ({ useAssessmentStore: () => mocks.store }))
+// ElMessageBox.confirm 在 jsdom 下挂起, mock 成 resolve
+vi.mock('element-plus', async (importOriginal) => {
+  const orig = await importOriginal()
+  return {
+    ...orig,
+    ElMessageBox: { ...orig.ElMessageBox, confirm: vi.fn(() => Promise.resolve()) },
+  }
+})
 
 const RunsPanel = (await import('@/ide/RunsPanel.vue')).default
 const SAMPLE = {
@@ -139,5 +148,17 @@ describe('RunsPanel 后台任务页', () => {
     const w = mount(RunsPanel, { global: { plugins: [pinia, ElementPlus] } })
     await flushPromises()
     expect(w.text()).toContain('网络失败')
+  })
+
+  it('issue-83: 删除按钮 → 确认后 deleteRun 并移除该行', async () => {
+    const w = mount(RunsPanel, { global: { plugins: [pinia, ElementPlus] } })
+    await flushPromises()
+    expect(mocks.deleteRun).not.toHaveBeenCalled()
+    // 按目标定位行 (列表按时间倒序, 不假设首行)
+    const row = w.findAll('.rp-row').find((r) => r.text().includes('Python 入门'))
+    await row.find('[data-test="run-delete"]').trigger('click')
+    await flushPromises()
+    expect(mocks.deleteRun).toHaveBeenCalledWith('demo-1')
+    expect(w.text()).not.toContain('Python 入门')
   })
 })

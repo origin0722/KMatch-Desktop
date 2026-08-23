@@ -1046,6 +1046,11 @@ watch(layoutMode, () => { scheduleRebuild() })
 
 <style scoped>
 .graph-page { padding: 0; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+/* issue-84: 空态 (未生成图谱) 在可用区域垂直+水平居中 */
+.graph-page > .el-empty {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
 
 /* ---- 工具栏 ---- */
 .toolbar-card { margin-bottom: 16px; }

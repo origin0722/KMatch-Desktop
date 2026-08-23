@@ -45,31 +45,31 @@ const DEFAULT_PROXY = Object.freeze({
 })
 
 // ---- 厂商 & 模型 (C1.1: 从 chat.js 迁入, 统一 AI 配置单一源) ----
-// #34 模型名更新 (2026-08-12): fallbackModels 已按 OpenRouter 公开模型清单线上核实升代
-//   (deepseek-v4-flash / gpt-5 系列 / claude-5 系列 / kimi-k2 / qwen3 系列 / gemini-3.1 / glm-5.2)
+// issue-86 模型列表更新 (2026-08-23): 兜底模型按各厂商最新系列升代
+//   在线 /models 拉取为主; 以下仅为离线/拉取失败时的兜底清单。
 //   默认模型保持 deepseek-v4-pro (CLAUDE.md 技术栈锁定)
 export const PROVIDERS = Object.freeze([
   { id: 'deepseek',  label: 'DeepSeek',         baseUrl: 'https://api.deepseek.com/v1',
     protocol: 'openai',    iconKey: 'deepseek',  keyUrl: 'https://platform.deepseek.com/api_keys',
-    fallbackModels: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'] },
+    fallbackModels: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash-vision-exp'] },
   { id: 'openai',    label: 'OpenAI',           baseUrl: 'https://api.openai.com/v1',
     protocol: 'openai',    iconKey: 'openai',    keyUrl: 'https://platform.openai.com/api-keys',
-    fallbackModels: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3'] },
+    fallbackModels: ['gpt-5.1', 'gpt-5.1-mini', 'gpt-5', 'gpt-5-mini', 'o3'] },
   { id: 'anthropic', label: 'Anthropic',        baseUrl: 'https://api.anthropic.com',
     protocol: 'anthropic', iconKey: 'claude',    keyUrl: 'https://console.anthropic.com/settings/keys',
-    fallbackModels: ['claude-fable-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5-20251001'] },
+    fallbackModels: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'] },
   { id: 'moonshot',  label: 'Moonshot',         baseUrl: 'https://api.moonshot.cn/v1',
     protocol: 'openai',    iconKey: 'moonshot',  keyUrl: 'https://platform.moonshot.cn/console/api-keys',
-    fallbackModels: ['kimi-k2', 'kimi-k2-thinking', 'kimi-k2-0905-preview'] },
+    fallbackModels: ['kimi-k2', 'kimi-k2-thinking', 'kimi-k2-turbo', 'kimi-k2-0905-preview'] },
   { id: 'qwen',      label: '通义千问',          baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     protocol: 'openai',    iconKey: 'qwen',      keyUrl: 'https://dashscope.console.aliyun.com/apiKey',
-    fallbackModels: ['qwen3-max', 'qwen3-plus', 'qwen3-turbo', 'qwen3-vl-plus'] },
+    fallbackModels: ['qwen3.5-max', 'qwen3.5-plus', 'qwen3-max', 'qwen3-plus', 'qwen3-turbo', 'qwen3-vl-plus'] },
   { id: 'glm',       label: '智谱 GLM',         baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     protocol: 'openai',    iconKey: 'glm',       keyUrl: 'https://open.bigmodel.cn/usercenter/apikeys',
-    fallbackModels: ['glm-5.2', 'glm-4.6', 'glm-4.5-air'] },
+    fallbackModels: ['glm-5.3', 'glm-5.2', 'glm-4.6', 'glm-4.5-air'] },
   { id: 'gemini',    label: 'Google Gemini',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     protocol: 'openai',    iconKey: 'google',    keyUrl: 'https://aistudio.google.com/apikey',
-    fallbackModels: ['gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'] },
+    fallbackModels: ['gemini-3.1-pro-preview', 'gemini-3.1-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'] },
   { id: 'ollama',    label: 'Ollama (本地)',    baseUrl: 'http://localhost:11434/v1',
     protocol: 'openai',    iconKey: 'ollama',    keyUrl: '',
     fallbackModels: ['qwen3', 'llama4-scout', 'qwen3-coder'] },
