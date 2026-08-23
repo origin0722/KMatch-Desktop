@@ -66,6 +66,17 @@ contextBridge.exposeInMainWorld('api', {
     // 探测 Docker 是否可用 (数据底座引导): 返回 { installed, version, hint }
     checkVersion: () => ipcRenderer.invoke('docker:checkVersion'),
   },
+  // issue-93: Git 面板 — 走主进程系统 git CLI (无 shell 拼接)
+  git: {
+    check: () => ipcRenderer.invoke('git:check'),
+    status: (cwd) => ipcRenderer.invoke('git:status', cwd),
+    init: (cwd) => ipcRenderer.invoke('git:init', cwd),
+    clone: (payload) => ipcRenderer.invoke('git:clone', payload),
+    pull: (cwd) => ipcRenderer.invoke('git:pull', cwd),
+    commit: (payload) => ipcRenderer.invoke('git:commit', payload),
+    push: (cwd) => ipcRenderer.invoke('git:push', cwd),
+    log: (payload) => ipcRenderer.invoke('git:log', payload),
+  },
   // Spec B 18-19 / issue-49: 网络代理落盘 + 后端重启 (设置页「网络代理」)
   setProxyConfig: (config) => ipcRenderer.invoke('proxy:setConfig', config),
   getProxyConfig: () => ipcRenderer.invoke('proxy:getConfig'),

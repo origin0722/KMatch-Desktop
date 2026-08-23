@@ -16,6 +16,7 @@ import { registerWindowIpc } from './ipc/window.js'
 import { registerWatcherIpc, getWatcherController } from './ipc/watcher.js'
 import { registerDockerIpc } from './ipc/docker.js'
 import { registerProxyIpc } from './ipc/proxy.js'
+import { registerGitIpc } from './ipc/git.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -35,6 +36,8 @@ function registerAllIpc() {
   registerDockerIpc()
   // Spec B 18-19 / issue-49: 网络代理落盘 + 后端重启
   registerProxyIpc(restartBackend)
+  // issue-93: Git 面板 (克隆/状态/拉取/提交/推送/历史) — 主进程调系统 git CLI
+  registerGitIpc()
   // 主题联动: 渲染层 theme store 通知窗口按钮配色 (亮/暗)
   ipcMain.handle('window:setOverlayTheme', (_e, dark) => {
     setWindowOverlayTheme(mainWindow, !!dark)

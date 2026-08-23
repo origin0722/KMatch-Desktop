@@ -14,6 +14,7 @@ export const ACTIVITY_ITEMS = [
   { id: 'chat', icon: 'ChatLineRound', title: 'AI 助手' },
   { id: 'graph', icon: 'Share', title: '知识图谱' },
   { id: 'project-graph', icon: 'Connection', title: '项目图谱' },
+  { id: 'git', icon: 'FolderOpened', title: 'Git 仓库' }, // issue-93: 克隆/提交/拉取/推送 (无终端, 走主进程 git CLI)
   { id: 'learning', icon: 'Reading', title: '学习资源' },
   { id: 'dashboard', icon: 'DataAnalysis', title: '数据看板' },
   { id: 'runs', icon: 'Clock', title: '运行历史' }, // 后台任务页: P1 耐久 run + 协同事件复用

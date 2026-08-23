@@ -25,6 +25,7 @@
         <AssistantPanel v-else-if="sidebar.activeView === 'chat'" variant="wide" />
         <KnowledgeGraph v-else-if="sidebar.activeView === 'graph'" />
         <ProjectGraphView v-else-if="sidebar.activeView === 'project-graph'" />
+        <GitView v-else-if="sidebar.activeView === 'git'" />
         <WorkflowStudio v-else-if="sidebar.activeView === 'workflow-studio'" />
         <Learning v-else-if="sidebar.activeView === 'learning'" />
         <Dashboard v-else-if="sidebar.activeView === 'dashboard'" />
@@ -53,6 +54,7 @@ const Learning = defineAsyncComponent(() => import('@/views/Learning.vue'))
 const Dashboard = defineAsyncComponent(() => import('@/views/Dashboard.vue'))
 const WorkflowStudio = defineAsyncComponent(() => import('@/ide/workflow/WorkflowStudioView.vue'))
 const RunsPanel = defineAsyncComponent(() => import('@/ide/RunsPanel.vue')) // 后台任务页
+const GitView = defineAsyncComponent(() => import('@/ide/GitView.vue')) // issue-93: Git 仓库面板
 
 const sidebar = useSidebarStore()
 
