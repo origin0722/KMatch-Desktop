@@ -8,6 +8,20 @@
       <div class="empty-actions">
         <el-button type="primary" @click="goSession">前往学习会话</el-button>
       </div>
+      <!-- issue: 学情知识图谱历史 (本地快照, 无需重新测评即可回看) -->
+      <div v-if="learningHistoryItems.length" class="gh-history">
+        <div class="gh-history-title">历史图谱 · 学习图谱</div>
+        <div
+          v-for="h in learningHistoryItems"
+          :key="h.id"
+          class="gh-history-item"
+          :title="`点击查看 ${h.name} 的学习路径图谱`"
+          @click="loadLearningHistory(h)"
+        >
+          <span class="ph-name">🎓 {{ h.name }}</span>
+          <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -320,6 +334,7 @@ import { Search, RefreshRight, Loading, ArrowDown, ArrowUp } from '@element-plus
 import { Graph } from '@antv/g6'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useGraphData } from '@/composables/useGraphData'
+import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { masteryColor, difficultyColor } from '@/utils/format'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
 import { ElMessage } from 'element-plus'
@@ -369,6 +384,21 @@ const PERSONA = {
   advanced:     { node: [185, 60], layout: [205, 82], labelMax: 175, label: (d) => `${d?.label || d.id}` },
 }
 const personaCfg = () => PERSONA[sidebar.persona] || PERSONA.intermediate
+
+// issue: 学习图谱历史 (本地快照载入后即时渲染)
+const graphHistory = useGraphHistoryStore()
+const learningHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'learning').slice(0, 5))
+function loadLearningHistory(item) {
+  if (!item?.snapshot?.learning_path?.length) return
+  store.knowledgeGraph = item.snapshot
+}
+function fmtTs(ts) {
+  if (!ts) return ''
+  try {
+    const d = new Date(ts)
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  } catch { return '' }
+}
 
 // 前往学习会话 (IDE 内切主区视图, 非路由跳转)
 const goSession = () => sidebar.setView('learning-session')
@@ -1246,6 +1276,19 @@ watch(layoutMode, () => { scheduleRebuild() })
 .prereq-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .prereq-tag { cursor: pointer; }
 .prereq-tag:hover { opacity: 0.8; }
+/* issue: 学习图谱历史列表 (空态内) */
+.gh-history { margin-top: 18px; width: min(420px, 90%); text-align: left; }
+.gh-history-title { font-size: 11px; color: var(--km-gray-500); margin-bottom: 6px; }
+.gh-history-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; margin-bottom: 4px;
+  border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-2); cursor: pointer;
+  transition: border-color 0.15s var(--km-ease), background 0.15s var(--km-ease);
+}
+.gh-history-item:hover { border-color: var(--km-primary); background: var(--km-primary-light); }
+.gh-history-item .ph-name { flex: 1; font-size: 12.5px; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gh-history-item .ph-time { font-size: 11px; color: var(--km-gray-400); font-family: var(--km-font-mono); }
 </style>
 
 <!-- tooltip 内容样式 (非 scoped: G6 tooltip 插件生成的 HTML 不带本组件 data-v, scoped 选不中;

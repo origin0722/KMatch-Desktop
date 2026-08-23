@@ -14,6 +14,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback, fetchRun } from '@/api/diagnostics'
 import { fetchLearningReport } from '@/api/learning'
+import { useGraphHistoryStore } from '@/stores/graphHistory'
 
 export const useAssessmentStore = defineStore('assessment', () => {
   // ============================================================
@@ -214,6 +215,17 @@ export const useAssessmentStore = defineStore('assessment', () => {
     learningReport.value = data.learning_report || null
     _syncSeenSets() // done 终态整体替换后同步去重集合 (防 stale 判定)
 
+    // issue: 学情图谱 (场景一) 入历史 — 本地快照, 无需重新测评即可回看
+    if (data.knowledge_graph?.learning_path?.length) {
+      try {
+        useGraphHistoryStore().addLearning({
+          sessionId: data.session_id,
+          name: data.profile?.target_direction || '学情图谱',
+          snapshot: data.knowledge_graph,
+        })
+      } catch { /* 历史记录尽力而为 */ }
+    }
+
     // BUG-028: demo 模式空画像 → 错误提示
     // (interactive 模式空画像是正常的出题阶段, 由 startAssessment 单独处理, 不会走到这)
     if (!data.profile || Object.keys(data.profile).length === 0) {
@@ -312,6 +324,17 @@ export const useAssessmentStore = defineStore('assessment', () => {
       orchestrationEvents.value = data.orchestration_events || []
       profileDiff.value = data.profile_diff || null
       phase.value = 'feedback'
+
+      // issue: 学情图谱 (场景一) 入历史 — 本地快照
+      if (data.knowledge_graph?.learning_path?.length) {
+        try {
+          useGraphHistoryStore().addLearning({
+            sessionId: data.session_id,
+            name: data.profile?.target_direction || '学情图谱',
+            snapshot: data.knowledge_graph,
+          })
+        } catch { /* 历史记录尽力而为 */ }
+      }
     } catch (e) {
       error.value = e.response?.data?.detail || e.message || '提交答题失败'
     } finally {

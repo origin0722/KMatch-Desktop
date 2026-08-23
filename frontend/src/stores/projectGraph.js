@@ -13,25 +13,15 @@ import { ElMessage } from 'element-plus'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useLearningResourcesStore } from '@/stores/learningResources'
 import { useAiSettingsStore } from '@/stores/aiSettings'
+import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse, analyzeProject } from '@/api/project'
 
 const LS_KEY = 'kmatch-last-project-id'
-const HISTORY_KEY = 'kmatch-project-history'
-
-function _loadHistory() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
-    return Array.isArray(arr) ? arr : []
-  } catch { return [] }
-}
 
 export const useProjectGraphStore = defineStore('projectGraph', () => {
   // 最近一次 generate_project_graph 产出
   // { projectId, stats, entities, relations, sourcePath, written }
   const graph = ref(null)
-
-  // issue: 已解析过的项目历史缓存 (无需打开项目文件即可回看图谱)
-  const history = ref(_loadHistory())
 
   // P2: 自动解析状态机
   const parsing = ref(false)
@@ -80,28 +70,18 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   let _unsubscribeWsChange = null
 
-  // ---- issue: 历史图谱缓存 (去重置顶, 上限 8) ----
-  function _pushHistory(pid, name) {
-    if (!pid) return
-    const list = history.value.filter((h) => h.projectId !== pid)
-    list.unshift({ projectId: pid, name: name || '项目', ts: Date.now() })
-    history.value = list.slice(0, 8)
-    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value)) } catch { /* ignore */ }
-  }
-
-  /** 从历史打开已解析过的图谱 (无需打开项目文件; 源码跳转不可用, 仅浏览) */
+  /** 从历史打开已解析过的项目图谱 (无需打开项目文件; 源码跳转不可用, 仅浏览) */
   async function openFromHistory(pid, name) {
     try {
       const data = await getProjectGraph(pid)
       const result = normalizeGraphResponse(data, '')
       setGraph(result, '')
-      _pushHistory(pid, name)
+      useGraphHistoryStore().addProject({ projectId: pid, name })
       return true
     } catch (e) {
       const st = e?.response?.status
       if (st === 404) {
-        history.value = history.value.filter((h) => h.projectId !== pid)
-        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value)) } catch { /* ignore */ }
+        useGraphHistoryStore().remove(`project:${pid}`)
         ElMessage.warning('该历史图谱在后端已不存在（可能被清理），已从列表移除')
       } else {
         ElMessage.error(`历史图谱加载失败: ${e?.response?.data?.detail || e?.message || '未知错误'}`)
@@ -146,7 +126,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
       if (token !== _parseToken.n) return // 过期结果不覆盖
       const result = normalizeGraphResponse(data, ws.root)
       setGraph(result, ws.root)
-      _pushHistory(result.projectId, ws.rootName || ws.root)
+      useGraphHistoryStore().addProject({ projectId: result.projectId, name: ws.rootName || ws.root })
       try { localStorage.setItem(LS_KEY, result.projectId) } catch { /* ignore */ }
       ElMessage.success(`项目图谱已生成: ${result.entities.length} 个实体, ${result.relations.length} 条关系`)
     } catch (e) {
@@ -259,7 +239,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   return {
     graph, stale, parsing, parseError, revealTarget, activeLine, activeEntityId,
-    analyzing, analysis, history,
+    analyzing, analysis,
     setGraph, clear, clearStale, markStale,
     parseCurrentProject, restorePersisted, analyze, openFromHistory,
     requestReveal, setActiveLine, consumeReveal,

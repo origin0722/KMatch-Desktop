@@ -39,19 +39,34 @@
           <el-button type="primary" :icon="RefreshRight" :disabled="!ws.hasProject" @click="handleParse">解析当前项目</el-button>
           <el-button @click="goCode">前往代码视图</el-button>
         </div>
-        <!-- issue: 历史图谱缓存 — 无需打开项目文件即可回看已解析过的项目 -->
-        <div v-if="pg.history.length" class="pg-history">
-          <div class="pg-history-title">历史图谱</div>
-          <div
-            v-for="h in pg.history.slice(0, 5)"
-            :key="h.projectId"
-            class="pg-history-item"
-            :title="`点击直接查看 ${h.name} 的图谱（源码跳转不可用）`"
-            @click="pg.openFromHistory(h.projectId, h.name)"
-          >
-            <span class="ph-name">🛠 {{ h.name }}</span>
-            <span class="ph-time">{{ fmtTs(h.ts) }}</span>
-          </div>
+        <!-- issue: 两类图谱历史缓存 — 分为 项目图谱 / 学习图谱 两组 -->
+        <div v-if="projectHistoryItems.length || learningHistoryItems.length" class="pg-history">
+          <template v-if="projectHistoryItems.length">
+            <div class="pg-history-title">历史图谱 · 项目图谱</div>
+            <div
+              v-for="h in projectHistoryItems"
+              :key="h.id"
+              class="pg-history-item"
+              :title="`点击直接查看 ${h.name} 的图谱（源码跳转不可用）`"
+              @click="pg.openFromHistory(h.projectId, h.name)"
+            >
+              <span class="ph-name">🛠 {{ h.name }}</span>
+              <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+            </div>
+          </template>
+          <template v-if="learningHistoryItems.length">
+            <div class="pg-history-title">历史图谱 · 学习图谱（学情测评产出）</div>
+            <div
+              v-for="h in learningHistoryItems"
+              :key="h.id"
+              class="pg-history-item"
+              :title="`点击切换至知识图谱查看 ${h.name}`"
+              @click="openLearningHistory(h)"
+            >
+              <span class="ph-name">🎓 {{ h.name }}</span>
+              <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+            </div>
+          </template>
         </div>
       </el-empty>
     </div>
@@ -368,6 +383,8 @@ import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore } from '@/stores/chat'
+import { useGraphHistoryStore } from '@/stores/graphHistory'
+import { useAssessmentStore } from '@/stores/assessment'
 import { buildEntityQuestion } from '@/utils/askAi'
 import { detectTechStack } from '@/utils/techStack'
 import { buildTourStops, TOUR_ROLE_LABELS } from '@/utils/projectTour'
@@ -381,6 +398,17 @@ const ws = useWorkspaceStore()
 const chat = useChatStore()
 const lr = useLearningResourcesStore()
 const aiSettings = useAiSettingsStore()
+const graphHistory = useGraphHistoryStore()
+const aStore = useAssessmentStore()
+
+// issue: 两类图谱历史 (按类型分组; 学情图谱从本地快照恢复)
+const projectHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'project').slice(0, 5))
+const learningHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'learning').slice(0, 5))
+function openLearningHistory(item) {
+  if (!item?.snapshot?.learning_path?.length) return
+  aStore.knowledgeGraph = item.snapshot
+  sidebar.setView('graph')
+}
 const containerRef = ref(null)
 let g6 = null
 
