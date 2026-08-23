@@ -10,6 +10,8 @@
       <el-input v-model="tavilyInput" type="password" show-password size="small" style="width: 260px"
                 placeholder="tvly-..." data-test="tavily-key" @change="saveTavily" @keyup.enter="saveTavily" />
       <el-button size="small" type="primary" @click="saveTavily">保存</el-button>
+      <el-button size="small" :loading="verifying" data-test="tavily-verify" @click="verifyTavily">测试连接</el-button>
+      <span v-if="verifyResult" class="conn" :class="verifyResult.ok ? 'ok' : 'err'">{{ verifyResult.text }}</span>
       <span v-if="!ai.tavilyKey" class="tavily-hint">未配置则不联网搜索, 只返回 LLM 讲义</span>
     </SettingCard>
 
@@ -47,6 +49,28 @@ function saveTavily() {
   ElMessage.success(tavilyInput.value ? 'Tavily Key 已保存' : '已清除 Tavily Key')
 }
 
+// issue: Tavily 连通性测试 (后端直连验证 key, 不吞 401)
+const verifying = ref(false)
+const verifyResult = ref(null)
+async function verifyTavily() {
+  if (!tavilyInput.value?.trim()) {
+    verifyResult.value = { ok: false, text: '请先填入 Tavily Key' }
+    return
+  }
+  verifying.value = true
+  verifyResult.value = null
+  try {
+    const res = await window.api.http.request('POST', '/api/search/verify', { tavily_key: tavilyInput.value })
+    const d = res.body || {}
+    if (res.ok && d.ok) verifyResult.value = { ok: true, text: `✓ 连接成功（返回 ${d.hits ?? 0} 条结果）` }
+    else verifyResult.value = { ok: false, text: `✗ ${d.error || '连接失败'}` }
+  } catch (e) {
+    verifyResult.value = { ok: false, text: `✗ ${e?.message || '请求失败'}` }
+  } finally {
+    verifying.value = false
+  }
+}
+
 // 网络代理: 盘活 aiSettings.proxy; 落盘 + sidecar env 注入已接线 (Spec B 18-19 / issue-49)
 const restarting = ref(false)
 function onProxyChange(patch) {
@@ -65,4 +89,7 @@ async function restartBackend() {
 .tavily-guide a { color: var(--km-primary); text-decoration: none; }
 .tavily-guide a:hover { text-decoration: underline; }
 .tavily-hint { margin-left: 8px; color: var(--km-gray-400); font-size: 12px; }
+.conn { margin-left: 8px; font-size: 12.5px; }
+.conn.ok { color: var(--km-success); }
+.conn.err { color: var(--km-danger); }
 </style>

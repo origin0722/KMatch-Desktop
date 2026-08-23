@@ -285,3 +285,11 @@ def test_weak_topics_api_max_per_topic_bounds(monkeypatch):
     r = client.post("/api/search/weak-topics",
                     json={"topics": [{"node_id": "PY-001", "name": "x"}], "max_per_topic": 9})
     assert r.status_code == 422
+
+
+def test_verify_api_no_key_503(monkeypatch):
+    """Tavily 测试连接: 无 key -> 503 带指引。"""
+    client = _client_with(monkeypatch, "", [])
+    r = client.post("/api/search/verify", json={})
+    assert r.status_code == 503
+    assert "Tavily" in r.json()["detail"]

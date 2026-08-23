@@ -10,7 +10,9 @@ Tavily key 优先用前端传入 (UI 配置, 存 localStorage), 否则回退 set
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.utils.web_search import search_web
+import httpx
+
+from app.utils.web_search import search_web, TAVILY_URL
 from app.config import settings
 from app.utils.logging import get_logger
 
@@ -35,6 +37,11 @@ class WeakTopicsSearchRequest(BaseModel):
     topics: list[dict] = Field(..., description="薄弱点 [{node_id, name}]")
     max_per_topic: int = Field(3, ge=1, le=5)
     direction: str | None = Field(None)
+    tavily_key: str | None = Field(None)
+
+
+class VerifyRequest(BaseModel):
+    """Tavily 连通性测试请求 (设置页「测试连接」)。"""
     tavily_key: str | None = Field(None)
 
 
@@ -86,3 +93,36 @@ def weak_topics_search_api(req: WeakTopicsSearchRequest):
             })
     logger.info("weak_topics_search topics=%d resources=%d", len(topics), len(resources))
     return {"topics": len(topics), "results": resources}
+
+
+@router.post("/verify", summary="Tavily 连通性测试 (设置页「测试连接」)")
+def verify_api(req: VerifyRequest):
+    """直连 Tavily 发一次最小查询, 返回 {ok, hits?, error?, status?}。
+
+    与 search_web 的区别: 不吞错误——400/401 等直接上浮, 让用户知道 key 是否有效。
+    """
+    key = req.tavily_key or settings.TAVILY_API_KEY
+    if not key:
+        raise HTTPException(
+            status_code=503,
+            detail="未配置 Tavily API key —— 请在 设置 → 联网搜索 填入 Key（安装包端用户同样适用）",
+        )
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.post(TAVILY_URL, json={
+                "api_key": key,
+                "query": "python 教程",
+                "max_results": 1,
+                "search_depth": "basic",
+            })
+        if resp.status_code == 200:
+            data = resp.json()
+            return {"ok": True, "hits": len(data.get("results", []))}
+        return {
+            "ok": False,
+            "status": resp.status_code,
+            "error": f"Tavily 返回 HTTP {resp.status_code}（Key 无效或额度不足）",
+        }
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Tavily verify 请求失败: %s", e)
+        return {"ok": False, "error": f"网络请求失败: {e}"}

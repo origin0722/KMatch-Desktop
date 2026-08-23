@@ -4,7 +4,7 @@
       已启用「统一 API 配置」（设置 → API 设置）：Agent 独立配置已被统一 Key 接管，此处修改会被覆盖；如需修改请到「API 设置」统一改。
     </div>
     <SettingCard title="启用 Agent 独立配置"
-                 info="开启后，学情检测/资源生成/代码审查等 Agent 使用下方配置；关闭则自动使用 AI 助手的 Key（端用户无需改 .env）">
+                 info="开启后，学情检测/资源生成/代码审查等 Agent 使用下方配置；关闭则自动使用 AI 助手的 Key（端用户无需改 .env）。开启后下方出现 厂商/API Key/模型/测试连接">
       <el-switch :model-value="agent.state.useOverrides" @change="agent.setUseOverrides" />
     </SettingCard>
 
