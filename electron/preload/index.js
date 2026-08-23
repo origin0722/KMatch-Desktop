@@ -58,6 +58,8 @@ contextBridge.exposeInMainWorld('api', {
   },
   window: {
     openDevTools: () => ipcRenderer.invoke('window:openDevTools'),
+    // 亮/暗主题联动右上角窗口按钮配色 (titleBarOverlay)
+    setOverlayTheme: (dark) => ipcRenderer.invoke('window:setOverlayTheme', dark),
   },
   docker: {
     // 探测 Docker 是否可用 (数据底座引导): 返回 { installed, version, hint }

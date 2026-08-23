@@ -7,6 +7,7 @@ directories:
 # 不再用 extraResources (会落到 resources/, loadFile 找不到)。
 files:
   - out/**/*
+  - electron/assets/**   # 应用/托盘图标 (asar 内, main 经 app.getAppPath() 读取)
 # backend PyInstaller 产物 + data: 打入 extraResources (S3)
 # data 仅含产品内容 (knowledge_base/prompts/user_profiles/example_projects);
 # 排除本地运行痕迹/隐私 (profile_archive 用户档案, workflow_runs 复盘记录,
@@ -30,6 +31,7 @@ win:
   target:
     - nsis
   artifactName: ${productName}-${version}-${arch}.${ext}
+  icon: electron/assets/icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

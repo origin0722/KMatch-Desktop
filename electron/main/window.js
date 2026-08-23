@@ -9,6 +9,24 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+/** 应用图标 (dev: 项目根/electron/assets; 打包: asar 内同路径)。 */
+export function appIconPath() {
+  return path.join(app.getAppPath(), 'electron/assets/icon.png')
+}
+
+/**
+ * issue: 白/暗主题下窗口按钮 (titleBarOverlay) 颜色联动。
+ * 渲染层 theme store 调用 IPC window:setOverlayTheme → 主进程此函数。
+ */
+export function setWindowOverlayTheme(win, dark) {
+  if (process.platform !== 'win32' || !win) return
+  try {
+    win.setTitleBarOverlay(dark
+      ? { color: '#1a1817', symbolColor: '#c8c5c2', height: 32 }
+      : { color: '#f2f1ef', symbolColor: '#44403e', height: 32 })
+  } catch { /* 旧版 Electron 无此 API, 忽略 */ }
+}
+
 export function createMainWindow() {
   const win = new BrowserWindow({
     width: 1440,
@@ -18,6 +36,7 @@ export function createMainWindow() {
     show: false,
     backgroundColor: '#1e1e1e',
     title: 'KMatch·知链',
+    icon: appIconPath(), // dev/任务栏图标 (打包后 exe 自带同款)
     // issue-85: 去掉顶部黑色标题长框 — 隐藏原生标题栏, Windows 用 overlay 悬浮原生命令按钮
     titleBarStyle: 'hidden',
     ...(process.platform === 'win32'

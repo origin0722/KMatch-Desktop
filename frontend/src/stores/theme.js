@@ -28,6 +28,11 @@ export const useThemeStore = defineStore('theme', () => {
     root.dataset.theme = m
   }
 
+  /** issue: 通知主进程切换窗口按钮配色 (白主题按钮从此不再黑)。 */
+  function syncWindowOverlay() {
+    try { window.api?.window?.setOverlayTheme?.(mode.value === 'dark') } catch { /* 浏览器 dev 无 IPC */ }
+  }
+
   function applyAccent(a) {
     if (a && a !== 'default') document.documentElement.dataset.kmatchAccent = a
     else delete document.documentElement.dataset.kmatchAccent
@@ -37,10 +42,12 @@ export const useThemeStore = defineStore('theme', () => {
   if (typeof document !== 'undefined') {
     apply(mode.value)
     applyAccent(accent.value)
+    syncWindowOverlay()
   }
 
   watch(mode, (m) => {
     apply(m)
+    syncWindowOverlay()
     localStorage.setItem(STORAGE_KEY, m)
   })
 
