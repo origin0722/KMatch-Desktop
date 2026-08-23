@@ -16,11 +16,22 @@ import { useAiSettingsStore } from '@/stores/aiSettings'
 import { readProjectPyFiles, parseProjectFiles, getProjectGraph, normalizeGraphResponse, analyzeProject } from '@/api/project'
 
 const LS_KEY = 'kmatch-last-project-id'
+const HISTORY_KEY = 'kmatch-project-history'
+
+function _loadHistory() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+    return Array.isArray(arr) ? arr : []
+  } catch { return [] }
+}
 
 export const useProjectGraphStore = defineStore('projectGraph', () => {
   // 最近一次 generate_project_graph 产出
   // { projectId, stats, entities, relations, sourcePath, written }
   const graph = ref(null)
+
+  // issue: 已解析过的项目历史缓存 (无需打开项目文件即可回看图谱)
+  const history = ref(_loadHistory())
 
   // P2: 自动解析状态机
   const parsing = ref(false)
@@ -69,6 +80,36 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   let _unsubscribeWsChange = null
 
+  // ---- issue: 历史图谱缓存 (去重置顶, 上限 8) ----
+  function _pushHistory(pid, name) {
+    if (!pid) return
+    const list = history.value.filter((h) => h.projectId !== pid)
+    list.unshift({ projectId: pid, name: name || '项目', ts: Date.now() })
+    history.value = list.slice(0, 8)
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value)) } catch { /* ignore */ }
+  }
+
+  /** 从历史打开已解析过的图谱 (无需打开项目文件; 源码跳转不可用, 仅浏览) */
+  async function openFromHistory(pid, name) {
+    try {
+      const data = await getProjectGraph(pid)
+      const result = normalizeGraphResponse(data, '')
+      setGraph(result, '')
+      _pushHistory(pid, name)
+      return true
+    } catch (e) {
+      const st = e?.response?.status
+      if (st === 404) {
+        history.value = history.value.filter((h) => h.projectId !== pid)
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value)) } catch { /* ignore */ }
+        ElMessage.warning('该历史图谱在后端已不存在（可能被清理），已从列表移除')
+      } else {
+        ElMessage.error(`历史图谱加载失败: ${e?.response?.data?.detail || e?.message || '未知错误'}`)
+      }
+      return false
+    }
+  }
+
   /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转) */
   function markStale(path) {
     const g = graph.value
@@ -105,6 +146,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
       if (token !== _parseToken.n) return // 过期结果不覆盖
       const result = normalizeGraphResponse(data, ws.root)
       setGraph(result, ws.root)
+      _pushHistory(result.projectId, ws.rootName || ws.root)
       try { localStorage.setItem(LS_KEY, result.projectId) } catch { /* ignore */ }
       ElMessage.success(`项目图谱已生成: ${result.entities.length} 个实体, ${result.relations.length} 条关系`)
     } catch (e) {
@@ -164,13 +206,15 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     }
   }
 
-  // P2: 订阅 workspace 项目打开事件 -> 后台自动解析 (只订阅一次)
+  // P2: 订阅 workspace 项目打开/关闭事件 -> 打开即自动解析; 关闭/切换先清旧图谱
   let _unsubscribeProjectOpen = null
   function _ensureProjectOpenSubscription() {
     if (_unsubscribeProjectOpen) return
     try {
-      _unsubscribeProjectOpen = useWorkspaceStore().onProjectOpened(() => {
-        parseCurrentProject()
+      _unsubscribeProjectOpen = useWorkspaceStore().onProjectOpened((res) => {
+        // issue: 关项目/换项目 → 旧图谱立即移除 (不再"留在那里"), 并清"上次项目"缓存
+        clear()
+        if (res?.root) parseCurrentProject()
       })
     } catch { /* workspace 未就绪, 忽略 */ }
   }
@@ -184,6 +228,8 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     parseError.value = null
     analyzing.value = false
     analysis.value = null
+    // 关项目后不再恢复旧图谱 (历史缓存仍保留, 可从历史打开)
+    try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
   }
 
   /** chat 实体点击 -> 触发 Monaco 跳转 */
@@ -213,9 +259,9 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   return {
     graph, stale, parsing, parseError, revealTarget, activeLine, activeEntityId,
-    analyzing, analysis,
+    analyzing, analysis, history,
     setGraph, clear, clearStale, markStale,
-    parseCurrentProject, restorePersisted, analyze,
+    parseCurrentProject, restorePersisted, analyze, openFromHistory,
     requestReveal, setActiveLine, consumeReveal,
   }
 })

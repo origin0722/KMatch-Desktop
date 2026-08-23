@@ -39,6 +39,20 @@
           <el-button type="primary" :icon="RefreshRight" :disabled="!ws.hasProject" @click="handleParse">解析当前项目</el-button>
           <el-button @click="goCode">前往代码视图</el-button>
         </div>
+        <!-- issue: 历史图谱缓存 — 无需打开项目文件即可回看已解析过的项目 -->
+        <div v-if="pg.history.length" class="pg-history">
+          <div class="pg-history-title">历史图谱</div>
+          <div
+            v-for="h in pg.history.slice(0, 5)"
+            :key="h.projectId"
+            class="pg-history-item"
+            :title="`点击直接查看 ${h.name} 的图谱（源码跳转不可用）`"
+            @click="pg.openFromHistory(h.projectId, h.name)"
+          >
+            <span class="ph-name">🛠 {{ h.name }}</span>
+            <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+          </div>
+        </div>
       </el-empty>
     </div>
 
@@ -763,6 +777,15 @@ onBeforeUnmount(() => {
 
 function goCode() { sidebar.setView('code') }
 
+// issue: 历史图谱时间格式化
+function fmtTs(ts) {
+  if (!ts) return ''
+  try {
+    const d = new Date(ts)
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  } catch { return '' }
+}
+
 // P2: 手动触发项目解析 (空态大按钮 / 工具栏"重新解析")
 function handleParse() {
   pg.parseCurrentProject()
@@ -896,6 +919,19 @@ watch(() => pg.graph, () => {
 .pg-empty-state .pg-spin { color: var(--km-primary, #6c7ce0); }
 .pg-empty-title { font-size: 14px; color: var(--km-gray-700); margin: 4px 0 0; }
 .pg-empty-actions { display: flex; gap: 8px; justify-content: center; }
+/* issue: 历史图谱列表 */
+.pg-history { margin-top: 16px; width: min(420px, 90%); text-align: left; }
+.pg-history-title { font-size: 11px; color: var(--km-gray-500); margin-bottom: 6px; }
+.pg-history-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; margin-bottom: 4px;
+  border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm);
+  background: var(--km-bg-layer-2); cursor: pointer;
+  transition: border-color 0.15s var(--km-ease), background 0.15s var(--km-ease);
+}
+.pg-history-item:hover { border-color: var(--km-primary); background: var(--km-primary-light); }
+.ph-name { flex: 1; font-size: 12.5px; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-time { font-size: 11px; color: var(--km-gray-400); font-family: var(--km-font-mono); }
 
 /* ---- 工具栏 ---- */
 .toolbar-card { margin-bottom: 12px; }

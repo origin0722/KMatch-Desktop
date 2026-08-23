@@ -74,6 +74,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await loadRecent()
     if (dir) startWatching()
     else stopWatching()
+    // issue: 最近项目点击/关闭项目同样通知订阅者 (projectGraph: 换项目先清旧图谱再自动解析)
+    for (const cb of _projectOpenListeners) {
+      try { cb(res) } catch { /* 单个订阅者异常不影响其他 */ }
+    }
   }
 
   // ---- 懒加载目录树 (借鉴 DSH-better-sidebar 资源管理器) ----
