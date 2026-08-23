@@ -263,3 +263,65 @@ html.dark {
   --el-border-radius-small: 6px;
   --el-border-radius-round: 999px;
 }
+
+/* ============================================================
+   issue-82: 强调色/撞色方案 (html[data-kmatch-accent])
+   默认 = 靛蓝主色 + 琥珀点缀; 可选 teal(深青+珊瑚) / violet(紫罗兰+青柠)
+   ============================================================ */
+:root, html.dark {
+  /* 默认撞色点缀 (琥珀), 主色保持现有靛蓝 */
+  --km-accent: #f0a040;
+}
+html[data-kmatch-accent="teal"] {
+  --km-primary: #0f9488;
+  --km-primary-hover: #1aab9d;
+  --km-primary-active: #0b7f74;
+  --km-primary-light: #e7f6f4;
+  --km-primary-soft: #f0faf8;
+  --km-accent: #ff6b6b; /* 珊瑚撞色 */
+  --km-activity-active: #0f9488;
+  --km-activity-active-text: #0b7f74;
+  --km-activity-active-bg: #e7f6f4;
+  --km-border-focus: #0f9488;
+}
+html[data-kmatch-accent="teal"].dark {
+  --km-primary: #34c1b2;
+  --km-primary-hover: #4ecfc1;
+  --km-primary-active: #21a89a;
+  --km-primary-light: #12312e;
+  --km-primary-soft: #0e2624;
+  --km-accent: #ff7a7a;
+  --km-activity-active: #34c1b2;
+  --km-activity-active-text: #aaf0e8;
+  --km-activity-active-bg: #12312e;
+}
+html[data-kmatch-accent="violet"] {
+  --km-primary: #8b5cf6;
+  --km-primary-hover: #9d74f8;
+  --km-primary-active: #7c3aed;
+  --km-primary-light: #f2edfe;
+  --km-primary-soft: #f7f3ff;
+  --km-accent: #a3e635; /* 青柠撞色 */
+  --km-activity-active: #8b5cf6;
+  --km-activity-active-text: #7c3aed;
+  --km-activity-active-bg: #f2edfe;
+  --km-border-focus: #8b5cf6;
+}
+html[data-kmatch-accent="violet"].dark {
+  --km-primary: #a78bfa;
+  --km-primary-hover: #bba2fb;
+  --km-primary-active: #9168f5;
+  --km-primary-light: #251a44;
+  --km-primary-soft: #1b1234;
+  --km-accent: #bef264;
+  --km-activity-active: #a78bfa;
+  --km-activity-active-text: #e4dbff;
+  --km-activity-active-bg: #251a44;
+}
+/* Element 提亮档随主色联动 (撞色下按钮 hover/边框不再偏蓝) */
+html[data-kmatch-accent="teal"], html[data-kmatch-accent="violet"] {
+  --el-color-primary-light-3: color-mix(in srgb, var(--km-primary) 72%, #ffffff);
+  --el-color-primary-light-5: color-mix(in srgb, var(--km-primary) 58%, #ffffff);
+  --el-color-primary-light-7: color-mix(in srgb, var(--km-primary) 40%, #ffffff);
+  --el-color-primary-light-8: color-mix(in srgb, var(--km-primary) 28%, #ffffff);
+}

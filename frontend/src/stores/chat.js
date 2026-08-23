@@ -203,6 +203,7 @@ import {
   appendTextChunk,
   activeChunksOf,
   contentTextOf,
+  thinkTextOf,
   splitToolCallChunks,
   stripToolCalls,
 } from '@/ide/chat/model'
@@ -559,7 +560,8 @@ export const useChatStore = defineStore('chat', () => {
     const body = {
       messages: apiMessages,
       stream: true,
-      max_tokens: 8192,
+      // issue-75: 推理内容计入 token, 8192 在长思考下会耗尽导致无正文
+      max_tokens: 16384,
       model: ai.model,
       api_key: ai.apiKey || undefined,
       base_url: ai.getBaseUrl() || undefined,
@@ -1012,6 +1014,12 @@ export const useChatStore = defineStore('chat', () => {
     }
     streaming.value = false
     currentStreamId.value = null
+
+    // issue-75: 长思考耗尽 token → 只有 think 无正文, 明确提示而非静默空白
+    if (!contentTextOf(assistantMsg) && thinkTextOf(assistantMsg)) {
+      appendTextChunk(activeChunksOf(assistantMsg), 'content',
+        '⚠️ 思考超长被截断，未生成回复。可点击「重试」；若反复出现，请在 AI 设置中调低思考模式。')
+    }
 
     // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
     const segs = splitToolCallChunks(contentTextOf(assistantMsg))

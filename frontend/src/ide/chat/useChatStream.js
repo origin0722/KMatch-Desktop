@@ -42,7 +42,7 @@ export async function streamChat({ body, signal, onBlock }) {
     let watchdogFired = false
     const arm = () => {
       clearTimeout(watchdog)
-      watchdog = setTimeout(() => { watchdogFired = true; ctrl.abort() }, 90_000)
+      watchdog = setTimeout(() => { watchdogFired = true; ctrl.abort() }, 150_000)
     }
     let resp
     try {
@@ -80,14 +80,14 @@ export async function streamChat({ body, signal, onBlock }) {
       }
     } catch (e) {
       if (watchdogFired && e?.name === 'AbortError') {
-        throw new Error('SSE 流超时（后端 90s 无数据，可能已断流）')
+        throw new Error('SSE 流超时（后端 150s 无数据，可能已断流）')
       }
       throw e // 用户停止 → 保持 AbortError 语义; 流内错误 → 原样
     } finally {
       clearTimeout(watchdog)
       signal?.removeEventListener('abort', onOuterAbort)
     }
-    if (watchdogFired) throw new Error('SSE 流超时（后端 90s 无数据，可能已断流）')
+    if (watchdogFired) throw new Error('SSE 流超时（后端 150s 无数据，可能已断流）')
     return
   }
 

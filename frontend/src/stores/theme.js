@@ -16,6 +16,10 @@ function detectInitial() {
 
 export const useThemeStore = defineStore('theme', () => {
   const mode = ref(detectInitial())
+  // issue-82: 强调色/撞色方案 (default=靛蓝+琥珀 / teal / violet), localStorage 持久化
+  const accent = ref((() => {
+    try { return localStorage.getItem('kmatch-accent') || 'default' } catch { return 'default' }
+  })())
 
   function apply(m) {
     const root = document.documentElement
@@ -24,12 +28,25 @@ export const useThemeStore = defineStore('theme', () => {
     root.dataset.theme = m
   }
 
+  function applyAccent(a) {
+    if (a && a !== 'default') document.documentElement.dataset.kmatchAccent = a
+    else delete document.documentElement.dataset.kmatchAccent
+  }
+
   // 立即应用一次 (store 初始化时 DOM 可能已就绪)
-  if (typeof document !== 'undefined') apply(mode.value)
+  if (typeof document !== 'undefined') {
+    apply(mode.value)
+    applyAccent(accent.value)
+  }
 
   watch(mode, (m) => {
     apply(m)
     localStorage.setItem(STORAGE_KEY, m)
+  })
+
+  watch(accent, (a) => {
+    applyAccent(a)
+    try { localStorage.setItem('kmatch-accent', a || 'default') } catch { /* ignore */ }
   })
 
   function toggle() {
@@ -40,5 +57,9 @@ export const useThemeStore = defineStore('theme', () => {
     mode.value = m
   }
 
-  return { mode, toggle, set }
+  function setAccent(a) {
+    accent.value = a || 'default'
+  }
+
+  return { mode, accent, toggle, set, setAccent }
 })

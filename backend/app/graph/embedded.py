@@ -118,7 +118,7 @@ class EmbeddedGraphStore:
             ),
             "common_mistakes": node.get("common_mistakes", []),
             "tags": node.get("tags", []),
-            "estimated_minutes": node.get("estimated_minutes", 20),
+            "estimated_minutes": node.get("estimated_minutes", 10),
         }
         if "created_at" in node:
             out["created_at"] = node["created_at"]

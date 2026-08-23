@@ -1,9 +1,8 @@
 <template>
   <!-- Codex 风格左侧导航栏: 208px 带 label, 可折叠为 48px 图标轨 (issue-61) -->
   <div class="nav-sidebar" :class="{ collapsed: sidebar.navCollapsed }">
-    <!-- 顶部: 菜单行 (品牌名收敛进窗口标题, #26 去除品牌框) + 折叠/展开按钮 -->
+    <!-- 顶部: 仅折叠/展开按钮 (issue-72: 移除 项目/工具/帮助 菜单, 命令已下沉导航底栏/文件树) -->
     <div class="nav-head">
-      <TitlebarMenu class="nav-menu" />
       <button
         class="nav-collapse-btn"
         :title="sidebar.navCollapsed ? '展开导航栏' : '折叠导航栏 (节约空间)'"
@@ -79,7 +78,6 @@ import { computed } from 'vue'
 import { Fold, Expand } from '@element-plus/icons-vue'
 import { ACTIVITY_ITEMS, useSidebarStore } from '@/stores/sidebar'
 import { useThemeStore } from '@/stores/theme'
-import TitlebarMenu from '@/ide/TitlebarMenu.vue'
 
 const sidebar = useSidebarStore()
 const theme = useThemeStore()
@@ -103,28 +101,24 @@ function onViewClick(id) {
 <style scoped>
 .nav-sidebar {
   width: 100%; /* #25 宽度由外层 ResizablePanel 控制 */
-  /* #27 玻璃感 + issue-61 更透明: 提高透明度让层次可见 + 背景模糊 + 弱化硬边 */
-  background: color-mix(in srgb, var(--km-bg-layer-0) 62%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 1px 0 6px rgba(0, 0, 0, 0.04);
+  /* issue-71 深度玻璃透: 背景 ~0.38 透明 + 强模糊/饱和, 主区内容可透出; 悬停态局部加深保可读 */
+  background: color-mix(in srgb, var(--km-bg-layer-0) 36%, transparent);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: 1px solid color-mix(in srgb, var(--km-border-light) 55%, transparent);
+  border-right: 1px solid transparent;
   padding: 10px 8px;
 }
-/* ---- 顶部菜单行 (#26 无品牌框: 紧凑菜单行, 无底边线) ---- */
+/* ---- 顶部: 折叠/展开按钮行 (issue-72: 无菜单, 右对齐) ---- */
 .nav-head {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   padding: 0 2px 8px;
   margin-bottom: 2px;
-}
-.nav-menu {
-  -webkit-app-region: no-drag;
-  flex: 1;
-  min-width: 0;
 }
 /* issue-61: 折叠/展开切换按钮 */
 .nav-collapse-btn {
@@ -162,8 +156,8 @@ function onViewClick(id) {
 .nav-item:active { transform: scale(0.98); }
 .nav-item.active {
   color: var(--km-activity-active-text);
-  /* #27 激活态用品牌色软底 + 图标/文字着色, 视觉更明显 */
-  background: color-mix(in srgb, var(--km-primary-light) 72%, transparent);
+  /* #27 激活态用品牌色软底 + 图标/文字着色, 视觉更明显 (底层透明时加深一档保可读) */
+  background: color-mix(in srgb, var(--km-primary-light) 88%, transparent);
 }
 .nav-item.active .nav-item-label {
   font-weight: 600;
@@ -174,7 +168,8 @@ function onViewClick(id) {
   left: 0; top: 8px; bottom: 8px;
   width: 4px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--km-activity-active), var(--km-primary-active));
+  /* issue-82: 撞色 — 主色 → 强调色渐变指示条 */
+  background: linear-gradient(180deg, var(--km-activity-active), var(--km-accent, #f0a040));
   /* #27 点击动画: 指示条 scaleY 回弹入场 */
   transform: scaleY(0);
   transform-origin: center top;

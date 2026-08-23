@@ -826,7 +826,7 @@ class KnowledgeGraph:
             "practice_questions": json.dumps(node.get("practice_questions", []), ensure_ascii=False),
             "common_mistakes": node.get("common_mistakes", []),
             "tags": node.get("tags", []),
-            "estimated_minutes": node.get("estimated_minutes", 20),
+            "estimated_minutes": node.get("estimated_minutes", 10),
             "created_at": node.get("created_at") or now,
             "updated_at": now,
         }

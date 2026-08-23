@@ -197,7 +197,7 @@
               </div>
               <div class="summary-row">
                 <span class="label">预计学时</span>
-                <span class="value">{{ estimatedHours }} 小时</span>
+                <span class="value">{{ estimatedHours }}h · ≈{{ estimatedWeeks }}周</span>
               </div>
               <div class="summary-row">
                 <span class="label">当前阶段</span>
@@ -498,6 +498,12 @@ const hasPathData = computed(() => data.rawNodes.value.length > 0)
 const estimatedHours = computed(() =>
   store.knowledgeGraph?.estimated_total_hours ?? '--',
 )
+
+// issue-78: 节奏语境 — 按每周 6h 折周
+const estimatedWeeks = computed(() => {
+  const h = Number(store.knowledgeGraph?.estimated_total_hours || 0)
+  return h > 0 ? Math.max(1, Math.ceil(h / 6)) : 0
+})
 
 // 画像新鲜度 (借鉴 StalenessBanner): 超 7 天提示过期
 const profileStale = computed(() => {
@@ -975,7 +981,34 @@ onMounted(async () => {
     })
     if (graphContainer.value) _ro.observe(graphContainer.value)
   }
+  // issue-76: 用户拖拽移动画布 → 详情面板自动收起 (点击节点再展开)
+  if (graphContainer.value) disposeCanvasCollapse = bindCanvasCollapse(graphContainer.value)
 })
+
+// issue-76: pointer 位移超阈值视为"移动图谱", 收起详情抽屉
+function bindCanvasCollapse(el) {
+  let downX = 0
+  let downY = 0
+  let tracking = false
+  const onDown = (e) => { downX = e.clientX; downY = e.clientY; tracking = true }
+  const onMove = (e) => {
+    if (!tracking) return
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 8) {
+      tracking = false
+      if (!panelCollapsed.value) panelCollapsed.value = true
+    }
+  }
+  const onUp = () => { tracking = false }
+  el.addEventListener('pointerdown', onDown)
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  return () => {
+    el.removeEventListener('pointerdown', onDown)
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+  }
+}
+let disposeCanvasCollapse = null
 
 // 当 store 的 learning_path 变化时（测评完成后跳转过来）
 watch(() => store.knowledgeGraph, async (newVal) => {
@@ -996,6 +1029,8 @@ onMounted(() => { window.addEventListener('keydown', handleKeydown) })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  disposeCanvasCollapse?.()
+  disposeCanvasCollapse = null
   if (_rebuildRaf) { cancelAnimationFrame(_rebuildRaf); _rebuildRaf = 0 }
   _ro?.disconnect()
   _ro = null

@@ -22,8 +22,12 @@ export const ACTIVITY_ITEMS = [
 ]
 
 export const useSidebarStore = defineStore('sidebar', () => {
-  const activeView = ref('code') // 主区视图 = 活动栏唯一指示
-  const prevView = ref('code') // 上一个视图 (设置页返回用)
+  // issue-73: 支持"启动时默认视图" (localStorage 持久化, 缺省 code)
+  const _defaultView = (() => {
+    try { return localStorage.getItem('kmatch-default-view') || 'code' } catch { return 'code' }
+  })()
+  const activeView = ref(_defaultView) // 主区视图 = 活动栏唯一指示
+  const prevView = ref(_defaultView) // 上一个视图 (设置页返回用)
   const sidebarVisible = ref(true) // 文件树显隐 (代码视图内)
   const aiPanelVisible = ref(true) // AI 助手面板
   const persona = ref('beginner') // 学习角色: beginner/intermediate/advanced, 调整图谱节点详略
@@ -35,6 +39,11 @@ export const useSidebarStore = defineStore('sidebar', () => {
   function setView(id) {
     if (id !== activeView.value) prevView.value = activeView.value
     activeView.value = id
+  }
+
+  // issue-73: 设置"启动时默认视图"
+  function setDefaultView(id) {
+    try { localStorage.setItem('kmatch-default-view', id) } catch { /* ignore */ }
   }
 
   function back() {
@@ -63,5 +72,5 @@ export const useSidebarStore = defineStore('sidebar', () => {
     onboardingActive.value = false
   }
 
-  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, onboardingActive, navCollapsed, setView, back, setPersona, toggleSidebar, toggleAiPanel, toggleNavCollapsed, startOnboarding, finishOnboarding }
+  return { activeView, prevView, sidebarVisible, aiPanelVisible, persona, onboardingActive, navCollapsed, setView, back, setDefaultView, setPersona, toggleSidebar, toggleAiPanel, toggleNavCollapsed, startOnboarding, finishOnboarding }
 })

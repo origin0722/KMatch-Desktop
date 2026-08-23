@@ -2,6 +2,12 @@
   <div class="monaco-wrap">
     <!-- 文件内联预览 (图片/Markdown/HTML/PDF) → 不再进 Monaco 看乱码 -->
     <FilePreview v-if="showPreview && ws.activeFile" :rel-path="ws.activeFile" :kind="currentKind" />
+    <!-- issue-79: 二进制/容器格式 → 友好提示, 不再按文本读乱码 -->
+    <div v-else-if="binaryPath && binaryPath === ws.activeFile" class="binary-note">
+      <el-icon :size="40"><WarningFilled /></el-icon>
+      <p class="bn-title">该文件为二进制/压缩格式，暂不支持在 IDE 内预览</p>
+      <p class="bn-hint">请在系统默认应用中打开；文本类文件可直接在编辑器查看（更多格式见文件类型支持）。</p>
+    </div>
     <template v-else>
       <div ref="containerRef" class="monaco-container"></div>
       <div v-if="!ws.activeFile" class="monaco-empty">
@@ -51,28 +57,49 @@ const containerRef = ref(null)
 let editor = null
 const models = new Map() // relPath -> ITextModel
 let decorations = []     // 符号高亮装饰 (阶段4b)
+const binaryPath = ref(null) // issue-79: 当前二进制文件 (显示提示不建 model)
 
 // 阶段8: 外部改动冲突 — 已打开且脏的文件被外部修改时, 弹 banner 让用户选保留/加载
 const conflictPath = ref(null)
 
+// issue-79: 扩展常见文本/配置/语言; 其余回退 plaintext
 const LANG_BY_EXT = {
   '.py': 'python', '.js': 'javascript', '.ts': 'typescript', '.jsx': 'javascript',
-  '.vue': 'html', '.json': 'json', '.md': 'markdown', '.html': 'html',
+  '.vue': 'html', '.json': 'json', '.md': 'markdown', '.html': 'html', '.htm': 'html',
   '.css': 'css', '.yml': 'yaml', '.yaml': 'yaml', '.txt': 'plaintext', '.sql': 'sql',
+  '.log': 'plaintext', '.ini': 'plaintext', '.cfg': 'plaintext', '.conf': 'plaintext',
+  '.toml': 'plaintext', '.env': 'plaintext', '.csv': 'plaintext', '.tsv': 'plaintext',
+  '.xml': 'xml', '.sh': 'shell', '.bash': 'shell', '.zsh': 'shell', '.bat': 'bat', '.cmd': 'bat',
+  '.ps1': 'powershell',
+  '.rs': 'rust', '.go': 'go', '.java': 'java', '.c': 'c', '.h': 'cpp',
+  '.cpp': 'cpp', '.cc': 'cpp', '.hpp': 'cpp', '.cs': 'csharp',
+  '.rb': 'ruby', '.php': 'php', '.swift': 'swift', '.kt': 'kotlin', '.kts': 'kotlin',
+  '.dockerfile': 'plaintext',
 }
+// issue-79: 明确不支持的二进制/容器格式 (不按文本读, 避免乱码)
+const BINARY_EXTS = new Set([
+  'zip', 'jar', 'class', 'pyd', 'dll', 'exe', 'so', 'dylib', 'bin', 'dat',
+  'docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt', '7z', 'gz', 'tar', 'rar',
+])
 
 function langFor(path) {
   const ext = path.slice(path.lastIndexOf('.'))
   return LANG_BY_EXT[ext] || 'plaintext'
 }
 
-async function getOrCreateModel(relPath) {
+async function getOrCreateModel(relPath, content = null) {
   if (models.has(relPath)) return models.get(relPath)
-  const content = await window.api.fs.readFile(relPath)
-  const model = monaco.editor.createModel(content, langFor(relPath), monaco.Uri.parse('file:///' + relPath.replace(/\\/g, '/')))
+  const text = content ?? await window.api.fs.readFile(relPath)
+  const model = monaco.editor.createModel(text, langFor(relPath), monaco.Uri.parse('file:///' + relPath.replace(/\\/g, '/')))
   model.onDidChangeContent(() => ws.markDirty(relPath, true))
   models.set(relPath, model)
   return model
+}
+
+/** issue-79: 扩展名推断 (小写, 无扩展返回 '')。 */
+function extOf(path) {
+  const dot = String(path || '').lastIndexOf('.')
+  return dot >= 0 ? String(path).slice(dot + 1).toLowerCase() : ''
 }
 
 function applyTheme() {
@@ -157,7 +184,20 @@ watch(() => ws.activeFile, async (p) => {
 })
 
 async function switchTo(relPath) {
-  const model = await getOrCreateModel(relPath)
+  // issue-79: 二进制/容器格式或内容含 NUL → 友好提示, 不建文本 model
+  if (BINARY_EXTS.has(extOf(relPath))) {
+    binaryPath.value = relPath
+    editor.setModel(null)
+    return
+  }
+  const content = await window.api.fs.readFile(relPath)
+  if (content.includes('\u0000')) {
+    binaryPath.value = relPath
+    editor.setModel(null)
+    return
+  }
+  binaryPath.value = null
+  const model = await getOrCreateModel(relPath, content)
   editor.setModel(model)
 }
 
@@ -264,6 +304,16 @@ onBeforeUnmount(() => {
 }
 .conflict-text { display: flex; align-items: center; gap: 6px; font-weight: 600; }
 .conflict-actions { display: flex; gap: 6px; }
+
+/* issue-79: 二进制/容器格式提示 */
+.binary-note {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 24px; text-align: center;
+  color: var(--ktext-secondary);
+}
+.bn-title { margin: 6px 0 0; font-size: 15px; font-weight: 600; color: var(--ktext); }
+.bn-hint { margin: 0; font-size: 12.5px; color: var(--ktext-muted); max-width: 420px; line-height: 1.6; }
 </style>
 
 <!-- 阶段4b: 符号高亮装饰 (全局, Monaco decoration className 不受 scoped 控制) -->

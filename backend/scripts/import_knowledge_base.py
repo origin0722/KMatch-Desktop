@@ -211,7 +211,7 @@ class Neo4jImporter:
                         # common_mistakes 原生 list (Neo4j 支持 list[str])，5处运行时消费点直接 .get 拿 list
                         "common_mistakes": node.get("common_mistakes", []),
                         "tags": node.get("tags", []),
-                        "estimated_minutes": node.get("estimated_minutes", 20),
+                        "estimated_minutes": node.get("estimated_minutes", 10),
                         "created_at": created_at,
                     }
 

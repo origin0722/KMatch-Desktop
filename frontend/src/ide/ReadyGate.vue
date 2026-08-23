@@ -142,7 +142,8 @@ onBeforeUnmount(() => {
   width: 56px; height: 56px; margin: 0 auto 12px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 16px; font-size: 18px; font-weight: 700; color: #fff;
-  background: linear-gradient(135deg, var(--km-primary), var(--km-primary-active));
+  /* issue-82: 撞色 — 主色 + 强调色渐变 */
+  background: linear-gradient(135deg, var(--km-primary), var(--km-accent, #f0a040));
   box-shadow: 0 6px 18px rgba(108, 124, 224, 0.35);
 }
 .gate-title { margin: 0; font-size: 22px; font-weight: 700; color: var(--km-gray-800); }

@@ -7,6 +7,9 @@
         <el-tag v-if="chat.streaming" type="warning" size="small" class="status-tag">回复中</el-tag>
       </span>
       <div class="header-actions">
+        <el-icon v-if="variant === 'wide'" class="icon-btn" :title="sideCollapsed ? '展开辅助面板' : '收起辅助面板'" data-test="side-toggle" @click="sideCollapsed = !sideCollapsed">
+          <Menu />
+        </el-icon>
         <el-icon class="icon-btn" title="清空对话" @click="chat.clearMessages()" v-if="chat.hasMessages">
           <Delete />
         </el-icon>
@@ -18,8 +21,12 @@
     <div class="quick-actions" v-if="ws.hasProject">
       <el-button size="small" plain @click="quickAction('解析这个项目的代码结构')">解析项目</el-button>
       <el-button size="small" plain @click="sidebar.setView('project-graph')">看图谱</el-button>
+      <el-button size="small" plain @click="quickAction('请带我导读这个项目：从入口开始，按调用链逐层讲解')">项目导读</el-button>
       <el-button size="small" plain @click="quickAction('审查当前打开文件的代码')">审查代码</el-button>
       <el-button size="small" plain @click="quickAction('为当前文件生成单元测试')">测试代码</el-button>
+      <el-button size="small" plain @click="sidebar.setView('dashboard')">数据看板</el-button>
+      <el-button size="small" plain @click="sidebar.setView('learning')">学习资源</el-button>
+      <el-button size="small" plain @click="sidebar.setView('runs')">运行历史</el-button>
     </div>
 
     <!-- 消息列表 -->
@@ -32,6 +39,7 @@
         <div v-if="variant === 'wide'" class="ph-chips">
           <button class="ph-chip" @click="quickAction('根据我的学情画像, 我现在最该学什么?')">🎯 我该学什么</button>
           <button class="ph-chip" @click="quickAction(GUIDE_PROMPT)">🧭 知识图谱导读</button>
+          <button class="ph-chip" @click="quickAction('请结合我的学情画像薄弱点，搜索相关教程并逐条给我讲解（按薄弱点搜索）')">📚 补薄弱点</button>
           <button class="ph-chip" @click="quickAction('给我出一道 Python 基础练习题, 我做完你帮我批改')">📝 来道练习题</button>
           <button class="ph-chip" @click="quickAction('结合知识图谱, 给我规划一条从零到爬虫的学习路径')">🕸️ 规划学习路径</button>
         </div>
@@ -310,7 +318,6 @@
         title="后端未运行"
         description="localhost:8000 无响应, AI 对话/测评/图谱功能不可用。请启动后端 (见 scripts/start_all.py 或 CLAUDE.md 快速启动)。"
       />
-      <!-- B5: 一体化大圆角输入框 — 附件/导学/模型/发送内嵌, :focus-within 聚焦光圈 -->
       <div
         class="input-box"
         @dragover.prevent
@@ -523,12 +530,16 @@
       hide-on-click-modal
       @close="closeImagePreview"
     />
+
+    <!-- issue-81: wide 形态右侧多面板 (任务/文件/日志) -->
+    <AssistantSidePanel v-if="variant === 'wide' && !sideCollapsed" />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, watch, nextTick, computed } from 'vue'
-import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight, CaretBottom } from '@element-plus/icons-vue'
+import { Delete, VideoPause, Promotion, EditPen, Check, MagicStick, RefreshRight, CaretBottom, Menu } from '@element-plus/icons-vue'
+import AssistantSidePanel from './AssistantSidePanel.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore, contentTextOf, activeChunksOf } from '@/stores/chat'
@@ -579,6 +590,12 @@ const inputPlaceholder = computed(() => {
 const inputRef = ref(null)
 const configPopoverVisible = ref(false)
 const msgContainer = ref(null)
+// issue-81: wide 形态右侧辅助面板收起状态 (持久化)
+const sideCollapsed = ref(false)
+try { sideCollapsed.value = localStorage.getItem('kmatch-chat-side-collapsed') === '1' } catch { /* ignore */ }
+watch(sideCollapsed, (v) => {
+  try { localStorage.setItem('kmatch-chat-side-collapsed', v ? '1' : '0') } catch { /* ignore */ }
+})
 
 // ---- 附件缩略图大图预览 (ElImageViewer 全局注册, 仅用 tag) ----
 const previewUrl = ref(null)
@@ -1560,12 +1577,27 @@ async function copyText(text) {
 .provider-icon { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; }
 .provider-row { display: inline-flex; align-items: center; gap: 6px; }
 
-/* ---- T4 wide 形态 (主区 chat 视图, Codex 式居中大留白对话; 逻辑零改动纯样式层) ---- */
+/* ---- T4 wide 形态 (主区 chat 视图; issue-81: 左对话 + 右侧辅助面板双栏) ---- */
 .assistant-panel.wide {
   border-left: 0;
   background: transparent;
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto 1fr auto;
+  height: 100%;
+  min-height: 0;
+}
+.assistant-panel.wide > *:not(.assistant-side) {
+  grid-column: 1;
+  justify-self: center;
+  width: 100%;
   max-width: 760px;
+  min-width: 0;
+}
+.assistant-panel.wide > .assistant-side {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  min-height: 0;
 }
 .assistant-panel.wide .assistant-header { background: transparent; }
 .assistant-panel.wide .quick-actions { background: transparent; border-bottom: 0; padding: 10px 4px 0; }

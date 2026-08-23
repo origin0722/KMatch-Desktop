@@ -264,11 +264,12 @@ def _build_profile(target_direction, nodes, grading, questions: list = None) -> 
     # BUG-034: 排除已掌握节点，避免推荐 mastery=1.0 的节点造成逻辑矛盾
     next_nodes = _suggest_next_nodes(nodes, recommended_start, known_ids=known_ids)
 
-    # 预估完成周数 (issue-69): 按候选节点实际学时 / 每周可学时长折算, 不再随弱项数线性膨胀
+    # 预估完成周数 (issue-69/78): 按候选节点实际学时 / 每周可学时长折算, 不再随弱项数线性膨胀
     # (旧公式 max(2, 2+弱项数) 在弱项 10 个时给出 12 周, 明显失真)。
-    # 节点无 estimated_minutes 时按 20min/节点估算; time_per_week 取画像投入 (默认 6h); 上限 8 周。
+    # 节点无 estimated_minutes 时按 10min/节点估算 (issue-78: 单节点掌握节奏贴近现实);
+    # time_per_week 取画像投入 (默认 6h); 上限 8 周。
     total_minutes = sum(
-        int(n.get("estimated_minutes", 20) or 20)
+        int(n.get("estimated_minutes", 10) or 10)
         for n in nodes if isinstance(n, dict)
     )
     total_hours = total_minutes / 60

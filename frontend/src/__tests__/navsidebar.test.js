@@ -10,8 +10,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import NavSidebar from '@/ide/NavSidebar.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 
-vi.mock('@/ide/TitlebarMenu.vue', () => ({ default: { template: '<nav />' } }))
-
 function mountNav() {
   const pinia = createPinia()
   setActivePinia(pinia)

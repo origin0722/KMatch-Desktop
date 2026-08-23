@@ -12,8 +12,8 @@
           <div class="summary-label">路径节点</div>
         </div>
         <div class="summary-item">
-          <div class="summary-val km-mono-number">{{ hours }}</div>
-          <div class="summary-label">预计学时</div>
+          <div class="summary-val km-mono-number">{{ hours }}<span class="unit-hint">h</span></div>
+          <div class="summary-label">预计学时{{ weeks ? ' · ≈' + weeks + '周' : '' }}</div>
         </div>
         <div class="summary-item">
           <div class="summary-val km-mono-number">{{ mastery }}%</div>
@@ -41,7 +41,15 @@ const session = useSessionStore()
 const isActive = computed(() => session.activeStage === 'graph')
 const kg = computed(() => store.knowledgeGraph || {})
 const nodeCount = computed(() => (kg.value.learning_path || []).length)
-const hours = computed(() => kg.value.estimated_total_hours?.toFixed?.(1) ?? '--')
+const hours = computed(() => {
+  const h = kg.value.estimated_total_hours
+  return h != null ? Number(h).toFixed(1) : '--'
+})
+// issue-78: 节奏语境 — 按每周 6h 折周 (与 report pacing 口径一致)
+const weeks = computed(() => {
+  const h = Number(kg.value.estimated_total_hours || 0)
+  return h > 0 ? Math.max(1, Math.ceil(h / 6)) : 0
+})
 const mastery = computed(() => {
   const p = store.profile || {}
   const all = [...(p.known_topics || []), ...(p.weak_topics || [])]

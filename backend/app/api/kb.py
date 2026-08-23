@@ -87,7 +87,7 @@ class KnowledgeNodeCreate(BaseModel):
     practice_questions: list[dict] = Field(default_factory=list)
     common_mistakes: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
-    estimated_minutes: int = Field(20, ge=5, le=240)
+    estimated_minutes: int = Field(10, ge=5, le=240)
 
 
 class KnowledgeNodeUpdate(KnowledgeNodeCreate):

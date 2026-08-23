@@ -121,6 +121,18 @@
         </div>
       </el-card>
 
+      <!-- issue-80: 非 Python 文件不参与图谱解析, 明确提示可预览 -->
+      <el-alert
+        v-if="pg.graph && nonPyCount > 0"
+        type="info"
+        :closable="false"
+        show-icon
+        class="pg-nonpy-alert"
+      >
+        图谱仅解析 Python 文件（本解析 {{ pyCount }} 个）；另有 {{ nonPyCount }} 个非 Python 文件
+        不参与代码图谱，可在「代码」视图的文件资源管理器中打开/预览。
+      </el-alert>
+
       <!-- 主区: 画布 + 浮层详情 -->
       <div class="main-area">
         <div class="canvas-area">
@@ -366,6 +378,16 @@ const KIND_COLORS = {
   default: '#c8c6c4',
 }
 const KINDS = ['function', 'class', 'method', 'module']
+
+// issue-80: 非 Python 文件统计 (图谱仅解析 .py; 其他文件在文件树可预览)
+const pyCount = computed(() => {
+  const tree = ws.tree || []
+  return tree.filter((f) => String(f.path || '').toLowerCase().endsWith('.py')).length
+})
+const nonPyCount = computed(() => {
+  const tree = ws.tree || []
+  return tree.filter((f) => !String(f.path || '').toLowerCase().endsWith('.py')).length
+})
 
 // 视图模式: layered 分层 dagre (调用层级) / grouped 模块分组 combo (架构视角,
 // 借鉴 Understand-Anything 按架构层级自动分组带颜色编码)
@@ -631,8 +653,12 @@ function initGraph() {
     }
   })
 
-  g6.render()
+  // issue-77: 记录 render 完成流水线 — 导读聚焦必须等布局完成后才生效
+  _renderReady = Promise.resolve(g6.render()).catch(() => {})
 }
+
+/** 最近一次 initGraph 的 render 完成 Promise (导读聚焦时序用)。 */
+let _renderReady = Promise.resolve()
 
 function destroyGraph() {
   if (g6) { try { g6.destroy() } catch { /* ignore */ }; g6 = null }
@@ -686,7 +712,34 @@ onMounted(async () => {
     })
     if (containerRef.value) pgResizeObs.observe(containerRef.value)
   }
+  // issue-76: 用户拖拽移动画布 → 详情面板自动收起 (点击节点再展开)
+  if (containerRef.value) disposeCanvasCollapse = bindCanvasCollapse(containerRef.value)
 })
+
+// issue-76: pointer 位移超阈值视为"移动图谱", 收起详情抽屉
+function bindCanvasCollapse(el) {
+  let downX = 0
+  let downY = 0
+  let tracking = false
+  const onDown = (e) => { downX = e.clientX; downY = e.clientY; tracking = true }
+  const onMove = (e) => {
+    if (!tracking) return
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 8) {
+      tracking = false
+      if (!panelCollapsed.value) panelCollapsed.value = true
+    }
+  }
+  const onUp = () => { tracking = false }
+  el.addEventListener('pointerdown', onDown)
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  return () => {
+    el.removeEventListener('pointerdown', onDown)
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+  }
+}
+let disposeCanvasCollapse = null
 
 // ResizeObserver 句柄 (生命周期清理)
 let pgResizeObs = null
@@ -701,6 +754,8 @@ watch(() => pg.graph, async () => {
 watch(viewMode, () => { rebuildGraph() })
 
 onBeforeUnmount(() => {
+  disposeCanvasCollapse?.()
+  disposeCanvasCollapse = null
   pgResizeObs?.disconnect()
   pgResizeObs = null
   destroyGraph()
@@ -781,12 +836,15 @@ function tourStep(delta) {
   applyTourStop()
 }
 
-function applyTourStop() {
+async function applyTourStop() {
   const stop = tourStop.value
   if (!stop) return
   selectedEntity.value = stop.entity // 侧栏详情同步跟随
+  panelCollapsed.value = false        // issue-77: 详情面板同步展开
   rebuildGraph()                     // 重建带导读高亮
-  nextTick(() => {
+  await _renderReady                 // 等新图 render/布局完成 (issue-77: 修复聚焦打空图)
+  await nextTick()
+  requestAnimationFrame(() => {
     try {
       const p = g6?.focusElement(String(stop.id))
       if (p && typeof p.catch === 'function') p.catch(() => { /* 聚焦失败仅高亮 */ })
@@ -822,6 +880,8 @@ watch(() => pg.graph, () => {
 /* ---- 标题栏已去除 (导航已标识视图, 统计在工具栏右侧) ---- */
 .pg-stats { display: flex; gap: 12px; font-size: 12px; color: var(--km-gray-500); font-family: var(--km-font-mono); white-space: nowrap; flex-shrink: 0; margin-left: auto; }
 .pg-stats span { white-space: nowrap; }
+/* issue-80: 非 Python 文件提示 */
+.pg-nonpy-alert { margin-bottom: 12px; }
 .pg-stale { margin-bottom: 12px; }
 .pg-hint { font-size: 12px; color: var(--km-gray-500); margin: 0 0 8px; }
 

@@ -16,8 +16,6 @@
           <section id="sec-assistant" ref="secAssistant" class="settings-section">
             <h2 class="section-title">AI 助手</h2>
             <AssistantSettings />
-            <!-- 自定义厂商 + 视觉探测并入 AI 助手段 (学习引擎共用同一厂商池) -->
-            <ProvidersSettings />
           </section>
           <section id="sec-agent" ref="secAgent" class="settings-section">
             <h2 class="section-title">学习引擎</h2>
@@ -29,6 +27,53 @@
           </section>
           <section id="sec-general" class="settings-section">
             <h2 class="section-title">通用</h2>
+            <!-- issue-73: 启动偏好 (默认视图 / 导航默认折叠) -->
+            <div class="general-row">
+              <div class="general-info">
+                <b>启动偏好</b>
+                <span>打开应用时进入的视图；导航栏是否默认折叠为图标轨。</span>
+              </div>
+              <div class="general-actions">
+                <el-select :model-value="themeStore.accent" size="small" style="width: 132px" data-test="accent" @change="onAccent">
+                  <el-option label="靛蓝+琥珀 (默认)" value="default" />
+                  <el-option label="深青+珊瑚" value="teal" />
+                  <el-option label="紫罗兰+青柠" value="violet" />
+                </el-select>
+                <el-select :model-value="startView" size="small" style="width: 150px" data-test="default-view" @change="onDefaultView">
+                  <el-option label="代码" value="code" />
+                  <el-option label="学习会话" value="learning-session" />
+                  <el-option label="AI 助手" value="chat" />
+                  <el-option label="数据看板" value="dashboard" />
+                  <el-option label="学习资源" value="learning" />
+                </el-select>
+                <span class="general-inline">
+                  导航折叠
+                  <el-switch :model-value="sidebar.navCollapsed" data-test="nav-collapsed-switch" @change="sidebar.toggleNavCollapsed()" />
+                </span>
+              </div>
+            </div>
+            <!-- issue-73: 学习偏好 (每周可学时长 → 折周展示) -->
+            <div class="general-row">
+              <div class="general-info">
+                <b>学习偏好</b>
+                <span>每周可投入学习时长（1-20h），用于学习路径"预计 N 周"的节奏估算。</span>
+              </div>
+              <div class="general-actions">
+                <el-input-number :model-value="prefs.hoursPerWeek" :min="1" :max="20" size="small" data-test="hours-per-week" @change="onHoursPerWeek" />
+                <span class="general-inline">h / 周</span>
+              </div>
+            </div>
+            <!-- issue-73: 数据管理 (前端本地数据清理) -->
+            <div class="general-row">
+              <div class="general-info">
+                <b>数据管理</b>
+                <span>清除本地对话历史 / 学习资源（不删除后端运行记录）。</span>
+              </div>
+              <div class="general-actions">
+                <el-button size="small" data-test="clear-chat" @click="clearChat">清对话历史</el-button>
+                <el-button size="small" data-test="clear-resources" @click="clearResources">清学习资源</el-button>
+              </div>
+            </div>
             <div class="general-row">
               <div class="general-info">
                 <b>重新查看首次引导</b>
@@ -94,16 +139,53 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, onErrorCaptured } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
-import ProvidersSettings from './ProvidersSettings.vue'
 import WebSearchSettings from './WebSearchSettings.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useBackendHealthStore } from '@/stores/backendHealth'
+import { usePrefsStore } from '@/stores/prefs'
+import { useThemeStore } from '@/stores/theme'
+import { useChatStore } from '@/stores/chat'
+import { useLearningResourcesStore } from '@/stores/learningResources'
 
 const sidebar = useSidebarStore()
 const backend = useBackendHealthStore()
+const prefs = usePrefsStore()
+const themeStore = useThemeStore()
+
+// ---- issue-73: 启动偏好 / 数据管理 ----
+const startView = ref(sidebar.activeView)
+function onAccent(v) {
+  themeStore.setAccent(v)
+  ElMessage.success('强调色已切换（即时生效）')
+}
+function onDefaultView(v) {
+  sidebar.setDefaultView(v)
+  ElMessage.success(`默认视图已设为「${v}」`)
+}
+function onHoursPerWeek(v) {
+  prefs.setHoursPerWeek(v)
+  ElMessage.success(`已保存：每周 ${prefs.hoursPerWeek}h`)
+}
+async function clearChat() {
+  try {
+    await ElMessageBox.confirm('清除所有 AI 对话历史？此操作不可撤销。', '清对话历史', { type: 'warning' })
+  } catch { return }
+  useChatStore().clearMessages()
+  ElMessage.success('对话历史已清除')
+}
+async function clearResources() {
+  try {
+    await ElMessageBox.confirm('清除学习资源页的联网资源与生成内容？', '清学习资源', { type: 'warning' })
+  } catch { return }
+  useLearningResourcesStore().clear()
+  const { useAssessmentStore } = await import('@/stores/assessment')
+  const a = useAssessmentStore()
+  if (a.generatedContent) a.generatedContent = null
+  ElMessage.success('学习资源已清除')
+}
 
 // ---- 数据底座 (D 批): Docker 探测 + Neo4j 状态徽标 ----
 const dockerChecked = ref(false)
@@ -245,6 +327,9 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .general-info b { display: block; font-size: 13.5px; font-weight: 600; color: var(--km-gray-700); }
 .general-info span { font-size: 12px; color: var(--km-gray-500); }
+/* issue-73: 通用段右侧操作组 (启动偏好/学习偏好/数据管理) */
+.general-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.general-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--km-gray-500); white-space: nowrap; }
 /* 数据底座徽标 (D 批) */
 .db-badge {
   display: inline-block; margin-left: 8px;
