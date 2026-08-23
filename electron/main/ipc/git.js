@@ -45,7 +45,10 @@ async function status(cwd) {
   const files = []
   for (const line of lines) {
     if (line.startsWith('## ')) {
-      branch = line.slice(3).split('...')[0].split(' ')[0]
+      const rest = line.slice(3)
+      // 全新仓库: "No commits yet on main" → 分支取 "main"
+      const noCommit = rest.match(/No commits yet on (\S+)/)
+      branch = noCommit ? noCommit[1] : rest.split('...')[0].split(' ')[0]
       continue
     }
     // porcelain v1: XY path (重命名取原路径 R 两段)

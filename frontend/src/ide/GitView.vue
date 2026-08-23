@@ -115,7 +115,7 @@
  * 能力: 检测 git / 打开或克隆项目 / git init / 状态 / 拉取 / 暂存提交 / 推送 / 最近提交。
  * 凭据: HTTPS 依赖系统 git 配置(凭据管理器/token), 应用不保存任何密钥。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -278,9 +278,24 @@ function statusKind(s) {
 
 watch(() => workspace.root, () => { refresh() })
 
+// 文件变动 → 去抖刷新 git 状态 (编辑/保存后更改列表实时跟进, 像 VS Code)
+let _unsubExternal = null
+let _refreshDebounce = null
+function onChangeFile() {
+  if (!gitReady.value || !workspace.root) return
+  if (_refreshDebounce) clearTimeout(_refreshDebounce)
+  _refreshDebounce = setTimeout(() => { _refreshDebounce = null; refresh() }, 300)
+}
+
 onMounted(async () => {
   await checkGit()
   if (gitReady.value) await refresh()
+  _unsubExternal = workspace.onExternalChange(onChangeFile)
+})
+
+onBeforeUnmount(() => {
+  if (_unsubExternal) { _unsubExternal(); _unsubExternal = null }
+  if (_refreshDebounce) { clearTimeout(_refreshDebounce); _refreshDebounce = null }
 })
 </script>
 

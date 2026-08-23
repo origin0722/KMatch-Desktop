@@ -35,8 +35,8 @@
               </div>
               <div class="general-actions">
                 <el-select :model-value="themeStore.accent" size="small" style="width: 132px" data-test="accent" @change="onAccent">
-                  <el-option label="靛蓝+琥珀 (默认)" value="default" />
-                  <el-option label="深青+珊瑚" value="teal" />
+                  <el-option label="靛蓝+琥珀" value="default" />
+                  <el-option label="深青+珊瑚 (默认)" value="teal" />
                   <el-option label="紫罗兰+青柠" value="violet" />
                 </el-select>
                 <el-select :model-value="startView" size="small" style="width: 150px" data-test="default-view" @change="onDefaultView">

@@ -16,9 +16,10 @@ function detectInitial() {
 
 export const useThemeStore = defineStore('theme', () => {
   const mode = ref(detectInitial())
-  // issue-82: 强调色/撞色方案 (default=靛蓝+琥珀 / teal / violet), localStorage 持久化
+  // issue-82: 强调色/撞色方案 (default=靛蓝+琥珀 / teal=深青+珊瑚 / violet=紫罗兰+青柠), localStorage 持久化
+  // v1.1.0: 默认皮肤改为「深青珊瑚」(teal) — 与品牌色一致; 旧用户已存 kmatch-accent 则保持其选择。
   const accent = ref((() => {
-    try { return localStorage.getItem('kmatch-accent') || 'default' } catch { return 'default' }
+    try { return localStorage.getItem('kmatch-accent') || 'teal' } catch { return 'teal' }
   })())
 
   function apply(m) {
