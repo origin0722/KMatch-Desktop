@@ -336,6 +336,7 @@ import { useAssessmentStore } from '@/stores/assessment'
 import { useGraphData } from '@/composables/useGraphData'
 import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { masteryColor, difficultyColor } from '@/utils/format'
+import { cjkAwareWidth } from '@/utils/nodeSize'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
 import { ElMessage } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -377,13 +378,25 @@ const categoryColor = (cat) => CATEGORY_COLORS[cat] || THEME.gray400
 
 // 角色详略 (persona 接线: 初学详/进阶中/高级简, 真正改变节点密度与信息量, 非死功能)
 // beginner 显示分类+难度(信息全), intermediate 仅难度, advanced 仅名称(最紧凑 -> 画布最不挤)
-// 阶段C 图谱待办"矩形加大": 节点尺寸整体上调, labelMax 同步, 治"节点太小看不清"
+// W2 布局优化: 高度保持三档, 宽度改按标签 CJK 感知动态计算 (utils/nodeSize) —
+// 固定宽对长中文名截断、短名空旷; [wMin,wMax] 为各 persona 的宽度钳制区间
 const PERSONA = {
-  beginner:     { node: [240, 84], layout: [260, 110], labelMax: 228, label: (d) => `${d?.label || d.id}\n${d?.category || ''} · ${'⭐'.repeat(d?.difficulty || 1)}` },
-  intermediate: { node: [215, 72], layout: [235, 96], labelMax: 204, label: (d) => `${d?.label || d.id}\n${'⭐'.repeat(d?.difficulty || 1)}` },
-  advanced:     { node: [185, 60], layout: [205, 82], labelMax: 175, label: (d) => `${d?.label || d.id}` },
+  beginner:     { h: 84, wMin: 200, wMax: 300, label: (d) => `${d?.label || d.id}\n${d?.category || ''} · ${'⭐'.repeat(d?.difficulty || 1)}` },
+  intermediate: { h: 72, wMin: 176, wMax: 264, label: (d) => `${d?.label || d.id}\n${'⭐'.repeat(d?.difficulty || 1)}` },
+  advanced:     { h: 60, wMin: 152, wMax: 232, label: (d) => `${d?.label || d.id}` },
 }
 const personaCfg = () => PERSONA[sidebar.persona] || PERSONA.intermediate
+
+// 节点多自动收窄一档 (>12 节点时宽度 ×0.85, 让 dagre 少占横向空间、fitView 后字仍可读)
+const NODE_COUNT_COMPACT_THRESHOLD = 12
+const COMPACT_SCALE = 0.85
+function nodeCountScale(count) {
+  return count > NODE_COUNT_COMPACT_THRESHOLD ? COMPACT_SCALE : 1
+}
+// 单节点宽度 (闭包注入 persona cfg 与缩放系数): 标签最宽行 CJK 感知估算 + 32px 内边距
+function nodeWidthFor(d, cfg, scale) {
+  return Math.round(cjkAwareWidth(cfg.label(d), { min: cfg.wMin, max: cfg.wMax, padding: 32 }) * scale)
+}
 
 // issue: 学习图谱历史 (本地快照载入后即时渲染)
 const graphHistory = useGraphHistoryStore()
@@ -474,25 +487,37 @@ function setLayoutMode(id) {
   layoutMode.value = id
 }
 
-// 各布局的配置 (cfg: persona 节点尺寸)
-function getLayoutConfig(cfg) {
+// 各布局的配置 (cfg: persona 节点尺寸; dims: 当前数据的宽度统计 — 间距随节点尺寸联动,
+// 治"固定间距 + 大节点 = 挤/空两极")
+function getLayoutConfig(cfg, dims = { maxW: 240, avgW: 220, h: 72 }) {
   if (layoutMode.value === 'lr') {
-    // LR: 横向展开, ranksep 沿流向(横向)拉大, nodesep 纵向紧凑
-    return { type: 'dagre', rankdir: 'LR', nodesep: 50, ranksep: 160, nodeSize: cfg.layout }
+    // LR: 横向展开, ranksep 沿流向(横向)随节点宽拉大, nodesep 纵向随高度
+    return {
+      type: 'dagre', rankdir: 'LR',
+      nodesep: dims.h + 26,
+      ranksep: Math.max(150, dims.maxW + 50),
+      nodeSize: [dims.maxW, dims.h],
+    }
   }
   if (layoutMode.value === 'force') {
     // 力导向 + 按分类聚簇 (d3-force clustering): 同分类相互吸引成簇, 簇间斥力散开
+    // collide/linkDistance 随节点宽联动, 防大卡片互压
     return {
       type: 'd3-force',
-      linkDistance: 160,
+      linkDistance: Math.max(150, dims.avgW + 60),
       nodeStrength: -120,
       preventOverlap: true,
-      collide: { radius: 80 },
+      collide: { radius: Math.round(dims.avgW / 2) + 28 },
       clustering: true,
       clusterBy: (n) => n?.data?.category || '未分类',
     }
   }
-  return { type: 'dagre', rankdir: 'TB', nodesep: 90, ranksep: 180, nodeSize: cfg.layout }
+  // TB: 层间纵向间距随节点高联动; nodeSize 取当前数据最大宽 (dagre 保守防重叠)
+  return {
+    type: 'dagre', rankdir: 'TB', nodesep: 90,
+    ranksep: Math.max(140, dims.h + 70),
+    nodeSize: [dims.maxW, dims.h],
+  }
 }
 
 // ---------------------------------------------------------------
@@ -670,12 +695,19 @@ function initGraph() {
     const containerWidth = graphContainer.value.offsetWidth || 800
     const containerHeight = graphContainer.value.offsetHeight || 600
 
-    // 布局随 layoutMode 切换 (dagre TB/LR 层次 or d3-force 聚类); 间距加大治"还是挤", nodeSize 随 persona
+    // 布局随 layoutMode 切换 (dagre TB/LR 层次 or d3-force 聚类); 间距/尺寸随 persona + 实际标签联动
     const cfg = personaCfg()
-    const layoutConfig = getLayoutConfig(cfg)
-    const isForce = layoutMode.value === 'force'
-
     const { nodes, edges } = buildG6Data()
+    // 宽度统计: 每节点标签 CJK 感知估宽 → max (dagre 保守防重叠) / avg (force 间距)
+    const scale = nodeCountScale(nodes.length)
+    const nodeWs = nodes.map((n) => nodeWidthFor(n.data, cfg, scale))
+    const dims = {
+      maxW: Math.max(cfg.wMin, ...nodeWs),
+      avgW: Math.round(nodeWs.reduce((a, b) => a + b, 0) / Math.max(1, nodeWs.length)),
+      h: cfg.h,
+    }
+    const layoutConfig = getLayoutConfig(cfg, dims)
+    const isForce = layoutMode.value === 'force'
 
     graph = new Graph({
       container: graphContainer.value,
@@ -692,13 +724,15 @@ function initGraph() {
         style: {
           // 难度着色 (单域路径全同 category, 按分类着色会全图同色; 难度天然有梯度)
           fill: (d) => difficultyColor(d.data?.difficulty || 1),
-          size: cfg.node,
+          // W2: 宽度按标签 CJK 感知动态计算 (长名不截断/短名不空旷), 高度按 persona
+          size: (d) => [nodeWidthFor(d.data, cfg, scale), cfg.h],
           labelText: (d) => cfg.label(d.data),
           labelPlacement: 'center',
           labelFontSize: 13,
           labelFill: '#ffffff',
-          labelMaxWidth: cfg.labelMax,
           labelLineHeight: 20,
+          // labelMaxWidth 跟随自身卡片宽 (宽 - 左右内边距), 达到 wMax 上限才截断
+          labelMaxWidth: (d) => nodeWidthFor(d.data, cfg, scale) - 24,
           // 掌握度改由边框表达 (已掌握 ≥0.8 绿色加粗)
           stroke: (d) => (d.data?.mastery ?? 0) >= 0.8 ? '#34b37e' : THEME.gray300,
           lineWidth: (d) => (d.data?.mastery ?? 0) >= 0.8 ? 2.5 : 1,

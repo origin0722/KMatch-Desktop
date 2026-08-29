@@ -118,6 +118,14 @@
             @click="startTour"
           >项目导读</el-button>
 
+          <!-- W2 缩放工具: 步进 + 适配画布 (此前项目图谱无任何缩放入口) -->
+          <el-divider direction="vertical" />
+          <div class="zoom-group">
+            <el-button size="small" title="放大" @click="zoomBy(1.25)">＋</el-button>
+            <el-button size="small" title="适配画布" @click="fitGraph">⤢</el-button>
+            <el-button size="small" title="缩小" @click="zoomBy(0.8)">－</el-button>
+          </div>
+
           <!-- 更多 popover: 图例 + 深度分析 收纳 -->
           <el-popover placement="bottom" :width="220" trigger="click">
             <template #reference>
@@ -386,6 +394,7 @@ import { useChatStore } from '@/stores/chat'
 import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { useAssessmentStore } from '@/stores/assessment'
 import { buildEntityQuestion } from '@/utils/askAi'
+import { cjkAwareWidth } from '@/utils/nodeSize'
 import { detectTechStack } from '@/utils/techStack'
 import { buildTourStops, TOUR_ROLE_LABELS } from '@/utils/projectTour'
 import http from '@/api'
@@ -553,10 +562,11 @@ const callsIn = computed(() => {
 })
 
 // ---------------------------------------------------------------
-// 节点宽度自适应: 按 label 字符数估宽, 限 [120, 220]
+// 节点宽度自适应: W2 改 CJK 感知估宽 (len*8 对中文全角字符估不足 →
+// 标签溢出卡片/相邻节点重叠), 限 [120, 240]
 // ---------------------------------------------------------------
 function nodeWidth(label) {
-  return Math.min(220, Math.max(120, (label || '').length * 8 + 24))
+  return cjkAwareWidth(label, { fontSize: 12.5, padding: 26, min: 120, max: 240 })
 }
 
 function buildData() {
@@ -615,6 +625,8 @@ function initGraph() {
   if (!containerRef.value) return
   const { nodes, edges, combos } = buildData()
   const grouped = viewMode.value === 'grouped' && combos?.length > 0
+  // W2: dagre nodeSize 用当前数据实际最大宽 (旧值 250 与估宽公式脱节 → 间距忽大忽小)
+  const maxNodeW = nodes.reduce((m, n) => Math.max(m, n.data?.w || 120), 120)
 
   // 详情面板改底部抽屉, 画布拿满全宽 (不避让)
   const w = containerRef.value.offsetWidth || 800
@@ -625,11 +637,14 @@ function initGraph() {
     width: w,
     height: h,
     // grouped: combo-combined (combo 间力导向 + combo 内 grid 整齐排), combos 为空自动回落 dagre
-    // layered: dagre 分层, nodeSize 用最大可能宽度 220 保守估防宽节点重叠
+    // layered: dagre 分层, nodeSize 取实际最大宽保守估防宽节点重叠
     layout: grouped
       ? { type: 'combo-combined', comboPadding: 30, comboSpacing: 90, layout: { type: 'grid' } }
-      : { type: 'dagre', rankdir: 'TB', nodesep: 50, ranksep: 90, nodeSize: [250, 58] },
+      : { type: 'dagre', rankdir: 'TB', nodesep: 50, ranksep: 90, nodeSize: [maxNodeW, 48] },
     data: { nodes, edges, ...(grouped ? { combos } : {}) },
+    // W2 对齐 KnowledgeGraph 能力: render 后自动适应画布 + 缩放范围限制 + 小地图
+    autoFit: { type: 'view', options: { when: 'always', direction: 'both' } },
+    zoomRange: [0.3, 4],
     node: {
       type: 'rect',
       style: {
@@ -639,7 +654,8 @@ function initGraph() {
         labelPlacement: 'center',
         labelFontSize: 12.5,
         labelFill: '#ffffff',
-        labelMaxWidth: 220,
+        // labelMaxWidth 跟随自身卡片宽 (宽 - 左右内边距), 达 240 上限才截断
+        labelMaxWidth: (d) => (d.data?.w || 190) - 20,
         // 导读模式: 当前站 primary 强调 / 邻居细描边 / 其余淡化; 平时浅灰描边
         stroke: (d) => (d.data?.tourCurrent || d.data?.tourNeighbor) ? '#6c7ce0' : '#e4e3e1',
         lineWidth: (d) => d.data?.tourCurrent ? 3 : d.data?.tourNeighbor ? 1.5 : 1,
@@ -681,6 +697,10 @@ function initGraph() {
       },
     },
     behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element', { type: 'hover-activate', degree: 1, direction: 'both' }],
+    plugins: [
+      // 小地图 (对齐 KnowledgeGraph): 大项目缩放后不迷路
+      { type: 'minimap', size: [180, 110], position: 'right-top' },
+    ],
   })
 
   g6.on('node:click', (evt) => {
@@ -695,8 +715,11 @@ function initGraph() {
     }
   })
 
-  // issue-77: 记录 render 完成流水线 — 导读聚焦必须等布局完成后才生效
-  _renderReady = Promise.resolve(g6.render()).catch(() => {})
+  // issue-77: 记录 render 完成流水线 — 导读聚焦必须等布局完成后才生效。
+  // 防御: minimap 依赖 afterrender 初始化, 部分环境事件未达, render 后显式补发 (幂等重绘无副作用)
+  _renderReady = Promise.resolve(g6.render())
+    .then(() => { try { g6.emit('afterrender', { type: 'afterrender' }) } catch { /* ignore */ } })
+    .catch(() => {})
 }
 
 /** 最近一次 initGraph 的 render 完成 Promise (导读聚焦时序用)。 */
@@ -704,6 +727,17 @@ let _renderReady = Promise.resolve()
 
 function destroyGraph() {
   if (g6) { try { g6.destroy() } catch { /* ignore */ }; g6 = null }
+}
+
+// W2 缩放工具 (对齐 KnowledgeGraph): 步进缩放 + 一键适配画布
+function zoomBy(factor) {
+  if (!g6) return
+  try { g6.zoomBy(factor) } catch { /* ignore */ }
+}
+
+function fitGraph() {
+  if (!g6) return
+  try { g6.fitView({ when: 'always', direction: 'both' }) } catch { /* ignore */ }
 }
 
 function rebuildGraph() {
@@ -969,6 +1003,9 @@ watch(() => pg.graph, () => {
 }
 .toolbar-card :deep(.el-card__body) { padding: 10px 14px; }
 .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.zoom-group { display: flex; gap: 0; }
+.zoom-group :deep(.el-button) { margin-left: 0; }
+.zoom-group :deep(.el-button + .el-button) { margin-left: 4px; }
 .search-input { width: 220px; }
 .filter-select { width: 140px; }
 /* 视图模式切换 (分层/模块分组), 视觉对齐 KnowledgeGraph 的 persona-selector */
