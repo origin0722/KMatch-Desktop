@@ -142,6 +142,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const feedbackStrategy = ref(null)
   /** 动态反馈再生资源 (feedback 接口返回) */
   const feedbackContent = ref(null)
+  /** W7 审核轮次轨迹 (报告补跑回环): [{round, passed, overall_score, verdict}] */
+  const reviewRounds = ref([])
   /**
    * 当前/最近一次的学习目标方向 (issue-65):
    * StageGoal 表单与 store 双向同步 — 切视图返回不再被引导默认值覆盖,
@@ -413,6 +415,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     try {
       const data = await fetchLearningReport({ sessionId: sessionId.value })
       learningReport.value = data.learning_report || null
+      // W7: 审核轮次轨迹 (打回再生回环的可视化数据)
+      reviewRounds.value = data.review_rounds || []
       // 补跑产出的路径/内容/审核在 interactive 下可能缺失, 合并回 store 供看板/学习资源消费
       // (已有值不覆盖 —— 反馈再生的针对性内容优先保留)
       if (!knowledgeGraph.value && data.knowledge_graph) knowledgeGraph.value = data.knowledge_graph
@@ -590,6 +594,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers,
     // W5 三维测评: VARK 快问卷 (StageGoal 采集)
     styleQuiz,
+    // W7 审核轮次轨迹
+    reviewRounds,
     feedbackStrategy,
     feedbackContent,
     // issue-65: 目标方向持久化 (切视图返回不被引导默认值覆盖)

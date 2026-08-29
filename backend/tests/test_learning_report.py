@@ -265,7 +265,10 @@ def _fake_node_factory(calls: list, kg_result: dict, content_result: dict, revie
     def _rv_factory(kg):
         def _n(state):
             calls.append("reviewer")
-            return {"review_results": review_result, "retry_count": 1, "orchestration_log": ["rv done"]}
+            # 对齐真实 reviewer_node: retry_count 由审核节点自增 (W7 回环终止条件)
+            return {"review_results": review_result,
+                    "retry_count": state.get("retry_count", 0) + 1,
+                    "orchestration_log": ["rv done"]}
         return _n
     return _gc_factory, _cg_factory, _rv_factory
 
@@ -377,8 +380,12 @@ def test_report_idempotent_cache(monkeypatch):
     assert r1.json()["learning_report"] == r2.json()["learning_report"]
 
 
-def test_report_reviewer_fail_no_loop(monkeypatch):
-    """reviewer 单轮不通过 → content_generator 恰好 1 次 (无回环), 内容仍交付, passed=False。"""
+def test_report_reviewer_fail_loops_once(monkeypatch):
+    """W7 有界回环: reviewer 首轮不通过 → 定向再生再审 (共 2 轮), 内容仍交付。
+
+    fake reviewer 每轮返回同一 fail 结论且 retry_count 自增 → 恰好打回 1 次
+    (retry 达 max=2 后降级结束, 与 demo workflow 语义一致)。
+    """
     fail_review = {"passed": False, "overall_score": 0.7, "threshold": 0.85,
                    "retry_hint": "幻觉", "reviewed_at": "2026-06-19T00:00:00Z"}
     app = _build_learning_app(monkeypatch, review_result=fail_review)
@@ -387,14 +394,31 @@ def test_report_reviewer_fail_no_loop(monkeypatch):
     resp = client.post("/api/learning/report", json={"session_id": sid})
     assert resp.status_code == 200
     data = resp.json()
-    # content_generator 只调 1 次 (不回环)
-    assert app._test_calls.count("content_generator") == 1
-    assert app._test_calls.count("reviewer") == 1
+    # 首轮生成+审核 + 打回再生+再审 = 各 2 次
+    assert app._test_calls.count("content_generator") == 2
+    assert app._test_calls.count("reviewer") == 2
     # 内容仍交付
     assert len(data["generated_content"]["resources"]) == 1
-    # passed=False
+    # 最终 passed=False, 轮次轨迹 2 轮
     assert data["review_results"]["passed"] is False
+    assert len(data["review_rounds"]) == 2
+    assert data["review_rounds"][0]["round"] == 1
+    assert data["review_rounds"][1]["round"] == 2
     assert data["learning_report"]["review_status"]["passed"] is False
+
+
+def test_report_review_pass_single_round(monkeypatch):
+    """W7: 首轮审核通过 → 不进回环, content_generator/reviewer 各 1 次, 轨迹 1 轮。"""
+    app = _build_learning_app(monkeypatch)
+    sid = _seed_session()
+    client = TestClient(app)
+    resp = client.post("/api/learning/report", json={"session_id": sid})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert app._test_calls.count("content_generator") == 1
+    assert app._test_calls.count("reviewer") == 1
+    assert len(data["review_rounds"]) == 1
+    assert data["review_rounds"][0]["passed"] is True
 
 
 def test_report_cache_writeback(monkeypatch):

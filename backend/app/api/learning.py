@@ -3,8 +3,10 @@
 
 POST /api/learning/report
   - interactive 模式可视化报告: 按 session_id 补跑 graph_controller + content_generator
-    + reviewer (单轮，不回环)，返回三类可视化数据契约 learning_report。
-  - 幂等: 首次补跑后缓存 learning_report，同 session 重复调用直接返回 (省 9+ 次 LLM)。
+    + reviewer，并做有界审核回环 (W7: reviewer 不通过且未超限 → 携 retry_hint
+    定向再生再审, 决策语义复用 orchestrator._decide_after_review, 与 demo workflow 同路由)，
+    返回三类可视化数据契约 learning_report。
+  - 幂等: 首次补跑后缓存 learning_report，同 session 重复调用直接返回 (省 LLM)。
 
 与 demo 模式互补: demo 模式在 assess 一次返回时内联计算 learning_report 嵌入
 AssessResponse；interactive 模式 submit 保持轻量 (仅判分+画像+反馈)，报告数据
@@ -19,6 +21,7 @@ from pydantic import BaseModel, Field
 from app.agents.content_generator import content_generator_node
 from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
+from app.agents.orchestrator import _decide_after_review
 from app.agents.report_builder import build_learning_report
 from app.agents.reviewer import reviewer_node
 from app.api.diagnostics import _INTERACTIVE_SESSIONS
@@ -27,6 +30,10 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# W7 有界回环轮数上限 (1 首轮 + 1 打回再生; 与 demo workflow max_retries=3 相比更保守,
+# interactive 补跑在请求线程内同步执行, 用户等待敏感)
+REPORT_MAX_REVIEW_ROUNDS = 2
 
 
 class LearningReportRequest(BaseModel):
@@ -43,7 +50,8 @@ class LearningReportResponse(BaseModel):
     profile: dict = Field(default_factory=dict)
     knowledge_graph: dict = Field(default_factory=dict, description="学习路径图谱 (补跑 graph_controller 产出)")
     generated_content: dict = Field(default_factory=dict, description="生成资源 (补跑 content_generator 产出)")
-    review_results: dict = Field(default_factory=dict, description="内容审核报告 (单轮 reviewer)")
+    review_results: dict = Field(default_factory=dict, description="内容审核报告 (最终轮)")
+    review_rounds: list = Field(default_factory=list, description="审核轮次轨迹 [{round, passed, overall_score, verdict}]")
     learning_report: dict = Field(default_factory=dict, description="三类可视化预计算数据契约")
     orchestration_log: list = Field(default_factory=list)
 
@@ -57,10 +65,15 @@ def _get_kg(request: Request):
 
 
 def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
-    """补跑 graph_controller → content_generator → reviewer (单轮，不回环)。
+    """补跑 graph_controller → content_generator ⇄ reviewer (有界审核回环)。
 
     绕过 LangGraph 直接 fold 调用 node 函数 (签名均为 (state)->partial delta)，
     与 submit/feedback 端点风格一致。orchestration_log 手动追加 (绕过 Annotated reducer)。
+
+    W7 回环: reviewer 不通过且 retry < REPORT_MAX_REVIEW_ROUNDS → 打回 content_generator
+    (节点内读 review_results.retry_hint 定向再生) 再审；决策语义复用
+    orchestrator._decide_after_review (与 demo workflow 完全同一路由, 不再是两套口径)。
+    reviewer 自身维护 retry_count 递增, 循环必然有界。
 
     Spec B: llm_overrides 随 state 下传 — content_generator 的 ThreadPoolExecutor
     worker 线程不继承路由层 use_llm_overrides 设的 ContextVar, 必须经 state.llm_overrides
@@ -73,7 +86,7 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
         "generated_content": {},
         "content_phase_entered": False,
         "retry_count": 0,
-        "max_retries": 1,
+        "max_retries": REPORT_MAX_REVIEW_ROUNDS,
         "orchestration_log": [f"[{datetime.utcnow().isoformat()}] 📊 学习报告: 开始补跑"],
     }
     if llm_overrides:
@@ -94,29 +107,48 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
                 continue
             state[k] = v
 
+    def _review_round_snapshot(round_no: int) -> dict:
+        review = state.get("review_results") or {}
+        return {
+            "round": round_no,
+            "passed": review.get("passed"),
+            "overall_score": review.get("overall_score"),
+            "verdict": review.get("verdict"),
+        }
+
     # ① 路径组装
     _fold(graph_controller_node(kg)(state))
     # ② 内容生成 (置 content_phase_entered=True，reviewer 据此进内容模式)
     _fold(content_generator_node(kg)(state))
-    # ③ 内容审核 (单轮，不回环 — 完整回环是 demo workflow 职责)
+    # ③ 首轮内容审核
     _fold(reviewer_node(kg)(state))
+    rounds = [_review_round_snapshot(1)]
 
-    log.append(f"[{datetime.utcnow().isoformat()}] ✅ 学习报告: 补跑完成")
+    # ④ 有界审核回环 (W7): 不通过且未超限 → 定向再生 → 再审
+    while _decide_after_review(state) == "content_generator":
+        hint = (state.get("review_results") or {}).get("retry_hint") or ""
+        log.append(f"[{datetime.utcnow().isoformat()}] 🔁 审核打回 → 携诊断定向再生 (第 {len(rounds) + 1} 轮)")
+        _fold(content_generator_node(kg)(state))
+        _fold(reviewer_node(kg)(state))
+        rounds.append(_review_round_snapshot(len(rounds) + 1))
+
+    log.append(f"[{datetime.utcnow().isoformat()}] ✅ 学习报告: 补跑完成 (审核 {len(rounds)} 轮)")
     state["orchestration_log"] = log
+    state["review_rounds"] = rounds
     return state
 
 
 @router.post("/report", response_model=LearningReportResponse,
-             summary="可视化报告 (interactive 补跑路径+内容+审核，返回三类可视化数据)")
+             summary="可视化报告 (interactive 补跑路径+内容+审核回环，返回三类可视化数据)")
 def learning_report(req: LearningReportRequest, request: Request):
     """interactive 模式可视化报告。
 
     B 端在 submit 拿到画像后，进报告页时调用本接口:
-      - 首次: 补跑 graph_controller/content_generator/reviewer (单轮) → 组装 learning_report → 缓存
-      - 后续: 命中缓存直接返回 (幂等，省 9+ 次 LLM 调用)
+      - 首次: 补跑 graph_controller/content_generator/reviewer 有界回环 → 组装 learning_report → 缓存
+      - 后续: 命中缓存直接返回 (幂等，省 LLM 调用)
 
     校验序: session(404) → profile(409) → LLM(503) → kg(503) → 补跑。
-    reviewer 单轮不通过时内容仍交付 (passed=False + retry_hint)，不内联回环。
+    W7: 审核不通过时携 retry_hint 定向再生再审 (≤2 轮)，review_rounds 记录轮次轨迹。
     """
     # ① session 存在
     session = _INTERACTIVE_SESSIONS.get(req.session_id)
@@ -144,6 +176,7 @@ def learning_report(req: LearningReportRequest, request: Request):
             knowledge_graph=session.get("knowledge_graph", {}),
             generated_content=session.get("generated_content", {}),
             review_results=session.get("review_results", {}),
+            review_rounds=session.get("report_review_rounds", []),
             learning_report=cached,
             orchestration_log=session.get("report_log", []),
         )
@@ -166,6 +199,7 @@ def learning_report(req: LearningReportRequest, request: Request):
     knowledge_graph = state.get("knowledge_graph", {})
     generated_content = state.get("generated_content", {})
     review_results = state.get("review_results", {})
+    review_rounds = state.get("review_rounds", [])
 
     learning_report = build_learning_report(
         profile, knowledge_graph, generated_content, review_results, kg=kg
@@ -175,12 +209,14 @@ def learning_report(req: LearningReportRequest, request: Request):
     session["knowledge_graph"] = knowledge_graph
     session["generated_content"] = generated_content
     session["review_results"] = review_results
+    session["report_review_rounds"] = review_rounds
     session["learning_report_cache"] = learning_report
     session["report_log"] = state.get("orchestration_log", [])
 
-    logger.info("学习报告补跑完成 session=%s resources=%d passed=%s",
+    logger.info("学习报告补跑完成 session=%s resources=%d rounds=%d passed=%s",
                 req.session_id,
                 len(generated_content.get("resources", [])),
+                len(review_rounds),
                 review_results.get("passed"))
 
     return LearningReportResponse(
@@ -189,6 +225,7 @@ def learning_report(req: LearningReportRequest, request: Request):
         knowledge_graph=knowledge_graph,
         generated_content=generated_content,
         review_results=review_results,
+        review_rounds=review_rounds,
         learning_report=learning_report,
         orchestration_log=state.get("orchestration_log", []),
     )

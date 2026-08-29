@@ -146,6 +146,20 @@
       <el-card class="review-card" shadow="never" v-if="reviewResults">
         <template #header><span>④ 内容审核报告</span></template>
         <ReviewReport :review-results="reviewResults" />
+        <!-- W7: 审核轮次轨迹 (打回再生回环可视化, 赛题"分析-生成-校验-决策"协同证据) -->
+        <div v-if="(store.reviewRounds || []).length > 1" class="rounds-trace">
+          <span class="rt-label">审核博弈轨迹:</span>
+          <el-tag
+            v-for="(r, i) in store.reviewRounds"
+            :key="i"
+            size="small"
+            :type="r.passed ? 'success' : 'danger'"
+            class="rt-tag"
+          >
+            第 {{ r.round }} 轮 · {{ r.passed ? '通过' : '打回' }}
+            <template v-if="r.overall_score != null"> ({{ Math.round(r.overall_score * 100) }}%)</template>
+          </el-tag>
+        </div>
       </el-card>
 
       <!-- 质量指标 -->
@@ -959,6 +973,10 @@ onBeforeUnmount(() => {
 
 /* ---- 质量指标 ---- */
 .review-card { margin-bottom: 16px; }
+/* W7: 审核博弈轮次轨迹 */
+.rounds-trace { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rt-label { font-size: 12.5px; color: var(--km-gray-600); }
+.rt-tag { margin: 0; }
 .review-card :deep(.el-card) {
   --el-card-bg-color: var(--km-bg-layer-2);
   --el-card-border-color: var(--km-border-light);
