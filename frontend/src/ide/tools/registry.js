@@ -104,7 +104,7 @@ export const TOOLS = Object.freeze([
     description: '查个性化学习路径 (基于用户学情画像的已知/薄弱点组装 BFS 路径)。用户问"我该学什么/学习顺序"时调它, 能看到接下来该学的知识点序列。',
     parameters: {
       level: 'number (路径深度, 默认2)',
-      max_nodes: 'number (路径最大节点数, 默认20)',
+      max_nodes: 'number (路径最大节点数, 默认20, 上限20)',
     },
   },
   {
@@ -227,7 +227,9 @@ export function buildToolBlock(allowedTools) {
   if (allow.has('generate_project_graph') || allow.has('code_review') || allow.has('code_test')) {
     notes.push('- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。')
   }
-  notes.push('- 后端返回 503 时表示 Neo4j 图谱引擎未就绪, 你应转告用户启动 Neo4j。')
+  notes.push(`- 后端 503 分两类, 据错误文本区分转告:
+  "知识图谱引擎未就绪" → 学习路径/图谱类工具不可用, 引导用户启动 Neo4j 或在安装包环境使用默认本地存储;
+  "语义检索不可用 (Embedding 未就绪)" → 仅语义检索类工具 (search_knowledge) 不可用, 可改用 get_knowledge_node/get_learning_path, 或引导用户在设置页配置 Embedding (千问) key。`)
 
   return `
 ## 可用工具

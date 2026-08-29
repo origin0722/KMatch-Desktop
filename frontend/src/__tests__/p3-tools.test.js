@@ -51,6 +51,17 @@ describe('P3 新增只读工具 - registry 契约', () => {
     expect(toolCallExample('get_learning_path')).toContain('"level"')
   })
 
+  it('get_learning_path max_nodes 参数标注上限 20 (对齐后端 PathRequest le=20)', () => {
+    const def = TOOLS.find((t) => t.name === 'get_learning_path')
+    expect(def.parameters.max_nodes).toContain('上限20')
+  })
+
+  it('503 提示区分图谱引擎未就绪与 Embedding 未就绪两类', () => {
+    const block = buildToolBlock(['get_learning_path', 'search_knowledge'])
+    expect(block).toContain('知识图谱引擎未就绪')
+    expect(block).toContain('Embedding 未就绪')
+  })
+
   it('buildToolBlock 广告新工具 (全 allow 时)', () => {
     const allAllow = (tool) => TOOL_PERMISSION.ALLOW
     const advertised = buildAdvertisedToolNames(allAllow)

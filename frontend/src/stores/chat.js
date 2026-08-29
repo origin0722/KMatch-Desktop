@@ -919,7 +919,8 @@ export const useChatStore = defineStore('chat', () => {
         const knownIds = (aStore.profile.known_topics || []).map((t) => t.node_id)
         const weakIds = (aStore.profile.weak_topics || []).map((t) => t.node_id)
         const level = Math.min(4, Math.max(1, parseInt(call.level, 10) || 2))
-        const maxNodes = Math.min(50, Math.max(1, parseInt(call.max_nodes, 10) || 20))
+        // 后端 PathRequest 校验 le=20 (graph.py), 传大值会 422 — 前端钳到同界
+        const maxNodes = Math.min(20, Math.max(1, parseInt(call.max_nodes, 10) || 20))
         try {
           const data = await assemblePath({ knownIds, weakIds, level, maxNodes })
           const path = (data?.learning_path || data?.nodes || []).map((n) => ({
