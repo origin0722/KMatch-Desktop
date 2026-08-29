@@ -46,14 +46,21 @@ export function registerHttpProxyIpc() {
 
   // SSE 流式代理: 返回 reqId, 后续通过 'http:stream:chunk' 事件推 chunk。
   // F3: 渲染层可传 reqId (并发多流时按 reqId 过滤, 避免串扰); 未传则主进程生成。
+  // W?: reqId → AbortController — 渲染层点"停止"经 http:stream:abort 断上游 fetch
+  // (旧实现 abort 只解除前端等待, 后端到 LLM 的请求继续跑完烧 token)。
+  const _activeStreams = new Map()
+
   ipcMain.handle('http:stream', async (event, urlPath, body, reqId) => {
     reqId = reqId || `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
     const win = BrowserWindow.fromWebContents(event.sender)
+    const controller = new AbortController()
+    _activeStreams.set(reqId, controller)
 
     fetch(BACKEND_URL + urlPath, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body || {}),
+      signal: controller.signal,
     })
       .then(async (resp) => {
         // 后端非 200 (如 422/500/503): 旧实现只静默不读 body, 渲染层永远等不到 done/error。
@@ -83,9 +90,21 @@ export function registerHttpProxyIpc() {
         if (win && !win.isDestroyed()) win.webContents.send('http:stream:done', reqId)
       })
       .catch((err) => {
+        // 用户主动停止: 上游已断, 回发 done 收尾 (渲染层已按 AbortError 解绑监听, 迟到事件被忽略)
+        if (controller.signal.aborted) {
+          if (win && !win.isDestroyed()) win.webContents.send('http:stream:done', reqId)
+          return
+        }
         if (win && !win.isDestroyed()) win.webContents.send('http:stream:error', reqId, String(err))
       })
+      .finally(() => _activeStreams.delete(reqId))
 
     return reqId
+  })
+
+  // 真·停止: 断指定 reqId 的上游请求
+  ipcMain.handle('http:stream:abort', (_e, reqId) => {
+    const controller = _activeStreams.get(reqId)
+    if (controller) controller.abort()
   })
 }

@@ -149,3 +149,53 @@ describe('useChatStream — SSE 传输层 (C1.3)', () => {
     ).rejects.toThrow('server down')
   })
 })
+
+describe('useChatStream — IPC 看门狗与真·停止 (W?)', () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); delete window.api })
+
+  it('IPC 路: 150s 无任何数据 → 看门狗 reject 断流超时 (旧实现永远转圈)', async () => {
+    vi.useFakeTimers()
+    const m = mockIpc()
+    const p = streamChat({ body: {}, signal: new AbortController().signal, onBlock: () => {} })
+    const assertion = expect(p).rejects.toThrow('SSE 流超时')
+    await vi.advanceTimersByTimeAsync(150_000)
+    await assertion
+    void m
+  })
+
+  it('IPC 路: 收到 chunk 重置看门狗 (间歇流不误杀)', async () => {
+    vi.useFakeTimers()
+    const m = mockIpc()
+    const blocks = []
+    const p = streamChat({ body: {}, signal: new AbortController().signal, onBlock: (b) => blocks.push(b) })
+    const rid = m.reqId
+    m.emitChunk(rid, 'data: {"delta":"a"}')
+    await vi.advanceTimersByTimeAsync(149_000)
+    m.emitChunk(rid, 'data: {"delta":"b"}')
+    await vi.advanceTimersByTimeAsync(149_000) // 若未重置, 此处早已超时
+    m.emitDone(rid)
+    await p
+    expect(blocks).toHaveLength(2)
+  })
+
+  it('IPC 路: abort 时通知主进程 abortStream(reqId) 断上游 fetch (真·停止)', async () => {
+    const abortStream = vi.fn()
+    let onChunkCb
+    window.api = {
+      http: {
+        stream: vi.fn((_u, _b, reqId) => Promise.resolve(reqId)),
+        abortStream,
+        onChunk: (cb) => { onChunkCb = cb; return () => {} },
+        onDone: () => () => {},
+        onError: () => () => {},
+      },
+    }
+    const ac = new AbortController()
+    const p = streamChat({ body: {}, signal: ac.signal, onBlock: () => {} })
+    ac.abort()
+    await expect(p).rejects.toMatchObject({ name: 'AbortError' })
+    expect(abortStream).toHaveBeenCalledTimes(1)
+    expect(abortStream).toHaveBeenCalledWith(window.api.http.stream.mock.calls[0][2])
+    void onChunkCb
+  })
+})

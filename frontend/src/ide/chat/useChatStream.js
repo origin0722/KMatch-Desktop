@@ -27,7 +27,7 @@ function newReqId() {
  *
  * @param {Object} opts
  * @param {Object} opts.body      请求体（messages/stream/model/api_key/base_url/reasoning…）
- * @param {AbortSignal} opts.signal  abort 信号（用户点停止时触发；IPC 流无法真中断，仅结束等待）
+ * @param {AbortSignal} opts.signal  abort 信号（用户点停止时触发; Electron 下同步通知主进程断上游 fetch）
  * @param {(block: string) => (Error|void)} opts.onBlock  每个 SSE block 的回调；返回 Error 实例中止并 reject (其他返回值忽略)
  * @returns {Promise<void>} resolve=正常结束, reject=传输错误或流内错误
  */
@@ -94,24 +94,35 @@ export async function streamChat({ body, signal, onBlock }) {
   // ---- Electron: IPC SSE 代理 ----
   // http-proxy 已按 \n\n 分帧, 每个 http:stream:chunk 就是一个完整 SSE block (无 \n\n 定界符);
   // 渲染层不再二次缓冲/拆分, 直接交 onBlock。旧实现二次 split('\n\n') 永不产出 → 流式回执空 (修)。
+  // W?: 与浏览器路对齐补 150s 无数据看门狗 (旧实现 IPC 无看门狗, 后端挂起永远转圈);
+  //     abort 时经 http:stream:abort 通知主进程断上游 fetch (旧实现仅解除等待, 后端继续跑完烧 token)。
   const reqId = newReqId()
   return new Promise((resolve, reject) => {
     let settled = false
+    let watchdog = null
     const finish = () => {
       if (settled) return
       settled = true
+      clearTimeout(watchdog)
       offChunk(); offDone(); offError()
       resolve()
     }
     const fail = (err) => {
       if (settled) return
       settled = true
+      clearTimeout(watchdog)
       offChunk(); offDone(); offError()
       reject(err)
+    }
+    // 150s 无任何数据 = 断流 (每收到 chunk 重置)
+    const arm = () => {
+      clearTimeout(watchdog)
+      watchdog = setTimeout(() => fail(new Error('SSE 流超时（后端 150s 无数据，可能已断流）')), 150_000)
     }
     // F3: 仅处理本流 reqId 的事件, 忽略其他并发流
     const offChunk = window.api.http.onChunk((rid, block) => {
       if (settled || rid !== reqId) return
+      arm()
       const r = onBlock(block)
       if (r instanceof Error) { fail(r); return } // F2: 流内错误 → reject
     })
@@ -123,11 +134,13 @@ export async function streamChat({ body, signal, onBlock }) {
     // 用户点停止: 对外统一 AbortError 语义 (issue-07/m4) —— 旧实现 abort 走 finish() resolve,
     // 工具循环会把"已停止"当正常完成继续执行工具, 与浏览器 fetch abort 行为不一致。
     signal?.addEventListener('abort', () => {
+      try { window.api.http.abortStream?.(reqId) } catch { /* 旧 preload 无此方法则跳过 */ }
       const e = new Error('The user aborted a request.')
       e.name = 'AbortError'
       fail(e)
     })
 
+    arm()
     window.api.http.stream('/api/chat/completions', body, reqId).catch((e) => fail(e))
   })
 }

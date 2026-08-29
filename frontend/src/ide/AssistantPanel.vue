@@ -30,7 +30,7 @@
     </div>
 
     <!-- 消息列表 -->
-    <div ref="msgContainer" class="assistant-body">
+    <div ref="msgContainer" class="assistant-body" @scroll="onMsgScroll">
       <!-- 空状态 (issue-64: 去掉装饰性小字与 feature 列表, 建议 chip 居中聚焦) -->
       <div v-if="!chat.hasMessages" class="placeholder">
         <div class="ph-icon-badge"><el-icon :size="26"><ChatLineSquare /></el-icon></div>
@@ -308,6 +308,14 @@
 
     <!-- 输入区 -->
     <div class="assistant-input">
+      <!-- 回到底部 (用户上翻后显示; 流式跟随已暂停) — 锚定输入区顶边, 悬在消息区底部 -->
+      <button
+        v-if="!autoScroll && chat.hasMessages"
+        class="back-bottom"
+        data-test="back-bottom"
+        title="回到底部"
+        @click="scrollToBottomForce"
+      >↓ 回到底部</button>
       <!-- issue: 流式指标 (首 token / tok/s / 缓存命中 / 输入输出) — 输入框固定底部, 统计行随之前置展示 -->
       <div v-if="statsText" class="chat-stats" data-test="chat-stats">{{ statsText }}</div>
       <!-- F14: 后端宕机提示 (统一 backendHealth store) -->
@@ -730,17 +738,35 @@ function toolSummary(chunk) {
 }
 
 // ---------------------------------------------------------------
-// 自动滚动到底部
+// 自动滚动到底部 (带用户上翻守卫: 流式输出时用户上翻阅读不再被拽回底部)
 // ---------------------------------------------------------------
+const autoScroll = ref(true)
+
+function nearBottom(el) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 80
+}
+
+function onMsgScroll() {
+  if (msgContainer.value) autoScroll.value = nearBottom(msgContainer.value)
+}
+
 function scrollToBottom() {
-  if (msgContainer.value) {
+  if (msgContainer.value && autoScroll.value) {
     msgContainer.value.scrollTop = msgContainer.value.scrollHeight
   }
 }
 
+// 强制回底 (发送新消息 / 点"回到底部"按钮): 重置守卫并滚动
+function scrollToBottomForce() {
+  autoScroll.value = true
+  nextTick(() => {
+    if (msgContainer.value) msgContainer.value.scrollTop = msgContainer.value.scrollHeight
+  })
+}
+
 // 消息变化时滚动
 watch(() => chat.messages.length, () => nextTick(scrollToBottom))
-// 流式内容更新时滚动
+// 流式内容更新时滚动 (仅用户停在底部时跟随)
 watch(() => {
   const msgs = chat.messages
   if (msgs.length > 0) return contentTextOf(msgs[msgs.length - 1])
@@ -760,6 +786,7 @@ function handleSend() {
     return
   }
   inputText.value = ''
+  scrollToBottomForce() // 用户主动发送 → 无论是否上翻过都回到底部
   chat.sendMessage(text)
 }
 
@@ -1245,11 +1272,29 @@ async function copyText(text) {
 
 /* ---- 输入区 (B5: 一体化大圆角输入框, 附件/模型/发送内嵌; 聚焦光圈) ---- */
 .assistant-input {
+  position: relative; /* 回到底部按钮的锚 (其顶边在 flex 列中位置稳定) */
   padding: 12px 14px;
   border-top: 1px solid var(--km-border-light);
   flex-shrink: 0;
   background: var(--km-bg-layer-0);
 }
+/* 回到底部浮动按钮 (悬在消息区底部) */
+.back-bottom {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--km-gray-600);
+  background: var(--km-bg-layer-2);
+  border: 1px solid var(--km-border);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.back-bottom:hover { color: var(--km-primary); border-color: var(--km-border-focus); }
 .input-box {
   border: 1px solid var(--km-border);
   border-radius: var(--km-radius);

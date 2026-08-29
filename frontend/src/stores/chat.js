@@ -13,7 +13,7 @@
  * write_file 审批门: 命中 write_file 时先调后端 /api/chat/safety-check 做 AST 预检,
  *   再弹审批卡 (用户可编辑内容/批准/拒绝); 拒绝则把"用户拒绝写入"回传 AI。
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
@@ -214,6 +214,79 @@ function hasIpc() {
   return typeof window !== 'undefined' && !!window.api?.fs
 }
 
+// ---- 对话历史预算与持久化常量 ----
+// 历史 API 消息字符预算 (≈1.2-1.6万 token 量级): 超出从头裁最旧, 治"长对话上下文无限膨胀"
+const HISTORY_CHAR_BUDGET = 48000
+const CHAT_HISTORY_KEY = 'kmatch-chat-history'
+const CHAT_HISTORY_MAX_CHARS = 1500000
+
+/**
+ * 构建历史 API 消息 (带预算裁剪)。
+ * - assistant 消息经 assistantApiContent 剥 tool_call 块; user 多模态数组原样/取文本
+ * - 总字符超 budget 时从头丢弃最旧消息 (至少保留最后一条), 并保证历史以 user 开头
+ * sendMessage 与 regenMessage 共用 (此前两处各写一份无裁剪的映射)。
+ */
+export function buildApiHistory(visible, budget = HISTORY_CHAR_BUDGET) {
+  const mapped = visible.map((m) => m.role === 'assistant'
+    ? { role: 'assistant', content: assistantApiContent(m) }
+    : { role: 'user', content: Array.isArray(m.content) ? m.content : contentTextOf(m) }
+  )
+  const lenOf = (c) => (typeof c === 'string' ? c.length : JSON.stringify(c).length)
+  let total = mapped.reduce((s, m) => s + lenOf(m.content), 0)
+  // 最后一条 user 消息是当前回合的锚 — 永不被裁掉 (start 不得越过它)
+  let lastUserIdx = -1
+  for (let i = mapped.length - 1; i >= 0; i--) {
+    if (mapped[i].role === 'user') { lastUserIdx = i; break }
+  }
+  const floor = lastUserIdx === -1 ? mapped.length - 1 : lastUserIdx
+  let start = 0
+  while (start < floor && total > budget) {
+    total -= lenOf(mapped[start].content)
+    start++
+  }
+  // 裁剪后可能落在 assistant 中间 — 历史以 user 开头 (OpenAI 兼容习惯)
+  while (start < floor && mapped[start].role !== 'user') start++
+  return mapped.slice(start)
+}
+
+/**
+ * 序列化消息用于持久化 (localStorage): 丢弃多模态图片段与附件原始数据 (体积),
+ * 保留文本内容与助手消息分支结构 — 重启恢复后 regen/版本导航仍可用。
+ */
+export function serializeMessages(messages) {
+  return JSON.parse(JSON.stringify(messages.map((m) => {
+    const clone = { ...m }
+    if (Array.isArray(clone.content)) {
+      clone.content = clone.content.filter((p) => p && p.type === 'text')
+    }
+    delete clone._attachments
+    return clone
+  })))
+}
+
+/** 校验恢复数据: 只收带字符串 id 的 user/assistant 消息; 坏数据返回空数组 (不让脏存储崩会话)。 */
+export function restoreMessages(json) {
+  try {
+    const arr = JSON.parse(json)
+    if (!Array.isArray(arr)) return []
+    return arr.filter((m) => m && typeof m.id === 'string'
+      && (m.role === 'user' || m.role === 'assistant'))
+  } catch {
+    return []
+  }
+}
+
+/** 持久化体积兜底: JSON 超 maxChars 时从头丢最旧消息 (至少保留 2 条), 返回 JSON 串。 */
+export function fitPersistJson(messages, maxChars = CHAT_HISTORY_MAX_CHARS) {
+  const trimmed = [...messages]
+  let json = JSON.stringify(trimmed)
+  while (json.length > maxChars && trimmed.length > 2) {
+    trimmed.shift()
+    json = JSON.stringify(trimmed)
+  }
+  return json
+}
+
 /**
  * 活动文件内容缓存 (path → {mtime, content}):
  * 每次发消息都注入 active file 全文, 未编辑时的重读是纯浪费 IPC 往返;
@@ -367,6 +440,26 @@ export const useChatStore = defineStore('chat', () => {
   // 状态
   // ============================================================
   const messages = ref([])
+
+  // ---- 对话持久化 (重启恢复当前会话) ----
+  // store 初始化时从 localStorage 恢复; 变更经 800ms 防抖回写 (流式期间高频变更只落最后一次)。
+  // 图片附件不入存储 (体积), 恢复后附件消息仅剩文本段。
+  try {
+    const saved = localStorage.getItem(CHAT_HISTORY_KEY)
+    if (saved) {
+      const restored = restoreMessages(saved)
+      if (restored.length) messages.value = restored
+    }
+  } catch { /* localStorage 不可用则不恢复 */ }
+  let _persistTimer = null
+  watch(messages, () => {
+    if (_persistTimer) clearTimeout(_persistTimer)
+    _persistTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(CHAT_HISTORY_KEY, fitPersistJson(serializeMessages(messages.value)))
+      } catch { /* 配额满等写失败, 尽力而为 */ }
+    }, 800)
+  }, { deep: true })
 
   // ---- 附件 (Spec A 图片上传, 阶段PR-5) ----
   // 附件单元: { id, name, size, mimeType, base64DataUrl, thumbDataUrl }
@@ -1227,17 +1320,9 @@ export const useChatStore = defineStore('chat', () => {
 
       // 构建 API 消息列表 (assistant content 去掉 tool_call 块; chunks 模型无 tool 角色)
       // 用 visibleMessages: regen 隐藏的尾随消息不应进 API 历史 (见 regenMessage)
+      // buildApiHistory 带预算裁剪 — 长对话不再全量进上下文
       const systemMsg = buildSystemPrompt(context)
-      const historyMsgs = visibleMessages.value.map((m) => {
-        if (m.role === 'assistant') {
-          return { role: 'assistant', content: assistantApiContent(m) }
-        }
-        // user: 多模态数组原样传; 否则用文本
-        return {
-          role: 'user',
-          content: Array.isArray(m.content) ? m.content : contentTextOf(m),
-        }
-      })
+      const historyMsgs = buildApiHistory(visibleMessages.value)
       const apiMessages = [systemMsg, ...historyMsgs]
 
       // 每轮添加新的助手占位消息 (空 chunks)
@@ -1274,16 +1359,7 @@ export const useChatStore = defineStore('chat', () => {
       toolRound++
       const systemMsg = buildSystemPrompt(context)
       const visibleSoFar = visibleMessages.value.filter((m) => messages.value.indexOf(m) < targetIdx)
-      const historyMsgs = visibleSoFar.map((m) => {
-        if (m.role === 'assistant') {
-          return { role: 'assistant', content: assistantApiContent(m) }
-        }
-        // user: 多模态数组原样传; 否则用文本
-        return {
-          role: 'user',
-          content: Array.isArray(m.content) ? m.content : contentTextOf(m),
-        }
-      })
+      const historyMsgs = buildApiHistory(visibleSoFar)
       const apiMessages = [systemMsg, ...historyMsgs]
 
       // trailingAfter 由 _addMessage 钩子自动维护 (target 为最后一个助手时, 工具结果归入新版本)
@@ -1317,6 +1393,8 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
     lastStats.value = null
     _streamStats = null
+    // 清空即清持久化 (下次启动不再恢复旧会话)
+    try { localStorage.removeItem(CHAT_HISTORY_KEY) } catch { /* noop */ }
   }
 
   return {

@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('api', {
     // SSE: 启动流, 返回 reqId; 订阅 chunk/done/error 事件。
     // F3: 可传 reqId 以便并发多流按 reqId 过滤 (chat 与 diagnostics 评估并发不串扰)。
     stream: (urlPath, body, reqId) => ipcRenderer.invoke('http:stream', urlPath, body, reqId),
+    // 真·停止: 通知主进程 abort 该 reqId 的上游 fetch (旧实现点停止仅前端解除等待, 后端继续跑完)
+    abortStream: (reqId) => ipcRenderer.invoke('http:stream:abort', reqId),
     onChunk: (cb) => {
       const h = (_e, reqId, block) => cb(reqId, block)
       ipcRenderer.on('http:stream:chunk', h)
