@@ -107,6 +107,10 @@ class SubmitRequest(BaseModel):
     answers: list = Field(..., description="逐题作答，顺序与 questions 一致；选择题给选项内容/字母，判断题给'对'/'错'")
     llm_overrides: dict = Field(default=None, description="Spec B: Agent 学习引擎独立 key 覆写")
     learner_key: str | None = Field(None, description="稳定学习者标识 (画像跨次累积/进化档案, 防路径穿越)")
+    learning_style_quiz: list | None = Field(
+        None, description="W5 三维测评: VARK 快问卷答案 (每题 'v'/'a'/'r'/'k'); 缺省画像标 style_source=default")
+    practical_evidence: dict | None = Field(
+        None, description="W5 三维测评: 实操能力证据 {tests_passed, tests_total} (代码测试通过率); 缺省标 practical_source=unassessed")
 
 
 class SubmitResponse(BaseModel):
@@ -711,7 +715,11 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
         with use_llm_overrides(req.llm_overrides):
             grading = _grade(questions, answers)
             _tick("判分(grading)")
-            profile = _build_profile(target, nodes, grading, questions=questions)
+            profile = _build_profile(
+                target, nodes, grading, questions=questions,
+                learning_style_quiz=req.learning_style_quiz,
+                practical_evidence=req.practical_evidence,
+            )
             _tick("画像(profile)")
         feedback = decide_feedback(grading["correct_count"], grading["total_count"])
 

@@ -136,6 +136,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const pendingQuestions = ref([])
   /** 用户作答数组 (按 question_index 对齐) */
   const userAnswers = ref([])
+  /** W5 三维测评: VARK 学习风格快问卷答案 (StageGoal 采集, submit 时上送; 空数组=未答走占位) */
+  const styleQuiz = ref([])
   /** 动态反馈策略 (submit 返回): 'advance'|'remediate'|'scaffold' */
   const feedbackStrategy = ref(null)
   /** 动态反馈再生资源 (feedback 接口返回) */
@@ -313,6 +315,15 @@ export const useAssessmentStore = defineStore('assessment', () => {
         sessionId: sessionId.value,
         answers: userAnswers.value,
         learnerKey: learnerKey.value,
+        // W5 三维测评: VARK 问卷答案 + 代码测试通过率证据 (projectGraph store, 可为空)
+        learningStyleQuiz: styleQuiz.value,
+        practicalEvidence: await (async () => {
+          try {
+            const { useProjectGraphStore } = await import('@/stores/projectGraph')
+            const r = useProjectGraphStore().lastTestReport
+            return r ? { tests_passed: r.passed, tests_total: r.total } : null
+          } catch { return null }
+        })(),
       })
       // submit 返回: { session_id, profile, assessment, review_results, feedback:{strategy,...}, profile_diff }
       profile.value = data.profile
@@ -577,6 +588,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
     phase,
     pendingQuestions,
     userAnswers,
+    // W5 三维测评: VARK 快问卷 (StageGoal 采集)
+    styleQuiz,
     feedbackStrategy,
     feedbackContent,
     // issue-65: 目标方向持久化 (切视图返回不被引导默认值覆盖)

@@ -184,11 +184,68 @@ def _grade(questions: list[dict], answers: list) -> dict:
     }
 
 
-def _build_profile(target_direction, nodes, grading, questions: list = None) -> dict:
+# ============================================================
+# 三维测评纯函数 (W5 补齐): learning_style / practical_level
+# ============================================================
+
+# VARK 四型 → 画像 learning_style 取值 (read_write 沿用旧占位命名保持 schema 兼容)
+_VARK_STYLE = {"v": "visual", "a": "auditory", "r": "read_write", "k": "kinesthetic"}
+
+
+def learning_style_from_quiz(answers) -> dict:
+    """VARK 快问卷答案 → {style, source}。
+
+    answers: 每题选项字母 'v'/'a'/'r'/'k' (大小写不敏感, 可含空白)。
+    众数判定; 无有效答案 → read_write + default (占位, 与旧行为兼容)。
+    """
+    valid = [str(a).strip().lower() for a in (answers or []) if str(a).strip().lower() in _VARK_STYLE]
+    if not valid:
+        return {"style": "read_write", "source": "default"}
+    counts = {k: valid.count(k) for k in _VARK_STYLE}
+    style = max(counts, key=lambda k: counts[k])
+    return {"style": _VARK_STYLE[style], "source": "quiz"}
+
+
+def practical_level_from_evidence(evidence) -> dict:
+    """代码测试通过率证据 → {level, source} (1-4 级)。
+
+    evidence: {tests_passed, tests_total}。无证据/无效 → 1 + unassessed (占位)。
+    推断: <40% → 1 (入门), <60% → 2 (基础), <85% → 3 (熟练), ≥85% → 4 (扎实)。
+    """
+    try:
+        passed = int((evidence or {}).get("tests_passed", 0))
+        total = int((evidence or {}).get("tests_total", 0))
+    except (TypeError, ValueError):
+        passed, total = 0, 0
+    if total <= 0:
+        return {"level": 1, "source": "unassessed"}
+    rate = max(0, passed) / total
+    if rate >= 0.85:
+        level = 4
+    elif rate >= 0.6:
+        level = 3
+    elif rate >= 0.4:
+        level = 2
+    else:
+        level = 1
+    return {"level": level, "source": "code_test"}
+
+
+def _build_profile(
+    target_direction,
+    nodes,
+    grading,
+    questions: list = None,
+    learning_style_quiz: list = None,
+    practical_evidence: dict = None,
+) -> dict:
     """根据判分结果组装画像 v3。
 
     questions (BUG-036 深化): 题目列表，含 question 文本 + question_index 对齐 per_node，
     用于让 error_pattern 引用实际错题题目而非猜测知识点 (reviewer 批评旧实现 fabricated)。
+
+    learning_style_quiz / practical_evidence (W5 三维测评): VARK 问卷答案与
+    代码测试通过率证据, 缺省时相应维度带 default/unassessed 来源占位。
     """
     per_node = grading["per_node"]
     total = grading["total_count"] or 1
@@ -282,14 +339,21 @@ def _build_profile(target_direction, nodes, grading, questions: list = None) -> 
     else:
         estimated_weeks = max(1, min(6, len(unmastered_nodes)))
 
+    # 三维测评 (W5 补齐, 消除占位): learning_style 由 VARK 快问卷判定,
+    # practical_level 由代码测试通过率推断; 各带来源标记供 reviewer 区分实测/占位。
+    style = learning_style_from_quiz(learning_style_quiz)
+    practical = practical_level_from_evidence(practical_evidence)
+
     return {
         "profile_id": f"UP-DIA-{uuid.uuid4().hex[:6]}",
         "name": "测评用户",
         "created_at": datetime.utcnow().isoformat() + "Z",
         "type": "学情检测产出",
         "theory_level": theory_level,
-        "practical_level": 1,  # 实操测评第4周补，暂记最低
-        "learning_style": "read_write",  # 风格问卷第5周补，暂默认
+        "practical_level": practical["level"],
+        "practical_source": practical["source"],  # code_test=实测 | unassessed=占位
+        "learning_style": style["style"],
+        "style_source": style["source"],          # quiz=实测 | default=占位
         "target_direction": target_direction,
         "preferred_pace": "normal",
         "time_per_week": 6,

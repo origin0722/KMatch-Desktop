@@ -274,6 +274,47 @@ describe('useAssessmentStore', () => {
       expect(useSessionStore().splitView).toBeNull()
     })
 
+    // W5 三维测评: submit 载荷携带 VARK 问卷答案 + 实操证据
+    it('submitAnswers 载荷应携带 learning_style_quiz 与 practical_evidence', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 's', profile: { profile_id: 'P' }, assessment: { correct_count: 1, total_count: 1 },
+        review_results: {}, feedback: { strategy: 'advance' },
+      })
+      const { useProjectGraphStore } = await import('@/stores/projectGraph')
+      useProjectGraphStore().setLastTestReport({ passed: 9, total: 10 })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      store.styleQuiz = ['v', 'v', 'r', 'k', 'a']
+      await store.submitAssessmentAnswers()
+
+      const payload = submitAnswers.mock.calls[0][0]
+      expect(payload.learningStyleQuiz).toEqual(['v', 'v', 'r', 'k', 'a'])
+      expect(payload.practicalEvidence).toEqual({ tests_passed: 9, tests_total: 10 })
+    })
+
+    it('无问卷/无证据时 submitAnswers 载荷为空数组与 null (后端按占位处理)', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 's', profile: { profile_id: 'P' }, assessment: { correct_count: 0, total_count: 1 },
+        review_results: {}, feedback: { strategy: 'scaffold' },
+      })
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      await store.submitAssessmentAnswers()
+
+      const payload = submitAnswers.mock.calls[0][0]
+      expect(payload.learningStyleQuiz).toEqual([])
+      expect(payload.practicalEvidence).toBeNull()
+    })
+
     it('submit 失败 → 记录 error、phase 保持 answering、loading 复位 (判分卡死自愈)', async () => {
       submitAssessment.mockResolvedValueOnce({
         session_id: 's', assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },

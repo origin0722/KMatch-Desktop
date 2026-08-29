@@ -81,8 +81,11 @@ def _llm_review(profile: dict, assessment: dict) -> dict:
         "审核要点: theory_level 是否与答题正确率自洽；"
         "weak_topics 的 error_patterns 是否具体可操作；mastery 值是否在 0-1 合理区间。\n"
         "字段说明(勿误判): last_test_score 为 0-10 分制掌握分(mastery×10, 满分10), "
-        "非答对题数; learning_style/practical_level/preferred_pace/time_per_week 为 "
-        "未测评字段的默认占位值(实操/风格问卷待后续采集), 不作事实审核; "
+        "非答对题数; preferred_pace/time_per_week 为默认值不作事实审核。\n"
+        "learning_style/practical_level 按来源标记区分 (W5 三维测评): "
+        "style_source=quiz / practical_source=code_test 为实测值, 须纳入事实审核 "
+        "(如 practical_level 与 tests_passed/tests_total 是否相称); "
+        "style_source=default / practical_source=unassessed 为占位值, 不作事实审核。\n"
         "mastery 分段: ≥0.8 已掌握(known), <0.8 未达掌握含0.5学习中(weak)。"
     ))
     resp = model.invoke([system, user])

@@ -804,6 +804,11 @@ export const useChatStore = defineStore('chat', () => {
         // code_test (LLM 生成 + pytest 执行) 可达 60s+, 放宽超时
         const r = await _delegate('/api/project/test', body, 180000)
         if (!r.ok) return { error: r.error }
+        // W5: 记录测试摘要 → 学情 submit 时作 practical_level 证据 (practical_evidence)
+        try {
+          const sm = r.data?.report?.summary
+          if (sm) useProjectGraphStore().setLastTestReport({ passed: sm.passed, total: sm.total })
+        } catch { /* store 未就绪不影响 */ }
         return { tool: 'code_test', report: r.data, sourcePath: src.sourcePath }
       }
 

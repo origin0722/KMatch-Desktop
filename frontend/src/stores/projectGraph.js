@@ -103,6 +103,15 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     stale.value = false
   }
 
+  // ---- W5 三维测评: 最近一次代码测试摘要 (practical_level 证据源) ----
+  // AI 助手 code_test 成功后写入; 学情 submit 时读取上送 practical_evidence
+  const lastTestReport = ref(null) // { passed, total, at }
+
+  function setLastTestReport({ passed, total }) {
+    if (!Number.isFinite(passed) || !Number.isFinite(total) || total <= 0) return
+    lastTestReport.value = { passed, total, at: Date.now() }
+  }
+
   // ---- P2: 项目自动解析 ----
   // 性能(D): 大项目解析(读文件+Neo4j+大 JSON 回填)可能秒级 — 先让"解析中"状态渲染出来
   // (setTimeout 让出主线程), 并带 token 丢弃过期调用, 避免旧结果覆盖新项目/UI 冻结。
@@ -239,8 +248,8 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   return {
     graph, stale, parsing, parseError, revealTarget, activeLine, activeEntityId,
-    analyzing, analysis,
-    setGraph, clear, clearStale, markStale,
+    analyzing, analysis, lastTestReport,
+    setGraph, clear, clearStale, markStale, setLastTestReport,
     parseCurrentProject, restorePersisted, analyze, openFromHistory,
     requestReveal, setActiveLine, consumeReveal,
   }

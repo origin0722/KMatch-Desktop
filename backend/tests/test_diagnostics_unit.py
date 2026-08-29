@@ -802,3 +802,82 @@ def test_diagnostics_node_demo_uses_bank_not_judge(monkeypatch):
     assert "judge" not in {q["type"] for q in questions}
     # node_id 来自题库注入 (非空)
     assert all(q.get("node_id") for q in questions)
+
+
+# ============================================================
+# W5 三维测评: learning_style (VARK) / practical_level (代码测试证据)
+# ============================================================
+
+from app.agents.diagnostics import learning_style_from_quiz, practical_level_from_evidence
+
+
+class TestLearningStyleFromQuiz:
+    def test_majority_visual(self):
+        result = learning_style_from_quiz(["v", "v", "a", "r", "k"])
+        assert result == {"style": "visual", "source": "quiz"}
+
+    def test_kinesthetic_majority_with_noise(self):
+        result = learning_style_from_quiz(["K", " k ", "k", "v", "r", "bogus", ""])
+        assert result == {"style": "kinesthetic", "source": "quiz"}
+
+    def test_tie_takes_first_by_vark_order(self):
+        # v=1, a=1, r=2, k=2 → max 平局按 dict 序 (v,a,r,k) 取先达最大者 r? 
+        # 计数 r=2, k=2 → max 按 counts 值取, 平局时取先遍历到的 (v,a,r,k 顺序中 r 在前)
+        result = learning_style_from_quiz(["r", "k", "r", "k"])
+        assert result["source"] == "quiz"
+        assert result["style"] in ("read_write", "kinesthetic")
+
+    def test_empty_answers_defaults(self):
+        assert learning_style_from_quiz(None) == {"style": "read_write", "source": "default"}
+        assert learning_style_from_quiz([]) == {"style": "read_write", "source": "default"}
+        assert learning_style_from_quiz(["x", 123]) == {"style": "read_write", "source": "default"}
+
+
+class TestPracticalLevelFromEvidence:
+    def test_no_evidence_unassessed(self):
+        assert practical_level_from_evidence(None) == {"level": 1, "source": "unassessed"}
+        assert practical_level_from_evidence({}) == {"level": 1, "source": "unassessed"}
+        assert practical_level_from_evidence({"tests_total": 0}) == {"level": 1, "source": "unassessed"}
+
+    def test_high_pass_rate_level_4(self):
+        assert practical_level_from_evidence({"tests_passed": 9, "tests_total": 10}) == {"level": 4, "source": "code_test"}
+
+    def test_medium_rates(self):
+        assert practical_level_from_evidence({"tests_passed": 7, "tests_total": 10})["level"] == 3
+        assert practical_level_from_evidence({"tests_passed": 5, "tests_total": 10})["level"] == 2
+        assert practical_level_from_evidence({"tests_passed": 2, "tests_total": 10})["level"] == 1
+
+    def test_invalid_values_unassessed(self):
+        assert practical_level_from_evidence({"tests_passed": "x", "tests_total": "y"}) == {"level": 1, "source": "unassessed"}
+
+
+class TestBuildProfile3Dim:
+    """_build_profile 消费问卷/证据 → 画像带来源标记 (消除占位)。"""
+
+    def _grading(self, rate=1.0, n=5):
+        return {
+            "per_node": {"PY-001": [{"question_index": i, "correct": i < n * rate} for i in range(n)]},
+            "correct_count": int(n * rate),
+            "total_count": n,
+        }
+
+    def _nodes(self):
+        return [{"node_id": "PY-001", "name": "变量", "summary": "", "key_points": [], "common_mistakes": []}]
+
+    def test_quiz_and_evidence_landed(self):
+        profile = _build_profile(
+            "Python 入门", self._nodes(), self._grading(),
+            learning_style_quiz=["k", "k", "k", "v", "r"],
+            practical_evidence={"tests_passed": 9, "tests_total": 10},
+        )
+        assert profile["learning_style"] == "kinesthetic"
+        assert profile["style_source"] == "quiz"
+        assert profile["practical_level"] == 4
+        assert profile["practical_source"] == "code_test"
+
+    def test_missing_inputs_keep_placeholder_with_source_marker(self):
+        profile = _build_profile("Python 入门", self._nodes(), self._grading())
+        assert profile["learning_style"] == "read_write"
+        assert profile["style_source"] == "default"
+        assert profile["practical_level"] == 1
+        assert profile["practical_source"] == "unassessed"

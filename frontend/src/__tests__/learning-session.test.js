@@ -17,6 +17,7 @@ const { mockAssessment } = vi.hoisted(() => {
     mockAssessment: reactive({
       hasResults: false, loading: false, phase: 'idle', orchestrationLog: [],
       profile: null, knowledgeGraph: null, feedbackStrategy: null,
+      styleQuiz: [], // W5 三维测评: VARK 问卷 (StageGoal 采集)
     }),
   }
 })

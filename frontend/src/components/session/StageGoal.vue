@@ -22,6 +22,30 @@
           class="direction-input"
         />
       </div>
+      <!-- W5 三维测评: VARK 学习风格快问卷 (可折叠可跳过 — 未答时画像带 style_source=default 占位) -->
+      <div class="style-quiz">
+        <button class="quiz-toggle" type="button" @click="quizOpen = !quizOpen">
+          {{ quizOpen ? '▾' : '▸' }} 学习风格快问卷 (可选 · 5 题 · 让资源更贴合你的学习方式)
+          <span v-if="quizAnswered" class="quiz-done">已答 {{ quizAnswered }}/5</span>
+        </button>
+        <div v-if="quizOpen" class="quiz-body">
+          <div v-for="(q, qi) in QUIZ" :key="qi" class="quiz-q">
+            <div class="quiz-q-text">{{ qi + 1 }}. {{ q.text }}</div>
+            <div class="quiz-opts">
+              <button
+                v-for="o in q.options"
+                :key="o.key"
+                type="button"
+                class="quiz-opt"
+                :class="{ active: store.styleQuiz[qi] === o.key }"
+                :title="o.label"
+                @click="pick(qi, o.key)"
+              >{{ o.label }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- #30 反馈: 学习会话是"无项目技能训练"场景一专属, 不暴露"有项目二次开发"选项 (场景二走项目图谱视图) -->
       <div class="control-row actions">
         <el-button type="primary" size="large" :disabled="!canStart" :loading="store.loading" @click="handleStart">
@@ -47,7 +71,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, onMounted, watch } from 'vue'
+import { reactive, ref, computed, onMounted, watch } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -91,6 +115,42 @@ async function handleStart() {
   // 学习会话固定场景一 (无项目技能训练), scene 默认 no_project
   await store.startAssessment({ targetDirection: form.targetDirection.trim(), scene: 'no_project' })
 }
+
+// ---- W5 三维测评: VARK 学习风格快问卷 ----
+// v=视觉图示 / a=听觉讲解 / r=读写文字 / k=动手实操; 答案存 store.styleQuiz, submit 时上送
+const QUIZ = [
+  { text: '你更愿意用哪种方式了解一个新工具？', options: [
+    { key: 'v', label: '看图示/流程图' }, { key: 'a', label: '听人讲解' },
+    { key: 'r', label: '读文档' }, { key: 'k', label: '直接上手试' },
+  ] },
+  { text: '记概念时, 什么对你最有效？', options: [
+    { key: 'v', label: '画成图' }, { key: 'a', label: '口述复述' },
+    { key: 'r', label: '抄写笔记' }, { key: 'k', label: '做题练熟' },
+  ] },
+  { text: '遇到报错, 你的第一反应是？', options: [
+    { key: 'v', label: '看调用关系图定位' }, { key: 'a', label: '找人讨论' },
+    { key: 'r', label: '搜报错信息/读源码' }, { key: 'k', label: '改代码反复试' },
+  ] },
+  { text: '你偏好的教程节奏是？', options: [
+    { key: 'v', label: '先看全景架构图' }, { key: 'a', label: '先听整体思路' },
+    { key: 'r', label: '先通读章节目录' }, { key: 'k', label: '先跑通示例再说' },
+  ] },
+  { text: '学完一个知识点, 你通常靠什么巩固？', options: [
+    { key: 'v', label: '画知识图谱/脑图' }, { key: 'a', label: '给别人讲一遍' },
+    { key: 'r', label: '整理成笔记' }, { key: 'k', label: '写个小项目练手' },
+  ] },
+]
+const quizOpen = ref(false)
+// 防御: learning-session 等测试环境可能注入精简 store mock (无 styleQuiz 字段)
+const quizAnswered = computed(() => (store.styleQuiz || []).filter(Boolean).length)
+
+function pick(qi, key) {
+  const cur = store.styleQuiz || []
+  const next = [...cur]
+  // 再点一次同选项 = 取消 (允许只答有把握的题)
+  next[qi] = next[qi] === key ? undefined : key
+  store.styleQuiz = next
+}
 </script>
 
 <style scoped>
@@ -127,4 +187,28 @@ async function handleStart() {
   background: color-mix(in srgb, var(--km-danger) 6%, transparent);
 }
 .err-text { flex: 1; min-width: 200px; font-size: 12.5px; color: var(--km-danger); }
+
+/* W5: VARK 快问卷 (可折叠) */
+.style-quiz { margin-top: 12px; border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); }
+.quiz-toggle {
+  width: 100%; display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; background: none; border: none; cursor: pointer;
+  font-size: 12.5px; color: var(--km-gray-600); text-align: left;
+}
+.quiz-toggle:hover { background: rgba(108,124,224,0.05); }
+.quiz-done { margin-left: auto; color: var(--km-success, #34b37e); font-size: 12px; }
+.quiz-body { padding: 4px 12px 12px; display: grid; gap: 10px; }
+.quiz-q-text { font-size: 12.5px; color: var(--km-gray-700); margin-bottom: 6px; }
+.quiz-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.quiz-opt {
+  padding: 4px 10px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--km-border-light); border-radius: 999px;
+  background: none; color: var(--km-gray-600);
+}
+.quiz-opt:hover { border-color: var(--km-primary, #6c7ce0); }
+.quiz-opt.active {
+  border-color: var(--km-primary, #6c7ce0);
+  background: color-mix(in srgb, var(--km-primary, #6c7ce0) 12%, transparent);
+  color: var(--km-primary, #6c7ce0);
+}
 </style>
