@@ -123,7 +123,8 @@
             <div class="more-pop">
               <div class="more-actions">
                 <el-button size="small" :icon="RefreshRight" @click="resetGraph" :disabled="!graphReady">重置</el-button>
-                <el-button size="small" @click="exportGraph" :disabled="!graphReady">导出</el-button>
+                <el-button size="small" @click="exportGraph" :disabled="!graphReady">导出 JSON</el-button>
+                <el-button size="small" data-test="export-excalidraw" @click="exportExcalidraw" :disabled="!graphReady">导出 .excalidraw</el-button>
               </div>
               <div class="more-section">
                 <div class="more-section-title">节点颜色 · 难度</div>
@@ -337,6 +338,7 @@ import { useGraphData } from '@/composables/useGraphData'
 import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { masteryColor, difficultyColor } from '@/utils/format'
 import { cjkAwareWidth } from '@/utils/nodeSize'
+import { graphToExcalidraw, downloadExcalidraw, collectG6Positions } from '@/utils/excalidrawExport'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
 import { ElMessage } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -992,6 +994,31 @@ function exportGraph() {
   a.download = `kmatch-graph-${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// W3: 确定性导出 .excalidraw (借鉴 excalidraw-skill 的设计规范, 转换全程确定性:
+// 坐标取 G6 render 后实际位置, 拖动节点连线跟随; excalidraw.com / VS Code 插件可继续编辑)
+function exportExcalidraw() {
+  if (!graph) return
+  const base = data.g6Nodes.value
+  if (!base.length) return
+  const scale = nodeCountScale(base.length)
+  const cfg = personaCfg()
+  const exNodes = base.map((n) => ({
+    id: n.id,
+    label: n.data?.label || n.id,
+    color: difficultyColor(n.data?.difficulty || 1),
+  }))
+  const exEdges = data.g6Edges.value.map((e) => ({ source: e.source, target: e.target }))
+  const sizeOf = (id) => {
+    const n = base.find((x) => x.id === id)
+    return { width: nodeWidthFor(n?.data || {}, cfg, scale), height: cfg.h }
+  }
+  const positions = collectG6Positions(graph, base.map((n) => n.id), sizeOf)
+  const scene = graphToExcalidraw(exNodes, exEdges, positions)
+  const name = store.profile?.name || '学习图谱'
+  downloadExcalidraw(scene, `KMatch-${name}-${Date.now()}.excalidraw`)
+  ElMessage.success('已导出 .excalidraw — excalidraw.com 或 VS Code Excalidraw 插件可打开编辑')
 }
 
 // ---------------------------------------------------------------

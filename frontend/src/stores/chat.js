@@ -18,7 +18,8 @@ import { defineStore } from 'pinia'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useLearningResourcesStore } from '@/stores/learningResources'
-import { getNode, semanticSearch, assemblePath } from '@/api/graph'
+import { getNode, semanticSearch, assemblePath, getPrerequisites } from '@/api/graph'
+import { graphToExcalidraw, downloadExcalidraw } from '@/utils/excalidrawExport'
 import { readProjectPyFiles, normalizeGraphResponse, getProjectGraph } from '@/api/project'
 import { streamChat } from '@/ide/chat/useChatStream'
 import { useAiSettingsStore } from '@/stores/aiSettings'
@@ -326,6 +327,9 @@ export function summarizeToolResults(toolResults) {
         .join('\n')
       const hours = r.estimated_total_hours != null ? `, 预计 ${r.estimated_total_hours}h` : ''
       return `个性化学习路径: 共 ${r.count || 0} 个节点${hours}\n${path || '(无)'}`
+    }
+    if (r.tool === 'export_graph_diagram') {
+      return `图谱已导出为 Excalidraw 文件: ${r.path} (节点 ${r.nodes ?? '?'} 个, 连线 ${r.edges ?? 0} 条)。告诉用户可在 excalidraw.com 或 VS Code Excalidraw 插件中打开继续编辑。`
     }
     if (r.tool === 'get_knowledge_node') {
       return `知识点 ${r.node_id} ${r.name || ''} (难度${r.difficulty ?? '?'}${r.category ? ' · ' + r.category : ''})\n摘要: ${r.summary || '(无)'}`
@@ -964,6 +968,71 @@ export const useChatStore = defineStore('chat', () => {
           }
           return { error: e.response?.data?.detail || e.message || '项目图谱查询失败' }
         }
+      }
+
+      // ---- W3: 图谱 → .excalidraw 确定性导出 (坐标由 excalidrawExport 生成, 不走 LLM) ----
+      if (call.tool === 'export_graph_diagram') {
+        const want = call.graph // 'knowledge' | 'project' | undefined
+        const pgStore = useProjectGraphStore()
+        let nodes = null
+        let edges = null
+        let label = ''
+
+        if (want !== 'knowledge' && pgStore.graph?.entities?.length) {
+          // 项目图谱: 实体 + 调用关系都在 store, 零额外请求
+          nodes = pgStore.graph.entities.map((e) => ({
+            id: String(e.id), label: e.qualified_name || e.name || String(e.id),
+          }))
+          edges = (pgStore.graph.relations || []).map((r) => ({ source: String(r.source), target: String(r.target) }))
+          label = `项目图谱-${pgStore.graph.projectId}`
+        } else {
+          // 知识图谱: 学习路径节点 + 逐节点前置依赖 (≤20 并行请求, 同 KnowledgeGraph 页做法)
+          const { useAssessmentStore } = await import('@/stores/assessment')
+          const aStore2 = useAssessmentStore()
+          const path = aStore2.knowledgeGraph?.learning_path || []
+          if (!path.length) {
+            return { tool: 'export_graph_diagram', hint: '当前没有可导出的图谱 (知识图谱需先完成测评, 项目图谱需先打开 Python 项目)。请引导用户先准备图谱数据。' }
+          }
+          nodes = path.map((n) => ({ id: n.node_id, label: n.name || n.node_id }))
+          edges = []
+          try {
+            const ids = path.map((n) => n.node_id).slice(0, 20)
+            const prereqLists = await Promise.all(ids.map(async (nid) => {
+              try { return { nid, pres: await getPrerequisites(nid) } } catch { return { nid, pres: [] } }
+            }))
+            const inPath = new Set(ids)
+            const seen = new Set()
+            for (const { nid, pres } of prereqLists) {
+              for (const p of pres || []) {
+                const pid2 = p?.node_id || p
+                const key = `${pid2}->${nid}`
+                if (inPath.has(pid2) && !seen.has(key)) {
+                  seen.add(key)
+                  edges.push({ source: pid2, target: nid })
+                }
+              }
+            }
+          } catch { /* 前置拉取失败 → 仅导出节点无线边, 不阻断 */ }
+          label = `知识图谱-${aStore2.profile?.name || '学习路径'}`
+        }
+
+        const scene = graphToExcalidraw(nodes, edges)
+        const fileName = `KMatch-${label}-${Date.now()}.excalidraw`
+        const json = JSON.stringify(scene)
+
+        // 桌面端写入工作区根目录 (非代码文件, 不走审批门); 浏览器 dev 模式降级为下载
+        let savedPath = fileName
+        if (hasIpc()) {
+          await window.api.fs.writeFile(fileName, json)
+          try {
+            const ws = useWorkspaceStore()
+            await ws.refreshTree?.()
+          } catch { /* 刷新失败不影响导出 */ }
+        } else {
+          downloadExcalidraw(scene, fileName)
+          savedPath = `(浏览器下载) ${fileName}`
+        }
+        return { tool: 'export_graph_diagram', path: savedPath, nodes: nodes.length, edges: edges.length }
       }
 
       return { error: `未知工具: ${call.tool}` }

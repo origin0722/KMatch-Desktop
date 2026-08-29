@@ -114,6 +114,13 @@ export const TOOLS = Object.freeze([
       project_id: 'string (项目编号, 缺省用最近一次解析的项目)',
     },
   },
+  {
+    name: 'export_graph_diagram',
+    description: '把当前知识图谱或项目代码图谱导出为 .excalidraw 手绘风图表文件 (写入工作区根目录, excalidraw.com / VS Code Excalidraw 插件可打开编辑)。用户要"导出图谱/画架构图/生成图表文件"时调它, 不要自己手写坐标。',
+    parameters: {
+      graph: 'string (knowledge 知识图谱 | project 项目代码图谱, 缺省自动选可用的)',
+    },
+  },
 ])
 
 /** 工具名清单（派生自 TOOLS，单一源）。 */
@@ -134,6 +141,7 @@ export const DEFAULT_TOOL_PERMISSIONS = Object.freeze({
   search_knowledge: TOOL_PERMISSION.ALLOW,
   get_learning_path: TOOL_PERMISSION.ALLOW,
   query_project_graph: TOOL_PERMISSION.ALLOW,
+  export_graph_diagram: TOOL_PERMISSION.ALLOW,
 })
 
 const TOOL_CALL_EXAMPLES = {
@@ -150,6 +158,7 @@ const TOOL_CALL_EXAMPLES = {
   search_knowledge: '{"tool": "search_knowledge", "query": "列表推导式怎么用", "top_k": 5}',
   get_learning_path: '{"tool": "get_learning_path", "level": 2}',
   query_project_graph: '{"tool": "query_project_graph"}',
+  export_graph_diagram: '{"tool": "export_graph_diagram", "graph": "project"}',
 }
 
 export function toolCallExample(tool) {
@@ -223,6 +232,9 @@ export function buildToolBlock(allowedTools) {
   }
   if (allow.has('query_project_graph')) {
     notes.push('- query_project_graph: 查已落库的项目代码图谱 (函数/类/方法实体与调用关系)。用户问项目架构/某函数被谁调用/整体结构时【优先调它查证】, 不要凭记忆回答项目细节。需先打开项目自动解析。')
+  }
+  if (allow.has('export_graph_diagram')) {
+    notes.push('- export_graph_diagram: 把知识图谱或项目图谱导出为 .excalidraw 文件 (写入工作区根目录)。用户要"导出图谱/画架构图/出图表文件"时调它; 布局坐标由系统确定性生成, 你不要自己写坐标。导出成功后告诉用户文件名与打开方式。')
   }
   if (allow.has('generate_project_graph') || allow.has('code_review') || allow.has('code_test')) {
     notes.push('- 审查/测试/解析工作区文件时优先传 path (而非贴 code), 便于编辑器符号联动。')

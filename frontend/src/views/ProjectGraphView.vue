@@ -126,6 +126,11 @@
             <el-button size="small" title="缩小" @click="zoomBy(0.8)">－</el-button>
           </div>
 
+          <!-- W3: 确定性导出 .excalidraw (手绘风格架构图, excalidraw.com 可继续编辑) -->
+          <el-button :disabled="!filteredEntities.length" data-test="export-excalidraw" @click="exportExcalidraw">
+            导出 .excalidraw
+          </el-button>
+
           <!-- 更多 popover: 图例 + 深度分析 收纳 -->
           <el-popover placement="bottom" :width="220" trigger="click">
             <template #reference>
@@ -395,6 +400,7 @@ import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { useAssessmentStore } from '@/stores/assessment'
 import { buildEntityQuestion } from '@/utils/askAi'
 import { cjkAwareWidth } from '@/utils/nodeSize'
+import { graphToExcalidraw, downloadExcalidraw, collectG6Positions } from '@/utils/excalidrawExport'
 import { detectTechStack } from '@/utils/techStack'
 import { buildTourStops, TOUR_ROLE_LABELS } from '@/utils/projectTour'
 import http from '@/api'
@@ -738,6 +744,26 @@ function zoomBy(factor) {
 function fitGraph() {
   if (!g6) return
   try { g6.fitView({ when: 'always', direction: 'both' }) } catch { /* ignore */ }
+}
+
+// W3: 确定性导出 .excalidraw — 坐标取 G6 render 后实际位置, 节点按 kind 着色
+function exportExcalidraw() {
+  const { nodes, edges } = buildData()
+  if (!nodes.length) return
+  const exNodes = nodes.map((n) => ({
+    id: n.id,
+    label: n.data?.label || n.id,
+    color: KIND_COLORS[n.data?.kind] || KIND_COLORS.default,
+  }))
+  const sizeOf = (id) => {
+    const n = nodes.find((x) => x.id === id)
+    return { width: n?.data?.w || 190, height: 48 }
+  }
+  const positions = collectG6Positions(g6, nodes.map((n) => n.id), sizeOf)
+  const scene = graphToExcalidraw(exNodes, edges.map((e) => ({ source: e.source, target: e.target })), positions)
+  const name = pg.graph?.projectId || '项目图谱'
+  downloadExcalidraw(scene, `KMatch-项目图谱-${name}-${Date.now()}.excalidraw`)
+  ElMessage.success('已导出 .excalidraw — excalidraw.com 或 VS Code Excalidraw 插件可打开编辑')
 }
 
 function rebuildGraph() {
