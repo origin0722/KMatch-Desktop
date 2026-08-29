@@ -66,12 +66,16 @@ class AgentState(TypedDict, total=False):
     # 避免 reviewer 回退画像模式 + 画像通过 → graph_controller 无限循环。
     content_phase_entered: bool
 
-    # --- 有项目场景 (W6 batch2 接入 with_project workflow) ---
-    # 本批 API 解析不经 workflow，这两个字段为契约预留：
+    # --- 有项目场景 (W6 场景二编排: project_workflow 首次真实消费) ---
     # project_graph 供 reviewer 图谱校验 / code_tester 反向标注风险节点消费，
     # 避免下游 Agent 重新解析代码。
     project_id: str
     project_graph: dict        # ParsedProject 序列化 {project_id, entities[], relations[], stats}
+    # W6 编排字段:
+    project_files: dict        # {module_name: source_code} — 待审查/测试的项目源码
+    reviews: list              # 每文件 code_reviewer.review_code 结果列表
+    test_report: dict          # code_tester.run_tests 06 报告
+    repair_guidance: dict      # 综合裁决产出 {guidance[], source, generated_at}
 
     # --- 循环控制 ---
     retry_count: int

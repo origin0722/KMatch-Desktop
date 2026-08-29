@@ -29,6 +29,7 @@ from app.code_parser import (
 )
 from app.agents.code_reviewer import review_code
 from app.agents.code_tester import run_tests
+from app.agents.log_events import to_log_event
 from app.agents.project_analyzer import ProjectGraphNotFoundError, analyze_project
 from app.utils.logging import get_logger
 
@@ -284,6 +285,114 @@ def analyze_project_api(req: AnalyzeRequest, request: Request):
         logger.error("项目深度分析失败 project=%s", req.project_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"项目深度分析失败: {e}")
     return result
+
+
+# ============================================================
+# POST /pipeline — 场景二多 Agent 流水线 (W6: review→test 打回循环→repair)
+# ============================================================
+
+class PipelineRequest(BaseModel):
+    """场景二流水线请求 (源码传法对齐 /test 的 text 模式)。"""
+
+    source_type: Literal["text"] = "text"
+    code: Optional[str] = None              # source_type=text 必填
+    filename: str = "main.py"
+    target_direction: str                   # 审查/测试的知识检索 + LLM 上下文
+    project_id: Optional[str] = None        # 已入库项目 (测试失败回写风险节点)
+    max_retries: int = Field(2, ge=1, le=3, description="测试打回再生最大轮数")
+    llm_overrides: dict = None  # Spec B: Agent 独立 key 覆写
+
+
+class PipelineResponse(BaseModel):
+    """场景二流水线响应: 审查 + 测试 + 修复指引全量产出。"""
+
+    session_id: str
+    target_direction: str
+    review_results: dict = Field(default_factory=dict, description="合并审查结论 (多文件取最差)")
+    reviews: list = Field(default_factory=list, description="逐文件审查明细")
+    test_report: dict = Field(default_factory=dict, description="06 测试报告 (通过率/覆盖率/失败用例)")
+    repair_guidance: dict = Field(default_factory=dict, description="定向修复指引 {guidance[], source}")
+    orchestration_log: list = Field(default_factory=list)
+    orchestration_events: list = Field(default_factory=list)
+
+
+@router.post("/pipeline", summary="场景二流水线: 代码审查→代码测试(打回再生)→修复指引 (LangGraph 编排)")
+def project_pipeline_api(req: PipelineRequest, request: Request):
+    """W6 场景二后端编排 (build_project_workflow):
+
+    project_review (逐文件审查, cap 3) → 语法级 critical 直达 repair；
+    否则 test (生成测试+沙箱执行) — 测试代码自身未过 AST 预检 (infra 失败) 且
+    retry<max → 携失败原因打回再生 (循环真实有效, 不依赖用户改代码)；
+    断言失败 (真实项目问题) → repair 产出定向修复指引。
+    落 run_store (scene2-project 流程快照), 后台任务页可复盘。
+    """
+    if req.source_type == "text":
+        if not req.code or not req.code.strip():
+            raise HTTPException(status_code=422, detail="source_type=text 时 code 必填")
+        sources = load_text_source(req.code, req.filename)
+    else:  # pragma: no cover - Literal 已收敛
+        raise HTTPException(status_code=422, detail="不支持的 source_type")
+    if not req.target_direction or not req.target_direction.strip():
+        raise HTTPException(status_code=422, detail="target_direction 必填")
+
+    kg = _get_kg(request)
+    from app.agents.project_workflow import build_project_workflow
+    from app.agents.workflow_def import get_workflow
+
+    session_id = f"proj-{uuid.uuid4().hex[:8]}"
+    initial = {
+        "session_id": session_id,
+        "scene": "with_project",
+        "target_direction": req.target_direction.strip(),
+        "project_id": req.project_id or "",
+        "project_files": sources,
+        "reviews": [],
+        "review_results": {},
+        "test_report": {},
+        "repair_guidance": {},
+        "retry_count": 0,
+        "max_retries": req.max_retries,
+        "orchestration_log": [],
+        "llm_overrides": req.llm_overrides,
+    }
+    workflow = build_project_workflow(kg)
+    try:
+        result = workflow.invoke(initial, {"configurable": {"thread_id": session_id}})
+    except Exception as e:
+        logger.error("场景二流水线执行失败", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"流水线执行失败: {e}")
+
+    log = result.get("orchestration_log", [])
+    # 落 run_store (尽力而为): scene2-project 流程快照, 后台任务页复盘
+    try:
+        from app.api.diagnostics import _persist_run
+        _persist_run(
+            session_id=session_id,
+            mode="pipeline",
+            request={"target_direction": req.target_direction, "scene": "with_project",
+                     "workflow_id": "scene2-project", "filename": req.filename},
+            orchestration_log=log,
+            summary={
+                "review_passed": bool((result.get("review_results") or {}).get("passed")),
+                "tests_passed": (result.get("test_report", {}).get("summary") or {}).get("passed", 0),
+                "tests_total": (result.get("test_report", {}).get("summary") or {}).get("total", 0),
+                "guidance_count": len((result.get("repair_guidance") or {}).get("guidance", [])),
+            },
+            workflow=get_workflow("scene2-project"),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("pipeline run 落盘失败 session=%s err=%s", session_id, e)
+
+    return PipelineResponse(
+        session_id=session_id,
+        target_direction=req.target_direction,
+        review_results=result.get("review_results", {}),
+        reviews=result.get("reviews", []),
+        test_report=result.get("test_report", {}),
+        repair_guidance=result.get("repair_guidance", {}),
+        orchestration_log=log,
+        orchestration_events=[to_log_event(l) for l in log],
+    )
 
 
 # ============================================================

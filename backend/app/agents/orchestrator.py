@@ -16,7 +16,7 @@
 
 reviewer 双模式 (BUG-016): state 无 generated_content.resources 审画像，有则审生成内容。
 _decide_next 据 state 是否进入内容阶段决定打回目标 (diagnostics / content_generator)。
-code_tester 第6周接入。
+code_tester/code_reviewer 已接入场景二编排: build_project_workflow (W6, project_workflow.py)。
 """
 
 from datetime import datetime

@@ -122,16 +122,24 @@ def _retrieve_knowledge(kg: KnowledgeGraph, target_direction: str,
 
 def llm_generate_tests(entities: list[CodeEntity], knowledge_nodes: list[dict],
                        target_direction: str, module_name: str,
-                       llm_overrides: dict = None) -> tuple[str, list[dict]]:
+                       llm_overrides: dict = None,
+                       correction_hint: str = "") -> tuple[str, list[dict]]:
     """LLM 据图谱函数签名 + common_mistakes 生成 pytest 代码 + 元数据。
 
     Returns:
         (test_code, test_metadata[]) — metadata: {test_name, related_node, related_keypoint, scenario}
 
     Spec B: llm_overrides 非空时用独立 key。
+    W6: correction_hint 非空时注入上轮失败修正要求 (场景二编排打回循环的定向再生,
+    对齐 content_generator 的 retry_hint 模式 — 盲重跑变携带诊断再生)。
     """
     with use_llm_overrides(llm_overrides):
         model = get_default_chat_model()
+        correction_block = (
+            f"\n\n【上轮失败修正要求——定向再生】\n{correction_hint}\n"
+            "重点修正上述问题 (尤其避免再次触发同类失败), 其余结构保持原样。"
+            if correction_hint else ""
+        )
         system = SystemMessage(content=(
             "你是 KMatch 代码测试 Agent。基于知识图谱中的函数签名（白盒）与领域 common_mistakes，"
             f"为 Python 模块 {module_name} 生成 Pytest 单元测试。"
@@ -140,6 +148,7 @@ def llm_generate_tests(entities: list[CodeEntity], knowledge_nodes: list[dict],
             "测试命名严格遵循 test_<function_name>_<scenario>。"
             "测试须 self-contained，从模块 import 被测对象，禁止使用 network/subprocess/os.system/eval/exec/pickle。"
             "先输出完整可执行的 ```python 测试代码块，再输出 ```json 元数据块。"
+            + correction_block
         ))
         user = HumanMessage(content=(
             f"模块名: {module_name}\n"
@@ -182,7 +191,8 @@ def _extract_test_code_and_metadata(text: str) -> tuple[str, list[dict]]:
 
 def generate_test_cases(kg: KnowledgeGraph, entities: list[CodeEntity],
                         target_direction: str, knowledge_node_ids: Optional[list[str]],
-                        module_name: str, llm_overrides: dict = None) -> dict:
+                        module_name: str, llm_overrides: dict = None,
+                        correction_hint: str = "") -> dict:
     """编排: 知识检索 + LLM 生成 + 降级。
 
     Returns:
@@ -196,7 +206,7 @@ def generate_test_cases(kg: KnowledgeGraph, entities: list[CodeEntity],
     try:
         test_code, test_metadata = llm_generate_tests(
             entities, knowledge_nodes, target_direction, module_name,
-            llm_overrides=llm_overrides,
+            llm_overrides=llm_overrides, correction_hint=correction_hint,
         )
     except Exception:
         logger.warning("LLM 测试生成失败", exc_info=True)
@@ -452,12 +462,14 @@ def run_tests(kg: KnowledgeGraph, sources: dict[str, str], target_direction: str
               module_name: str = "main",
               example_name: Optional[str] = None,
               executor: Optional[SandboxExecutor] = None,
-              llm_overrides: dict = None) -> dict:
+              llm_overrides: dict = None,
+              correction_hint: str = "") -> dict:
     """顶层编排: 解析→AST预检源码→(生成/基线)→AST预检测试→沙箱执行→报告→反向标注。
 
     Args:
         sources: {module_name: source} (baseline 模式可由 example_name 加载覆盖)
         example_name: baseline 模式必需，从示例项目加载源码 + test_main.py
+        correction_hint: W6 场景二编排打回再生时注入的上轮失败修正要求
     Returns:
         06 prompt 测试报告 dict。
     """
@@ -506,7 +518,8 @@ def run_tests(kg: KnowledgeGraph, sources: dict[str, str], target_direction: str
     knowledge_nodes: list[dict] = []
     if mode != "baseline":
         gen = generate_test_cases(kg, entities, target_direction, knowledge_node_ids,
-                                  module_name, llm_overrides=llm_overrides)
+                                  module_name, llm_overrides=llm_overrides,
+                                  correction_hint=correction_hint)
         knowledge_nodes = gen["knowledge_nodes"]
         if gen["degraded"]:
             return build_test_report(

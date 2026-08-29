@@ -8,6 +8,7 @@
  * readProjectPyFiles: 读工作区所有 .py 文件 (IPC fs), 供 parse 与 chat 工具复用。
  */
 import http from './index'
+import { withOverrides } from '@/stores/agentLlm'
 
 const hasIpc = typeof window !== 'undefined' && !!window.api?.fs
 
@@ -64,6 +65,28 @@ export function analyzeProject(projectId, tavilyKey) {
     project_id: projectId,
     tavily_key: tavilyKey || undefined,
   }, { timeout: 180000 }) // 3 min: LLM 分析 + 多技术栈联网搜索
+}
+
+/**
+ * W6 场景二多 Agent 流水线: 代码审查 → 代码测试(打回再生) → 修复指引
+ * (LangGraph 编排, review 逐文件 LLM + 测试沙箱执行, 耗时可达 1-3 分钟)
+ * @param {Object} params
+ * @param {string} params.code 当前文件源码 (text 模式)
+ * @param {string} [params.filename]
+ * @param {string} params.targetDirection 开发目标方向
+ * @param {string} [params.projectId] 已入库项目 (失败回写风险节点)
+ * @param {number} [params.maxRetries=2]
+ * @returns {Promise<Object>} {session_id, review_results, reviews, test_report, repair_guidance, orchestration_log}
+ */
+export function runProjectPipeline({ code, filename, targetDirection, projectId, maxRetries = 2 }) {
+  return http.post('/api/project/pipeline', withOverrides({
+    source_type: 'text',
+    code,
+    filename: filename || 'main.py',
+    target_direction: targetDirection,
+    project_id: projectId || undefined,
+    max_retries: maxRetries,
+  }), { timeout: 300000 }) // 5 min: 审查(逐文件 LLM) + 测试(生成+沙箱) + 打回循环
 }
 
 /**

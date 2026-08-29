@@ -118,6 +118,16 @@
             @click="startTour"
           >项目导读</el-button>
 
+          <!-- W6: 场景二多 Agent 流水线 (审查→测试打回再生→修复指引, LangGraph 编排) -->
+          <el-button
+            type="success"
+            plain
+            data-test="run-pipeline"
+            :loading="pipelineRunning"
+            :disabled="!pg.graph?.entities?.length"
+            @click="runPipeline"
+          >协同流水线</el-button>
+
           <!-- W2 缩放工具: 步进 + 适配画布 (此前项目图谱无任何缩放入口) -->
           <el-divider direction="vertical" />
           <div class="zoom-group">
@@ -371,6 +381,68 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- W6: 协同流水线结果 (审查→测试→修复指引) -->
+    <el-dialog
+      v-model="pipelineVisible"
+      title="协同流水线 · 代码审查 → 代码测试 → 修复指引"
+      width="640px"
+      class="pipeline-dialog"
+    >
+      <template v-if="pipelineResult">
+        <div class="pl-section">
+          <div class="pl-title">① 代码审查</div>
+          <div class="pl-row">
+            <el-tag :type="pipelineResult.review_results?.passed ? 'success' : 'danger'">
+              {{ pipelineResult.review_results?.passed ? '通过' : '未通过' }}
+            </el-tag>
+            <span class="pl-score">综合 {{ Math.round((pipelineResult.review_results?.overall_score || 0) * 100) }}%</span>
+            <span class="pl-files">审查 {{ (pipelineResult.reviews || []).length }} 个文件</span>
+          </div>
+          <div
+            v-if="!pipelineResult.review_results?.passed && pipelineResult.review_results?.retry_hint"
+            class="pl-hint"
+          >{{ pipelineResult.review_results.retry_hint }}</div>
+        </div>
+        <div class="pl-section">
+          <div class="pl-title">② 代码测试</div>
+          <template v-if="pipelineResult.test_report?.rejected">
+            <div class="pl-row">
+              <el-tag type="danger">未能执行</el-tag>
+              <span class="pl-hint">{{ pipelineResult.test_report.reject_reason }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <div class="pl-row">
+              <el-tag type="success">
+                {{ pipelineResult.test_report?.summary?.passed || 0 }}/{{ pipelineResult.test_report?.summary?.total || 0 }} 通过
+              </el-tag>
+              <span class="pl-score">行覆盖 {{ Math.round((pipelineResult.test_report?.coverage?.line_coverage || 0) * 100) }}%</span>
+            </div>
+            <ul v-if="(pipelineResult.test_report?.failed_tests || []).length" class="pl-fails">
+              <li v-for="f in pipelineResult.test_report.failed_tests" :key="f.test_name">
+                {{ f.test_name }} — {{ f.suggestion || f.error_type || '失败' }}
+              </li>
+            </ul>
+          </template>
+        </div>
+        <div v-if="pipelineResult.repair_guidance?.guidance?.length" class="pl-section">
+          <div class="pl-title">
+            ③ 修复指引
+            <el-tag size="small" :type="pipelineResult.repair_guidance.source === 'llm' ? 'primary' : 'info'">
+              {{ pipelineResult.repair_guidance.source === 'llm' ? 'AI 生成' : '系统汇总' }}
+            </el-tag>
+          </div>
+          <div v-for="(g, i) in pipelineResult.repair_guidance.guidance" :key="i" class="pl-guide">
+            <b>{{ i + 1 }}. {{ g.title }}</b>
+            <div class="pl-guide-detail">{{ g.detail }}</div>
+          </div>
+        </div>
+        <div class="pl-footer">
+          <span class="pl-session">run: {{ pipelineResult.session_id }} (后台任务页可复盘)</span>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -390,7 +462,7 @@
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { Search, RefreshRight, ArrowDown, ArrowUp, Loading } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Graph } from '@antv/g6'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -401,6 +473,7 @@ import { useAssessmentStore } from '@/stores/assessment'
 import { buildEntityQuestion } from '@/utils/askAi'
 import { cjkAwareWidth } from '@/utils/nodeSize'
 import { graphToExcalidraw, downloadExcalidraw, collectG6Positions } from '@/utils/excalidrawExport'
+import { runProjectPipeline } from '@/api/project'
 import { detectTechStack } from '@/utils/techStack'
 import { buildTourStops, TOUR_ROLE_LABELS } from '@/utils/projectTour'
 import http from '@/api'
@@ -903,6 +976,60 @@ function handleReanalyze() {
   pg.analyze()
 }
 
+// ---- W6: 协同流水线 (审查→测试打回再生→修复指引) ----
+const pipelineRunning = ref(false)
+const pipelineVisible = ref(false)
+const pipelineResult = ref(null)
+
+async function runPipeline() {
+  const wsStore = useWorkspaceStore()
+  const path = wsStore.activeFile
+  if (!path || !path.endsWith('.py')) {
+    ElMessage.warning('请先在编辑器打开要审查的 .py 文件')
+    return
+  }
+  let code = ''
+  try {
+    code = await window.api.fs.readFile(path)
+  } catch {
+    ElMessage.error('读取当前文件失败')
+    return
+  }
+  // 开发目标方向 (审查/测试的知识检索上下文): 默认取学情画像方向
+  let direction = store.profile?.target_direction || ''
+  try {
+    const { value } = await ElMessageBox.prompt(
+      '输入开发目标方向 (对照领域规范审查代码并生成测试)',
+      '协同流水线',
+      {
+        inputValue: direction,
+        inputPattern: /\S/,
+        inputErrorMessage: '方向必填',
+        confirmButtonText: '开始 (约 1-2 分钟)',
+        cancelButtonText: '取消',
+      },
+    )
+    direction = value.trim()
+  } catch { return } // 用户取消
+
+  pipelineRunning.value = true
+  pipelineResult.value = null
+  try {
+    const data = await runProjectPipeline({
+      code,
+      filename: path.split(/[\\/]/).pop(),
+      targetDirection: direction,
+      projectId: pg.graph?.projectId,
+    })
+    pipelineResult.value = data
+    pipelineVisible.value = true
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || e.message || '流水线执行失败')
+  } finally {
+    pipelineRunning.value = false
+  }
+}
+
 // 跳转学习视图查看联网资源
 function goToWebResources() {
   analysisDialogVisible.value = false
@@ -1171,4 +1298,17 @@ watch(() => pg.graph, () => {
 .analysis-dialog .analysis-note { font-size: 13px; color: var(--km-gray-500); margin: 6px 0 0; }
 .analysis-dialog .analysis-recs { margin: 0; padding-left: 18px; font-size: 13px; color: var(--km-gray-600); line-height: 2; }
 .analysis-dialog .analysis-footer { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* W6: 协同流水线结果弹窗 */
+.pl-section { margin-bottom: 16px; }
+.pl-title { font-size: 13px; font-weight: 600; color: var(--km-gray-800); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.pl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pl-score { font-size: 12.5px; color: var(--km-gray-600); }
+.pl-files { font-size: 12.5px; color: var(--km-gray-500); }
+.pl-hint { margin-top: 6px; font-size: 12.5px; color: var(--km-danger); line-height: 1.6; }
+.pl-fails { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--km-gray-600); line-height: 1.9; }
+.pl-guide { margin-bottom: 8px; font-size: 13px; color: var(--km-gray-700); line-height: 1.6; }
+.pl-guide-detail { font-size: 12.5px; color: var(--km-gray-500); margin-top: 2px; }
+.pl-footer { text-align: right; }
+.pl-session { font-size: 11.5px; color: var(--km-gray-500); font-family: var(--km-font-mono); }
 </style>
