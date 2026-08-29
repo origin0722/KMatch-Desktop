@@ -80,7 +80,7 @@ const detailLoading = ref(false)
 
 const shownEvents = computed(() => (detail.value?.orchestration_events || []).slice(0, 40))
 
-const modeLabel = (m) => ({ demo: '演示测评', interactive: '自定义测评' }[m] || m || 'run')
+const modeLabel = (m) => ({ demo: '演示测评', interactive: '自定义测评', pipeline: '场景二流水线' }[m] || m || 'run')
 const targetOf = (r) => r?.request?.target_direction || r?.summary?.target_direction || r?.request?.direction || '—'
 /** issue-66: 场景标识 — 初次对话(场景一·无项目) / 项目二次开发(场景二·有项目) */
 const sceneOf = (r) => r?.request?.scene || ''
@@ -196,6 +196,7 @@ onMounted(refresh)
 .rp-mode { font-size: 11px; padding: 1px 8px; border-radius: 8px; flex-shrink: 0; }
 .rp-mode.demo { background: rgba(240,160,64,0.14); color: #b9680d; }
 .rp-mode.interactive { background: rgba(24,144,255,0.12); color: var(--km-primary); }
+.rp-mode.pipeline { background: rgba(52,179,126,0.14); color: #1f8a5f; }
 /* issue-66: 场景标签 (初次对话/项目二次开发) */
 .rp-scene { font-size: 11px; padding: 1px 8px; border-radius: 8px; flex-shrink: 0; background: rgba(52,179,126,0.12); color: var(--km-success); }
 .rp-target { font-weight: 550; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

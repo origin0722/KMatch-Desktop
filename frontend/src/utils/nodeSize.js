@@ -6,8 +6,8 @@
  * 纯函数, 供 KnowledgeGraph / ProjectGraphView / excalidrawExport 共用。
  */
 
-/** CJK 全角区间: 中日韩统一表意文字 / 兼容表意 / 全角形式 / CJK 标点 */
-const CJK_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F]/
+/** 全角宽度区间: 中日韩统一表意文字 / 兼容表意 / 全角形式 / CJK 标点 / ⭐(U+2B50, 标签难度星) */
+const CJK_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F\u2B50]/
 
 /** 单行文本显示宽度 (px @fontSize) */
 export function textDisplayWidth(text, fontSize = 13) {

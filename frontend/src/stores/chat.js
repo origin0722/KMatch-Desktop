@@ -990,6 +990,9 @@ export const useChatStore = defineStore('chat', () => {
           }))
           edges = (pgStore.graph.relations || []).map((r) => ({ source: String(r.source), target: String(r.target) }))
           label = `项目图谱-${pgStore.graph.projectId}`
+        } else if (want === 'project') {
+          // 显式点名项目图谱但不可用 → 明确告知, 不静默改导知识图谱
+          return { tool: 'export_graph_diagram', hint: '项目图谱尚不可用 (需先打开一个 Python 项目自动解析)。请引导用户先打开项目, 或改导知识图谱。' }
         } else {
           // 知识图谱: 学习路径节点 + 逐节点前置依赖 (≤20 并行请求, 同 KnowledgeGraph 页做法)
           const { useAssessmentStore } = await import('@/stores/assessment')
@@ -1022,7 +1025,9 @@ export const useChatStore = defineStore('chat', () => {
         }
 
         const scene = graphToExcalidraw(nodes, edges)
-        const fileName = `KMatch-${label}-${Date.now()}.excalidraw`
+        // 文件名消毒: 标签可能含路径分隔符/Windows 非法字符
+        const safeLabel = label.replace(/[\\/:*?"<>|]/g, '_')
+        const fileName = `KMatch-${safeLabel}-${Date.now()}.excalidraw`
         const json = JSON.stringify(scene)
 
         // 桌面端写入工作区根目录 (非代码文件, 不走审批门); 浏览器 dev 模式降级为下载
