@@ -452,18 +452,9 @@ def assess(req: AssessRequest, request: Request):
         result.get("review_results", {}),
     )
 
-    return AssessResponse(
-        session_id=initial["session_id"],
-        profile=result.get("user_profile", {}),
-        review_results=result.get("review_results", {}),
-        assessment=result.get("assessment", {}),
-        knowledge_graph=result.get("knowledge_graph", {}),
-        generated_content=result.get("generated_content", {}),
-        learning_report=report,
-        orchestration_log=result.get("orchestration_log", []),
-        orchestration_events=[to_log_event(l) for l in result.get("orchestration_log", [])],
-    )
-    # Phase 1/2: 落盘 run 记录 (复盘/续跑耐久 + 流程定义快照溯源)
+    # Phase 1/2: 落盘 run 记录 (复盘/续跑耐久 + 流程定义快照溯源)。
+    # 须在 return 之前 — 此前的写法放在 return 之后是死代码 (SSE 路径正常, 本体没修),
+    # 直调 /assess 查运行历史查不到该次 run。
     _persist_run(
         session_id=initial["session_id"],
         mode="demo",
@@ -483,6 +474,18 @@ def assess(req: AssessRequest, request: Request):
             "review_passed": bool(result.get("review_results", {}).get("passed")),
         },
         workflow=wf,
+    )
+
+    return AssessResponse(
+        session_id=initial["session_id"],
+        profile=result.get("user_profile", {}),
+        review_results=result.get("review_results", {}),
+        assessment=result.get("assessment", {}),
+        knowledge_graph=result.get("knowledge_graph", {}),
+        generated_content=result.get("generated_content", {}),
+        learning_report=report,
+        orchestration_log=result.get("orchestration_log", []),
+        orchestration_events=[to_log_event(l) for l in result.get("orchestration_log", [])],
     )
 
 

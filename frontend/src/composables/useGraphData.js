@@ -11,7 +11,7 @@
  */
 import { ref, computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
-import { masteryColor, masterySize } from '@/utils/format'
+import { masteryColor } from '@/utils/format'
 
 export function useGraphData() {
   const store = useAssessmentStore()
@@ -82,7 +82,6 @@ export function useGraphData() {
             key_points: Array.isArray(n.key_points) ? n.key_points : [],
             mastery: m,
             nodeColor: masteryColor(m),
-            nodeSize: masterySize(m),
             category: n.category || '',
             difficulty: n.difficulty || 1,
           },

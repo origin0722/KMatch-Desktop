@@ -38,15 +38,6 @@ export function masteryColor(mastery) {
 }
 
 /**
- * 掌握程度 → 节点大小
- * @param {number} mastery 0..1
- * @returns {number}
- */
-export function masterySize(mastery) {
-  return mastery >= 0.8 ? 40 : 30
-}
-
-/**
  * 难度 → Element Plus tag type
  * @param {number} d 1..5
  * @returns {'success'|'warning'|'danger'}

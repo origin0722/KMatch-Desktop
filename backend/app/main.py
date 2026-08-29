@@ -195,9 +195,6 @@ from app.api import project  # noqa: E402
 
 app.include_router(project.router, prefix="/api/project", tags=["Project"])
 
-# 后续周次将注册:
-# app.include_router(review.router, prefix="/api/review", tags=["Review"])
-
 # W7②: 可视化报告 (interactive 补跑路径+内容+审核，返回三类可视化数据)
 from app.api import learning  # noqa: E402
 
