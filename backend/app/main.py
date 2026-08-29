@@ -210,6 +210,11 @@ from app.api import chat  # noqa: E402
 
 app.include_router(chat.router, prefix="/api/chat", tags=["AI 助手"])
 
+# W?: 运行时设置 (Embedding/异源裁判 配置下发, 治"端用户被迫改 .env")
+from app.api import settings as settings_api  # noqa: E402
+
+app.include_router(settings_api.router, prefix="/api/settings", tags=["运行时设置"])
+
 # Spec B: Agent 学习引擎 (测试连接 ping)
 from app.api import agents  # noqa: E402
 

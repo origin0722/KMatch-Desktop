@@ -77,6 +77,27 @@ class KnowledgeGraph:
         except Exception:
             return None
 
+    def reconfigure_embedding(self, api_key: str, base_url: str = "", model: str = "") -> bool:
+        """运行时重建 embedding 客户端 (设置页保存后调用, 治"改 .env 才能换配置")。
+
+        探活成功 → 更新 client (与 model) 返回 True; 失败/未配置 → client 置 None (降级纯图) 返回 False。
+        """
+        from openai import OpenAI
+        if not api_key or api_key == "sk-placeholder":
+            self.embedding_client = None
+            return False
+        client = OpenAI(api_key=api_key, base_url=base_url or settings.EMBEDDING_BASE_URL or settings.LLM_BASE_URL)
+        try:
+            client.embeddings.create(model=model or self.embedding_model, input=["test"])
+        except Exception:
+            logger.warning("embedding 重配置探活失败, 降级纯图", exc_info=True)
+            self.embedding_client = None
+            return False
+        self.embedding_client = client
+        if model:
+            self.embedding_model = model
+        return True
+
     def close(self):
         self.driver.close()
 

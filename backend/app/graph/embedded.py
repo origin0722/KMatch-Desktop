@@ -97,6 +97,27 @@ class EmbeddedGraphStore:
         self._file_locks: dict[Path, threading.Lock] = defaultdict(threading.Lock)
         self._backfill_thread: Optional[threading.Thread] = None
 
+    def reconfigure_embedding(self, api_key: str, base_url: str = "", model: str = "") -> bool:
+        """运行时重建 embedding 客户端 (设置页保存后调用; 影响后续向量回填)。
+
+        与 Neo4j 引擎同契约: 探活成功返回 True, 失败/未配置置 None 返回 False。
+        """
+        from openai import OpenAI
+        if not api_key or api_key == "sk-placeholder":
+            self.embedding_client = None
+            return False
+        client = OpenAI(api_key=api_key, base_url=base_url or settings.LLM_BASE_URL)
+        try:
+            client.embeddings.create(model=model or self.embedding_model, input=["test"])
+        except Exception:
+            logger.warning("嵌入式 embedding 重配置探活失败", exc_info=True)
+            self.embedding_client = None
+            return False
+        self.embedding_client = client
+        if model:
+            self.embedding_model = model
+        return True
+
     # ------------------------------------------------------------
     # 载入
     # ------------------------------------------------------------

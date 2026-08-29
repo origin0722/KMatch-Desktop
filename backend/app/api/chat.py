@@ -64,6 +64,7 @@ class ChatRequest(BaseModel):
     messages: list[dict] = Field(..., min_length=1, description="对话消息数组")
     stream: bool = Field(True, description="是否 SSE 流式返回")
     max_tokens: int = Field(4096, ge=1, le=32768)
+    temperature: float | None = Field(None, ge=0, le=2, description="采样温度; 未传用默认 0.7")
     model: str | None = Field(None)
     api_key: str | None = Field(None)
     base_url: str | None = Field(None)
@@ -297,7 +298,7 @@ def _save_vision_cache(cache: dict) -> None:
 # 两个函数发完全相同的 SSE 帧: {delta} / {reasoning} / {error} / [DONE]
 # 前端 chat.js 不感知协议差异。
 # ----------------------------------------------------------------
-async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extras: dict | None = None):
+async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: int, model: str, extras: dict | None = None, temperature: float = 0.7):
     """逐 token 推送 SSE 事件 (OpenAI 兼容协议, async for 释放事件循环)"""
     try:
         kwargs = dict(
@@ -305,7 +306,7 @@ async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: 
             messages=messages,
             stream=True,
             max_tokens=max_tokens,
-            temperature=0.7,
+            temperature=temperature,
             # issue: 透传用量 (token 数/缓存命中) — 前端统计栏展示真实指标
             stream_options={"include_usage": True},
         )
@@ -392,7 +393,7 @@ async def chat_completions(req: ChatRequest, request: Request):
         if protocol == 'anthropic':
             gen = _stream_anthropic(client, req.messages, model, req.max_tokens, extras)
         else:
-            gen = _stream_openai(client, req.messages, req.max_tokens, model, extras)
+            gen = _stream_openai(client, req.messages, req.max_tokens, model, extras, temperature=req.temperature if req.temperature is not None else 0.7)
         return StreamingResponse(
             gen,
             media_type="text/event-stream",
@@ -412,7 +413,7 @@ async def chat_completions(req: ChatRequest, request: Request):
             messages=req.messages,
             stream=False,
             max_tokens=req.max_tokens,
-            temperature=0.7,
+            temperature=req.temperature if req.temperature is not None else 0.7,
         )
         if extras:
             kwargs.update(extras)

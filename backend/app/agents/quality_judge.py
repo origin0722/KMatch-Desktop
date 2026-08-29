@@ -42,11 +42,26 @@ def _load_prompt(name: str) -> str:
 
 
 def get_judge_llm():
-    """构造裁判 LLM。JUDGE_LLM_* 配置了独立 key → 独立模型 (same_source=False);
-    否则回退主 LLM (same_source=True)。
+    """构造裁判 LLM。优先级: 运行时设置 (设置页, 需启用) > JUDGE_LLM_* env > 同源回退主 LLM。
+
+    Returns:
+        (judge_llm, same_source: bool) — same_source=False 才是真正的"异源独立裁判"。
     """
+    from langchain_openai import ChatOpenAI
+
+    from app.runtime_settings import effective_judge
+    eff = effective_judge()
+    if eff.get("enabled") and eff.get("api_key") and not eff.get("same_source", True):
+        judge = ChatOpenAI(
+            api_key=eff["api_key"],
+            base_url=eff["base_url"] or settings.LLM_BASE_URL,
+            model=eff["model"] or settings.LLM_MODEL,
+            temperature=0.0,
+            timeout=settings.LLM_TIMEOUT,
+            max_retries=2,
+        )
+        return judge, False
     if settings.JUDGE_LLM_API_KEY:
-        from langchain_openai import ChatOpenAI
         judge = ChatOpenAI(
             api_key=settings.JUDGE_LLM_API_KEY,
             base_url=settings.JUDGE_LLM_BASE_URL or settings.LLM_BASE_URL,
