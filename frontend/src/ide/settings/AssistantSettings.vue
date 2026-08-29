@@ -43,7 +43,7 @@
     </SettingCard>
 
     <SettingCard v-if="isCustomProvider(ai.provider)" title="Base URL" info="自定义厂商的 OpenAI 兼容端点">
-      <el-input :model-value="customBaseUrl" size="small" style="width: 320px"
+      <el-input v-model="customBaseUrlInput" size="small" style="width: 320px"
                 placeholder="https://your-endpoint/v1" @change="onCustomBaseUrlChange" />
     </SettingCard>
 
@@ -170,6 +170,10 @@ const customBaseUrl = computed(() => {
   const uuid = customProviderUuid(ai.provider)
   return customProviders.get(uuid)?.baseUrl || ''
 })
+
+// 本地镜像 (同 API Key 的"粘贴不了"修复): v-model 输入流畅, 失焦 @change 落盘
+const customBaseUrlInput = ref('')
+watch(customBaseUrl, (v) => { customBaseUrlInput.value = v || '' }, { immediate: true })
 
 function onProviderChange(pid) {
   if (pid === 'custom') return ai.setProvider('custom:default')

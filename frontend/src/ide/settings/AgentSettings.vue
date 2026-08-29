@@ -32,12 +32,12 @@
       </SettingCard>
 
       <SettingCard v-if="isCustomProvider(agent.state.provider)" title="Base URL" info="自定义厂商端点">
-        <el-input :model-value="agent.state.baseUrl" size="small" style="width: 320px"
+        <el-input v-model="baseUrlInput" size="small" style="width: 320px"
                   placeholder="https://your-endpoint/v1" @change="agent.setBaseUrl" />
       </SettingCard>
 
       <SettingCard title="模型">
-        <el-input :model-value="agent.state.model" size="small" style="width: 280px" placeholder="模型 ID"
+        <el-input v-model="modelInput" size="small" style="width: 280px" placeholder="模型 ID"
                   @change="agent.setModel" />
       </SettingCard>
 
@@ -49,7 +49,7 @@
 
     <!-- 反馈快模型: 独立于独立配置开关, 未开时部分覆写仅 model; key/baseUrl 走上方回退链 -->
     <SettingCard title="反馈快模型" info="仅「获取针对性反馈」请求生效：先跑此快模型减等待；留空 = 跟随引擎模型。换厂商时请确认模型属于该厂商">
-      <el-input :model-value="agent.state.feedbackModel" size="small" style="width: 280px"
+      <el-input v-model="feedbackModelInput" size="small" style="width: 280px"
                 placeholder="如 deepseek-v4-flash（留空跟随引擎）" @change="agent.setFeedbackModel" />
     </SettingCard>
   </div>
@@ -73,6 +73,15 @@ const testResult = ref(null)
 // API Key 本地镜像 (修"粘贴不了": 受控 :model-value + @change 输入/粘贴间被 store 值重置)
 const apiKeyInput = ref(agent.state.apiKey || '')
 watch(() => agent.state.apiKey, (v) => { apiKeyInput.value = v || '' })
+
+// 同款修复推广到其余受控文本输入 (Base URL / 模型 / 反馈快模型): 本地镜像 + v-model 输入流畅,
+// 失焦 @change 落盘 store, watch 双向同步 (外部改写如切换厂商重置时输入框跟随)
+const baseUrlInput = ref(agent.state.baseUrl || '')
+watch(() => agent.state.baseUrl, (v) => { baseUrlInput.value = v || '' })
+const modelInput = ref(agent.state.model || '')
+watch(() => agent.state.model, (v) => { modelInput.value = v || '' })
+const feedbackModelInput = ref(agent.state.feedbackModel || '')
+watch(() => agent.state.feedbackModel, (v) => { feedbackModelInput.value = v || '' })
 
 async function testConn() {
   const overrides = agent.buildOverrides()

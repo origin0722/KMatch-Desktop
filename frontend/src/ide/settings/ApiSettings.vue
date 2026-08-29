@@ -46,11 +46,11 @@
             <option v-for="p in PROVIDERS" :key="p.id" :value="p.id">{{ p.label }}</option>
           </select>
           <label>模型</label>
-          <input :value="ai.model" @change="onChatModel($event.target.value)" class="inp" list="km-model-presets" placeholder="模型名" />
+          <input v-model="sepChatModel" @change="onChatModel($event.target.value)" class="inp" list="km-model-presets" placeholder="模型名" />
         </div>
         <div class="field">
           <label>API Key</label>
-          <input :value="ai.apiKey" @change="onChatKey($event.target.value)" type="password" class="inp" placeholder="sk-…" autocomplete="off" />
+          <input v-model="sepChatKey" @change="onChatKey($event.target.value)" type="password" class="inp" placeholder="sk-…" autocomplete="off" />
         </div>
         <div class="actions">
           <button class="btn" :disabled="busy || !ai.apiKey" @click="onTest(ai.provider, ai.getBaseUrl(), ai.model, ai.apiKey, chatProtocol)">测试连通性</button>
@@ -65,11 +65,11 @@
             <option v-for="p in PROVIDERS" :key="p.id" :value="p.id">{{ p.label }}</option>
           </select>
           <label>模型</label>
-          <input :value="ag.state.model" @change="onAgentModel($event.target.value)" class="inp" list="km-model-presets" placeholder="模型名" />
+          <input v-model="sepAgentModel" @change="onAgentModel($event.target.value)" class="inp" list="km-model-presets" placeholder="模型名" />
         </div>
         <div class="field">
           <label>API Key</label>
-          <input :value="ag.state.apiKey" @change="onAgentKey($event.target.value)" type="password" class="inp" placeholder="sk-…" autocomplete="off" />
+          <input v-model="sepAgentKey" @change="onAgentKey($event.target.value)" type="password" class="inp" placeholder="sk-…" autocomplete="off" />
         </div>
         <div class="field note">
           引擎默认「跟随内置服务端 .env」；在本处填写 Key 后即切换到独立 Key（等效开启 Agent 独立 key）。
@@ -97,7 +97,7 @@
  *   - 分开: 直接编辑两端既有 store (单一真相源不变)
  * 预设模型走 MODEL_PRESETS 的 <datalist>; 连通性用 POST /api/agents/ping。
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { PROVIDERS, useAiSettingsStore } from '@/stores/aiSettings'
 import { useAgentLlmStore } from '@/stores/agentLlm'
 import { useApiSettingsStore, allPresetModels } from '@/stores/apiSettings'
@@ -174,6 +174,16 @@ async function onTest(providerId, baseUrl, model, apiKey, protocol = 'openai') {
 }
 
 function setStatus(msg, err = false) { status.value = msg || ''; statusErr.value = err }
+
+// 分开模式表单镜像 (W? 同"粘贴不了"修复): 原生 :value + @change 在重渲染时会重置输入
+const sepChatModel = ref(ai.model || '')
+const sepChatKey = ref(ai.apiKey || '')
+const sepAgentModel = ref(ag.state.model || '')
+const sepAgentKey = ref(ag.state.apiKey || '')
+watch(() => ai.model, (v) => { sepChatModel.value = v || '' })
+watch(() => ai.apiKey, (v) => { sepChatKey.value = v || '' })
+watch(() => ag.state.model, (v) => { sepAgentModel.value = v || '' })
+watch(() => ag.state.apiKey, (v) => { sepAgentKey.value = v || '' })
 
 // 分开模式: 直接写两端 store
 function onChatProvider(pid) { ai.setProvider(pid) }

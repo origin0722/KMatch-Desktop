@@ -19,7 +19,7 @@
       <el-switch :model-value="ai.proxy.enabled" data-test="proxy-enabled"
                  @change="onProxyChange({ enabled: $event })" />
       <template v-if="ai.proxy.enabled">
-        <el-input :model-value="ai.proxy.url" size="small" style="width: 240px"
+        <el-input v-model="proxyUrlInput" size="small" style="width: 240px"
                   placeholder="http://127.0.0.1:7890" data-test="proxy-url"
                   @change="onProxyChange({ url: $event })" />
         <el-select :model-value="ai.proxy.type" size="small" style="width: 110px"
@@ -48,6 +48,10 @@ function saveTavily() {
   ai.setTavilyKey(tavilyInput.value)
   ElMessage.success(tavilyInput.value ? 'Tavily Key 已保存' : '已清除 Tavily Key')
 }
+
+// 代理 URL 本地镜像 (同"粘贴不了"修复): v-model 输入流畅, 失焦 @change 落盘
+const proxyUrlInput = ref(ai.proxy.url || '')
+watch(() => ai.proxy.url, (v) => { proxyUrlInput.value = v || '' })
 
 // issue: Tavily 连通性测试 (后端直连验证 key, 不吞 401)
 const verifying = ref(false)
