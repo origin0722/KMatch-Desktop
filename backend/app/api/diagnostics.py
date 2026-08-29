@@ -140,6 +140,7 @@ class FeedbackResponse(BaseModel):
     strategy: str
     resources: list = Field(default_factory=list, description="针对性再生内容列表")
     node_count: int = Field(0, description="目标节点数")
+    generation_failures: list = Field(default_factory=list, description="生成失败清单 [{node_id, content_type, reason}]")
 
 
 def _get_kg(request: Request) -> "KnowledgeGraph":  # noqa: F821
@@ -880,4 +881,5 @@ def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
         strategy=req.strategy,
         resources=result["resources"],
         node_count=result["node_count"],
+        generation_failures=result.get("generation_failures", []),
     )

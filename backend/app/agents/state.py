@@ -56,7 +56,9 @@ class AgentState(TypedDict, total=False):
     knowledge_graph: dict          # {learning_path, path_node_ids, estimated_total_hours, node_status_updates, assembled_at}
 
     # --- 领域知识生成产出 (第4周) ---
-    generated_content: dict        # {resources[], node_count, content_types, generated_at}; resources 元素含 content_type/target_node_id/source_nodes/content
+    # generated_content.resources 元素含 content_type/target_node_id/source_nodes/content;
+    # generation_failures [{node_id, content_type, reason}] 为失败透明化清单 (不静默为空)。
+    generated_content: dict        # {resources[], node_count, content_types, generation_failures[], generated_at}
 
     # --- 阶段标志 (BUG-031: 防内容阶段空资源回退画像模式致无限循环) ---
     # content_generator 首次运行后置 True；reviewer 据此判断审核对象，

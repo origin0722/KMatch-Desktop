@@ -10,13 +10,23 @@
       <p class="pe-line">按你的学情生成讲义、实操与测试，联网搜索补充教程</p>
       <div class="empty-actions">
         <el-button
-          v-if="store.profile && store.feedbackStrategy"
           type="primary"
           :loading="store.loading"
-          @click="generateLecture"
+          @click="onGenerate"
         >生成学习资源 →</el-button>
         <el-button @click="sidebar.setView('learning-session')">前往学习会话</el-button>
       </div>
+      <el-alert
+        v-if="visibleFailures.length"
+        type="warning"
+        :title="`有 ${visibleFailures.length} 段资源生成失败`"
+        :closable="true"
+        show-icon
+        class="gen-error"
+        @close="dismissFailures"
+      >
+        <div v-for="(f, i) in visibleFailures" :key="i" class="fail-line">{{ failureLine(f) }}</div>
+      </el-alert>
       <el-alert
         v-if="generateError"
         type="error"
@@ -46,6 +56,19 @@
         <span class="node-count">覆盖 {{ resourceNodeCount }} 个知识点</span>
       </div>
 
+      <!-- 失败透明化: 上一次生成中有失败段落时列出具体原因 (W1 治"静默为空") -->
+      <el-alert
+        v-if="visibleFailures.length"
+        type="warning"
+        :title="`有 ${visibleFailures.length} 段资源生成失败`"
+        :closable="true"
+        show-icon
+        class="gen-error"
+        @close="dismissFailures"
+      >
+        <div v-for="(f, i) in visibleFailures" :key="i" class="fail-line">{{ failureLine(f) }}</div>
+      </el-alert>
+
       <!-- 资源类型 Tab -->
       <el-tabs v-model="activeTab" class="resource-tabs">
         <!-- 讲义 -->
@@ -53,10 +76,9 @@
           <div v-if="lectureList.length === 0" class="empty-tab">
             <el-empty description="暂无讲义" :image-size="80">
               <el-button
-                v-if="store.profile && store.feedbackStrategy"
                 type="primary"
                 :loading="store.loading"
-                @click="generateLecture"
+                @click="onGenerate"
               >生成分层讲义 →</el-button>
             </el-empty>
             <el-alert
@@ -251,6 +273,15 @@
 
           <div v-if="webList.length === 0" class="empty-tab">
             <el-empty :description="webOnlyWeak ? '暂无匹配薄弱点的联网资源 — 试试「按薄弱点批量丰富」' : '尚无联网资源 — 在上方搜索, 或在 AI 助手中让它搜索某个知识点'" :image-size="80" />
+            <!-- Tavily 未配置提示 (后端 .env 已配 TAVILY_API_KEY 时可忽略) -->
+            <el-alert
+              v-if="!aiSettings.tavilyKey"
+              type="info"
+              :closable="false"
+              show-icon
+              class="gen-error"
+              title="设置页未配置 Tavily Key — 联网资源依赖 Tavily 搜索（设置 → AI 助手，或后端 .env 已配则无需）"
+            />
           </div>
           <transition-group v-else name="res-flow" tag="div" class="resource-list">
             <el-card
@@ -380,9 +411,38 @@ async function generateLecture() {
   if (!store.profile || !store.feedbackStrategy || store.loading) return
   generateError.value = null
   store.error = null
+  failuresDismissed.value = false
   await store.fetchFeedback()
   // fetchFeedback 失败时把错误写入 store.error (不抛出), 此处转本地展示
   generateError.value = store.error
+}
+
+// 生成入口 (门控放宽): 无画像/无反馈策略时不再隐藏按钮, 点击给引导并跳学习会话
+function onGenerate() {
+  if (!store.profile || !store.feedbackStrategy) {
+    ElMessage.warning('请先在「学习会话」完成学情测评（答题 → 提交 → 得到反馈策略），再来生成资源')
+    sidebar.setView('learning-session')
+    return
+  }
+  generateLecture()
+}
+
+// ---------------------------------------------------------------
+// 失败透明化 (W1): generated_content.generation_failures 逐条上浮,
+// 区分 LLM 未配置 / 路径为空 / 单段调用失败, 不再静默空白
+// ---------------------------------------------------------------
+const failuresDismissed = ref(false)
+const generationFailures = computed(() => store.generatedContent?.generation_failures || [])
+const visibleFailures = computed(() => (failuresDismissed.value ? [] : generationFailures.value))
+
+function dismissFailures() {
+  failuresDismissed.value = true
+}
+
+function failureLine(f) {
+  const label = f?.content_type ? contentTypeLabel(f.content_type) : ''
+  const where = f?.node_id ? `${f.node_id} ${label}`.trim() : ''
+  return where ? `${where} — ${f.reason || '未知原因'}` : (f?.reason || '未知原因')
 }
 
 // ---------------------------------------------------------------
@@ -566,6 +626,7 @@ function goToNode(nodeId) {
 .empty-desc.muted { margin: 0; }
 .empty-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
 .gen-error { margin-top: 12px; }
+.fail-line { font-size: 12px; line-height: 1.8; color: var(--el-text-color-regular); }
 
 /* ---- 资源卡片列表 ---- */
 .resource-list {

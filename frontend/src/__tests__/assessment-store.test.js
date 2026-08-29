@@ -227,6 +227,31 @@ describe('useAssessmentStore', () => {
       expect(useSessionStore().splitView).toBe('learning')
     })
 
+    // W1 失败透明化: generation_failures 随产物合并落库 (内容为空但有失败时也写入)
+    it('generation_failures 应合并进 generatedContent (空产物也落库)', async () => {
+      submitAssessment.mockResolvedValueOnce({
+        session_id: 's',
+        assessment: { questions: [{ type: 'choice', question: 'q', options: [] }] },
+      })
+      submitAnswers.mockResolvedValueOnce({
+        session_id: 's', profile: { profile_id: 'P' }, assessment: { correct_count: 0, total_count: 1 },
+        review_results: {}, feedback: { strategy: 'scaffold' },
+      })
+      requestFeedback.mockResolvedValueOnce({
+        session_id: 's', strategy: 'scaffold', node_count: 1, resources: [],
+        generation_failures: [{ node_id: 'PY-005', content_type: 'lecture', reason: 'LLM 调用失败（网络/限流/响应格式）' }],
+      })
+
+      const store = useAssessmentStore()
+      await store.startAssessment({ targetDirection: 't' })
+      await store.submitAssessmentAnswers()
+      await store.fetchFeedback()
+
+      expect(store.generatedContent?.resources).toHaveLength(0)
+      expect(store.generatedContent?.generation_failures).toHaveLength(1)
+      expect(store.generatedContent?.generation_failures[0].node_id).toBe('PY-005')
+    })
+
     it('无资源时不打开学习资源分屏', async () => {
       submitAssessment.mockResolvedValueOnce({
         session_id: 's',

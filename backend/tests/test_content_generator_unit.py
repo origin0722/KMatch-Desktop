@@ -111,6 +111,7 @@ def test_node_generates_three_resources_per_node(monkeypatch):
     assert len(gen["resources"]) == 3  # 1 节点 × 3 类型
     types = {r["content_type"] for r in gen["resources"]}
     assert types == set(CONTENT_TYPES)
+    assert gen["generation_failures"] == []  # 正常生成无失败记录
 
 
 def test_node_caps_node_count(monkeypatch):
@@ -136,39 +137,46 @@ def test_node_attaches_source_traceability(monkeypatch):
 
 
 def test_node_empty_path_skips(monkeypatch):
-    """学习路径为空 → 跳过生成，空资源。"""
+    """学习路径为空 → 跳过生成，空资源 + 失败原因上浮。"""
     _patch_model(monkeypatch)
     node = content_generator_node(_FakeKG())
     result = node({"user_profile": {"theory_level": 2}, "knowledge_graph": {"learning_path": []}})
-    assert result["generated_content"]["resources"] == []
-    assert result["generated_content"]["node_count"] == 0
+    gen = result["generated_content"]
+    assert gen["resources"] == []
+    assert gen["node_count"] == 0
+    assert len(gen["generation_failures"]) == 1
+    assert "学习路径为空" in gen["generation_failures"][0]["reason"]
 
 
 def test_node_llm_not_configured_degrades(monkeypatch):
-    """LLM 未配置 → 降级空资源，不调 LLM。"""
+    """LLM 未配置 → 降级空资源 + 失败原因标明未配置，不调 LLM。"""
     monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: False)
     node = content_generator_node(_FakeKG())
     result = node({"user_profile": {"theory_level": 2},
                    "knowledge_graph": {"learning_path": [_make_node()]}})
-    assert result["generated_content"]["resources"] == []
+    gen = result["generated_content"]
+    assert gen["resources"] == []
+    assert len(gen["generation_failures"]) == 1
+    assert "LLM 未配置" in gen["generation_failures"][0]["reason"]
 
 
-def test_node_invalid_json_degrades_gracefully(monkeypatch):
-    """LLM 返回非法 JSON 时 (parse_llm_json 返回 {}) → _generate_one 用 setdefault
-    补全字段产出降级资源，不抛异常中断工作流。"""
+def test_node_invalid_json_fails_transparently(monkeypatch):
+    """LLM 返回非法 JSON → 不再降级空资源卡片, 计入 generation_failures (失败透明化)。"""
     _patch_model(monkeypatch, invalid=True)
     node = content_generator_node(_FakeKG())
     result = node({"user_profile": {"theory_level": 2},
                    "knowledge_graph": {"learning_path": [_make_node()]}})
-    # parse_llm_json 对非法文本返回 {} → _generate_one 补全后仍产出 3 段降级资源 (content 空)
-    resources = result["generated_content"]["resources"]
-    assert len(resources) == 3  # 不中断
-    assert all(r.get("target_node_id") == "PY-005" for r in resources)
-    assert all(r.get("content") == "" for r in resources)
+    gen = result["generated_content"]
+    # 3 段全失败 → resources 空 + failures 逐条上浮 (不中断工作流)
+    assert gen["resources"] == []
+    assert len(gen["generation_failures"]) == 3
+    assert all(f["node_id"] == "PY-005" for f in gen["generation_failures"])
+    assert all(f["reason"] for f in gen["generation_failures"])
+    assert all(f["content_type"] in CONTENT_TYPES for f in gen["generation_failures"])
 
 
 def test_node_real_exception_tolerated(monkeypatch):
-    """_generate_one 内部抛异常 (如 model.invoke 报错) → 该段跳过，其余正常，不中断。"""
+    """_generate_one 内部抛异常 (如 model.invoke 报错) → 该段计入 failures，其余正常，不中断。"""
     class _CrashingModel:
         def invoke(self, messages):
             raise RuntimeError("API timeout")
@@ -180,9 +188,11 @@ def test_node_real_exception_tolerated(monkeypatch):
     node = content_generator_node(_FakeKG())
     result = node({"user_profile": {"theory_level": 2},
                    "knowledge_graph": {"learning_path": [_make_node()]}})
-    # 3 段全抛异常 → resources 空，但不中断工作流
-    assert result["generated_content"]["resources"] == []
-    assert "失败" in result["orchestration_log"][-1]
+    # 3 段全抛异常 → resources 空，failures 上浮，不中断工作流
+    gen = result["generated_content"]
+    assert gen["resources"] == []
+    assert len(gen["generation_failures"]) == 3
+    assert any("失败" in line for line in result["orchestration_log"])
 
 
 # ============================================================
@@ -352,8 +362,11 @@ def test_generate_one_list_response_takes_first_dict(monkeypatch):
     assert result["target_node_id"] == "PY-005"
 
 
-def test_generate_one_list_no_dict_degrades_gracefully(monkeypatch):
-    """BUG-041: LLM 返回数组但无 dict 元素 → 降级空资源 dict，不抛异常。"""
+def test_generate_one_list_no_dict_raises(monkeypatch):
+    """BUG-041: LLM 返回数组但无 dict 元素 → 抛 ValueError (safe_llm_call 计入
+    generation_failures), 不再降级空资源卡片。"""
+    import pytest
+
     from app.agents.content_generator import _generate_one
 
     class _ListNoDictModel:
@@ -362,9 +375,8 @@ def test_generate_one_list_no_dict_degrades_gracefully(monkeypatch):
                 content = json.dumps(["str", 123], ensure_ascii=False)
             return _Resp()
     monkeypatch.setattr("app.agents.content_generator.get_default_chat_model", lambda: _ListNoDictModel())
-    result = _generate_one(_make_node(), 2, "lecture")
-    assert isinstance(result, dict)  # 降级空资源，不抛
-    assert result["content_type"] == "lecture"  # setdefault 补全
+    with pytest.raises(ValueError, match="非 JSON 对象"):
+        _generate_one(_make_node(), 2, "lecture")
 
 
 def test_node_empty_path_contract_complete(monkeypatch):
@@ -379,6 +391,7 @@ def test_node_empty_path_contract_complete(monkeypatch):
     assert gen["node_count"] == 0
     assert gen["content_types"] == ["lecture", "practice_guide", "test"]
     assert "generated_at" in gen
+    assert "generation_failures" in gen
 
 
 # ============================================================
@@ -624,5 +637,7 @@ def test_regenerate_for_feedback_partial_failure_tolerated(monkeypatch):
     ]}
     result = regenerate_for_feedback("remediate", profile, nodes, kg=None)
     assert result["node_count"] == 1
-    # remediate 选出 1 节点 (PY-005), 其 3 种类型全失败被跳过 → 0 资源, 失败不外抛
+    # remediate 选出 1 节点 (PY-005), 其 3 种类型全失败 → 0 资源, 失败逐条上浮不外抛
     assert len(result["resources"]) == 0
+    assert len(result["generation_failures"]) == 3
+    assert all(f["node_id"] == "PY-005" for f in result["generation_failures"])

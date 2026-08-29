@@ -366,12 +366,16 @@ export const useAssessmentStore = defineStore('assessment', () => {
         const { useLearningResourcesStore } = await import('@/stores/learningResources')
         useLearningResourcesStore().addFeedbackLinks(links)
       }
-      if (content.length) {
+      // 失败透明化: generation_failures 随产物合并落库 (内容为空但有失败记录时也写入,
+      // 供 Learning.vue 空态显示具体原因, 治"静默为空")
+      const failures = data.generation_failures || []
+      if (content.length || failures.length) {
         const existing = generatedContent.value || { resources: [] }
         generatedContent.value = {
           ...existing,
           resources: [...(existing.resources || []), ...content],
           node_count: data.node_count ?? existing.node_count,
+          generation_failures: [...(existing.generation_failures || []), ...failures],
         }
       }
       if (resources.length) {

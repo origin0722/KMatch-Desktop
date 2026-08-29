@@ -30,18 +30,27 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-# 单次生成的节点数上限 (控量: 每节点3次LLM调用，避免全路径生成耗时过长)
-MAX_NODES_TO_GENERATE = 3
+# 单次生成的节点数上限 (控量: 每节点3次LLM调用；5 节点=15 次调用, 并发5 下 wall-clock 仍 ≈ 单节点耗时)
+MAX_NODES_TO_GENERATE = 5
 # 每节点3种资源
 CONTENT_TYPES = ("lecture", "practice_guide", "test")
 
 
-def _empty_generated_content() -> dict:
-    """降级时返回的结构 (字段与正常分支对齐，避免 B 端契约缺口)。"""
+def _failure_record(node: dict, content_type, reason: str) -> dict:
+    """单条生成失败记录 (B 端透出, 治"失败静默为空")。"""
+    return {"node_id": (node or {}).get("node_id"), "content_type": content_type, "reason": reason}
+
+
+def _empty_generated_content(reason: str = None) -> dict:
+    """降级时返回的结构 (字段与正常分支对齐，避免 B 端契约缺口)。
+
+    reason 非空时写入 generation_failures, 让前端能区分"路径为空/LLM 未配置"而非空白。
+    """
     return {
         "resources": [],
         "node_count": 0,
         "content_types": list(CONTENT_TYPES),
+        "generation_failures": [_failure_record({}, None, reason)] if reason else [],
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
 
@@ -190,14 +199,15 @@ def _generate_one(node: dict, theory_level: int, content_type: str, correction_h
     model = get_default_chat_model()
     resp = model.invoke(_build_generation_prompt(node, theory_level, content_type, correction_hint))
     data = parse_llm_json(resp.content)
-    # BUG-041: LLM 偶发返回数组而非对象 (把多资源放数组)。
-    # 取首个 dict 元素; 无可用 dict → 降级空资源 (不抛异常, 避免 _safe_generate 计失败拖累整体)
+    # BUG-041: LLM 偶发返回数组而非对象 (把多资源放数组) → 取首个 dict 元素。
+    # 无可用 dict → 抛 ValueError 计入 generation_failures (原先降级空资源卡片,
+    # B 端只见空白讲义不知原因; 现与 _generate_feedback_one 对齐改为显式失败上浮)。
     if isinstance(data, list):
         data = next((x for x in data if isinstance(x, dict)), None)
     if not isinstance(data, dict):
-        logger.warning("生成响应非对象 node=%s type=%s, 降级空资源",
+        logger.warning("生成响应非对象 node=%s type=%s",
                        node.get("node_id"), type(data))
-        data = {}
+        raise ValueError(f"LLM 响应非 JSON 对象 (type={type(data).__name__})")
     return _finalize_resource(data, node, content_type, _adaptation_label(theory_level))
 
 
@@ -219,7 +229,7 @@ def content_generator_node(kg: KnowledgeGraph):
         if not learning_path:
             log.append("⚠️ 学习路径为空，跳过内容生成")
             return {
-                "generated_content": _empty_generated_content(),
+                "generated_content": _empty_generated_content("学习路径为空（图谱未组装或降级），无法生成资源"),
                 "content_phase_entered": True,
                 "orchestration_log": log,
             }
@@ -229,7 +239,7 @@ def content_generator_node(kg: KnowledgeGraph):
             log.append("⚠️ LLM 未配置，内容生成降级为空资源")
             logger.warning("LLM 未配置(sk-placeholder)，内容生成降级")
             return {
-                "generated_content": _empty_generated_content(),
+                "generated_content": _empty_generated_content("LLM 未配置（API Key 缺失或为占位符），请在设置页或 .env 配置"),
                 "content_phase_entered": True,
                 "orchestration_log": log,
             }
@@ -256,7 +266,7 @@ def content_generator_node(kg: KnowledgeGraph):
         overrides = _current_overrides.get()
 
         resources = []
-        failures = 0
+        generation_failures = []
         # 并发度: 可配 (CONTENT_GEN_CONCURRENCY), 默认 5; max(1,...) 防配置为 0 崩溃。
         # 实测 (DeepSeek V4 Pro API, 9 次生成): 并发5 内容生成 137s, 并发3 反而 190s。
         # 降并发未能减少 429 退避 (DeepSeek 对并发5 限流不严重), 却多了轮次 (2轮 vs 3轮) 更慢。
@@ -271,24 +281,26 @@ def content_generator_node(kg: KnowledgeGraph):
                 tasks,
             ))
 
-        for ok, res in results:
-            if ok and res is not None:
+        for (node, ctype), (ok, res) in zip(tasks, results):
+            if ok and res is not None and str(res.get("content") or "").strip():
                 resources.append(res)
+            elif ok:
+                generation_failures.append(_failure_record(node, ctype, "生成内容为空（模型未返回正文）"))
             else:
-                failures += 1
+                generation_failures.append(_failure_record(node, ctype, "LLM 调用失败（网络/限流/响应格式）"))
 
-        log.append(
-            f"✅ 生成完成: {len(resources)} 段资源"
-            + (f"，{failures} 段失败" if failures else "")
-        )
+        if generation_failures:
+            log.append(f"⚠️ {len(generation_failures)} 段生成失败 (详见 generation_failures)")
+        log.append(f"✅ 生成完成: {len(resources)} 段资源")
         logger.info("内容生成: resources=%d failures=%d (并发=%d)",
-                    len(resources), failures, max_workers)
+                    len(resources), len(generation_failures), max_workers)
 
         return {
             "generated_content": {
                 "resources": resources,
                 "node_count": len(target_nodes),
                 "content_types": list(CONTENT_TYPES),
+                "generation_failures": generation_failures,
                 "generated_at": datetime.utcnow().isoformat() + "Z",
             },
             "content_phase_entered": True,
@@ -395,20 +407,23 @@ def regenerate_for_feedback(
     log_hint = FEEDBACK_STRATEGY_SPEC.get(strategy, {}).get("hint", "")
     if not llm_configured():
         logger.warning("LLM 未配置，feedback 再生降级为空")
-        return _empty_feedback_result(strategy)
+        return _empty_feedback_result(strategy, "LLM 未配置（API Key 缺失或为占位符）")
 
     weak_topics = profile.get("weak_topics", [])
     target_nodes = select_feedback_nodes(strategy, weak_topics, learning_path, kg)
 
     if not target_nodes:
         logger.info("feedback 再生: strategy=%s 无目标节点 (weak=%d)", strategy, len(weak_topics))
-        return _empty_feedback_result(strategy)
+        return _empty_feedback_result(
+            strategy,
+            f"策略 {strategy} 无目标节点（弱项不在当前学习路径中或无前置依赖）",
+        )
 
     theory_level = profile.get("theory_level", 2) or 2
     # 全类型生成: 每个目标节点都产 lecture + practice_guide + test,
     # 保证"针对性反馈"后学习资源四 tab (讲义/实操/测试) 都有内容, 不随策略单类型缺失。
     resources = []
-    failures = 0
+    generation_failures = []
     overrides = _current_overrides.get()  # Spec B: 捕获主线程 override, worker 内重设 (ContextVar 不跨线程)
 
     # 任务 = 目标节点 × 三种内容类型 (通常 1-2 节点 × 3 = 3-6 次 LLM 调用)
@@ -424,27 +439,31 @@ def regenerate_for_feedback(
             tasks,
         ))
 
-    for ok, res in results:
-        if ok and res is not None:
+    for (node, ctype), (ok, res) in zip(tasks, results):
+        if ok and res is not None and str(res.get("content") or "").strip():
             resources.append(res)
+        elif ok:
+            generation_failures.append(_failure_record(node, ctype, "生成内容为空（模型未返回正文）"))
         else:
-            failures += 1
+            generation_failures.append(_failure_record(node, ctype, "LLM 调用失败（网络/限流/响应格式）"))
 
     logger.info("feedback 再生: strategy=%s resources=%d failures=%d",
-                strategy, len(resources), failures)
+                strategy, len(resources), len(generation_failures))
     return {
         "strategy": strategy,
         "resources": resources,
         "node_count": len(target_nodes),
+        "generation_failures": generation_failures,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
 
 
-def _empty_feedback_result(strategy: str) -> dict:
+def _empty_feedback_result(strategy: str, reason: str = None) -> dict:
     return {
         "strategy": strategy,
         "resources": [],
         "node_count": 0,
+        "generation_failures": [{"node_id": None, "content_type": None, "reason": reason}] if reason else [],
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
 
