@@ -27,9 +27,9 @@ describe('AssistantSettings', () => {
 
   const mountOpts = () => ({ global: { plugins: [ElementPlus], stubs: ['el-icon'] } })
 
-  it('renders tool permission rows for all 13 tools', () => {
+  it('renders tool permission rows for all 14 tools', () => {
     const w = mount(AssistantSettings, mountOpts())
-    expect(w.findAll('.tool-perm-row')).toHaveLength(13)
+    expect(w.findAll('.tool-perm-row')).toHaveLength(14)
   })
 
   it('changing a tool permission calls setToolPermission', async () => {
