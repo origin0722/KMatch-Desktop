@@ -11,14 +11,14 @@ describe('SettingsView', () => {
     window.api = window.api || {}
   })
 
-  it('renders four section titles + four anchors (AI 助手/学习引擎/联网搜索/通用)', () => {
-    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'ApiSettings'] } })
+  it('renders five section titles + five anchors (AI 助手/学习引擎/联网搜索/数据与质量/通用)', () => {
+    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'DataQualitySettings', 'ApiSettings'] } })
     const text = w.text()
     expect(text).toContain('AI 助手')
     expect(text).toContain('学习引擎')
     expect(text).toContain('联网搜索')
     expect(text).toContain('通用')
-    expect(w.findAll('.settings-anchor')).toHaveLength(4)
+    expect(w.findAll('.settings-anchor')).toHaveLength(5)
   })
 
   it('clicking re-onboard button activates onboarding via sidebar store', async () => {
@@ -32,7 +32,7 @@ describe('SettingsView', () => {
   })
 
   it('clicking anchor sets active anchor', async () => {
-    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'ApiSettings'] } })
+    const w = mount(SettingsView, { global: { stubs: ['AssistantSettings', 'AgentSettings', 'ProvidersSettings', 'WebSearchSettings', 'DataQualitySettings', 'ApiSettings'] } })
     // 按 label 定位, 而非固定下标 (避免新增栏目时下标漂移)
     const anchor = w.findAll('.settings-anchor').find((a) => a.text().includes('学习引擎'))
     await anchor.trigger('click')

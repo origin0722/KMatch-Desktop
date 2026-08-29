@@ -39,7 +39,17 @@ import {
   learningEstimatedHours,
 } from '@/ide/chat/types'
 
-const MAX_TOOL_ROUNDS = 6
+// 工具循环轮数上限: 设置页「高级」卡可调 (aiSettings.toolRounds, 默认 6)
+const MAX_TOOL_ROUNDS_DEFAULT = 6
+
+function maxToolRounds() {
+  try {
+    const n = Number(useAiSettingsStore().toolRounds)
+    return Number.isFinite(n) && n >= 1 && n <= 12 ? Math.round(n) : MAX_TOOL_ROUNDS_DEFAULT
+  } catch {
+    return MAX_TOOL_ROUNDS_DEFAULT
+  }
+}
 
 /**
  * 构建学情画像提示块 (C3: 经 chat/types.js 类型化 helper 读取, 不再硬编码 profile/knowledgeGraph 字段名)。
@@ -688,8 +698,10 @@ export const useChatStore = defineStore('chat', () => {
     const body = {
       messages: apiMessages,
       stream: true,
-      // issue-75: 推理内容计入 token, 8192 在长思考下会耗尽导致无正文
-      max_tokens: 16384,
+      // issue-75: 推理内容计入 token, 8192 在长思考下会耗尽导致无正文 (默认抬到 16384)
+      // W?: max_tokens/temperature 由设置页「高级」卡可调 (后端 ChatRequest 放行 temperature)
+      max_tokens: ai.chatMaxTokens || 16384,
+      temperature: ai.chatTemperature ?? 0.7,
       model: ai.model,
       api_key: ai.apiKey || undefined,
       base_url: ai.getBaseUrl() || undefined,
@@ -1312,10 +1324,11 @@ export const useChatStore = defineStore('chat', () => {
     // 收集工作区上下文
     const context = await _collectContext()
 
-    // 工具循环 (最多 MAX_TOOL_ROUNDS 轮)
+    // 工具循环 (最多 maxToolRounds() 轮, 设置页可调)
     let toolRound = 0
+    const maxRounds = maxToolRounds()
 
-    while (toolRound < MAX_TOOL_ROUNDS) {
+    while (toolRound < maxRounds) {
       toolRound++
 
       // 构建 API 消息列表 (assistant content 去掉 tool_call 块; chunks 模型无 tool 角色)
@@ -1355,7 +1368,8 @@ export const useChatStore = defineStore('chat', () => {
 
     // 4. 工具循环 (复用 _runToolRound, 历史只取 target 之前的 visible 消息; 流进 target 新版本)
     let toolRound = 0
-    while (toolRound < MAX_TOOL_ROUNDS) {
+    const maxRounds = maxToolRounds()
+    while (toolRound < maxRounds) {
       toolRound++
       const systemMsg = buildSystemPrompt(context)
       const visibleSoFar = visibleMessages.value.filter((m) => messages.value.indexOf(m) < targetIdx)

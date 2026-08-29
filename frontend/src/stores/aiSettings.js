@@ -220,6 +220,23 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   // 联网搜索 (Tavily, 学情反馈搜薄弱知识点相关网站)
   const tavilyKey = ref(typeof saved.tavilyKey === 'string' ? saved.tavilyKey : '')
 
+  // ---- 对话生成参数 (W? 设置页「高级」卡; 后端 ChatRequest 已放行 temperature) ----
+  function _num(v, fallback, min, max) {
+    const n = Number(v)
+    if (!Number.isFinite(n) || n < min || n > max) return fallback
+    return n
+  }
+  const chatTemperature = ref(_num(saved.chatTemperature, 0.7, 0, 2))
+  const chatMaxTokens = ref(Math.round(_num(saved.chatMaxTokens, 16384, 256, 32768)))
+  const toolRounds = ref(Math.round(_num(saved.toolRounds, 6, 1, 12)))
+
+  function setChatParams({ temperature, maxTokens, rounds } = {}) {
+    if (temperature != null) chatTemperature.value = _num(temperature, chatTemperature.value, 0, 2)
+    if (maxTokens != null) chatMaxTokens.value = Math.round(_num(maxTokens, chatMaxTokens.value, 256, 32768))
+    if (rounds != null) toolRounds.value = Math.round(_num(rounds, toolRounds.value, 1, 12))
+    persist()
+  }
+
   const enabledMemories = computed(() => memories.value.filter((m) => m.enabled && m.title && m.content))
 
   function persist() {
@@ -234,6 +251,9 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
       memories: memories.value,
       reasoningMode: reasoningMode.value,
       tavilyKey: tavilyKey.value,
+      chatTemperature: chatTemperature.value,
+      chatMaxTokens: chatMaxTokens.value,
+      toolRounds: toolRounds.value,
     })
   }
 
@@ -517,5 +537,10 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     setModel,
     tavilyKey,
     setTavilyKey,
+    // W? 对话生成参数 (设置页「高级」卡)
+    chatTemperature,
+    chatMaxTokens,
+    toolRounds,
+    setChatParams,
   }
 })

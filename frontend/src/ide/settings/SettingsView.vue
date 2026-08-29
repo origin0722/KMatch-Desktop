@@ -25,6 +25,11 @@
             <h2 class="section-title">联网搜索</h2>
             <WebSearchSettings />
           </section>
+          <!-- W?: 数据与质量 — Embedding/异源裁判 配置下发 + 存储状态 (治端用户被迫改 .env) -->
+          <section id="sec-data" class="settings-section">
+            <h2 class="section-title">数据与质量</h2>
+            <DataQualitySettings />
+          </section>
           <section id="sec-general" class="settings-section">
             <h2 class="section-title">通用</h2>
             <!-- issue-73: 启动偏好 (默认视图 / 导航默认折叠) -->
@@ -72,6 +77,17 @@
               <div class="general-actions">
                 <el-button size="small" data-test="clear-chat" @click="clearChat">清对话历史</el-button>
                 <el-button size="small" data-test="clear-resources" @click="clearResources">清学习资源</el-button>
+              </div>
+            </div>
+            <!-- W?: 配置导入/导出 (换机迁移) -->
+            <div class="general-row">
+              <div class="general-info">
+                <b>配置导入 / 导出</b>
+                <span>导出 AI 配置（厂商/Key/模型/工具权限/记忆等）为 JSON，换机导入。导出文件含 Key 明文，请妥善保管。</span>
+              </div>
+              <div class="general-actions">
+                <el-button size="small" data-test="export-settings" @click="exportSettings">导出配置</el-button>
+                <el-button size="small" data-test="import-settings" @click="importSettings">导入配置</el-button>
               </div>
             </div>
             <div class="general-row">
@@ -143,6 +159,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
 import WebSearchSettings from './WebSearchSettings.vue'
+import DataQualitySettings from './DataQualitySettings.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 import { usePrefsStore } from '@/stores/prefs'
@@ -229,8 +246,60 @@ const anchors = [
   { id: 'sec-assistant', label: 'AI 助手' },
   { id: 'sec-agent', label: '学习引擎' },
   { id: 'sec-web', label: '联网搜索' },
+  { id: 'sec-data', label: '数据与质量' },
   { id: 'sec-general', label: '通用' },
 ]
+
+// ---- W?: 配置导入/导出 (换机迁移) ----
+// 白名单 localStorage 键 (AI 配置族); 值原样搬运, 导入后刷新应用让各 store 重读。
+const SETTINGS_EXPORT_KEYS = ['kmatch-ai-settings', 'kmatch-ai-custom-providers', 'kmatch-agent-llm', 'kmatch-api-settings']
+
+function exportSettings() {
+  const payload = { _kind: 'kmatch-settings', _version: 1, exportedAt: new Date().toISOString(), settings: {} }
+  for (const k of SETTINGS_EXPORT_KEYS) {
+    const v = localStorage.getItem(k)
+    if (v) payload.settings[k] = v
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `kmatch-settings-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出（内含 API Key 明文，请妥善保管）')
+}
+
+function importSettings() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'application/json,.json'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    try {
+      const parsed = JSON.parse(await file.text())
+      if (parsed?._kind !== 'kmatch-settings' || typeof parsed.settings !== 'object') {
+        throw new Error('不是有效的 KMatch 设置文件')
+      }
+      const count = Object.keys(parsed.settings).length
+      try {
+        await ElMessageBox.confirm(
+          `将覆盖当前 ${count} 项 AI 配置（含 API Key），且导入后应用会刷新。确定导入？`,
+          '导入设置', { type: 'warning', confirmButtonText: '导入并刷新', cancelButtonText: '取消' },
+        )
+      } catch { return } // 用户取消
+      for (const [k, v] of Object.entries(parsed.settings)) {
+        if (SETTINGS_EXPORT_KEYS.includes(k) && typeof v === 'string') localStorage.setItem(k, v)
+      }
+      ElMessage.success('已导入，即将刷新应用')
+      setTimeout(() => window.location.reload(), 800)
+    } catch (e) {
+      ElMessage.error(e?.message || '导入失败')
+    }
+  }
+  input.click()
+}
 
 const mainEl = ref(null)
 const activeAnchor = ref('sec-assistant')

@@ -100,6 +100,43 @@
                  @click="ai.addMemory({ title: '', content: '', type: 'preference' })">+ 添加记忆</el-button>
     </SettingCard>
 
+    <!-- W? 高级参数 (默认折叠) -->
+    <SettingCard title="高级参数" info="对话采样温度 / 最大输出 / 工具循环轮数；默认值适合绝大多数场景">
+      <div class="adv-rows">
+        <div class="adv-row">
+          <span class="adv-label">采样温度</span>
+          <el-slider
+            :model-value="ai.chatTemperature"
+            :min="0" :max="2" :step="0.1"
+            style="width: 200px"
+            @change="(v) => saveChatParams({ temperature: v })"
+          />
+          <span class="adv-value">{{ ai.chatTemperature.toFixed(1) }}</span>
+          <span class="adv-hint">越低越稳定, 越高越发散 (默认 0.7)</span>
+        </div>
+        <div class="adv-row">
+          <span class="adv-label">最大输出</span>
+          <el-input-number
+            :model-value="ai.chatMaxTokens"
+            :min="256" :max="32768" :step="256"
+            size="small" style="width: 130px"
+            @change="(v) => saveChatParams({ maxTokens: v })"
+          />
+          <span class="adv-hint">tokens；长讲义类回答建议 ≥8192</span>
+        </div>
+        <div class="adv-row">
+          <span class="adv-label">工具循环轮数</span>
+          <el-input-number
+            :model-value="ai.toolRounds"
+            :min="1" :max="12" :step="1"
+            size="small" style="width: 130px"
+            @change="(v) => saveChatParams({ rounds: v })"
+          />
+          <span class="adv-hint">复杂连招 (审查→测试→导出) 可调高</span>
+        </div>
+      </div>
+    </SettingCard>
+
     <!-- 清除聊天历史 -->
     <SettingCard title="清除聊天历史" info="清空当前 AI 助手对话记录（不可恢复）">
       <el-button type="danger" plain size="small" data-test="clear-history" @click="onClearHistory">清除</el-button>
@@ -201,6 +238,11 @@ async function onClearHistory() {
     chat.clearMessages()
   } catch { /* 用户取消 */ }
 }
+
+// W? 高级参数: 控件受控 (:model-value 绑 store), @change 把新值显式交给 store 校验+落盘
+function saveChatParams(patch) {
+  ai.setChatParams(patch)
+}
 </script>
 
 <style scoped>
@@ -260,4 +302,10 @@ async function onClearHistory() {
 .perm-seg { width: 168px; }
 .memory-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; width: 100%; }
 .memory-item { display: flex; align-items: center; gap: 8px; width: 100%; }
+/* W? 高级参数 */
+.adv-rows { display: flex; flex-direction: column; gap: 12px; }
+.adv-row { display: flex; align-items: center; gap: 12px; }
+.adv-label { font-size: 13px; font-weight: 600; color: var(--km-gray-700); width: 96px; flex-shrink: 0; }
+.adv-value { font-size: 12.5px; color: var(--km-gray-600); font-family: var(--km-font-mono); width: 28px; }
+.adv-hint { font-size: 11.5px; color: var(--km-gray-500); }
 </style>
