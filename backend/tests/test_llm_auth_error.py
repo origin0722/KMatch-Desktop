@@ -58,3 +58,20 @@ def test_friendly_llm_error_401_flags_whitespace_key():
     finally:
         _current_overrides.reset(token)
     assert "空白字符" in msg
+
+
+def test_friendly_llm_error_401_shows_provider_masked_key():
+    """厂商 401 原文自带打码 key (****+尾4) → 透出「服务商判定无效的 key」决定性证据。"""
+    exc = Exception(
+        "Error code: 401 - {'error': {'message': 'Authentication Fails, "
+        "Your api key: ****3e17 is invalid', 'type': 'authentication_error'}}"
+    )
+    msg = friendly_llm_error(exc)
+    assert "服务商判定无效的 key：****3e17" in msg
+    assert "重新生成" in msg
+
+
+def test_friendly_llm_error_401_without_provider_key_skips_line():
+    """厂商原文无打码 key 形态 (如裸 401) → 不输出该行, 不误报。"""
+    msg = friendly_llm_error(Exception("401 Unauthorized"))
+    assert "服务商判定无效的 key" not in msg

@@ -16,6 +16,7 @@ Spec B: per-request LLM overrides 通过 ContextVar 承载。
 
 import contextvars
 import functools
+import re
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Callable, Optional, TypedDict
@@ -187,6 +188,17 @@ def _is_model_error(exc: BaseException) -> bool:
     ))
 
 
+def _provider_masked_key(exc: BaseException) -> str | None:
+    """从厂商 401 原文提取打码后的 key (厂商只露末几位)。
+
+    该值是「服务商实际收到的 key」的证据:
+      - 与我方快照尾号一致 → Key 确实已在服务商侧失效/被删除/复制不完整;
+      - 不一致 → 实际发出了别的 Key (配置串位), 与界面所配无关。
+    """
+    m = re.search(r"api[_ ]?key\s*[:：=]\s*(\*{2,}[\w-]{0,16})", str(exc), re.IGNORECASE)
+    return m.group(1) if m else None
+
+
 def friendly_llm_error(exc: BaseException) -> str:
     """把 LLM 调用异常转为用户可读中文提示。
 
@@ -206,6 +218,12 @@ def friendly_llm_error(exc: BaseException) -> str:
             parts.append(
                 "检测到密钥首尾含空白字符（多为复制粘贴带入），系统已自动去除后重试仍被拒；"
                 "请重新完整复制 Key 再试。")
+        provider_key = _provider_masked_key(exc)
+        if provider_key:
+            parts.append(
+                f"服务商判定无效的 key：{provider_key}（厂商返回原文，自带打码）。"
+                "与上方尾号一致 → 该 Key 已在服务商侧失效/被删除/复制不完整，"
+                "请到服务商控制台重新生成后再试；不一致 → 实际发出了别的 Key，请检查是否多处配置。")
         parts.append(
             "端用户无需也无法修改 .env——请到 设置 → AI 助手 或 学习引擎 填入有效 API Key，"
             "点「测试连接」验证后重试。")

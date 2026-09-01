@@ -384,6 +384,7 @@ def assess(req: AssessRequest, request: Request):
         # 否则 prepare_questions 里的 llm_configured()/动态建域判定读不到, 导致 UI 配置后
         # 仍报 "LLM 未配置且题库为空,无法出题" (与 submit/regenerate 的 use_llm_overrides 用法对齐)。
         with use_llm_overrides(req.llm_overrides):
+            stage = "域判定"
             try:
                 # 域判定 (阶段16): 目标命中既有域 → 方向相关选点; 未命中 → 动态建域;
                 # LLM/向量都不可用 → 回退旧选点行为 (零基础难度入口)。
@@ -395,18 +396,22 @@ def assess(req: AssessRequest, request: Request):
                             f"学习领域「{req.target_direction}」暂未收录, 且未配置 LLM 无法动态建域; "
                             "请在设置中配置 AI 后重试, 或选择已收录方向 (Python/数据分析/机器学习等)")
                     logger.info("学习目标未命中既有域, 触发动态建域: %s", req.target_direction)
+                    stage = "动态建域"
                     nodes = bootstrap_domain(
                         kg, req.target_direction, tavily_key=req.tavily_key or settings.TAVILY_API_KEY)
                 elif resolution == "hit" and dir_nodes:
                     nodes = dir_nodes
+                stage = "出题"
                 questions, nodes = prepare_questions(kg, req.target_direction, req.known_topics, nodes=nodes)
             except ValueError as e:
                 raise HTTPException(status_code=503, detail=str(e))
             except Exception as e:
                 logger.error("interactive 出题失败", exc_info=True)
                 # issue: 401 → 可读配置引导 (占位符/错 key 不再糊原始英文)
+                # 阶段+时间戳: 治"界面残留旧错误被误认为复现", 并定位失败环节
                 code = 401 if is_auth_error(e) else 500
-                raise HTTPException(status_code=code, detail=f"出题失败: {friendly_llm_error(e)}")
+                ts = datetime.utcnow().strftime("%H:%M:%S")
+                raise HTTPException(status_code=code, detail=f"出题失败[{stage} {ts}]: {friendly_llm_error(e)}")
 
         session_id = str(uuid.uuid4())
         _cache_session(session_id, {

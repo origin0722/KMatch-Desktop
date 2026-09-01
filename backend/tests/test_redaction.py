@@ -47,12 +47,14 @@ def test_mask_secret_none_and_empty():
 # ---------------------------------------------------------------- redact_keys
 
 def test_redact_keys_nested_hits():
+    # 桩值刻意避开真实凭据形态 (脱敏与值内容无关, 只看键名)
+    stub_key = "stub-abc123"
     obj = {
         "target_direction": "Python 入门",
         "answers": ["A", "B"],
         "practical_evidence": {"tests_passed": 3, "tests_total": 4},
         "learner_key": "learner-abc",
-        "api_key": "sk-abc123",
+        "api_key": stub_key,
         "nested": {
             "user_email": "a@example.com",
             "safe_field": "ok",
@@ -68,7 +70,7 @@ def test_redact_keys_nested_hits():
     assert out["answers"] != ["A", "B"]
     assert out["practical_evidence"] != {"tests_passed": 3, "tests_total": 4}
     assert out["learner_key"] != "learner-abc"
-    assert out["api_key"] != "sk-abc123"
+    assert out["api_key"] != stub_key
     # 嵌套命中
     assert out["nested"]["user_email"] != "a@example.com"
     assert out["nested"]["list"][0]["student_name"] != "Alice"
