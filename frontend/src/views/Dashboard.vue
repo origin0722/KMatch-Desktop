@@ -102,7 +102,7 @@
               {{ diffMatch.summary.matched }} 匹配
             </el-tag>
           </template>
-          <div ref="matchChartRef" class="chart-box"></div>
+          <div ref="matchChartRef" class="chart-box chart-box-tall"></div>
         </el-card>
       </div>
 
@@ -227,14 +227,14 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 // C3: 全量 echarts → 按需 import (仿 ProfileRadar.vue:15-18, 减小 chunk)
 import * as echarts from 'echarts/core'
-import { BarChart, ScatterChart, RadarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
+import { BarChart, ScatterChart, RadarChart, LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, MarkLineComponent, MarkAreaComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useSidebarStore } from '@/stores/sidebar'
 import ReviewReport from '@/components/ReviewReport.vue'
 
-echarts.use([BarChart, ScatterChart, RadarChart, GridComponent, TooltipComponent, CanvasRenderer])
+echarts.use([BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, MarkAreaComponent, LegendComponent, CanvasRenderer])
 
 const store = useAssessmentStore()
 const sidebar = useSidebarStore()
@@ -760,29 +760,78 @@ function renderMatchChart() {
   const tooHard = mapped.filter((p) => p[3] === 'too_hard')
   const tooEasy = mapped.filter((p) => p[3] === 'too_easy')
 
+  // 下格: 资源难度偏差 gap 曲线 (按学习路径顺序) — gap = 资源难度 - 节点难度 (report_builder.difficulty_match)
+  const gapCurve = [...points]
+    .sort((a, b) => (a.path_position ?? 0) - (b.path_position ?? 0))
+    .map((p, i) => [p.path_position ?? i + 1, Number((p.gap ?? 0).toFixed(2)), p.name])
+
   const seriesDef = [
     { name: '匹配', data: matched, color: THEME.success },
     { name: '偏难', data: tooHard, color: THEME.danger },
     { name: '偏易', data: tooEasy, color: THEME.warning },
   ].filter((s) => s.data.length > 0)
 
+  const axisLabel = { fontSize: 11, color: THEME.gray500 }
+
   matchChart.setOption({
     tooltip: {
       formatter: (p) => {
         const d = p.data
+        if (p.seriesType === 'line') {
+          return `<b>难度偏差曲线</b><br/>${d[2]}<br/>路径位置: 第 ${d[0]} 个<br/>gap: ${d[1] > 0 ? '+' : ''}${d[1]}`
+        }
         return `<b>${d[2]}</b><br/>节点难度: Lv${d[0]}<br/>资源难度: Lv${d[1]}<br/>状态: ${d[3]}<br/>掌握度: ${((d[4] || 0) * 100).toFixed(0)}%`
       },
     },
-    grid: { left: 8, right: 20, top: 8, bottom: 0, containLabel: true },
-    xAxis: { name: '节点难度', min: 0, max: 6, axisLabel: { fontSize: 11, color: THEME.gray500 }, splitLine: { lineStyle: { color: THEME.splitLine } } },
-    yAxis: { name: '资源难度', min: 0, max: 6, axisLabel: { fontSize: 11, color: THEME.gray500 } },
-    series: seriesDef.map((s) => ({
-      name: s.name,
-      type: 'scatter',
-      data: s.data,
-      symbolSize: (val) => 8 + (val[4] || 0) * 10,
-      itemStyle: { color: s.color, opacity: 0.8 },
-    })),
+    legend: { top: 0, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { fontSize: 11, color: THEME.gray500 } },
+    grid: [
+      { left: 8, right: 20, top: 26, height: '34%', containLabel: true },
+      { left: 8, right: 20, top: '62%', bottom: 0, containLabel: true },
+    ],
+    xAxis: [
+      { gridIndex: 0, name: '节点难度', min: 0, max: 6, axisLabel, splitLine: { lineStyle: { color: THEME.splitLine } } },
+      { gridIndex: 1, name: '路径顺序', min: 0, axisLabel, splitLine: { lineStyle: { color: THEME.splitLine } } },
+    ],
+    yAxis: [
+      { gridIndex: 0, name: '资源难度', min: 0, max: 6, axisLabel },
+      { gridIndex: 1, name: '难度偏差 gap', min: (v) => Math.max(-3, v.min - 0.5), max: (v) => Math.min(3, v.max + 0.5), axisLabel },
+    ],
+    series: [
+      ...seriesDef.map((s) => ({
+        name: s.name,
+        type: 'scatter',
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        data: s.data,
+        symbolSize: (val) => 8 + (val[4] || 0) * 10,
+        itemStyle: { color: s.color, opacity: 0.8 },
+      })),
+      {
+        name: '难度偏差曲线',
+        type: 'line',
+        xAxisIndex: 1,
+        yAxisIndex: 1,
+        data: gapCurve,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { width: 2, color: THEME.primary },
+        itemStyle: { color: THEME.primary },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: THEME.gray500, type: 'dashed' },
+          label: { formatter: '完美匹配 gap=0', fontSize: 10 },
+          data: [{ yAxis: 0 }],
+        },
+        markArea: {
+          silent: true,
+          itemStyle: { color: 'rgba(52, 179, 126, 0.08)' },
+          label: { show: true, position: 'insideTopRight', fontSize: 10, color: THEME.gray500 },
+          data: [[{ name: '±1 容差带', yAxis: -1 }, { yAxis: 1 }]],
+        },
+      },
+    ],
   }, true)
 }
 
@@ -901,6 +950,8 @@ onBeforeUnmount(() => {
 }
 .chart-card :deep(.el-card__header) .el-tag { margin-left: auto; }
 .chart-box { height: 280px; }
+/* 难度匹配组合图 (散点 + gap 曲线双 grid) 需要更高容器 */
+.chart-box-tall { height: 380px; }
 
 /* ---- 学习路径 ---- */
 .path-card { margin-bottom: 16px; }
