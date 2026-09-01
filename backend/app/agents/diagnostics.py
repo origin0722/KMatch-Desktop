@@ -231,6 +231,22 @@ def practical_level_from_evidence(evidence) -> dict:
     return {"level": level, "source": "code_test"}
 
 
+def _normalize_demographics(demographics: dict = None) -> dict | None:
+    """学历/专业背景规范化 (赛题(2) 先验画像, 可选采集)。
+
+    仅保留白名单键 (education/major), 防脏数据入库; 空则 None (画像不带该键,
+    字段定义对齐 data/user_profiles/profile_schema.json 的 demographics)。
+    """
+    if not isinstance(demographics, dict):
+        return None
+    cleaned = {}
+    for k in ("education", "major"):
+        val = str(demographics.get(k) or "").strip()
+        if val:
+            cleaned[k] = val
+    return cleaned or None
+
+
 def _build_profile(
     target_direction,
     nodes,
@@ -238,6 +254,7 @@ def _build_profile(
     questions: list = None,
     learning_style_quiz: list = None,
     practical_evidence: dict = None,
+    demographics: dict = None,
 ) -> dict:
     """根据判分结果组装画像 v3。
 
@@ -246,6 +263,8 @@ def _build_profile(
 
     learning_style_quiz / practical_evidence (W5 三维测评): VARK 问卷答案与
     代码测试通过率证据, 缺省时相应维度带 default/unassessed 来源占位。
+
+    demographics (赛题(2) 先验画像): 学历/专业背景, 可选采集, 供资源生成贴合背景。
     """
     per_node = grading["per_node"]
     total = grading["total_count"] or 1
@@ -354,6 +373,7 @@ def _build_profile(
         "practical_source": practical["source"],  # code_test=实测 | unassessed=占位
         "learning_style": style["style"],
         "style_source": style["source"],          # quiz=实测 | default=占位
+        "demographics": _normalize_demographics(demographics),  # 学历/专业背景 (可选, None=未采集)
         "target_direction": target_direction,
         "preferred_pace": "normal",
         "time_per_week": 6,

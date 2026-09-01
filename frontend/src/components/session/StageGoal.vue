@@ -46,6 +46,23 @@
         </div>
       </div>
 
+      <!-- 赛题(2) 先验画像: 学习背景 (可选采集 — 学历/专业让资源生成贴合学习者背景) -->
+      <div class="style-quiz">
+        <button class="quiz-toggle" type="button" @click="bgOpen = !bgOpen">
+          {{ bgOpen ? '▾' : '▸' }} 学习背景 (可选 · 让内容贴合你的学历与专业基础)
+          <span v-if="bgFilled" class="quiz-done">已填</span>
+        </button>
+        <div v-if="bgOpen" class="quiz-body bg-grid">
+          <el-select v-model="demo.education" placeholder="教育背景" clearable size="small" style="width: 170px" data-test="bg-education">
+            <el-option v-for="e in EDU_OPTIONS" :key="e" :label="e" :value="e" />
+          </el-select>
+          <el-input
+            v-model="demo.major" placeholder="专业 (如: 会计学 / 计算机科学, 可留空)" size="small"
+            style="flex: 1; min-width: 200px" :maxlength="60" data-test="bg-major"
+          />
+        </div>
+      </div>
+
       <!-- #30 反馈: 学习会话是"无项目技能训练"场景一专属, 不暴露"有项目二次开发"选项 (场景二走项目图谱视图) -->
       <div class="control-row actions">
         <el-button type="primary" size="large" :disabled="!canStart" :loading="store.loading" @click="handleStart">
@@ -144,6 +161,16 @@ const quizOpen = ref(false)
 // 防御: learning-session 等测试环境可能注入精简 store mock (无 styleQuiz 字段)
 const quizAnswered = computed(() => (store.styleQuiz || []).filter(Boolean).length)
 
+// ---- 赛题(2) 先验画像: 学习背景 (可选采集, 双向同步 store.demographics) ----
+const EDU_OPTIONS = ['高中及以下', '大专', '本科', '硕士', '博士', '非科班自学者']
+const bgOpen = ref(false)
+const demo = reactive({
+  education: store.demographics?.education || '',
+  major: store.demographics?.major || '',
+})
+watch(demo, (v) => { store.demographics = { education: v.education, major: v.major } }, { deep: true })
+const bgFilled = computed(() => !!(demo.education || demo.major))
+
 function pick(qi, key) {
   const cur = store.styleQuiz || []
   const next = [...cur]
@@ -211,4 +238,6 @@ function pick(qi, key) {
   background: color-mix(in srgb, var(--km-primary, #6c7ce0) 12%, transparent);
   color: var(--km-primary, #6c7ce0);
 }
+/* 学习背景 (可选采集) */
+.bg-grid { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 </style>

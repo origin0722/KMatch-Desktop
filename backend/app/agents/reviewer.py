@@ -160,8 +160,15 @@ def _llm_review_content(resources: list[dict], profile: dict) -> dict:
         '{"factual_accuracy":{"score":0-1,"issues":[]},'
         '"hallucination":{"score":0-1,"issues":[]},'
         '"logic_consistency":{"score":0-1,"issues":[]},'
-        '"teaching_appropriateness":{"score":0-1,"issues":[]}}。'
+        '"teaching_appropriateness":{"score":0-1,"issues":[]},'
+        '"rebuttal_verdicts":[]}。'
         "issues 元素: {severity,problem,source_node}。不输出 JSON 以外文字。"
+        "\n【申诉-复审 (赛题辩论与交叉验证)】资源带 rebuttal 数组时 (生成Agent对上轮判定的申诉举证), "
+        "你必须逐条裁定并写入 rebuttal_verdicts: "
+        '{"issue":"对应申诉","verdict":"accepted|rejected","reason":"裁定理由"}。'
+        "裁定标准: 申诉引用的 source_nodes 在图谱事实中真实存在且确实支撑原内容 → accepted"
+        "(对应维度评分可酌情上调, 上限 0.95); 举证不实或与图谱事实相悖 → rejected 并维持扣分。"
+        "无 rebuttal 或全为空数组时 rebuttal_verdicts 输出空数组。"
     ))
     # 截断超长内容避免 token 爆炸
     payload = json.dumps(resources, ensure_ascii=False)
@@ -242,6 +249,23 @@ def _merge_issues(dims: dict, hard_issues: list[dict]) -> dict:
         data = dims[dim]
         data["score"] = min(data.get("score", 1.0), 0.6)
     return dims
+
+
+def _sanitize_rebuttal_verdicts(verdicts) -> list[dict]:
+    """申诉-复审裁定归一化 (赛题(4)① 生成↔审核辩论): 只留 issue/verdict/reason, 非法裁定置 rejected。"""
+    if not isinstance(verdicts, list):
+        return []
+    out = []
+    for v in verdicts:
+        if not isinstance(v, dict):
+            continue
+        verdict = v.get("verdict")
+        out.append({
+            "issue": str(v.get("issue", "")),
+            "verdict": verdict if verdict in ("accepted", "rejected") else "rejected",
+            "reason": str(v.get("reason", "")),
+        })
+    return out
 
 
 def _weighted_score(dims: dict) -> float:
@@ -338,9 +362,11 @@ def reviewer_node(kg: KnowledgeGraph):
 
             # --- LLM 语义审核（内部保护，失败不影响硬规则结果） ---
             dims = {}
+            raw_review = None
             if llm_configured():
                 try:
-                    dims = llm_review(*llm_arg) if isinstance(llm_arg, tuple) else llm_review(llm_arg)
+                    raw_review = llm_review(*llm_arg) if isinstance(llm_arg, tuple) else llm_review(llm_arg)
+                    dims = raw_review
                 except Exception:
                     logger.warning("LLM 审核调用失败，降级为仅硬规则评分", exc_info=True)
                     log.append("⚠️ LLM 审核异常，仅使用硬规则结果")
@@ -349,6 +375,13 @@ def reviewer_node(kg: KnowledgeGraph):
 
             # 归一化 LLM 输出 (非 conforming JSON → 默认满分，防后续 merge/weighted 崩溃)
             dims = _normalize_dims(dims) if dims else _default_dims()
+
+            # 申诉-复审裁定提取 (赛题(4)① 生成↔审核辩论): rebuttal_verdicts 随审核结果落盘
+            rebuttal_verdicts = _sanitize_rebuttal_verdicts(
+                raw_review.get("rebuttal_verdicts")) if isinstance(raw_review, dict) else []
+            if rebuttal_verdicts:
+                accepted = sum(1 for v in rebuttal_verdicts if v["verdict"] == "accepted")
+                log.append(f"⚖️ 申诉-复审: {len(rebuttal_verdicts)} 条申诉, 采纳 {accepted} 条")
 
             # 硬规则发现的问题并入对应维度（维度分数上限下调至 0.6）
             dims = _merge_issues(dims, hard_issues)
@@ -372,6 +405,7 @@ def reviewer_node(kg: KnowledgeGraph):
                     "dimensions": dims,
                     "verdict": verdict,
                     "retry_hint": hint,
+                    "rebuttal_verdicts": rebuttal_verdicts,
                     "reviewed_at": datetime.utcnow().isoformat() + "Z",
                 },
                 "retry_count": retry + 1,

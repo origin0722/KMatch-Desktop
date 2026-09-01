@@ -63,11 +63,48 @@ def _adaptation_label(theory_level: int) -> str:
     return "advanced"
 
 
-def _build_generation_prompt(node: dict, theory_level: int, content_type: str, correction_hint: str = "") -> list:
+# VARK 学习风格 → 表达方式偏好 (赛题"对不同背景学习者适配"; W5 采集建模后接入生成)
+_STYLE_HINT_BY_LEARNING_STYLE = {
+    "visual": "学习者偏好视觉型输入——优先图示化描述、Markdown 表格对比、流程步骤化呈现",
+    "auditory": "学习者偏好听觉型输入——口语化行文、多用比喻, 像「有人在旁边讲给你听」",
+    "read_write": "学习者偏好读写型输入——要点式陈述、关键术语加粗标注、附笔记整理建议",
+    "kinesthetic": "学习者偏好动手型输入——优先给可运行代码片段与练习, 边做边学, 压缩纯理论铺陈",
+}
+
+# 学历/专业背景 → 讲解深度与用语 (赛题(2) 先验画像 demographics 可选采集)
+_EDU_HINT_NON_TECH = "学习者偏非科班/低年级背景——避免未解释的科班术语, 类比尽量取自日常生活场景"
+_EDU_HINT_CS = "学习者有计算机相关专业背景——可直接使用科班术语, 侧重底层原理与工程实践"
+
+
+def _background_style_hint(profile: dict) -> str:
+    """画像背景 (VARK 学习风格 + 学历/专业) → 追加风格提示串 (无适配信息时为空串)。
+
+    VARK 仅在实测时接入 (style_source=default 为占位, 不据占位调整); 学历/专业为
+    启发式判断: 高中及以下/非科班自学者或专业名不含计算机相关词 → 非科班提示。
+    """
+    if not isinstance(profile, dict):
+        return ""
+    parts = []
+    if profile.get("style_source") == "quiz":
+        hint = _STYLE_HINT_BY_LEARNING_STYLE.get(profile.get("learning_style"))
+        if hint:
+            parts.append(hint)
+    demo = profile.get("demographics") or {}
+    if isinstance(demo, dict):
+        edu = str(demo.get("education") or "")
+        major = str(demo.get("major") or "")
+        if edu or major:
+            cs_like = any(k in major for k in ("计算机", "软件", "信息", "人工智能", "数据", "电子")) or "博士" in edu or "硕士" in edu
+            parts.append(_EDU_HINT_CS if cs_like else _EDU_HINT_NON_TECH)
+    return ("；" + "；".join(parts)) if parts else ""
+
+
+def _build_generation_prompt(node: dict, theory_level: int, content_type: str, correction_hint: str = "", style_extra: str = "") -> list:
     """构造单节点单资源类型的生成 prompt，要求 LLM 返回带溯源标记的结构化 JSON。
 
     correction_hint 非空时注入"上轮判定修正要求" (reviewer retry_hint / 独立裁判 reason)，
     使重试从盲重跑变为携带诊断的定向再生。
+    style_extra: 背景适配追加提示 (VARK 学习风格 + 学历/专业, _background_style_hint 产出)。
     """
     kps = node.get("key_points", [])
     mistakes = node.get("common_mistakes", [])
@@ -77,7 +114,7 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
         "beginner": "面向初学者: 多用类比和生活化比喻，减少专业术语，每步详尽",
         "intermediate": "面向进阶者: 可引入底层原理和性能考量，适度精简",
         "advanced": "面向高级者: 讨论设计模式选择与工程权衡，重点突出",
-    }[label]
+    }[label] + style_extra
 
     type_spec = {
         "lecture": (
@@ -119,6 +156,11 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
     correction_block = (
         f"\n\n【上轮判定修正要求——定向再生】\n{correction_hint}\n"
         "重点修正上述问题 (以图谱事实为准), 其余结构保持原样; 无法依据节点事实修正的部分宁可删去。"
+        "\n【申诉举证 (rebuttal)——生成↔审核辩论机制】对上轮判定你有不同意见的条目, "
+        "必须在输出 JSON 增加 rebuttal 数组逐条申诉: "
+        '{"issue": "被指摘问题(概括)", "response": "你的回应——已如何依据节点事实修正, '
+        '或举证原内容有据", "evidence": ["PY-xxx.key_points[0]"]}；'
+        "evidence 必须是节点内真实引用 (会经审核 Agent 复审裁定采纳与否); 无不同意见则输出空数组。"
         if correction_hint else ""
     )
 
@@ -186,18 +228,29 @@ def _finalize_resource(data: dict, node: dict, content_type: str, adaptation_lab
         data["source_nodes"] = [f"{node['node_id']}.summary"]
     ucs = data.get("unverified_claims")
     data["unverified_claims"] = [str(c) for c in ucs if c] if isinstance(ucs, list) else []
+    # 申诉举证 (赛题(4)① 生成↔审核辩论): 仅定向再生带 correction_hint 时 LLM 输出, 归一化结构
+    rb = data.get("rebuttal")
+    data["rebuttal"] = [
+        {
+            "issue": str(r.get("issue", "")),
+            "response": str(r.get("response", "")),
+            "evidence": [str(e) for e in (r.get("evidence") or []) if e],
+        }
+        for r in rb if isinstance(r, dict)
+    ] if isinstance(rb, list) else []
     data.setdefault("content", "")
     data["generated_at"] = datetime.utcnow().isoformat() + "Z"
     return data
 
 
-def _generate_one(node: dict, theory_level: int, content_type: str, correction_hint: str = "") -> dict:
+def _generate_one(node: dict, theory_level: int, content_type: str, correction_hint: str = "", style_extra: str = "") -> dict:
     """调 LLM 为单节点生成单类型资源，返回带溯源标记的内容 dict。
 
     correction_hint: 上轮 reviewer retry_hint / 独立裁判 reason (定向再生时非空)。
+    style_extra: 背景适配追加提示 (VARK 学习风格 + 学历/专业)。
     """
     model = get_default_chat_model()
-    resp = model.invoke(_build_generation_prompt(node, theory_level, content_type, correction_hint))
+    resp = model.invoke(_build_generation_prompt(node, theory_level, content_type, correction_hint, style_extra))
     data = parse_llm_json(resp.content)
     # BUG-041: LLM 偶发返回数组而非对象 (把多资源放数组) → 取首个 dict 元素。
     # 无可用 dict → 抛 ValueError 计入 generation_failures (原先降级空资源卡片,
@@ -253,6 +306,7 @@ def content_generator_node(kg: KnowledgeGraph):
                 log.append(f"🔁 携带审核诊断定向再生: {retry_hint[:80]}")
 
         theory_level = profile.get("theory_level", 2) or 2
+        style_extra = _background_style_hint(profile)  # 赛题背景适配: VARK 风格 + 学历/专业
         target_nodes = learning_path[:MAX_NODES_TO_GENERATE]
         log.append(f"📖 为 {len(target_nodes)} 个节点生成资源 (每节点3种, level={theory_level})")
 
@@ -275,7 +329,7 @@ def content_generator_node(kg: KnowledgeGraph):
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             results = list(pool.map(
                 lambda args: safe_llm_call(
-                    _generate_one, args[0], theory_level, args[1], retry_hint,
+                    _generate_one, args[0], theory_level, args[1], retry_hint, style_extra,
                     overrides=overrides, logger=logger,
                     label=f"node={args[0].get('node_id')} type={args[1]}"),
                 tasks,
@@ -420,6 +474,7 @@ def regenerate_for_feedback(
         )
 
     theory_level = profile.get("theory_level", 2) or 2
+    style_extra = _background_style_hint(profile)  # 赛题背景适配: VARK 风格 + 学历/专业
     # 全类型生成: 每个目标节点都产 lecture + practice_guide + test,
     # 保证"针对性反馈"后学习资源四 tab (讲义/实操/测试) 都有内容, 不随策略单类型缺失。
     resources = []
@@ -433,7 +488,7 @@ def regenerate_for_feedback(
     with ThreadPoolExecutor(max_workers=min(len(tasks), 6)) as pool:
         results = list(pool.map(
             lambda task: safe_llm_call(
-                _generate_feedback_one, task[0], theory_level, task[1], log_hint,
+                _generate_feedback_one, task[0], theory_level, task[1], log_hint, style_extra,
                 overrides=overrides, logger=logger,
                 label=f"feedback node={task[0].get('node_id')} {task[1]}"),
             tasks,
@@ -468,7 +523,7 @@ def _empty_feedback_result(strategy: str, reason: str = None) -> dict:
     }
 
 
-def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hint: str) -> dict:
+def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hint: str, style_extra: str = "") -> dict:
     """按 feedback hint 生成单段针对性内容 (复用 _generate_one 的字段补全逻辑)。"""
     model = get_default_chat_model()
     kps = node.get("key_points", [])
@@ -501,7 +556,7 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
 
     system = SystemMessage(content=(
         "你是 KMatch 领域知识生成 Agent，按动态反馈策略针对性再生学习内容。"
-        f"{_adaptation_style(label)}。"
+        f"{_adaptation_style(label)}{style_extra}。"
         f"特别要求: {hint}。"
         "\n【高保真约束——消除幻觉】只能依据本节点 summary/key_points/common_mistakes "
         "生成内容，严禁补充图谱外的实现细节/内部表示/具体数值/版本号/性能数据"

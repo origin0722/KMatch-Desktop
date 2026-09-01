@@ -439,6 +439,35 @@ def test_report_cache_writeback(monkeypatch):
 # C. demo assess 内联 learning_report (扩展 test_submit_api 模式)
 # ============================================================
 
+def test_report_judge_summary_landed(monkeypatch):
+    """赛题(4)① 交叉验证在线闭环: 裁判盲判结果并入 review_results.judge_summary。"""
+    app = _build_learning_app(monkeypatch)
+    monkeypatch.setattr(learning_api, "_judge_resources", lambda state, kg: {
+        "judged": 1, "grounded": 1, "hallucinated": 0, "unverifiable": 0,
+        "same_source": False, "verdicts": [],
+    })
+    sid = _seed_session()
+    client = TestClient(app)
+    resp = client.post("/api/learning/report", json={"session_id": sid})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["review_results"]["judge_summary"]["judged"] == 1
+
+
+def test_report_judge_failure_degrades(monkeypatch):
+    """裁判失败 → 报告仍 200, review_results 不带 judge_summary (降级不阻塞)。"""
+    app = _build_learning_app(monkeypatch)
+
+    def _boom(state, kg):
+        raise RuntimeError("judge down")
+
+    monkeypatch.setattr(learning_api, "_judge_resources", _boom)
+    sid = _seed_session()
+    client = TestClient(app)
+    resp = client.post("/api/learning/report", json={"session_id": sid})
+    assert resp.status_code == 200
+    assert "judge_summary" not in resp.json()["review_results"]
+
+
 def test_demo_assess_inlines_learning_report(monkeypatch):
     """demo assess 响应含 learning_report (三子对象); interactive 出题阶段 learning_report={}。"""
     diag_api._INTERACTIVE_SESSIONS.clear()

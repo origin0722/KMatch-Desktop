@@ -138,6 +138,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const userAnswers = ref([])
   /** W5 三维测评: VARK 学习风格快问卷答案 (StageGoal 采集, submit 时上送; 空数组=未答走占位) */
   const styleQuiz = ref([])
+  /** 赛题(2) 先验画像: 学习背景 {education, major} (StageGoal 可选采集, submit 时上送) */
+  const demographics = ref({ education: '', major: '' })
   /** 动态反馈策略 (submit 返回): 'advance'|'remediate'|'scaffold' */
   const feedbackStrategy = ref(null)
   /** 动态反馈再生资源 (feedback 接口返回) */
@@ -319,6 +321,8 @@ export const useAssessmentStore = defineStore('assessment', () => {
         learnerKey: learnerKey.value,
         // W5 三维测评: VARK 问卷答案 + 代码测试通过率证据 (projectGraph store, 可为空)
         learningStyleQuiz: styleQuiz.value,
+        // 赛题(2) 先验画像: 学习背景 (可选采集)
+        demographics: demographics.value,
         practicalEvidence: await (async () => {
           try {
             const { useProjectGraphStore } = await import('@/stores/projectGraph')
@@ -594,6 +598,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
     userAnswers,
     // W5 三维测评: VARK 快问卷 (StageGoal 采集)
     styleQuiz,
+    demographics,
     // W7 审核轮次轨迹
     reviewRounds,
     feedbackStrategy,

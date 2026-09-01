@@ -448,3 +448,83 @@ def test_merge_issues_no_hard_keeps_llm_scores():
     }
     result = _merge_issues(dims, [])
     assert result["factual_accuracy"]["score"] == 0.85  # 无硬规则, 保留 LLM 0.85
+
+
+# ---- 赛题(4)① 申诉-复审: 裁定归一化与落盘 (生成↔审核辩论) ----
+
+def test_sanitize_rebuttal_verdicts_keeps_valid_and_downgrades_illegal():
+    from app.agents.reviewer import _sanitize_rebuttal_verdicts
+    out = _sanitize_rebuttal_verdicts([
+        {"issue": "find() 返回值有据", "verdict": "accepted", "reason": "引用 key_points[0] 成立"},
+        {"issue": "b", "verdict": "bogus", "reason": "x"},
+        "bad",
+    ])
+    assert len(out) == 2
+    assert out[0] == {"issue": "find() 返回值有据", "verdict": "accepted", "reason": "引用 key_points[0] 成立"}
+    assert out[1]["verdict"] == "rejected"  # 非法裁定置 rejected
+
+
+def test_sanitize_rebuttal_verdicts_non_list():
+    from app.agents.reviewer import _sanitize_rebuttal_verdicts
+    assert _sanitize_rebuttal_verdicts(None) == []
+    assert _sanitize_rebuttal_verdicts("x") == []
+
+
+def test_reviewer_node_lands_rebuttal_verdicts(monkeypatch):
+    """LLM 审核输出带 rebuttal_verdicts → 归一化后落 review_results (答辩可展示的辩论轨迹)。"""
+    captured = {}
+
+    def _fake_llm_review_content(resources, profile):
+        captured["resources"] = resources
+        return {
+            "factual_accuracy": {"score": 0.9, "issues": []},
+            "hallucination": {"score": 0.9, "issues": []},
+            "logic_consistency": {"score": 0.9, "issues": []},
+            "teaching_appropriateness": {"score": 0.9, "issues": []},
+            "rebuttal_verdicts": [
+                {"issue": "find() 返回值描述", "verdict": "accepted", "reason": "节点事实支撑"},
+                {"issue": "性能数据", "verdict": "rejected", "reason": "图谱外编造"},
+            ],
+        }
+
+    monkeypatch.setattr("app.agents.reviewer.llm_configured", lambda: True)
+    monkeypatch.setattr("app.agents.reviewer._llm_review_content", _fake_llm_review_content)
+
+    resources = [{"target_node_id": "PY-001", "source_nodes": ["PY-001.summary"], "content": "讲义"}]
+    state = {
+        "user_profile": {"theory_level": 2, "target_direction": "Python"},
+        "assessment": {},
+        "retry_count": 0,
+        "content_phase_entered": True,
+        "generated_content": {"resources": resources},
+    }
+    result = reviewer_node(_KGForNode())(state)
+    review = result["review_results"]
+    assert review["rebuttal_verdicts"] == [
+        {"issue": "find() 返回值描述", "verdict": "accepted", "reason": "节点事实支撑"},
+        {"issue": "性能数据", "verdict": "rejected", "reason": "图谱外编造"},
+    ]
+
+
+def test_reviewer_node_without_rebuttal_defaults_empty(monkeypatch):
+    """LLM 未返回 rebuttal_verdicts (如画像模式/旧输出) → 空数组, 契约字段恒在。"""
+    monkeypatch.setattr("app.agents.reviewer.llm_configured", lambda: True)
+    monkeypatch.setattr(
+        "app.agents.reviewer._llm_review_content",
+        lambda resources, profile: {
+            "factual_accuracy": {"score": 0.9, "issues": []},
+            "hallucination": {"score": 0.9, "issues": []},
+            "logic_consistency": {"score": 0.9, "issues": []},
+            "teaching_appropriateness": {"score": 0.9, "issues": []},
+        },
+    )
+    resources = [{"target_node_id": "PY-001", "source_nodes": ["PY-001.summary"], "content": "讲义"}]
+    state = {
+        "user_profile": {"theory_level": 2, "target_direction": "Python"},
+        "assessment": {},
+        "retry_count": 0,
+        "content_phase_entered": True,
+        "generated_content": {"resources": resources},
+    }
+    review = reviewer_node(_KGForNode())(state)["review_results"]
+    assert review["rebuttal_verdicts"] == []

@@ -111,6 +111,8 @@ class SubmitRequest(BaseModel):
         None, description="W5 三维测评: VARK 快问卷答案 (每题 'v'/'a'/'r'/'k'); 缺省画像标 style_source=default")
     practical_evidence: dict | None = Field(
         None, description="W5 三维测评: 实操能力证据 {tests_passed, tests_total} (代码测试通过率); 缺省标 practical_source=unassessed")
+    demographics: dict | None = Field(
+        None, description="赛题(2) 先验画像: 学习背景 {education, major} (可选采集, 供资源生成贴合学历/专业)")
 
 
 class SubmitResponse(BaseModel):
@@ -719,6 +721,7 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
                 target, nodes, grading, questions=questions,
                 learning_style_quiz=req.learning_style_quiz,
                 practical_evidence=req.practical_evidence,
+                demographics=req.demographics,
             )
             _tick("画像(profile)")
         feedback = decide_feedback(grading["correct_count"], grading["total_count"])

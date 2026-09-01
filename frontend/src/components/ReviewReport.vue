@@ -60,6 +60,55 @@
       </el-card>
     </div>
 
+    <!-- 申诉-复审辩论轨迹 (赛题(4)①: 生成↔审核辩论, reviewer 逐条裁定) -->
+    <el-card v-if="rebuttalVerdicts.length" shadow="never" class="debate-card" data-test="debate-panel">
+      <template #header>
+        <div class="section-head">
+          <span>⚖️ 申诉-复审（生成 Agent 举证 ↔ 审核 Agent 裁定）</span>
+          <el-tag size="small" :type="acceptedCount === rebuttalVerdicts.length ? 'success' : 'warning'">
+            采纳 {{ acceptedCount }}/{{ rebuttalVerdicts.length }}
+          </el-tag>
+        </div>
+      </template>
+      <div class="debate-list">
+        <div v-for="(v, i) in rebuttalVerdicts" :key="i" class="debate-item">
+          <el-tag :type="v.verdict === 'accepted' ? 'success' : 'danger'" size="small">
+            {{ v.verdict === 'accepted' ? '申诉成立' : '申诉驳回' }}
+          </el-tag>
+          <div class="debate-body">
+            <div class="debate-issue">{{ v.issue }}</div>
+            <div class="debate-reason">{{ v.reason }}</div>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- 独立裁判盲判结论 (赛题(4)① 交叉验证: 裁判独立配置, 不输入生成过程/审核结论) -->
+    <el-card v-if="judgeSummary" shadow="never" class="debate-card" data-test="judge-panel">
+      <template #header>
+        <div class="section-head">
+          <span>🧑‍⚖️ 独立裁判盲判</span>
+          <el-tag size="small" :type="judgeSummary.same_source ? 'warning' : 'success'">
+            {{ judgeSummary.same_source ? '同源裁判（参考）' : '异源独立裁判' }}
+          </el-tag>
+        </div>
+      </template>
+      <div class="judge-stats">
+        <el-tag type="success" size="small">锚定 {{ judgeSummary.grounded }}</el-tag>
+        <el-tag type="danger" size="small">幻觉 {{ judgeSummary.hallucinated }}</el-tag>
+        <el-tag type="info" size="small">无法核验 {{ judgeSummary.unverifiable }}</el-tag>
+        <span class="judge-total">共 {{ judgeSummary.judged }} 条资源</span>
+      </div>
+      <div v-if="judgeVerdictIssues.length" class="debate-list">
+        <div v-for="(v, i) in judgeVerdictIssues" :key="i" class="debate-item">
+          <el-tag :type="v.verdict === 'hallucinated' ? 'danger' : 'info'" size="small">
+            {{ v.verdict === 'hallucinated' ? '幻觉' : v.verdict }}
+          </el-tag>
+          <div class="debate-body"><div class="debate-reason">{{ v.reason }}</div></div>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 打回提示 -->
     <el-alert
       v-if="!passed && retryHint"
@@ -154,6 +203,15 @@ const dimensionList = computed(() => {
       }
     })
 })
+
+// --- 申诉-复审辩论 (赛题(4)①, reviewer rebuttal_verdicts) ---
+const rebuttalVerdicts = computed(() => props.reviewResults?.rebuttal_verdicts ?? [])
+const acceptedCount = computed(() => rebuttalVerdicts.value.filter((v) => v.verdict === 'accepted').length)
+
+// --- 独立裁判盲判 (judge_summary, 仅报告回环产出) ---
+const judgeSummary = computed(() => props.reviewResults?.judge_summary ?? null)
+const judgeVerdictIssues = computed(() =>
+  (judgeSummary.value?.verdicts ?? []).filter((v) => v.verdict !== 'grounded'))
 </script>
 
 <style scoped>
@@ -242,4 +300,14 @@ const dimensionList = computed(() => {
   color: var(--km-success);
   font-size: 13px;
 }
+
+/* 申诉-复审辩论 + 独立裁判 */
+.section-head { display: flex; align-items: center; justify-content: space-between; }
+.debate-list { display: flex; flex-direction: column; gap: 10px; }
+.debate-item { display: flex; align-items: flex-start; gap: 8px; }
+.debate-body { flex: 1; min-width: 0; }
+.debate-issue { font-size: 13px; color: var(--km-gray-700); margin-bottom: 2px; }
+.debate-reason { font-size: 12.5px; color: var(--km-gray-500); line-height: 1.5; }
+.judge-stats { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.judge-total { font-size: 12px; color: var(--km-gray-500); }
 </style>

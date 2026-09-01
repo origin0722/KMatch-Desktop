@@ -185,7 +185,7 @@ export async function restoreWorkflowRevision(workflowId, revision) {
  *   orchestration_log: string[]
  * }>}
  */
-export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence }, signal) {
+export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence, demographics }, signal) {
   // 判分+画像+图谱组装为 LLM 关键路径, 显式放宽到 300s (慢网络/慢模型不误杀)
   const cfg = { timeout: 300_000 }
   if (signal) cfg.signal = signal
@@ -196,6 +196,8 @@ export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQui
     // W5 三维测评: VARK 问卷答案 + 实操证据 (可空 — 后端按占位处理)
     learning_style_quiz: Array.isArray(learningStyleQuiz) && learningStyleQuiz.length ? learningStyleQuiz : undefined,
     practical_evidence: practicalEvidence || undefined,
+    // 赛题(2) 先验画像: 学习背景 {education, major} (可选采集, 全空不上送)
+    demographics: (demographics && (demographics.education || demographics.major)) ? demographics : undefined,
   }), cfg)
 }
 

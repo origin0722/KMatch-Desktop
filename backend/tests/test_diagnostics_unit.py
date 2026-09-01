@@ -179,6 +179,35 @@ def test_build_profile_topics_carry_name():
     assert profile["weak_topics"][0]["name"] == "条件"
 
 
+# ---- 赛题(2) 先验画像: 学历/专业背景透传 (可选采集, 白名单规范化) ----
+
+_EMPTY_GRADING = {"per_node": {}, "correct_count": 0, "total_count": 0}
+
+
+def test_build_profile_demographics_landed_normalized():
+    """demographics 透传入画像, 仅保留白名单键并去首尾空白。"""
+    profile = _build_profile(
+        "Python 入门", [], _EMPTY_GRADING,
+        demographics={"education": " 本科 ", "major": "会计学", "hacked": "x"},
+    )
+    assert profile["demographics"] == {"education": "本科", "major": "会计学"}
+
+
+def test_build_profile_demographics_absent_returns_none():
+    """未采集 (缺省) → demographics 为 None, 画像契约向后兼容。"""
+    profile = _build_profile("Python 入门", [], _EMPTY_GRADING)
+    assert profile["demographics"] is None
+
+
+def test_build_profile_demographics_blank_returns_none():
+    """全空白值 → None (不落空键)。"""
+    profile = _build_profile(
+        "Python 入门", [], _EMPTY_GRADING,
+        demographics={"education": "  ", "major": ""},
+    )
+    assert profile["demographics"] is None
+
+
 def test_build_profile_mastery_boundary():
     """BUG-039: mastery 三段制 — ≥0.8 归 known, <0.8 (含0.5学习中) 归 weak。"""
     nodes = [

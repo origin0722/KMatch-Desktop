@@ -51,7 +51,8 @@ class LearningReportResponse(BaseModel):
     knowledge_graph: dict = Field(default_factory=dict, description="学习路径图谱 (补跑 graph_controller 产出)")
     generated_content: dict = Field(default_factory=dict, description="生成资源 (补跑 content_generator 产出)")
     review_results: dict = Field(default_factory=dict, description="内容审核报告 (最终轮)")
-    review_rounds: list = Field(default_factory=list, description="审核轮次轨迹 [{round, passed, overall_score, verdict}]")
+    review_rounds: list = Field(default_factory=list,
+                                description="审核轮次轨迹 [{round, passed, overall_score, verdict, rebuttal_verdicts?}]")
     learning_report: dict = Field(default_factory=dict, description="三类可视化预计算数据契约")
     orchestration_log: list = Field(default_factory=list)
 
@@ -109,12 +110,16 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
 
     def _review_round_snapshot(round_no: int) -> dict:
         review = state.get("review_results") or {}
-        return {
+        snap = {
             "round": round_no,
             "passed": review.get("passed"),
             "overall_score": review.get("overall_score"),
             "verdict": review.get("verdict"),
         }
+        # 赛题(4)① 辩论轨迹: 申诉-复审裁定随轮次落盘 (前端审核博弈轨迹展示)
+        if review.get("rebuttal_verdicts"):
+            snap["rebuttal_verdicts"] = review["rebuttal_verdicts"]
+        return snap
 
     # ① 路径组装
     _fold(graph_controller_node(kg)(state))
@@ -136,6 +141,32 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
     state["orchestration_log"] = log
     state["review_rounds"] = rounds
     return state
+
+
+_JUDGE_MAX_RESOURCES = 5
+
+
+def _judge_resources(state: dict, kg) -> dict | None:
+    """独立裁判盲判生成资源 (赛题(4)① 交叉验证在线闭环, 有界 ≤5 条)。
+
+    裁判只看资源内容 + 图谱节点事实 (不输入生成过程/reviewer 结论, LLM 可与主模型异源);
+    失败由调用方降级, 不阻塞报告。结果并入 review_results.judge_summary 供前端展示。
+    """
+    resources = (state.get("generated_content") or {}).get("resources") or []
+    resources = [r for r in resources if isinstance(r, dict) and r.get("content")]
+    if not resources:
+        return None
+    from app.agents.quality_judge import judge_hallucination  # 惰性导入 (裁判依赖独立配置)
+
+    out = judge_hallucination(resources[:_JUDGE_MAX_RESOURCES], kg)
+    return {
+        "judged": out.get("total", 0),
+        "grounded": out.get("grounded", 0),
+        "hallucinated": out.get("hallucinated", 0),
+        "unverifiable": out.get("unverifiable", 0),
+        "same_source": out.get("same_source"),
+        "verdicts": out.get("verdicts", []),
+    }
 
 
 @router.post("/report", response_model=LearningReportResponse,
@@ -200,6 +231,14 @@ def learning_report(req: LearningReportRequest, request: Request):
     generated_content = state.get("generated_content", {})
     review_results = state.get("review_results", {})
     review_rounds = state.get("review_rounds", [])
+
+    # 赛题(4)① 交叉验证在线闭环: 独立裁判盲判生成资源 (有界), 失败降级不阻塞报告
+    try:
+        judge_summary = _judge_resources(state, kg)
+        if judge_summary:
+            review_results = {**review_results, "judge_summary": judge_summary}
+    except Exception:
+        logger.warning("独立裁判盲判失败 (不影响报告)", exc_info=True)
 
     learning_report = build_learning_report(
         profile, knowledge_graph, generated_content, review_results, kg=kg
