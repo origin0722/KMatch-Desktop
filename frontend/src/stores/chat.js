@@ -39,8 +39,8 @@ import {
   learningEstimatedHours,
 } from '@/ide/chat/types'
 
-// 工具循环轮数上限: 设置页「高级」卡可调 (aiSettings.toolRounds, 默认 6)
-const MAX_TOOL_ROUNDS_DEFAULT = 6
+// 工具循环轮数上限: 设置页「高级」卡可调 (aiSettings.toolRounds, 默认 8)
+const MAX_TOOL_ROUNDS_DEFAULT = 8
 
 function maxToolRounds() {
   try {
@@ -229,6 +229,10 @@ function hasIpc() {
 const HISTORY_CHAR_BUDGET = 48000
 const CHAT_HISTORY_KEY = 'kmatch-chat-history'
 const CHAT_HISTORY_MAX_CHARS = 1500000
+
+// 已提示过"回答被截断"的助手消息集合 (WeakSet, 不污染消息对象 / localStorage)。
+// 模型可能在多个 chunk 重复发 finish_reason='length' → truncated 帧, 只提示一次。
+const _truncationWarnedMessages = new WeakSet()
 
 /**
  * 构建历史 API 消息 (带预算裁剪)。
@@ -700,6 +704,14 @@ export const useChatStore = defineStore('chat', () => {
         appendTextChunk(activeChunksOf(assistantMsg), 'content', data.delta)
       }
       if (data.usage && _streamStats) _streamStats.usage = data.usage
+      if (data.truncated) {
+        // 只提示一次（模型可能在多个 chunk 重复发 finish_reason='length' → truncated 帧）
+        if (!_truncationWarnedMessages.has(assistantMsg)) {
+          _truncationWarnedMessages.add(assistantMsg)
+          appendTextChunk(activeChunksOf(assistantMsg), 'content',
+            '\n\n> ⚠️ **已达到输出上限，回答被截断。** 可在 设置 → AI 助手 → 高级 → 最大输出 调高上限，或在 设置 → AI 助手 调低/关闭思考模式，或把问题拆分后重试。')
+        }
+      }
     } catch { /* skip malformed block */ }
     return null
   }

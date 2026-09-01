@@ -94,7 +94,7 @@ def _stub_submit_body(monkeypatch, seen):
     monkeypatch.setattr(diag, "_grade", fake_grade)
     monkeypatch.setattr(
         diag, "_build_profile",
-        lambda target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None:
+        lambda target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None, time_per_week=None, preferred_pace=None:
         {"theory_level": 1, "weak_topics": [], "known_topics": [], "mastery_by_node": {}})
     monkeypatch.setattr(diag, "decide_feedback", lambda cc, tc: {"strategy": "advance", "reason": ""})
     monkeypatch.setattr(

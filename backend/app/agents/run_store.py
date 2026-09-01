@@ -26,6 +26,7 @@ from typing import Any, Optional
 
 from app.config import settings
 from app.utils.logging import get_logger
+from app.utils.redaction import redact_keys, should_redact
 
 logger = get_logger(__name__)
 
@@ -86,6 +87,13 @@ def save_run(
     d = _run_dir(sid)
     d.mkdir(parents=True, exist_ok=True)
     now = datetime.utcnow().isoformat()
+
+    # 交互日志脱敏 (赛题(5)): 开关默认关 — 关闭时 request 原样保留, 与旧行为完全一致;
+    # 开启 (PRIVACY_REDACT_INTERACTION_LOGS=1) 时, 对 request 内敏感键名
+    # (answers/explanation/practical_evidence/api_key/learner_key/email/phone/name)
+    # 打码后再落盘 run.json/events.jsonl。
+    if should_redact():
+        request = redact_keys(request) if isinstance(request, dict) else request
 
     # append-only 事件时间线: 带递增 seq, 每次保存续写
     evs = events or []

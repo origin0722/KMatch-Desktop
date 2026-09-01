@@ -17,6 +17,10 @@
             <h2 class="section-title">AI 助手</h2>
             <AssistantSettings />
           </section>
+          <section id="sec-profile" ref="secProfile" class="settings-section">
+            <h2 class="section-title">学习画像</h2>
+            <ProfileSettings />
+          </section>
           <section id="sec-agent" ref="secAgent" class="settings-section">
             <h2 class="section-title">学习引擎</h2>
             <AgentSettings />
@@ -160,6 +164,7 @@ import AssistantSettings from './AssistantSettings.vue'
 import AgentSettings from './AgentSettings.vue'
 import WebSearchSettings from './WebSearchSettings.vue'
 import DataQualitySettings from './DataQualitySettings.vue'
+import ProfileSettings from './ProfileSettings.vue'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useBackendHealthStore } from '@/stores/backendHealth'
 import { usePrefsStore } from '@/stores/prefs'
@@ -244,6 +249,7 @@ onMounted(() => {
 
 const anchors = [
   { id: 'sec-assistant', label: 'AI 助手' },
+  { id: 'sec-profile', label: '学习画像' },
   { id: 'sec-agent', label: '学习引擎' },
   { id: 'sec-web', label: '联网搜索' },
   { id: 'sec-data', label: '数据与质量' },

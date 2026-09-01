@@ -231,11 +231,31 @@ def practical_level_from_evidence(evidence) -> dict:
     return {"level": level, "source": "code_test"}
 
 
-def _normalize_demographics(demographics: dict = None) -> dict | None:
-    """学历/专业背景规范化 (赛题(2) 先验画像, 可选采集)。
+_AGE_RANGES = {"<18", "18-25", "26-35", "36+"}
 
-    仅保留白名单键 (education/major), 防脏数据入库; 空则 None (画像不带该键,
-    字段定义对齐 data/user_profiles/profile_schema.json 的 demographics)。
+
+def _normalize_nonneg_int(value):
+    """非负整数字段归一化 (programming/python_experience_months 等)。
+
+    接受 int/float/数字字符串; 布尔、负数、非数字 → None (非法值丢弃)。
+    """
+    if isinstance(value, bool):
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if v < 0 or not math.isfinite(v):
+        return None
+    return int(v)
+
+
+def _normalize_demographics(demographics: dict = None) -> dict | None:
+    """学习背景规范化 (赛题(2) 先验画像, 可选采集)。
+
+    白名单键: education/major (字符串), age_range (枚举), programming_experience_months /
+    python_experience_months (非负整数字段), 防脏数据入库; 空白/非法丢弃;
+    空则 None (画像不带该键, 字段定义对齐 data/user_profiles/profile_schema.json 的 demographics)。
     """
     if not isinstance(demographics, dict):
         return None
@@ -244,7 +264,34 @@ def _normalize_demographics(demographics: dict = None) -> dict | None:
         val = str(demographics.get(k) or "").strip()
         if val:
             cleaned[k] = val
+    # age_range: 白名单枚举 (对齐 profile_schema.json demographics.age_range)
+    age = demographics.get("age_range")
+    if isinstance(age, str) and age.strip() in _AGE_RANGES:
+        cleaned["age_range"] = age.strip()
+    # 非负整数字段: int/float/数字字符串归一化, 非法丢弃
+    for k in ("programming_experience_months", "python_experience_months"):
+        v = _normalize_nonneg_int(demographics.get(k))
+        if v is not None:
+            cleaned[k] = v
     return cleaned or None
+
+
+def _normalize_time_per_week(value) -> float:
+    """每周可投入学时归一化: 缺省/非法/越界 → 6.0; 有效值保留 (0, 168] 区间。"""
+    if value is None:
+        return 6.0
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return 6.0
+    if 0 < v <= 168:
+        return v
+    return 6.0
+
+
+def _normalize_pace(value) -> str:
+    """学习节奏归一化: 仅 slow/normal/fast 合法, 其余回退 normal (缺省语义)。"""
+    return value if value in ("slow", "normal", "fast") else "normal"
 
 
 def _build_profile(
@@ -255,6 +302,8 @@ def _build_profile(
     learning_style_quiz: list = None,
     practical_evidence: dict = None,
     demographics: dict = None,
+    time_per_week=None,
+    preferred_pace=None,
 ) -> dict:
     """根据判分结果组装画像 v3。
 
@@ -264,7 +313,11 @@ def _build_profile(
     learning_style_quiz / practical_evidence (W5 三维测评): VARK 问卷答案与
     代码测试通过率证据, 缺省时相应维度带 default/unassessed 来源占位。
 
-    demographics (赛题(2) 先验画像): 学历/专业背景, 可选采集, 供资源生成贴合背景。
+    demographics (赛题(2) 先验画像): 学习背景 (学历/专业/年龄段/编程经验月数), 可选采集,
+        供资源生成贴合背景; 白名单规范化, 非法丢弃。
+
+    time_per_week / preferred_pace (画像字段真实化): 每周可投入学时与学习节奏偏好,
+        缺省或非法回退 6 小时 / "normal" (缺省提交行为与旧版完全一致)。
     """
     per_node = grading["per_node"]
     total = grading["total_count"] or 1
@@ -349,8 +402,8 @@ def _build_profile(
         for n in nodes if isinstance(n, dict)
     )
     total_hours = total_minutes / 60
-    time_per_week = 6
-    hours_based_weeks = math.ceil(total_hours / time_per_week) if total_hours else 0
+    tpw = _normalize_time_per_week(time_per_week)  # 画像字段真实化: 缺省/非法回退 6.0
+    hours_based_weeks = math.ceil(total_hours / tpw) if total_hours else 0
     if hours_based_weeks > 0:
         estimated_weeks = max(1, min(8, hours_based_weeks))
     elif weak_topics:
@@ -373,10 +426,10 @@ def _build_profile(
         "practical_source": practical["source"],  # code_test=实测 | unassessed=占位
         "learning_style": style["style"],
         "style_source": style["source"],          # quiz=实测 | default=占位
-        "demographics": _normalize_demographics(demographics),  # 学历/专业背景 (可选, None=未采集)
+        "demographics": _normalize_demographics(demographics),  # 学习背景 (可选, None=未采集)
         "target_direction": target_direction,
-        "preferred_pace": "normal",
-        "time_per_week": 6,
+        "preferred_pace": _normalize_pace(preferred_pace),
+        "time_per_week": int(tpw),
         "known_topics": known_topics,
         "weak_topics": weak_topics,
         "weakness_areas": weakness_areas or ["暂无明显弱项"],

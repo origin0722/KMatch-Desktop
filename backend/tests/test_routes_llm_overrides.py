@@ -79,7 +79,7 @@ def test_submit_passes_overrides_to_grade(monkeypatch):
         seen["ctx"] = _current_overrides.get()
         return {"per_node": {}, "correct_count": 0, "total_count": len(questions)}
 
-    def fake_build_profile(target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None):
+    def fake_build_profile(target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None, time_per_week=None, preferred_pace=None):
         return {"theory_level": 1}
 
     # 路由层 from app.agents.diagnostics import _grade — patch 路由模块绑定才生效

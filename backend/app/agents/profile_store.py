@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -229,3 +230,41 @@ def load_profile(key: str) -> Optional[dict]:
     except (OSError, json.JSONDecodeError) as e:
         logger.warning("profile_store: 读取 %s 失败 err=%s", p, e)
         return None
+
+
+def load_profile_history(key: str, limit: int = 20) -> list[dict]:
+    """读取画像所属学习历史 (history.jsonl 尾 limit 条)。无记录/异常返回 [].
+
+    供设置页「学习画像」展示历史摘要; limit 由调用方截取尾部窗口。
+    """
+    try:
+        sid = safe_key(key)
+    except ValueError:
+        return []
+    p = _archive_dir() / sid / "history.jsonl"
+    if not p.is_file():
+        return []
+    try:
+        lines = p.read_text(encoding="utf-8").splitlines()
+        tail = [json.loads(l) for l in lines[-limit:] if l.strip()]
+        return tail
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("profile_store: 读取 %s history 失败 err=%s", p, e)
+        return []
+
+
+def delete_profile(key: str) -> bool:
+    """删除指定 key 的画像档案目录 (尽力而为)。返回是否发生删除。"""
+    try:
+        sid = safe_key(key)
+    except ValueError:
+        return False
+    d = _archive_dir() / sid
+    if not d.exists():
+        return False
+    try:
+        shutil.rmtree(d)
+        return True
+    except OSError as e:
+        logger.warning("profile_store: 删除 %s 失败 err=%s", sid, e)
+        return False

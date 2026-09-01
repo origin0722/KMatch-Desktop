@@ -148,7 +148,7 @@ def test_submit_with_learner_key_returns_diff_and_reuses_id(monkeypatch, tmp_pat
         return {"per_node": {"X": [{"correct": True, "question_index": 0}]},
                 "total_count": 1, "correct_count": 1}
 
-    def fake_build_profile(target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None):
+    def fake_build_profile(target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None, time_per_week=None, preferred_pace=None):
         return _profile(profile_id="UP-DIA-run1", theory_level=3, weak_topics=[
             {"node_id": "X", "mastery": 0.4, "error_patterns": []},
         ])

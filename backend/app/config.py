@@ -14,7 +14,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 class Settings:
     # --- 应用 ---
     APP_NAME: str = "KMatch·知链 API"
-    APP_VERSION: str = "1.2.0"
+    APP_VERSION: str = "1.3.0"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # --- Neo4j ---
@@ -32,6 +32,8 @@ class Settings:
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "sk-placeholder")
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-v4-pro")
+    # Agent 生成统一输出上限 (长讲义/实操/测试题不再被厂商默认 8K 拦腰截断)
+    LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "16384"))
 
     # --- 独立裁判 LLM (M5 质检升级: 与主 LLM 不同源, 提升指标可信度) ---
     # 留空则回退主 LLM (报告标注 same_source=True 诚实降级)

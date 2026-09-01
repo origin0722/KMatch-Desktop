@@ -19,16 +19,16 @@
     <template v-if="agent.state.useOverrides">
       <SettingCard title="厂商" info="Agent 本期仅支持 OpenAI 兼容协议（Anthropic 暂不支持）">
         <el-select data-test="agent-provider" :model-value="agent.state.provider" size="small" style="width: 220px"
-                   @change="agent.setProvider">
+                   @change="onProviderChange">
           <el-option v-for="p in PROVIDERS" :key="p.id" :label="p.label" :value="p.id"
                      :disabled="p.protocol === 'anthropic'"
                      :title="p.protocol === 'anthropic' ? 'Agent 本期仅支持 OpenAI 兼容协议' : ''" />
         </el-select>
       </SettingCard>
 
-      <SettingCard title="API Key" info="Agent 学习引擎独立 key；仅本地存储">
+      <SettingCard title="API Key" info="Agent 学习引擎独立 key；仅本地存储。保存后自动校验连通性，无效 Key 当场提示（不再等到出题才 401）">
         <el-input v-model="apiKeyInput" type="password" show-password size="small" style="width: 320px"
-                  placeholder="sk-..." @change="agent.setApiKey" />
+                  placeholder="sk-..." @change="onApiKeyChange" />
       </SettingCard>
 
       <SettingCard v-if="isCustomProvider(agent.state.provider)" title="Base URL" info="自定义厂商端点">
@@ -36,12 +36,14 @@
                   placeholder="https://your-endpoint/v1" @change="agent.setBaseUrl" />
       </SettingCard>
 
-      <SettingCard title="模型">
+      <SettingCard title="模型" info="手输模型 ID；「获取模型」拉取厂商真实列表并自动校正（防止配置了不存在的模型反复 400）">
         <el-input v-model="modelInput" size="small" style="width: 280px" placeholder="模型 ID"
                   @change="agent.setModel" />
+        <el-button size="small" :loading="fetchingModels" @click="fetchEngineModels()">获取模型</el-button>
+        <span v-if="models.length" class="model-count">{{ models.length }} 个可用</span>
       </SettingCard>
 
-      <SettingCard title="测试连接" info="调一次 /api/agents/ping 验证 key/baseUrl/model 可用">
+      <SettingCard title="测试连接" info="调一次 /api/agents/ping 验证 key/baseUrl/model 可用（保存 Key 后会自动校验一次）">
         <el-button type="primary" size="small" data-test="test-conn" :loading="testing" @click="testConn">测试</el-button>
         <span v-if="testResult" :class="testResult.ok ? 'conn-ok' : 'conn-err'">{{ testResult.message }}</span>
       </SettingCard>
@@ -57,6 +59,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useAgentLlmStore } from '@/stores/agentLlm'
 import { PROVIDERS, isCustomProvider } from '@/stores/aiSettings'
 import { useApiSettingsStore } from '@/stores/apiSettings'
@@ -69,6 +72,9 @@ const effectiveSrc = computed(() => agent.effectiveSource())
 const apiUnified = computed(() => useApiSettingsStore().mode === 'unified')
 const testing = ref(false)
 const testResult = ref(null)
+// 模型列表: 「获取模型」拉厂商真实列表; 当前 model 不在列表时自动校正 (修复: 配了不存在的模型反复 400)
+const models = ref([])
+const fetchingModels = ref(false)
 
 // API Key 本地镜像 (修"粘贴不了": 受控 :model-value + @change 输入/粘贴间被 store 值重置)
 const apiKeyInput = ref(agent.state.apiKey || '')
@@ -83,7 +89,7 @@ watch(() => agent.state.model, (v) => { modelInput.value = v || '' })
 const feedbackModelInput = ref(agent.state.feedbackModel || '')
 watch(() => agent.state.feedbackModel, (v) => { feedbackModelInput.value = v || '' })
 
-async function testConn() {
+async function runPing(auto = false) {
   const overrides = agent.buildOverrides()
   if (!overrides) {
     testResult.value = { ok: false, message: '请先填写 API Key' }
@@ -95,7 +101,7 @@ async function testConn() {
     const res = await window.api.http.request('POST', '/api/agents/ping', { llm_overrides: overrides })
     const data = res.body || {}
     if (res.ok && data.ok) {
-      testResult.value = { ok: true, message: `✓ 连接成功（${(data.content || '').slice(0, 40)}）` }
+      testResult.value = { ok: true, message: `${auto ? '✓ 保存后自动校验通过' : '✓ 连接成功'}（${(data.content || '').slice(0, 40)}）` }
     } else {
       testResult.value = { ok: false, message: `✗ ${data.error || '连接失败'}` }
     }
@@ -105,11 +111,60 @@ async function testConn() {
     testing.value = false
   }
 }
+
+async function testConn() { await runPing(false) }
+
+/** 保存即校验: key 落盘后立刻 ping 一次, 无效 key 当场暴露 (不再等到出题才 401)。 */
+async function onApiKeyChange() {
+  agent.setApiKey(apiKeyInput.value)
+  await runPing(true)
+}
+
+/** 切厂商: 落盘 + 清空旧模型列表 + 自动校验 (新厂商 key/端点当场验证)。 */
+async function onProviderChange(pid) {
+  agent.setProvider(pid)
+  models.value = []
+  await runPing(true)
+}
+
+/** 拉取厂商真实模型列表, 当前模型不存在时自动校正为列表第一个。 */
+async function fetchEngineModels() {
+  const overrides = agent.buildOverrides()
+  if (!overrides?.api_key || !overrides?.base_url) {
+    ElMessage.warning('请先填写 API Key 与厂商')
+    return
+  }
+  fetchingModels.value = true
+  try {
+    const res = await window.api.http.request('POST', '/api/chat/models', {
+      base_url: overrides.base_url, api_key: overrides.api_key, protocol: overrides.protocol || 'openai',
+    })
+    const data = res.body
+    if (!res.ok) throw new Error(typeof data === 'string' ? data : (data?.error || `HTTP ${res.status}`))
+    if (Array.isArray(data.models) && data.models.length) {
+      models.value = data.models.sort()
+      if (agent.state.model && !data.models.includes(agent.state.model)) {
+        const prev = agent.state.model
+        agent.setModel(data.models[0])
+        ElMessage.warning(`模型 ${prev} 已不在 ${agent.state.provider} 的模型列表，已自动切换为 ${data.models[0]}`)
+      } else {
+        ElMessage.success(`已获取 ${data.models.length} 个模型，当前模型有效`)
+      }
+    } else {
+      ElMessage.info('该端点未返回模型列表（可能不支持 /models 探测）')
+    }
+  } catch (e) {
+    ElMessage.warning(`获取模型列表失败：${e.message || '请求失败'}`)
+  } finally {
+    fetchingModels.value = false
+  }
+}
 </script>
 
 <style scoped>
 .conn-ok { color: var(--km-success, #67c23a); margin-left: 8px; font-size: 12.5px; }
 .conn-err { color: var(--km-danger, #f56c6c); margin-left: 8px; font-size: 12.5px; }
+.model-count { margin-left: 8px; font-size: 12px; color: var(--km-gray-500, #909399); }
 .unified-banner {
   padding: 8px 12px; font-size: 12px; line-height: 1.6;
   border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);

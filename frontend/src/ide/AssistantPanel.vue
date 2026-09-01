@@ -1124,11 +1124,13 @@ async function copyText(text) {
   padding: 2px 0 0;
 }
 .msg-content :deep(pre) {
-  max-height: 200px; overflow-y: auto;
+  max-height: 480px; overflow-y: auto;
   background: var(--km-gray-100);
   border: 1px solid var(--km-border-light);
   border-radius: var(--km-radius-sm);
 }
+/* 长代码块可展开至完整高度 (配合 MarkdownViewer 代码块头部"展开/收起"按钮) */
+.msg-content :deep(pre.expanded) { max-height: none; }
 .msg-content :deep(code) {
   background: var(--km-gray-200);
   color: var(--km-gray-700);

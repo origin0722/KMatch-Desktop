@@ -27,12 +27,20 @@ const rootRef = ref(null)
 // ---- 配置 marked ----
 const renderer = new marked.Renderer()
 
-// 覆写 code 渲染: 包装 .code-block 容器 + 复制按钮 + Monaco 标记
+// 覆写 code 渲染: 包装 .code-block 容器 + 语言标签 + 展开/收起按钮 + 复制按钮 + Monaco 标记
 renderer.code = function ({ text, lang }) {
   const escaped = escapeHtml(text)
   const langAttr = lang ? ` data-lang="${lang}"` : ''
+  const langLabel = (lang || '').toString().toLowerCase() || 'code'
 
   return `<div class="code-block">`
+    + `<div class="code-block-head">`
+    + `<span class="code-lang">${escapeHtml(langLabel)}</span>`
+    + `<button class="code-expand-btn" type="button" title="展开/收起">`
+    + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`
+    + `<span class="code-expand-label">展开</span>`
+    + `</button>`
+    + `</div>`
     + `<button class="code-copy-btn" data-code="${escaped}" type="button" title="复制代码">`
     + `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`
     + `</button>`
@@ -125,12 +133,34 @@ async function colorizeCodeBlocks() {
   if (colorizeQueue !== batchId) return // 有更新的批次
 }
 
+// ---- 代码块展开/收起 (v-html 整段渲染, DOM 挂载后 querySelector 绑 click) ----
+// 每次 content 变更 v-html 会重建 DOM (旧监听随之销毁), 故在渲染后重绑;
+// 用 dataset.expandBound 防同一节点重复绑。展开时给 <pre> 加 .expanded,
+// 由 AssistantPanel 的 :deep(pre.expanded) 规则放开 max-height。
+function bindCodeExpandButtons() {
+  if (!rootRef.value) return
+  const blocks = rootRef.value.querySelectorAll('.code-block')
+  for (const block of blocks) {
+    const btn = block.querySelector('.code-expand-btn')
+    const pre = block.querySelector('pre')
+    if (!btn || !pre || btn.dataset.expandBound) continue
+    btn.dataset.expandBound = '1'
+    btn.addEventListener('click', () => {
+      const expanded = pre.classList.toggle('expanded')
+      const label = btn.querySelector('.code-expand-label')
+      if (label) label.textContent = expanded ? '收起' : '展开'
+      btn.classList.toggle('expanded', expanded)
+    })
+  }
+}
+
 // 监听 content 变化 → 等 DOM 更新后高亮
 watch(() => props.content, async () => {
   await nextTick()
   // 额外延迟一帧，确保 v-html 的 DOM 已被挂载
   requestAnimationFrame(() => {
     colorizeCodeBlocks()
+    bindCodeExpandButtons()
   })
 }, { immediate: true })
 
@@ -211,6 +241,29 @@ function onCodeCopyClick(e) {
 .markdown-viewer :deep(.code-block pre code span) {
   font-family: inherit; font-size: inherit;
 }
+
+/* ---- 代码块头部 (语言标签 + 展开/收起) ---- */
+.markdown-viewer :deep(.code-block-head) {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 3px 40px 3px 10px;
+  background: var(--km-gray-200);
+  border-radius: var(--km-radius-sm) var(--km-radius-sm) 0 0;
+}
+.markdown-viewer :deep(.code-lang) {
+  font-family: var(--km-font-mono); font-size: 11px;
+  color: var(--km-gray-500); text-transform: lowercase;
+}
+.markdown-viewer :deep(.code-expand-btn) {
+  display: inline-flex; align-items: center; gap: 3px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--km-gray-500); font-size: 11px; padding: 2px 4px;
+  border-radius: 4px;
+}
+.markdown-viewer :deep(.code-expand-btn:hover) {
+  background: var(--km-gray-300); color: var(--km-gray-700);
+}
+.markdown-viewer :deep(.code-expand-btn svg) { transition: transform 0.15s var(--km-ease); }
+.markdown-viewer :deep(.code-expand-btn.expanded svg) { transform: rotate(180deg); }
 
 /* ---- 复制按钮 ---- */
 .markdown-viewer :deep(.code-copy-btn) {

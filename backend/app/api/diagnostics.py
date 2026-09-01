@@ -11,6 +11,7 @@ POST /api/diagnostics/submit
 """
 
 import asyncio
+import json
 import math
 import time
 import uuid
@@ -26,6 +27,9 @@ from app.agents.content_generator import regenerate_for_feedback
 from app.agents.diagnostics import (
     _build_profile,
     _grade,
+    _normalize_demographics,
+    _normalize_pace,
+    _normalize_time_per_week,
     decide_feedback,
     prepare_questions,
 )
@@ -112,7 +116,11 @@ class SubmitRequest(BaseModel):
     practical_evidence: dict | None = Field(
         None, description="W5 三维测评: 实操能力证据 {tests_passed, tests_total} (代码测试通过率); 缺省标 practical_source=unassessed")
     demographics: dict | None = Field(
-        None, description="赛题(2) 先验画像: 学习背景 {education, major} (可选采集, 供资源生成贴合学历/专业)")
+        None, description="赛题(2) 先验画像: 学习背景 {education, major, age_range, programming_experience_months, python_experience_months} (可选采集, 供资源生成贴合背景)")
+    time_per_week: float | None = Field(
+        None, description="画像字段真实化: 每周可投入学时 (h); 缺省/非法回退 6")
+    preferred_pace: str | None = Field(
+        None, description="画像字段真实化: 学习节奏 slow/normal/fast; 缺省/非法回退 normal")
 
 
 class SubmitResponse(BaseModel):
@@ -722,6 +730,8 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
                 learning_style_quiz=req.learning_style_quiz,
                 practical_evidence=req.practical_evidence,
                 demographics=req.demographics,
+                time_per_week=req.time_per_week,
+                preferred_pace=req.preferred_pace,
             )
             _tick("画像(profile)")
         feedback = decide_feedback(grading["correct_count"], grading["total_count"])
@@ -897,3 +907,80 @@ def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
         node_count=result["node_count"],
         generation_failures=result.get("generation_failures", []),
     )
+
+
+# ============================================================
+# 画像档案管理 API (设置页「学习画像」: 查看 / 编辑 / 导出 / 重置)
+# ============================================================
+
+class ProfileUpdateRequest(BaseModel):
+    """画像档案更新请求 (设置页可编辑字段)。"""
+
+    demographics: dict | None = Field(
+        None, description="学习背景 (白名单规范化; 空对象=清除)")
+    time_per_week: float | None = Field(
+        None, description="每周可投入学时 (h); 非法回退 6")
+    preferred_pace: str | None = Field(
+        None, description="学习节奏 slow/normal/fast; 非法回退 normal")
+    learning_goal: dict | None = Field(
+        None, description="学习目标 (自由对象, 序列化 <2KB)")
+
+
+_GOAL_SIZE_LIMIT = 2 * 1024  # 2KB
+
+
+def _safe_key_or_404(learner_key: str) -> str:
+    try:
+        return profile_store.safe_key(learner_key)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+
+
+def _limit_learning_goal(goal) -> dict:
+    """learning_goal 自由对象但限制序列化大小 < 2KB; 非对象/超限 400。"""
+    if not isinstance(goal, dict):
+        raise HTTPException(status_code=400, detail="learning_goal 必须是 JSON 对象")
+    if len(json.dumps(goal, ensure_ascii=False).encode("utf-8")) > _GOAL_SIZE_LIMIT:
+        raise HTTPException(status_code=400, detail="learning_goal 过大（须 < 2KB）")
+    return goal
+
+
+@router.get("/profile/{learner_key}", summary="读取画像档案 (设置页「学习画像」)")
+def get_profile_api(learner_key: str):
+    """返回稳定学习者画像档案 + 学习历史摘要 (history.jsonl 尾 20 条)。无档案 404。"""
+    key = _safe_key_or_404(learner_key)
+    profile = profile_store.load_profile(key)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="画像档案不存在——完成一次学习测评后自动创建")
+    history = profile_store.load_profile_history(key, limit=20)
+    return {"learner_key": learner_key, "profile": profile, "history": history}
+
+
+@router.put("/profile/{learner_key}", summary="更新画像档案")
+def update_profile_api(learner_key: str, req: ProfileUpdateRequest):
+    """读档案合并更新: demographics 过 _normalize_demographics;
+    time_per_week/preferred_pace 同提交校验 (非法回退默认); learning_goal 自由对象 <2KB。
+    保存并返回新档案。"""
+    key = _safe_key_or_404(learner_key)
+    profile = profile_store.load_profile(key)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="画像档案不存在——完成一次学习测评后自动创建")
+    updated = dict(profile)
+    if req.demographics is not None:
+        updated["demographics"] = _normalize_demographics(req.demographics)
+    if req.time_per_week is not None:
+        updated["time_per_week"] = int(_normalize_time_per_week(req.time_per_week))
+    if req.preferred_pace is not None:
+        updated["preferred_pace"] = _normalize_pace(req.preferred_pace)
+    if req.learning_goal is not None:
+        updated["learning_goal"] = _limit_learning_goal(req.learning_goal)
+    profile_store.save_profile(key, updated)
+    return updated
+
+
+@router.delete("/profile/{learner_key}", summary="重置画像档案 (删除)")
+def delete_profile_api(learner_key: str):
+    """删除该 key 画像档案 (尽力而为)。返回 deleted: true。"""
+    key = _safe_key_or_404(learner_key)
+    removed = profile_store.delete_profile(key)
+    return {"learner_key": learner_key, "deleted": removed}

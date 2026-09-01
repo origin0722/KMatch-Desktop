@@ -78,6 +78,11 @@ export async function streamChat({ body, signal, onBlock }) {
           if (r instanceof Error) throw r // F2: 流内错误 → reject
         }
       }
+      // 流结束: 残留的半帧 (未以 \n\n 收尾) 也不丢, 当最后一帧 dispatch (为空则跳过)
+      if (buffer) {
+        const r = onBlock(buffer)
+        if (r instanceof Error) throw r
+      }
     } catch (e) {
       if (watchdogFired && e?.name === 'AbortError') {
         throw new Error('SSE 流超时（后端 150s 无数据，可能已断流）')

@@ -204,9 +204,14 @@ def _build_request_extras(protocol: str, model: str, reasoning_mode: str) -> dic
     返回 kwargs 字典 — 调用方直接 kwargs.update(extras)。
     """
     # DeepSeek-V4 系列 + xiaomi MiMo 等: extra_body.thinking
+    # 截断治理②: default 档不再强制开思考 — 思考内容计入输出预算,
+    # 默认档开思考会吃掉正文 token 导致「回答戛然而止」; 仅显式 high/max 才启用。
     if protocol == 'openai' and _is_thinking_extra_body_model(model):
-        thinking = 'disabled' if reasoning_mode == 'off' else 'enabled'
-        return {'extra_body': {'thinking': {'type': thinking}}}
+        if reasoning_mode == 'off':
+            return {'extra_body': {'thinking': {'type': 'disabled'}}}
+        if reasoning_mode in ('high', 'max'):
+            return {'extra_body': {'thinking': {'type': 'enabled'}}}
+        return {}
 
     # Anthropic Claude 4+: thinking param
     if protocol == 'anthropic' and _is_anthropic_reasoning_model(model):
@@ -315,7 +320,8 @@ async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: 
         stream = await client.chat.completions.create(**kwargs)
 
         async for chunk in stream:
-            delta = chunk.choices[0].delta if chunk.choices else None
+            choices = chunk.choices
+            delta = choices[0].delta if choices else None
             if delta:
                 data = {}
                 if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
@@ -324,6 +330,11 @@ async def _stream_openai(client: AsyncOpenAI, messages: list[dict], max_tokens: 
                     data['delta'] = delta.content
                 if data:
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+            # 截断探测 (截断治理①): 模型因输出上限提前停止 (finish_reason='length') 时
+            # 显式发 truncated 帧, 前端据之追加「已被截断」提示 — 不再让用户把戛然而止当答完。
+            finish = getattr(choices[0], 'finish_reason', None) if choices else None
+            if finish == 'length':
+                yield f"data: {json.dumps({'truncated': True}, ensure_ascii=False)}\n\n"
             # usage 事件: 流末尾最后一帧 (OpenAI 兼容 include_usage)
             usage = getattr(chunk, 'usage', None)
             if usage is not None:

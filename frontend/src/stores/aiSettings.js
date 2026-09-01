@@ -232,7 +232,7 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
   // 供 1M 上下文模型调高)。存量用户若显式改过该值则尊重其设置。
   const _savedMaxTokens = saved.chatMaxTokens === 16384 ? undefined : saved.chatMaxTokens
   const chatMaxTokens = ref(Math.round(_num(_savedMaxTokens, 32768, 256, 65536)))
-  const toolRounds = ref(Math.round(_num(saved.toolRounds, 6, 1, 12)))
+  const toolRounds = ref(Math.round(_num(saved.toolRounds, 8, 1, 12)))
 
   function setChatParams({ temperature, maxTokens, rounds } = {}) {
     if (temperature != null) chatTemperature.value = _num(temperature, chatTemperature.value, 0, 2)

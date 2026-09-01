@@ -15,7 +15,7 @@
 1. **理论知识测评**: 通过选择题/填空题评估用户对 Python 知识点的掌握程度
 2. **画像输出**: 综合测评数据，输出结构化的用户能力画像 JSON
 
-> **实现说明 (2026/06/19)**：实操能力测评/学习风格问卷尚未接入 (practical_level 固定 1、learning_style 固定 read_write，待后续采集)。当前聚焦理论测评 + 画像产出。
+> **实现说明 (2026/06/19，三维测评已接入)**：VARK 问卷结果由 Python 端 `learning_style_from_quiz` 判定（backend/app/agents/diagnostics.py），经 `_build_profile` 写入 `profile.learning_style` / `style_source`（quiz=实测 / default=占位），实操等级由 `practical_level_from_evidence` 依代码测试通过率推断（practical_source=code_test/unassessed）；二者由内容生成 Agent 的 style 提示消费。本提示词不再负责风格/实操判定，仅聚焦理论测评 + 画像产出。
 
 ## 命题规则
 
@@ -36,8 +36,8 @@
 
 ## 输出格式: 用户能力画像
 
-> **当前实现状态 (2026/06/17)**：
-> `practical_level` 暂固定为 1（第4周补实操测评）、`learning_style` 暂固定为 "read_write"（第5周补风格问卷）。
+> **当前实现状态 (2026/06/17，三维测评已接入)**：
+> `practical_level` 由 `practical_level_from_evidence(practical_evidence)` 依代码测试通过率推断（practical_source 记 code_test 实测 / unassessed 占位）；`learning_style` 由 `learning_style_from_quiz(learning_style_quiz)` 依 VARK 快问卷判定（style_source 记 quiz 实测 / default 占位），缺省时仍为 "read_write"（与旧占位兼容）。风格/实操维度已由 Python 端统一判定，本提示词仅声明输出结构。
 > `profile_id` 格式为 `UP-DIA-{uuid hex 6位}`（如 `UP-DIA-a1b2c3`）。
 > `recommended_path` 为对象结构（对齐 profile_schema.json），含 current_node / next_nodes / estimated_completion_weeks。
 

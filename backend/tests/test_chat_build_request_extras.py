@@ -4,11 +4,11 @@ from app.api.chat import _build_request_extras
 
 
 @pytest.mark.parametrize("protocol,model,mode,expect", [
-    # DeepSeek-V4 走 extra_body.thinking (off 才关, 其余开启)
-    ('openai', 'deepseek-v4-pro', 'default', {'extra_body': {'thinking': {'type': 'enabled'}}}),
+    # DeepSeek-V4 走 extra_body.thinking (off 显式关; default 不传跟随模型默认; high/max 开启)
+    ('openai', 'deepseek-v4-pro', 'off', {'extra_body': {'thinking': {'type': 'disabled'}}}),
+    ('openai', 'deepseek-v4-pro', 'default', {}),
     ('openai', 'deepseek-v4-pro', 'high', {'extra_body': {'thinking': {'type': 'enabled'}}}),
     ('openai', 'deepseek-v4-pro', 'max', {'extra_body': {'thinking': {'type': 'enabled'}}}),
-    ('openai', 'deepseek-v4-pro', 'off', {'extra_body': {'thinking': {'type': 'disabled'}}}),
 
     # Anthropic claude-fable-5 (default 不附加; high/max 递增 budget)
     ('anthropic', 'claude-fable-5', 'default', {}),

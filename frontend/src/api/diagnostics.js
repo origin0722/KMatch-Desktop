@@ -185,7 +185,20 @@ export async function restoreWorkflowRevision(workflowId, revision) {
  *   orchestration_log: string[]
  * }>}
  */
-export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence, demographics }, signal) {
+/**
+ * 画像字段真实化: learning_style 背景对象是否含任一已填字段。
+ * 全空 → 不上送 (后端 _normalize_demographics 返回 None, 与旧行为一致)。
+ * @param {Object|null} demographics
+ * @returns {boolean}
+ */
+export function isDemographicsFilled(demographics) {
+  return !!(demographics && (
+    demographics.education || demographics.major || demographics.age_range
+    || demographics.programming_experience_months || demographics.python_experience_months
+  ))
+}
+
+export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence, demographics, timePerWeek, preferredPace }, signal) {
   // 判分+画像+图谱组装为 LLM 关键路径, 显式放宽到 300s (慢网络/慢模型不误杀)
   const cfg = { timeout: 300_000 }
   if (signal) cfg.signal = signal
@@ -196,8 +209,11 @@ export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQui
     // W5 三维测评: VARK 问卷答案 + 实操证据 (可空 — 后端按占位处理)
     learning_style_quiz: Array.isArray(learningStyleQuiz) && learningStyleQuiz.length ? learningStyleQuiz : undefined,
     practical_evidence: practicalEvidence || undefined,
-    // 赛题(2) 先验画像: 学习背景 {education, major} (可选采集, 全空不上送)
-    demographics: (demographics && (demographics.education || demographics.major)) ? demographics : undefined,
+    // 赛题(2) 先验画像: 学习背景 {education, major, age_range, programming/python_experience_months} (可选采集, 全空不上送)
+    demographics: isDemographicsFilled(demographics) ? demographics : undefined,
+    // 画像字段真实化: 每周可投入学时 + 学习节奏 (0/空不上送 → 后端默认 6/normal)
+    time_per_week: timePerWeek && timePerWeek > 0 ? timePerWeek : undefined,
+    preferred_pace: preferredPace || undefined,
   }), cfg)
 }
 
@@ -359,4 +375,37 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
     offChunk(); offDone(); offError()
     onError?.(e.message || '网络请求失败')
   }
+}
+
+// ============================================================
+// 画像档案管理 (设置页「学习画像」: 查看 / 编辑 / 导出 / 重置)
+// ============================================================
+
+/**
+ * 读取稳定学习者画像档案 (设置页「学习画像」)。
+ * @param {string} learnerKey
+ * @returns {Promise<{learner_key:string, profile:Object, history:Array}>}
+ *   无档案时后端 404 (调用方据此渲染空态文案)
+ */
+export async function fetchProfile(learnerKey) {
+  return http.get(`/api/diagnostics/profile/${encodeURIComponent(learnerKey)}`)
+}
+
+/**
+ * 更新画像档案 (demographics / time_per_week / preferred_pace / learning_goal)。
+ * @param {string} learnerKey
+ * @param {Object} payload 仅携带需更新的字段 (可选)
+ * @returns {Promise<Object>} 更新后的画像档案
+ */
+export async function updateProfile(learnerKey, payload) {
+  return http.put(`/api/diagnostics/profile/${encodeURIComponent(learnerKey)}`, payload)
+}
+
+/**
+ * 重置 (删除) 画像档案。二次确认由 UI 层负责。
+ * @param {string} learnerKey
+ * @returns {Promise<{learner_key:string, deleted:boolean}>}
+ */
+export async function deleteProfile(learnerKey) {
+  return http.delete(`/api/diagnostics/profile/${encodeURIComponent(learnerKey)}`)
 }

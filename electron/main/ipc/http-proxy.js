@@ -87,6 +87,12 @@ export function registerHttpProxyIpc() {
             }
           }
         }
+        // 流结束: flush 残留 buffer (未以 \n\n 收尾的半帧), 再发 done
+        if (buffer) {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('http:stream:chunk', reqId, buffer)
+          }
+        }
         if (win && !win.isDestroyed()) win.webContents.send('http:stream:done', reqId)
       })
       .catch((err) => {

@@ -138,8 +138,15 @@ export const useAssessmentStore = defineStore('assessment', () => {
   const userAnswers = ref([])
   /** W5 三维测评: VARK 学习风格快问卷答案 (StageGoal 采集, submit 时上送; 空数组=未答走占位) */
   const styleQuiz = ref([])
-  /** 赛题(2) 先验画像: 学习背景 {education, major} (StageGoal 可选采集, submit 时上送) */
-  const demographics = ref({ education: '', major: '' })
+  /** 赛题(2) 先验画像: 学习背景 {education, major, age_range, programming_experience_months, python_experience_months} (StageGoal 可选采集, submit 时上送) */
+  const demographics = ref({
+    education: '', major: '', age_range: '',
+    programming_experience_months: null, python_experience_months: null,
+  })
+  /** 画像字段真实化: 每周可投入学时 (h, 0=未填 → 后端默认 6); StageGoal 采集, submit 时上送 */
+  const timePerWeek = ref(0)
+  /** 画像字段真实化: 学习节奏 (''=未选 → normal 语义; slow/normal/fast); StageGoal 采集, submit 时上送 */
+  const preferredPace = ref('')
   /** 动态反馈策略 (submit 返回): 'advance'|'remediate'|'scaffold' */
   const feedbackStrategy = ref(null)
   /** 动态反馈再生资源 (feedback 接口返回) */
@@ -323,6 +330,9 @@ export const useAssessmentStore = defineStore('assessment', () => {
         learningStyleQuiz: styleQuiz.value,
         // 赛题(2) 先验画像: 学习背景 (可选采集)
         demographics: demographics.value,
+        // 画像字段真实化: 每周学时 + 学习节奏 (可选采集; 0/空 → 后端默认 6/normal)
+        timePerWeek: timePerWeek.value,
+        preferredPace: preferredPace.value,
         practicalEvidence: await (async () => {
           try {
             const { useProjectGraphStore } = await import('@/stores/projectGraph')
@@ -599,6 +609,9 @@ export const useAssessmentStore = defineStore('assessment', () => {
     // W5 三维测评: VARK 快问卷 (StageGoal 采集)
     styleQuiz,
     demographics,
+    // 画像字段真实化: 每周学时 + 学习节奏 (StageGoal 采集)
+    timePerWeek,
+    preferredPace,
     // W7 审核轮次轨迹
     reviewRounds,
     feedbackStrategy,

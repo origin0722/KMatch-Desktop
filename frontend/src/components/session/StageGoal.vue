@@ -46,20 +46,47 @@
         </div>
       </div>
 
-      <!-- 赛题(2) 先验画像: 学习背景 (可选采集 — 学历/专业让资源生成贴合学习者背景) -->
+      <!-- 赛题(2) 先验画像: 学习背景 + 投入节奏 (可选采集 — 学历/专业/年龄段/经验/学时让资源生成贴合背景) -->
       <div class="style-quiz">
         <button class="quiz-toggle" type="button" @click="bgOpen = !bgOpen">
-          {{ bgOpen ? '▾' : '▸' }} 学习背景 (可选 · 让内容贴合你的学历与专业基础)
+          {{ bgOpen ? '▾' : '▸' }} 学习背景 · 投入节奏 (可选 · 让内容贴合你的背景与学时可投入)
           <span v-if="bgFilled" class="quiz-done">已填</span>
         </button>
         <div v-if="bgOpen" class="quiz-body bg-grid">
-          <el-select v-model="demo.education" placeholder="教育背景" clearable size="small" style="width: 170px" data-test="bg-education">
-            <el-option v-for="e in EDU_OPTIONS" :key="e" :label="e" :value="e" />
-          </el-select>
-          <el-input
-            v-model="demo.major" placeholder="专业 (如: 会计学 / 计算机科学, 可留空)" size="small"
-            style="flex: 1; min-width: 200px" :maxlength="60" data-test="bg-major"
-          />
+          <div class="bg-field"><span class="bg-label">教育背景</span>
+            <el-select v-model="demo.education" placeholder="学历" clearable size="small" style="width: 150px" data-test="bg-education">
+              <el-option v-for="e in EDU_OPTIONS" :key="e" :label="e" :value="e" />
+            </el-select>
+          </div>
+          <div class="bg-field"><span class="bg-label">专业</span>
+            <el-input v-model="demo.major" placeholder="如: 会计学 / 计算机科学, 可留空" size="small"
+                      style="width: 230px" :maxlength="60" data-test="bg-major" />
+          </div>
+          <div class="bg-field"><span class="bg-label">年龄段</span>
+            <el-select v-model="demo.age_range" placeholder="可选" clearable size="small" style="width: 110px" data-test="bg-age">
+              <el-option v-for="a in AGE_OPTIONS" :key="a" :label="a" :value="a" />
+            </el-select>
+          </div>
+          <div class="bg-field"><span class="bg-label">编程经验</span>
+            <el-input-number v-model="demo.programming_experience_months" :min="0" :max="10000"
+                             controls-position="right" size="small" style="width: 130px"
+                             placeholder="月" data-test="bg-prog-months" />
+          </div>
+          <div class="bg-field"><span class="bg-label">Python 经验</span>
+            <el-input-number v-model="demo.python_experience_months" :min="0" :max="10000"
+                             controls-position="right" size="small" style="width: 130px"
+                             placeholder="月" data-test="bg-py-months" />
+          </div>
+          <div class="bg-field"><span class="bg-label">每周可投入</span>
+            <el-input-number v-model="pace.timePerWeek" :min="1" :max="168"
+                             controls-position="right" size="small" style="width: 130px"
+                             placeholder="小时" data-test="bg-hours-week" />
+          </div>
+          <div class="bg-field"><span class="bg-label">学习节奏</span>
+            <el-select v-model="pace.preferredPace" placeholder="跟随推荐" clearable size="small" style="width: 140px" data-test="bg-pace">
+              <el-option v-for="p in PACE_OPTIONS" :key="p.value" :label="p.label" :value="p.value" />
+            </el-select>
+          </div>
         </div>
       </div>
 
@@ -161,15 +188,33 @@ const quizOpen = ref(false)
 // 防御: learning-session 等测试环境可能注入精简 store mock (无 styleQuiz 字段)
 const quizAnswered = computed(() => (store.styleQuiz || []).filter(Boolean).length)
 
-// ---- 赛题(2) 先验画像: 学习背景 (可选采集, 双向同步 store.demographics) ----
+// ---- 赛题(2) 先验画像: 学习背景 + 投入节奏 (可选采集, 双向同步 store) ----
 const EDU_OPTIONS = ['高中及以下', '大专', '本科', '硕士', '博士', '非科班自学者']
+const AGE_OPTIONS = ['<18', '18-25', '26-35', '36+']
+const PACE_OPTIONS = [
+  { label: '跟随推荐 (normal)', value: 'normal' },
+  { label: '稳扎稳打 (slow)', value: 'slow' },
+  { label: '快速推进 (fast)', value: 'fast' },
+]
 const bgOpen = ref(false)
 const demo = reactive({
   education: store.demographics?.education || '',
   major: store.demographics?.major || '',
+  age_range: store.demographics?.age_range || '',
+  programming_experience_months: store.demographics?.programming_experience_months ?? null,
+  python_experience_months: store.demographics?.python_experience_months ?? null,
 })
-watch(demo, (v) => { store.demographics = { education: v.education, major: v.major } }, { deep: true })
-const bgFilled = computed(() => !!(demo.education || demo.major))
+watch(demo, (v) => { store.demographics = { ...v } }, { deep: true })
+// 画像字段真实化: 每周可投入学时 + 学习节奏 (0/空 → 后端默认 6/normal)
+const pace = reactive({
+  timePerWeek: store.timePerWeek || null,
+  preferredPace: store.preferredPace || '',
+})
+watch(pace, (v) => { store.timePerWeek = v.timePerWeek; store.preferredPace = v.preferredPace }, { deep: true })
+const bgFilled = computed(() =>
+  !!(demo.education || demo.major || demo.age_range || demo.programming_experience_months
+     || demo.python_experience_months || pace.timePerWeek || pace.preferredPace),
+)
 
 function pick(qi, key) {
   const cur = store.styleQuiz || []
@@ -238,6 +283,8 @@ function pick(qi, key) {
   background: color-mix(in srgb, var(--km-primary, #6c7ce0) 12%, transparent);
   color: var(--km-primary, #6c7ce0);
 }
-/* 学习背景 (可选采集) */
-.bg-grid { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* 学习背景 + 投入节奏 (可选采集) */
+.bg-grid { display: flex; gap: 10px 12px; flex-wrap: wrap; align-items: center; }
+.bg-field { display: inline-flex; align-items: center; gap: 6px; }
+.bg-label { font-size: 12px; color: var(--km-gray-500); flex-shrink: 0; }
 </style>

@@ -66,6 +66,7 @@ def get_chat_model(
     overrides: Optional[dict] = None,
     max_retries: int = 2,
     timeout: Optional[int] = None,
+    max_tokens: Optional[int] = None,
 ) -> ChatOpenAI:
     """创建 Chat 模型实例。
 
@@ -104,6 +105,8 @@ def get_chat_model(
         temperature=temperature if temperature is not None else settings.LLM_TEMPERATURE,
         max_retries=max_retries,
         timeout=timeout if timeout is not None else settings.LLM_TIMEOUT,
+        # 统一输出上限: 长讲义/实操/测试题生成不再被厂商默认 8K 拦腰截断 (截断治理①)
+        max_tokens=max_tokens if max_tokens is not None else settings.LLM_MAX_TOKENS,
     )
 
 
@@ -175,10 +178,20 @@ def _effective_llm_snapshot() -> dict:
     }
 
 
+def _is_model_error(exc: BaseException) -> bool:
+    """判断异常是否为「模型名不存在/无效」类错误 (厂商返回 400)。"""
+    text = str(exc).lower()
+    return any(k in text for k in (
+        "model not exist", "invalid model", "model_not_exist",
+        "model does not exist", "no such model", "model not found",
+    ))
+
+
 def friendly_llm_error(exc: BaseException) -> str:
     """把 LLM 调用异常转为用户可读中文提示。
 
     - 401/认证类 → 明确的配置引导 + 生效配置快照 (端点/模型/key 尾号, 便于自诊断)
+    - 模型不存在类 → 引导「获取模型」自动校正 (key 有效但模型名不对的常见下一站)
     - 其余 → 首行原文 (保留排查线索), 不吞错误
     """
     if is_auth_error(exc):
@@ -197,6 +210,14 @@ def friendly_llm_error(exc: BaseException) -> str:
             "端用户无需也无法修改 .env——请到 设置 → AI 助手 或 学习引擎 填入有效 API Key，"
             "点「测试连接」验证后重试。")
         return "\n".join(parts)
+    if _is_model_error(exc):
+        snap = _effective_llm_snapshot()
+        return "\n".join([
+            "学习引擎模型不可用：当前厂商端点不存在该模型（400），Key 已通过校验。",
+            f"本次请求：base_url={snap['base_url'] or '(空)'}，model={snap['model'] or '(空)'}。",
+            "请到 设置 → 学习引擎 点「获取模型」拉取厂商真实模型列表自动校正，"
+            "或手输正确模型 ID（如 deepseek-chat / deepseek-reasoner）后重试。",
+        ])
     text = str(exc)
     return text.splitlines()[0] if text else "LLM 调用失败"
 
