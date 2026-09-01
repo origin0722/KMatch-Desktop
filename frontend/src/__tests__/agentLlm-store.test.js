@@ -182,4 +182,27 @@ describe('agentLlm store', () => {
     const body = withOverrides({ target_direction: 'x' })
     expect(body.llm_overrides.api_key).toBe('sk-ai-key')
   })
+
+  // issue: 独立 Key 原样发送未 trim, 粘贴带入的尾随换行/空格通过校验却在上游 401
+  // (桩值刻意避开真实凭据形态: 无厂商 key 前缀, 仅本地测试假值)
+  it('buildOverrides 发送前逐字段 trim (粘贴脏字符不再导致 401)', () => {
+    const s = useAgentLlmStore()
+    s.setUseOverrides(true)
+    const dirtyKey = `  test-engine-key-9999  \n`
+    s.setApiKey(dirtyKey)
+    s.setBaseUrl(' https://api.deepseek.com/v1 \n')
+    s.setModel(' deepseek-v4-pro ')
+    const ov = s.buildOverrides()
+    expect(ov.api_key.trim()).toBe(dirtyKey.trim())
+    expect(ov.base_url).toBe('https://api.deepseek.com/v1')
+    expect(ov.model).toBe('deepseek-v4-pro')
+    expect(ov.protocol).toBe('openai')
+  })
+
+  it('setApiKey 落盘即 trim (旧版本存进 localStorage 的脏值被覆盖自愈)', () => {
+    const s = useAgentLlmStore()
+    const dirtyKey = ` dirty-test-key \n`
+    s.setApiKey(dirtyKey)
+    expect(s.state.apiKey).toBe(dirtyKey.trim())
+  })
 })

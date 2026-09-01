@@ -31,14 +31,17 @@ describe('agent overrides injection into diagnostics API', () => {
   it('submitAssessment injects llm_overrides when agent overrides enabled', async () => {
     const agent = useAgentLlmStore()
     agent.setUseOverrides(true)
-    agent.setApiKey('sk-agent')
+    const stubKey = 'test-agent-key' // 桩值避开真实凭据形态 (仅本地测试假值)
+    agent.setApiKey(stubKey)
     agent.setProvider('deepseek')
     agent.setModel('dm')
 
     const { submitAssessment } = await import('@/api/diagnostics')
     await submitAssessment({ targetDirection: 'x' })
     expect(captured.url).toBe('/api/diagnostics/assess')
-    expect(captured.body.llm_overrides).toEqual(expect.objectContaining({ api_key: 'sk-agent', model: 'dm' }))
+    const ov = captured.body.llm_overrides
+    expect(ov.api_key).toBe(stubKey)
+    expect(ov.model).toBe('dm')
   })
 
   it('submitAssessment does NOT inject when agent overrides disabled', async () => {

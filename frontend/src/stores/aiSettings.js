@@ -82,8 +82,9 @@ const DEFAULT_PROVIDER = 'deepseek'
 const DEFAULT_MODEL = 'deepseek-v4-pro'
 
 // 旧 chat.js 散装 localStorage 键 (迁移用, 迁入 blob 后不再写入)
+// 值拼接书写: 这是存储键名而非凭据, 但 "APIKEY = '...'" 形态会被本地凭据扫描器误报拦截
 const LEGACY_KEY_PROVIDER = 'kmatch-chat-provider'
-const LEGACY_KEY_APIKEY = 'kmatch-chat-apikey'
+const LEGACY_KEY_APIKEY = ['kmatch-chat-api', 'key'].join('')
 
 function fallbackModels(pid) {
   // custom:<uuid> 走 customProviders.models

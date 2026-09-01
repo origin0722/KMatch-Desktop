@@ -1,5 +1,5 @@
 """LLM 401 认证错误识别与友好化 (issue: 出题失败 401 根因 = 占位符 key)。"""
-from app.agents.llm import friendly_llm_error, is_auth_error
+from app.agents.llm import _current_overrides, friendly_llm_error, is_auth_error
 
 # 用户实际收到的报错原文 (DeepSeek 对 sk-placeholder 的 401 响应)
 AUTH_MSG = (
@@ -29,3 +29,32 @@ def test_friendly_llm_error_maps_401_to_guidance():
 def test_friendly_llm_error_keeps_first_line_for_other():
     msg = friendly_llm_error(Exception("boom\nsecond line"))
     assert msg == "boom"
+
+
+# 桩值刻意避开真实凭据形态 (无厂商 key 前缀), 仅本地测试假值
+_SNAPSHOT_KEY = "user-key-9999"
+_WS_KEY = " user-key-with-space \n"
+
+
+def test_friendly_llm_error_401_shows_effective_snapshot():
+    """401 提示带生效配置快照: 端点/模型/key 尾号, 便于区分配错 key vs 端点不匹配。"""
+    overrides = {"api_key": _SNAPSHOT_KEY, "base_url": " https://api.deepseek.com/v1 ", "model": " deepseek-v4-pro "}
+    token = _current_overrides.set(overrides)
+    try:
+        msg = friendly_llm_error(Exception(AUTH_MSG))
+    finally:
+        _current_overrides.reset(token)
+    assert "base_url=https://api.deepseek.com/v1" in msg
+    assert "model=deepseek-v4-pro" in msg
+    assert "…9999" in msg  # key 尾号 (掩码展示, 不泄漏全文)
+    assert "测试连接" in msg
+
+
+def test_friendly_llm_error_401_flags_whitespace_key():
+    """key 首尾带空白 (粘贴带入) 时, 401 提示明确指出已自动去除。"""
+    token = _current_overrides.set({"api_key": _WS_KEY})
+    try:
+        msg = friendly_llm_error(Exception(AUTH_MSG))
+    finally:
+        _current_overrides.reset(token)
+    assert "空白字符" in msg

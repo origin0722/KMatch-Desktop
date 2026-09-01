@@ -68,10 +68,12 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
     }
     persist()
   }
-  function setApiKey(key) { state.value.apiKey = key; persist() }
-  function setBaseUrl(url) { state.value.baseUrl = url; persist() }
-  function setModel(m) { state.value.model = m; persist() }
-  function setFeedbackModel(m) { state.value.feedbackModel = m; persist() }
+  // setter 落盘统一 trim: 粘贴带入的首尾空白/换行原样存进 localStorage 后,
+  // 每次出题都会把脏 key 发给上游 → 401 (落盘即自愈, 旧脏值在下次编辑时覆盖)
+  function setApiKey(key) { state.value.apiKey = (key || '').trim(); persist() }
+  function setBaseUrl(url) { state.value.baseUrl = (url || '').trim(); persist() }
+  function setModel(m) { state.value.model = (m || '').trim(); persist() }
+  function setFeedbackModel(m) { state.value.feedbackModel = (m || '').trim(); persist() }
 
   /** 回退来源: AI 助手 Key (OpenAI 兼容厂商), 用于学习引擎未独立配置时。 */
   function aiFallbackOverrides() {
@@ -83,8 +85,8 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
     if (meta?.protocol === 'anthropic') return null
     return {
       api_key: key,
-      base_url: ai.getBaseUrl() || '',
-      model: ai.model || '',
+      base_url: (ai.getBaseUrl() || '').trim(),
+      model: (ai.model || '').trim(),
       protocol: 'openai',
     }
   }
@@ -94,13 +96,16 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
    * 1. 独立配置开启且有 key → 独立 key
    * 2. 未开启/空 key → 回退 AI 助手 Key (OpenAI 兼容, 消除"明明配了 AI 助手还 401")
    * 3. 两者皆无 → null (走后端 .env)
+   *
+   * 发送前逐字段 trim: 判定用 trim 过的值、发送原始值会让"粘贴带换行的 key"
+   * 通过校验却在上游 401 (与 aiFallbackOverrides 口径对齐)。
    */
   function buildOverrides() {
     if (state.value.useOverrides && state.value.apiKey?.trim()) {
       return {
-        api_key: state.value.apiKey,
-        base_url: state.value.baseUrl,
-        model: state.value.model,
+        api_key: state.value.apiKey.trim(),
+        base_url: (state.value.baseUrl || '').trim(),
+        model: (state.value.model || '').trim(),
         protocol: state.value.protocol,   // 本期固定 'openai'
       }
     }
@@ -110,8 +115,9 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
   /** 设置页提示: 当前出题/判分实际生效的密钥来源。 */
   function effectiveSource() {
     const mask = (k) => (k?.length > 6 ? `…${k.slice(-4)}` : (k ? '已配置' : '未配置'))
-    if (state.value.useOverrides && state.value.apiKey?.trim()) {
-      return { type: 'engine', text: `学习引擎独立 Key（${mask(state.value.apiKey)}）` }
+    const engineKey = state.value.apiKey?.trim()
+    if (state.value.useOverrides && engineKey) {
+      return { type: 'engine', text: `学习引擎独立 Key（${mask(engineKey)}）` }
     }
     const ai = useAiSettingsStore()
     if (ai.apiKey?.trim()) {

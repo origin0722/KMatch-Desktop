@@ -103,3 +103,13 @@ def test_llm_configured_overrides_without_api_key_falls_through():
     expected = settings.LLM_API_KEY not in ("", "sk-placeholder")
     with use_llm_overrides({"model": "only-model"}):
         assert llm_configured() is expected
+
+
+def test_get_chat_model_strips_dirty_override_fields():
+    """overrides 首尾空白 (粘贴带入) 应被 strip——原样透传会被上游判 401。"""
+    dirty_key = " user-key-0001 \n"
+    overrides = {"api_key": dirty_key, "base_url": " https://dirty.example.com/v1 \n", "model": " dirty-model "}
+    model = get_chat_model(overrides=overrides)
+    assert model.model_name == "dirty-model"
+    assert model.openai_api_key.get_secret_value() == dirty_key.strip()
+    assert model.openai_api_base == "https://dirty.example.com/v1"

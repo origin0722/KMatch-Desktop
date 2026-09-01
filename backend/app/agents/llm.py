@@ -87,14 +87,15 @@ def get_chat_model(
         get_default_chat_model 的 lru_cache 复用单例。
     """
     ovr = overrides if overrides is not None else _current_overrides.get()
+    # 逐字段 strip 兜底: 粘贴带入的首尾空白/换行原样透传会被上游判 401 (key/base_url/model 均不容空白)
     if ovr:
-        api_key = ovr.get("api_key") or settings.LLM_API_KEY
-        base_url = ovr.get("base_url") or settings.LLM_BASE_URL
-        model = ovr.get("model") or settings.LLM_MODEL
+        api_key = (ovr.get("api_key") or "").strip() or (settings.LLM_API_KEY or "").strip()
+        base_url = (ovr.get("base_url") or "").strip() or (settings.LLM_BASE_URL or "").strip()
+        model = (ovr.get("model") or "").strip() or (settings.LLM_MODEL or "").strip()
     else:
-        api_key = settings.LLM_API_KEY
-        base_url = settings.LLM_BASE_URL
-        model = settings.LLM_MODEL
+        api_key = (settings.LLM_API_KEY or "").strip()
+        base_url = (settings.LLM_BASE_URL or "").strip()
+        model = (settings.LLM_MODEL or "").strip()
 
     return ChatOpenAI(
         model=model,
@@ -151,19 +152,51 @@ def is_auth_error(exc: BaseException) -> bool:
     ))
 
 
+def _mask_key_tail(key: str) -> str:
+    """掩码展示密钥尾号 (只露末 4 位, 供用户核对 key 是否配错, 不泄漏全文)。"""
+    if not key:
+        return "空"
+    return f"…{key[-4:]}" if len(key) >= 4 else "已配置"
+
+
+def _effective_llm_snapshot() -> dict:
+    """当前实际生效的 LLM 配置快照 (overrides → settings 逐字段回退, 与 get_chat_model 同口径)。
+
+    用于 401 友好报错: 让用户直接看到本次请求打到哪个端点/模型/key 尾号,
+    立刻区分「key 配错」vs「端点不匹配」vs「粘贴带脏字符」。
+    """
+    ovr = _current_overrides.get() or {}
+    raw_key = ovr.get("api_key") or settings.LLM_API_KEY or ""
+    return {
+        "api_key": raw_key.strip(),
+        "base_url": (ovr.get("base_url") or settings.LLM_BASE_URL or "").strip(),
+        "model": (ovr.get("model") or settings.LLM_MODEL or "").strip(),
+        "key_has_whitespace": raw_key != raw_key.strip(),
+    }
+
+
 def friendly_llm_error(exc: BaseException) -> str:
     """把 LLM 调用异常转为用户可读中文提示。
 
-    - 401/认证类 → 明确的配置引导 (指向 设置→学习引擎 / 后端 .env)
+    - 401/认证类 → 明确的配置引导 + 生效配置快照 (端点/模型/key 尾号, 便于自诊断)
     - 其余 → 首行原文 (保留排查线索), 不吞错误
     """
     if is_auth_error(exc):
-        return (
+        snap = _effective_llm_snapshot()
+        parts = [
             "学习引擎 API Key 无效（401）。密钥来源优先级：设置 → 学习引擎 独立 Key → "
-            "AI 助手 Key（未开启独立配置时自动回退）→ 后端默认密钥。"
-            "端用户无需也无法修改 .env——请直接到 设置 → AI 助手 或 学习引擎 填入有效 API Key，"
-            "点「测试连接」验证后重试。"
-        )
+            "AI 助手 Key（未开启独立配置时自动回退）→ 后端默认密钥。",
+            f"本次实际生效：base_url={snap['base_url'] or '(空)'}，model={snap['model'] or '(空)'}，"
+            f"key={_mask_key_tail(snap['api_key'])}——请核对 key 尾号与厂商端点是否匹配。",
+        ]
+        if snap["key_has_whitespace"]:
+            parts.append(
+                "检测到密钥首尾含空白字符（多为复制粘贴带入），系统已自动去除后重试仍被拒；"
+                "请重新完整复制 Key 再试。")
+        parts.append(
+            "端用户无需也无法修改 .env——请到 设置 → AI 助手 或 学习引擎 填入有效 API Key，"
+            "点「测试连接」验证后重试。")
+        return "\n".join(parts)
     text = str(exc)
     return text.splitlines()[0] if text else "LLM 调用失败"
 
