@@ -209,6 +209,10 @@ def friendly_llm_error(exc: BaseException) -> str:
         parts.append(
             "端用户无需也无法修改 .env——请到 设置 → AI 助手 或 学习引擎 填入有效 API Key，"
             "点「测试连接」验证后重试。")
+        parts.append(
+            "若 Key 确认无误仍报 401：请检查本机是否开着系统代理/VPN（Windows 设置 → 网络和 "
+            "Internet → 代理）——代理软件异常时会拦截并改写 LLM 请求响应；v1.3.0 起学习引擎"
+            "默认绕过系统代理直连厂商，若你的网络必须走代理，请在 设置 → 网络代理 显式配置。")
         return "\n".join(parts)
     if _is_model_error(exc):
         snap = _effective_llm_snapshot()

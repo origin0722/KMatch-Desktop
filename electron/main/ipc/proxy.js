@@ -40,10 +40,16 @@ export function saveProxyConfig(config) {
   return data
 }
 
-/** 由已落盘的代理配置构造 sidecar spawn env 追加项 (enabled+url 才注)。 */
+/** 由已落盘的代理配置构造 sidecar spawn env 追加项 (enabled+url 才注)。
+ *
+ * 未配置应用内代理时返回 { NO_PROXY: '*' } 而非 {} —— 否则 Python httpx/openai SDK 在
+ * Windows 上会自动读「系统代理」(注册表 ProxyServer, 常见 127.0.0.1:789x 的 Clash/V2Ray),
+ * 代理软件未启动/抽风时后端所有 LLM/Embedding/Tavily 出站被拦截 → 表现为「网络错误」或
+ * 代理返回的 401, 用户误以为 API Key 失效 (实测: NO_PROXY='*' 可让 httpx 完全绕过系统代理)。
+ */
 export function proxyEnv() {
   const p = loadProxyConfig()
-  if (!p.enabled || !p.url) return {}
+  if (!p.enabled || !p.url) return { NO_PROXY: '*', no_proxy: '*' }
   return {
     HTTP_PROXY: p.url,
     HTTPS_PROXY: p.url,
