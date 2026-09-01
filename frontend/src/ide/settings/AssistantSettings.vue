@@ -118,11 +118,11 @@
           <span class="adv-label">最大输出</span>
           <el-input-number
             :model-value="ai.chatMaxTokens"
-            :min="256" :max="32768" :step="256"
+            :min="256" :max="65536" :step="1024"
             size="small" style="width: 130px"
             @change="(v) => saveChatParams({ maxTokens: v })"
           />
-          <span class="adv-hint">tokens；长讲义类回答建议 ≥8192</span>
+          <span class="adv-hint">tokens；长讲义/长代码回答建议 ≥16384，1M 上下文模型可调更高</span>
         </div>
         <div class="adv-row">
           <span class="adv-label">工具循环轮数</span>

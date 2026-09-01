@@ -712,7 +712,8 @@ export const useChatStore = defineStore('chat', () => {
       stream: true,
       // issue-75: 推理内容计入 token, 8192 在长思考下会耗尽导致无正文 (默认抬到 16384)
       // W?: max_tokens/temperature 由设置页「高级」卡可调 (后端 ChatRequest 放行 temperature)
-      max_tokens: ai.chatMaxTokens || 16384,
+      // 2026-09-01: 默认抬到 32768 (1M 上下文模型时代长回答/长代码不再中途截断), 上限 65536
+      max_tokens: ai.chatMaxTokens || 32768,
       temperature: ai.chatTemperature ?? 0.7,
       model: ai.model,
       api_key: ai.apiKey || undefined,

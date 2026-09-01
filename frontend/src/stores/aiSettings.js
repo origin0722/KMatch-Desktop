@@ -228,12 +228,15 @@ export const useAiSettingsStore = defineStore('aiSettings', () => {
     return n
   }
   const chatTemperature = ref(_num(saved.chatTemperature, 0.7, 0, 2))
-  const chatMaxTokens = ref(Math.round(_num(saved.chatMaxTokens, 16384, 256, 32768)))
+  // 最大输出 (token): 老默认 16384 视为未定制 → 迁移到 32768 (长回答/长代码场景; 上限 65536
+  // 供 1M 上下文模型调高)。存量用户若显式改过该值则尊重其设置。
+  const _savedMaxTokens = saved.chatMaxTokens === 16384 ? undefined : saved.chatMaxTokens
+  const chatMaxTokens = ref(Math.round(_num(_savedMaxTokens, 32768, 256, 65536)))
   const toolRounds = ref(Math.round(_num(saved.toolRounds, 6, 1, 12)))
 
   function setChatParams({ temperature, maxTokens, rounds } = {}) {
     if (temperature != null) chatTemperature.value = _num(temperature, chatTemperature.value, 0, 2)
-    if (maxTokens != null) chatMaxTokens.value = Math.round(_num(maxTokens, chatMaxTokens.value, 256, 32768))
+    if (maxTokens != null) chatMaxTokens.value = Math.round(_num(maxTokens, chatMaxTokens.value, 256, 65536))
     if (rounds != null) toolRounds.value = Math.round(_num(rounds, toolRounds.value, 1, 12))
     persist()
   }

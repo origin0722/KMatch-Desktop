@@ -63,7 +63,7 @@ TEST_IMG_BASE64 = (
 class ChatRequest(BaseModel):
     messages: list[dict] = Field(..., min_length=1, description="对话消息数组")
     stream: bool = Field(True, description="是否 SSE 流式返回")
-    max_tokens: int = Field(4096, ge=1, le=32768)
+    max_tokens: int = Field(8192, ge=1, le=65536, description="单次回答输出上限; 前端默认发 32768, 此为 API 直调时的兜底")
     temperature: float | None = Field(None, ge=0, le=2, description="采样温度; 未传用默认 0.7")
     model: str | None = Field(None)
     api_key: str | None = Field(None)
