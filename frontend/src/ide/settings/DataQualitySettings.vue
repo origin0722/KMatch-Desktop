@@ -18,11 +18,12 @@
         </div>
         <div class="dq-row">
           <span class="dq-label">Base URL</span>
-          <el-input v-model="emb.baseUrl" size="small" style="width: 300px" placeholder="https://api.deepseek.com/v1" />
+          <el-input v-model="emb.baseUrl" size="small" style="width: 300px" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" />
         </div>
         <div class="dq-row">
           <span class="dq-label">模型</span>
           <el-input v-model="emb.model" size="small" style="width: 300px" placeholder="text-embedding-v2" />
+          <span class="dq-hint">需为 Embedding 模型（text-embedding-v2 / v3 等）；DeepSeek 无嵌入端点，请配千问等支持 embedding 的服务</span>
         </div>
         <div class="dq-row">
           <el-button type="primary" size="small" :loading="emb.saving" data-test="emb-save" @click="saveEmbedding">保存并生效</el-button>
@@ -84,11 +85,11 @@
         </div>
         <div class="dq-row">
           <span class="dq-label">语义就绪</span>
-          <el-tag :type="storeSemanticReady ? 'success' : 'warning'" size="small">{{ storeSemanticReady ? '就绪' : '未就绪' }}</el-tag>
+          <el-tag :type="storeInfo.semanticReady ? 'success' : 'warning'" size="small">{{ storeInfo.semanticReady ? '就绪' : '未就绪' }}</el-tag>
         </div>
         <div class="dq-row">
           <span class="dq-label">数据目录</span>
-          <code class="dq-path">{{ localDir }}</code>
+          <code class="dq-path">{{ storeInfo.localDir }}</code>
         </div>
       </div>
     </SettingCard>
@@ -137,7 +138,9 @@ const storeKindHint = computed(() => ({
 
 async function load() {
   try {
-    const { data } = await http.get('/api/settings/backend')
+    // @/api 响应拦截器已解包: http.get 直接返回 body —— `const { data } =` 解构必得 undefined
+    // (v1.0.5 同类横扫漏网, 本文件 v1.2.0 新增时引入; 症状: 保存后报 reading 'embedding_applied')
+    const data = (await http.get('/api/settings/backend')) || {}
     emb.configured = !!data.embedding?.configured
     emb.keyTail = data.embedding?.key_tail || ''
     emb.source = data.embedding?.source || 'unset'
@@ -163,13 +166,14 @@ async function saveEmbedding() {
   emb.msg = null
   try {
     // key 留空 = 不变 (后端 None 合并语义); 显式清除用"清除已存 Key"按钮
-    const { data } = await http.post('/api/settings/backend', {
+    // (同上: 拦截器已解包, 直接拿 body)
+    const data = (await http.post('/api/settings/backend', {
       embedding: {
         api_key: emb.keyInput || null,
         base_url: emb.baseUrl || null,
         model: emb.model || null,
       },
-    })
+    })) || {}
     const applied = data.embedding_applied
     if (applied?.ok) {
       emb.msg = { ok: true, text: '已保存并生效（语义检索就绪）' }
@@ -227,7 +231,8 @@ async function testJudge() {
   judge.testing = true
   judge.msg = null
   try {
-    const { data } = await http.post('/api/settings/test-judge')
+    // 拦截器已解包, 直接拿 body (解构会得 undefined → data.ok 抛 TypeError)
+    const data = (await http.post('/api/settings/test-judge')) || {}
     judge.msg = data.ok
       ? { ok: true, text: `✓ 连接成功 (${data.same_source ? '同源' : '异源'}裁判)` }
       : { ok: false, text: `✗ 探活返回空响应 (${data.same_source ? '同源' : '异源'})` }
