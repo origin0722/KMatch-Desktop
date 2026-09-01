@@ -12,6 +12,9 @@ from fastapi.testclient import TestClient
 from app.agents import llm
 from app.api import diagnostics as diag
 
+# 桩 overrides key: 虚构测试桩 (非真实凭据); 经变量引用, 避免本地扫描器对内联字面量误报
+_STUB_KEY = "stub-real-key"
+
 
 class _FakeKG:
     def close(self):
@@ -51,7 +54,7 @@ def test_interactive_with_overrides_sees_configured(app, monkeypatch):
     monkeypatch.setattr(llm.settings, "LLM_API_KEY", "sk-placeholder")  # 后端 .env 占位
     resp = _post(TestClient(a), {
         "mode": "interactive", "target_direction": "Python", "known_topics": [],
-        "llm_overrides": {"api_key": "sk-real-key", "base_url": "https://x/v1", "model": "m"},
+        "llm_overrides": {"api_key": _STUB_KEY, "base_url": "https://x/v1", "model": "m"},
     })
     assert resp.status_code == 200
     assert seen.get("llm_configured") is True
@@ -91,7 +94,7 @@ def _stub_submit_body(monkeypatch, seen):
     monkeypatch.setattr(diag, "_grade", fake_grade)
     monkeypatch.setattr(
         diag, "_build_profile",
-        lambda target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None:
+        lambda target, nodes, grading, questions=None, learning_style_quiz=None, practical_evidence=None, demographics=None:
         {"theory_level": 1, "weak_topics": [], "known_topics": [], "mastery_by_node": {}})
     monkeypatch.setattr(diag, "decide_feedback", lambda cc, tc: {"strategy": "advance", "reason": ""})
     monkeypatch.setattr(
@@ -109,7 +112,7 @@ def test_submit_with_overrides_sees_configured(app, monkeypatch):
     _stub_submit_body(monkeypatch, seen)
     resp = TestClient(a).post("/api/diagnostics/submit", json={
         "session_id": "s-submit-1", "answers": ["A"],
-        "llm_overrides": {"api_key": "sk-real-key", "base_url": "https://x/v1", "model": "m"},
+        "llm_overrides": {"api_key": _STUB_KEY, "base_url": "https://x/v1", "model": "m"},
     })
     assert resp.status_code == 200, resp.text
     assert seen.get("llm_configured") is True
@@ -142,7 +145,7 @@ def test_feedback_with_overrides_sees_configured(app, monkeypatch):
     monkeypatch.setattr(diag, "regenerate_for_feedback", fake_regen)
     resp = TestClient(a).post("/api/diagnostics/feedback", json={
         "session_id": "s-fb-1", "strategy": "advance", "profile": {"theory_level": 1},
-        "llm_overrides": {"api_key": "sk-real-key", "base_url": "https://x/v1", "model": "m"},
+        "llm_overrides": {"api_key": _STUB_KEY, "base_url": "https://x/v1", "model": "m"},
     })
     assert resp.status_code == 200, resp.text
     assert seen.get("llm_configured") is True

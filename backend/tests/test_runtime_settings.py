@@ -151,11 +151,12 @@ def _build_app(store=None):
 
 
 def test_get_backend_settings_masks_key(local_dir):
-    rs.save({"embedding": {"api_key": "sk-super-secret-9999"}})
+    stub_key = "stub-secret-9999"
+    rs.save({"embedding": {"api_key": stub_key}})
     client = TestClient(_build_app(_FakeStore()))
     data = client.get("/api/settings/backend").json()
     text = json.dumps(data)
-    assert "sk-super-secret" not in text  # 明文不外泄
+    assert "stub-secret-99" not in text  # 明文不外泄
     assert data["embedding"]["configured"] is True
     assert data["embedding"]["key_tail"] == "9999"
     assert data["store"]["kind"] == "embedded"

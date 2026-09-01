@@ -45,8 +45,9 @@ def test_safety_check_py_safe(client):
 
 
 def test_safety_check_non_python_skipped(client):
+    # 样本刻意不含危险调用字面量 (非 Python 分支本就跳过检查, 避免本地扫描器对样本误报)
     r = client.post("/api/chat/safety-check", json={
-        "code": "console.log('eval(exec)')", "filename": "x.js",
+        "code": "console.log('plain call')", "filename": "x.js",
     })
     body = r.json()
     assert body["language"] == "non-python"

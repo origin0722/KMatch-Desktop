@@ -40,6 +40,20 @@ def test_parse_junit_passed():
     assert cases[0].test_name == "test_add.test_add_happy"
 
 
+def test_parse_junit_entity_expansion_rejected():
+    """实体扩展加固: 含实体声明的 junit XML → 零 summary (不抛不解析)。"""
+    xml = '''<?xml version="1.0"?>
+<!DOCTYPE testsuite [
+<!ENTITY x "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
+]>
+<testsuite tests="1" failures="0" errors="0" skipped="0">
+  <testcase classname="t" name="t_x" />
+</testsuite>'''
+    summary, cases = parse_junit_xml(xml)
+    assert summary == {"total": 0, "passed": 0, "failed": 0, "error": 0, "skipped": 0}
+    assert cases == []
+
+
 def test_parse_junit_failed():
     xml = '''<?xml version="1.0"?>
 <testsuite tests="2" failures="1" errors="0" skipped="0">

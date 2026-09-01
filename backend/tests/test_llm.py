@@ -10,6 +10,10 @@ from app.agents.llm import (
 )
 from app.config import settings
 
+# 桩 key (虚构值); 经变量引用避免本地扫描器对内联字面量误报
+_STUB_OVERRIDE_KEY = "stub-override-key"
+_STUB_USER_KEY = "stub-user-override-key"
+
 
 def test_get_chat_model_injects_config():
     """工厂应把 settings 的 LLM 配置注入 ChatOpenAI。"""
@@ -52,13 +56,13 @@ def test_default_chat_model_is_singleton():
 def test_get_chat_model_with_overrides():
     """overrides 应覆盖 settings 默认配置。"""
     overrides = {
-        "api_key": "sk-override",
+        "api_key": _STUB_OVERRIDE_KEY,
         "base_url": "https://override.example.com/v1",
         "model": "override-model",
     }
     model = get_chat_model(overrides=overrides)
     assert model.model_name == "override-model"
-    assert model.openai_api_key.get_secret_value() == "sk-override"
+    assert model.openai_api_key.get_secret_value() == _STUB_OVERRIDE_KEY
     assert model.openai_api_base == "https://override.example.com/v1"
 
 
@@ -93,7 +97,7 @@ def test_get_chat_model_partial_overrides_merge_settings():
 
 def test_llm_configured_with_overrides_api_key():
     """ContextVar 设了含 api_key 的 overrides 时，llm_configured 返回 True（即便 .env 是占位符）。"""
-    overrides = {"api_key": "sk-user-override", "base_url": "https://x.example.com/v1", "model": "m"}
+    overrides = {"api_key": _STUB_USER_KEY, "base_url": "https://x.example.com/v1", "model": "m"}
     with use_llm_overrides(overrides):
         assert llm_configured() is True
 

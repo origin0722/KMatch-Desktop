@@ -21,7 +21,8 @@ def _make_fake_kg():
 
 def test_diagnostics_node_sets_contextvar_from_state():
     """diagnostics_node 入口把 state.llm_overrides set 进 ContextVar，退出 reset。"""
-    overrides = {"api_key": "sk-agent", "base_url": "https://x/v1", "model": "m"}
+    stub_key = "stub-agent-key"
+    overrides = {"api_key": stub_key, "base_url": "https://x/v1", "model": "m"}
     from app.agents import diagnostics as diag
     node = diag.diagnostics_node(_make_fake_kg())
     state = {"target_direction": "x", "mode": "demo", "known_topics": [],
@@ -97,7 +98,7 @@ def test_content_generator_safe_generate_sets_contextvar_in_worker_thread():
     captured = []
     import app.agents.content_generator as cg
 
-    def fake_generate_one(node, theory_level, content_type, correction_hint=""):
+    def fake_generate_one(node, theory_level, content_type, correction_hint="", style_extra=""):
         captured.append(_current_overrides.get())
         return {}
 

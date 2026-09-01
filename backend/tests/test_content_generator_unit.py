@@ -208,9 +208,84 @@ def test_build_prompt_injects_correction_hint():
     sys_text = messages[0].content
     assert "上轮判定修正要求" in sys_text
     assert "find() 返回值描述错误" in sys_text
-
     plain = _build_generation_prompt(_make_node(), 2, "lecture")
     assert "上轮判定修正要求" not in plain[0].content
+
+
+# ============================================================
+# 赛题背景适配: VARK 学习风格 + 学历/专业 style_hint (③)
+# ============================================================
+
+def test_background_style_hint_vark_and_non_tech():
+    """实测 VARK 风格 + 非科班背景 → 两条提示都出现。"""
+    from app.agents.content_generator import _background_style_hint
+    hint = _background_style_hint({
+        "learning_style": "visual", "style_source": "quiz",
+        "demographics": {"education": "高中及以下", "major": ""},
+    })
+    assert "视觉" in hint
+    assert "非科班" in hint
+
+
+def test_background_style_hint_default_style_skipped():
+    """占位风格 (style_source=default) 不据以调整; 无背景 → 空串。"""
+    from app.agents.content_generator import _background_style_hint
+    assert _background_style_hint({"learning_style": "visual", "style_source": "default"}) == ""
+    assert _background_style_hint(None) == ""
+
+
+def test_background_style_hint_cs_background():
+    """计算机专业背景 → 科班提示 (可直接用术语)。"""
+    from app.agents.content_generator import _background_style_hint
+    hint = _background_style_hint({"demographics": {"education": "本科", "major": "计算机科学"}})
+    assert "科班术语" in hint
+
+
+def test_build_prompt_appends_style_extra():
+    """style_extra 非空 → 追加进 system 风格段; 为空则不影响原提示。"""
+    from app.agents.content_generator import _build_generation_prompt
+    messages = _build_generation_prompt(_make_node(), 2, "lecture", style_extra="；学习者偏好视觉型输入")
+    assert "学习者偏好视觉型输入" in messages[0].content
+    plain = _build_generation_prompt(_make_node(), 2, "lecture")
+    assert "学习者偏好视觉型输入" not in plain[0].content
+
+
+# ============================================================
+# 赛题(4)① 申诉-复审: rebuttal 申诉结构 (定向再生时输出)
+# ============================================================
+
+def test_build_prompt_with_correction_hint_requires_rebuttal():
+    """带 correction_hint 再生 → system 要求输出 rebuttal 申诉数组; 无 hint 不要求。"""
+    from app.agents.content_generator import _build_generation_prompt
+    with_hint = _build_generation_prompt(_make_node(), 2, "lecture", correction_hint="存在幻觉")
+    assert "rebuttal" in with_hint[0].content
+    assert "申诉" in with_hint[0].content
+    plain = _build_generation_prompt(_make_node(), 2, "lecture")
+    assert "rebuttal" not in plain[0].content
+
+
+def test_finalize_resource_sanitizes_rebuttal():
+    """rebuttal 归一化: 保留合法条目三键, 剔除非 dict 项, evidence 列表字符串化。"""
+    from app.agents.content_generator import _finalize_resource
+    data = {
+        "rebuttal": [
+            {"issue": "被指摘 find() 返回值", "response": "已按节点事实修正", "evidence": ["PY-005.key_points[0]"]},
+            "bad",
+            42,
+        ],
+        "content": "c",
+    }
+    out = _finalize_resource(data, _make_node(), "lecture", "beginner")
+    assert out["rebuttal"] == [
+        {"issue": "被指摘 find() 返回值", "response": "已按节点事实修正", "evidence": ["PY-005.key_points[0]"]}
+    ]
+
+
+def test_finalize_resource_rebuttal_default_empty():
+    """非再生路径无 rebuttal → 空数组 (契约字段恒在)。"""
+    from app.agents.content_generator import _finalize_resource
+    out = _finalize_resource({"content": "c"}, _make_node(), "lecture", "beginner")
+    assert out["rebuttal"] == []
 
 
 def test_build_prompt_asks_unverified_claims():
@@ -589,7 +664,8 @@ def test_regenerate_for_feedback_overrides_propagate_to_workers(monkeypatch):
     )
     monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
 
-    overrides = {"api_key": "sk-agent-independent", "model": "agent-llm"}
+    stub_key = "stub-agent-independent"
+    overrides = {"api_key": stub_key, "model": "agent-llm"}
     nodes = [_make_node("PY-005", "循环", 2), _make_node("PY-006", "函数", 2)]
     profile = {"theory_level": 2, "weak_topics": [
         {"node_id": "PY-005", "mastery": 0.0, "error_patterns": []},

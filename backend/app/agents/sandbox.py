@@ -23,7 +23,7 @@ import os
 import re
 import subprocess
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET  # 防实体扩展 (junit XML 来自沙箱内用户代码, 不用裸 stdlib ET)
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -383,6 +383,9 @@ def parse_junit_xml(xml_text: str) -> tuple[dict, list[TestCaseResult]]:
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
+        return summary, cases
+    except ValueError:
+        # defusedxml 对含实体声明/外部实体的 XML 抛 ValueError 子类 (防实体扩展)
         return summary, cases
 
     # 根可能是 testsuites 或 testsuite
