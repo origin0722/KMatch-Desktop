@@ -366,11 +366,23 @@ export function summarizeToolResults(toolResults) {
     // 故 written 分支限定 write_file, 避免吞掉 graph 摘要 (review 发现)
     if (r.written && tr.call.tool === 'write_file') return `文件 ${r.path} 已成功写入 (${r.bytes} 字节)。`
     if (r.content) {
-      // F7: 截断 6000 字符时明示, 让 AI 知道被截断 (大文件推理不再静默降级)
+      // 截断治理 (F7 升级): 大文件只回前 6000 字符并明示覆盖行区间, 模型可用
+      // read_file 的 start_line/end_line 行号范围分段续读 (此前提示"指明行号范围"
+      // 但工具根本没有该参数, 模型无法继续 → 卡死无法回答)。
       const max = 6000
       const full = r.content
-      const truncated = full.length > max ? full.slice(0, max) + `\n... (内容已截断, 共 ${full.length} 字符, 仅显示前 ${max}; 如需后续内容请指明行号范围)` : full
-      return `文件 ${r.path} 内容:\n\`\`\`\n${truncated}\n\`\`\``
+      const truncated = full.length > max ? full.slice(0, max) + `\n... (内容已截断, 共 ${full.length} 字符, 仅显示前 ${max})` : full
+      const ranged = r.start_line != null
+      const coveredTo = ranged
+        ? r.end_line
+        : Math.min(r.total_lines ?? '?', truncated.split('\n').length)
+      const head = ranged
+        ? `文件 ${r.path} 第 ${r.start_line}-${r.end_line} 行 (文件共 ${r.total_lines ?? '?'} 行):`
+        : `文件 ${r.path} 内容 (共 ${r.total_lines ?? '?'} 行):`
+      const tail = full.length > max
+        ? `\n(本段超长已截断; 后续内容请继续用 start_line/end_line 行号范围分段读取${ranged ? '' : `, 本次覆盖 1-${coveredTo} 行`})`
+        : ''
+      return `${head}\n\`\`\`\n${truncated}\n\`\`\`${tail}`
     }
     if (r.files) return `目录 ${r.path} 内容:\n${r.files.join('\n')}`
     if (r.tool === 'generate_project_graph') {
@@ -818,7 +830,18 @@ export const useChatStore = defineStore('chat', () => {
         if (!relPath) return { error: '缺少 path 参数' }
         if (!hasIpc()) return { error: '文件读取仅在 Electron 桌面应用中可用（请打开项目后使用）' }
         const content = await window.api.fs.readFile(relPath)
-        return { path: relPath, content }
+        // 行号范围读取 (治"大文件截断后无法续读"): start_line/end_line 1 起始含端点。
+        // 未指定范围时返回全文 + total_lines, 由 summarize 层按 6000 字符截断并提示分段续读。
+        const text = String(content || '')
+        const totalLines = text.split('\n').length
+        const startLine = Math.max(1, parseInt(call.start_line, 10) || 1)
+        const endRaw = parseInt(call.end_line, 10)
+        const endLine = Math.min(totalLines, Number.isFinite(endRaw) ? Math.max(startLine, endRaw) : totalLines)
+        if (startLine > 1 || endLine < totalLines) {
+          const ranged = text.split('\n').slice(startLine - 1, endLine).join('\n')
+          return { path: relPath, content: ranged, start_line: startLine, end_line: endLine, total_lines: totalLines }
+        }
+        return { path: relPath, content: text, total_lines: totalLines }
       }
       if (call.tool === 'list_directory') {
         const relPath = call.path || ''

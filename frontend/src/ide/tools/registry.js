@@ -17,8 +17,12 @@ export const TOOL_PERMISSION = Object.freeze({
 export const TOOLS = Object.freeze([
   {
     name: 'read_file',
-    description: '读取项目中的文件内容。参数: path (相对路径)。',
-    parameters: { path: 'string (相对项目根目录的文件路径)' },
+    description: '读取项目中的文件内容。参数: path (相对路径); 可选 start_line/end_line (1 起始行号, 含端点) 读取指定行范围。大文件 (>6000 字符) 默认只回前 6000 字符并标注已覆盖行区间——需要后续内容时必须用行号范围分段续读, 不要重复整读同一文件。',
+    parameters: {
+      path: 'string (相对项目根目录的文件路径)',
+      start_line: 'number (可选, 起始行, 1 起始)',
+      end_line: 'number (可选, 结束行, 含端点)',
+    },
   },
   {
     name: 'list_directory',
@@ -196,6 +200,10 @@ export function buildToolBlock(allowedTools) {
   const notes = []
   const readTools = ['read_file', 'list_directory'].filter((name) => allow.has(name))
   if (readTools.length) notes.push(`- ${readTools.join('/')} 调用后返回结果, 你再继续回答。`)
+  if (allow.has('read_file')) {
+    notes.push(`- read_file 读大文件只回前 6000 字符并标注覆盖行区间; 需要后续内容时用 start_line/end_line 行号范围分段续读
+  (例: {"tool": "read_file", "path": "a.py", "start_line": 81, "end_line": 160}), 不要用相同参数重复整读同一文件。`)
+  }
   if (allow.has('write_file')) {
     notes.push(`- write_file 会触发用户审批门 (Python 文件先经 AST 安全预检), 用户可能批准或拒绝;
   批准后返回写入成功, 拒绝则返回"用户拒绝写入", 你应据此调整后续回答。

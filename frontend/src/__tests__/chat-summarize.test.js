@@ -71,6 +71,38 @@ describe('summarizeToolResults (C1.4 单一源)', () => {
     expect(out).not.toContain('x'.repeat(7000)) // 未全量塞回
   })
 
+  // ---- 行号范围续读 (治"截断提示要求指明行号范围, 但工具无该参数 → 模型卡死") ----
+
+  it('F7+: 截断提示给出 start_line/end_line 续读指引与已覆盖行区间', () => {
+    const big = 'x'.repeat(7000)
+    const out = summarizeToolResults([{
+      call: { tool: 'read_file' },
+      result: { content: big, path: 'a.py', total_lines: 300 },
+    }])
+    expect(out).toContain('start_line/end_line')
+    expect(out).toContain('1-')
+  })
+
+  it('F7+: 行号范围结果头部标注行区间与文件总行数', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'read_file' },
+      result: { content: 'line81\nline82', path: 'a.py', start_line: 81, end_line: 82, total_lines: 300 },
+    }])
+    expect(out).toContain('第 81-82 行')
+    expect(out).toContain('文件共 300 行')
+    expect(out).toContain('line81')
+  })
+
+  it('F7+: 行号范围结果仍超长 → 提示用更窄范围续读', () => {
+    const out = summarizeToolResults([{
+      call: { tool: 'read_file' },
+      result: { content: 'x'.repeat(7000), path: 'a.py', start_line: 1, end_line: 200, total_lines: 300 },
+    }])
+    expect(out).toContain('第 1-200 行')
+    expect(out).toContain('已截断')
+    expect(out).toContain('start_line/end_line')
+  })
+
   it('written 分支限定 write_file: generate_project_graph(written=true) 走 graph 摘要不被吞 (review 修正)', () => {
     const out = summarizeToolResults([{
       call: { tool: 'generate_project_graph' },
