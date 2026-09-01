@@ -35,7 +35,7 @@
         </div>
         <div class="dq-row">
           <el-button type="primary" size="small" :loading="emb.saving" data-test="emb-save" @click="saveEmbedding">保存并生效</el-button>
-          <el-button size="small" :disabled="!emb.configured" @click="clearEmbeddingKey">清除已存 Key</el-button>
+          <el-button size="small" :disabled="!emb.configured && !emb.baseUrl && !emb.model" data-test="emb-clear" @click="clearEmbedding">清除已存配置</el-button>
         </div>
         <transition name="ob-fade">
           <div v-if="emb.msg" class="dq-msg" :class="emb.msg.ok ? 'ok' : 'fail'">{{ emb.msg.text }}</div>
@@ -206,11 +206,16 @@ async function saveEmbedding() {
   }
 }
 
-async function clearEmbeddingKey() {
+async function clearEmbedding() {
+  // 全清: key + base_url + model 一起抹掉 (此前只清 key, 端点/模型残留让用户以为没清干净;
+  // 后端 save 约定 "" = 显式清空, 生效时回落 .env/默认, 不留脏值)
   emb.saving = true
+  emb.msg = null
   try {
-    await http.post('/api/settings/backend', { embedding: { clear_api_key: true } })
-    emb.msg = { ok: true, text: '已清除（回落 .env 或纯图模式）' }
+    await http.post('/api/settings/backend', {
+      embedding: { clear_api_key: true, base_url: '', model: '' },
+    })
+    emb.msg = { ok: true, text: '已清除全部 Embedding 配置（回落 .env 或纯图模式）' }
     emb.keyInput = ''
     await load()
   } catch (e) {

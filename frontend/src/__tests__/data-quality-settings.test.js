@@ -104,6 +104,19 @@ describe('DataQualitySettings', () => {
     expect(w.text()).toContain('已保存')
   })
 
+  it('清除按钮全清 key+baseUrl+model (此前只清 key, 端点残留误导)', async () => {
+    httpGet.mockResolvedValue(SETTINGS_BODY)
+    httpPost.mockResolvedValue({ saved: true, embedding_applied: null })
+    const w = mountCard()
+    await flushPromises()
+    await w.find('[data-test="emb-clear"]').trigger('click')
+    await flushPromises()
+    expect(httpPost).toHaveBeenCalledWith('/api/settings/backend', {
+      embedding: { clear_api_key: true, base_url: '', model: '' },
+    })
+    expect(w.text()).toContain('已清除全部')
+  })
+
   // ---- 可选增强定位: 默认折叠 + 徽标, 已配置自动展开, 点击卡头可切换 ----
 
   it('未配置时语义检索卡默认折叠 (可选增强不误导), 徽标可见', async () => {
