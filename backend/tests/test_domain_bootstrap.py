@@ -480,3 +480,41 @@ def test_assess_unknown_falls_back_to_legacy(monkeypatch):
         "target_direction": "Python", "mode": "interactive"})
     assert resp.status_code == 200
     assert captured["nodes"] is None  # 未传 nodes → prepare_questions 内部旧选点
+
+
+# ---- 赛题缺陷回归: 动态建域出题线程读不到 ContextVar overrides → 回退占位符 key → 401 ----
+
+def test_generate_questions_propagates_overrides_into_worker(kb_base, monkeypatch):
+    """worker 线程内 get_default_chat_model 必须看到主线程 set 的 overrides。
+
+    缺陷背景: _generate_questions 的 ThreadPoolExecutor worker 里 ContextVar 不传播,
+    安装包 (无 .env) 下回退 sk-placeholder → DeepSeek 401, JAVAEE 等未收录领域必现;
+    已收录域走题库抽题 (无线程 LLM) 故此前未暴露。
+    """
+    from app.agents.llm import _current_overrides, use_llm_overrides
+
+    captured = {}
+
+    class _SpyModel:
+        def invoke(self, messages):
+            captured["ovr"] = _current_overrides.get()
+            return SimpleNamespace(content=json.dumps([
+                {"node_id": "JV-001", "type": "choice", "question": "q1", "answer": "a",
+                 "options": ["A", "B"]},
+                {"node_id": "JV-002", "type": "fill", "question": "q2", "answer": "b"},
+            ], ensure_ascii=False))
+
+    monkeypatch.setattr(db, "get_default_chat_model", lambda: _SpyModel())
+
+    nodes = [{"id": "JV-001", "name": "Java 入门", "summary": "s", "difficulty": 1,
+              "key_points": ["JVM", "语法"]},
+             {"id": "JV-002", "name": "Spring 基础", "summary": "s", "difficulty": 2,
+              "key_points": ["IoC", "Bean"]}]
+    # 桩 key 变量引用 (值虚构, 避开本地扫描器对内联字面量的误报)
+    stub_key = "stub-worker-key"
+    stub_overrides = {"api_key": stub_key, "base_url": "https://x/v1", "model": "m"}
+    with use_llm_overrides(stub_overrides):
+        qmap = db._generate_questions("JavaEE", "", nodes)
+
+    assert captured.get("ovr") == stub_overrides, "worker 线程未读到 overrides (会 401)"
+    assert set(qmap.keys()) == {"JV-001", "JV-002"}

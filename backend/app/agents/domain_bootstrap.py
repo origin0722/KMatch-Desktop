@@ -21,7 +21,7 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import get_default_chat_model, llm_configured
+from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured, safe_llm_call
 from app.config import settings
 from app.data import kb_store
 from app.utils.json_utils import parse_llm_json
@@ -411,10 +411,20 @@ def _generate_questions(direction: str, tavily_context: str, nodes: list[dict]) 
             out.append(q)
         return out
 
+    # Spec B: ContextVar 不跨线程传播 — worker 内不重设 overrides 时 get_default_chat_model
+    # 会回退 settings 默认 key (安装包无 .env 即占位符 → DeepSeek 401, JAVAEE 等
+    # 动态建域必现; 已收录域走题库无线程故此前未暴露)。
+    overrides = _current_overrides.get()
     with ThreadPoolExecutor(max_workers=_LLM_CONCURRENCY) as pool:
-        for questions in pool.map(_run, batches):
-            for q in questions:
-                results[q["node_id"]].append(q)
+        outcomes = list(pool.map(
+            lambda batch: safe_llm_call(_run, batch, overrides=overrides, logger=logger,
+                                        label="domain questions"),
+            batches))
+    for ok, questions in outcomes:
+        if not ok or not questions:
+            continue
+        for q in questions:
+            results[q["node_id"]].append(q)
     return results
 
 
