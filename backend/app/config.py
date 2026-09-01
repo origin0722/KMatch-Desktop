@@ -14,7 +14,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 class Settings:
     # --- 应用 ---
     APP_NAME: str = "KMatch·知链 API"
-    APP_VERSION: str = "1.3.0"
+    APP_VERSION: str = "1.3.1"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # --- Neo4j ---
