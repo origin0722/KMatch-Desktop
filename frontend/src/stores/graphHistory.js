@@ -50,8 +50,38 @@ export const useGraphHistoryStore = defineStore('graphHistory', () => {
 
   function remove(id) {
     items.value = items.value.filter((i) => i.id !== id)
+    // 正在回看的快照被删除 → 一并退出回看态 (避免展示已删除的数据)
+    if (learningViewing.value?.id === id) backToLiveLearning()
     _persist()
   }
 
-  return { items, addProject, addLearning, remove }
+  // ============================================================
+  // 学习图谱历史回看态 (只读查看, 不改写 live 数据)
+  // 问题背景: 此前点历史直接 store.knowledgeGraph = snapshot 覆盖当前图谱,
+  // 用户"钻进去就回不来"——现改为显示层覆写: live 仍在 assessment store,
+  // 视图渲染 learningSnapshot || live, 任意时刻可"返回当前图谱"。
+  // ============================================================
+  /** null = 当前 (live) 图谱; 否则 { id, name, ts } 标识正在回看的快照 */
+  const learningViewing = ref(null)
+  /** 回看中的快照本体 (item.snapshot), 渲染优先级高于 live */
+  const learningSnapshot = ref(null)
+
+  /** 进入历史回看 (返回 false=快照无效); 链式切换历史仅换快照, live 始终不动。 */
+  function viewLearning(item) {
+    if (!item?.snapshot?.learning_path?.length) return false
+    learningViewing.value = { id: item.id, name: item.name || '学情图谱', ts: item.ts }
+    learningSnapshot.value = item.snapshot
+    return true
+  }
+
+  /** 返回当前 (live) 图谱; 新测评产出 live 图谱时也调它自动退出回看态。 */
+  function backToLiveLearning() {
+    learningViewing.value = null
+    learningSnapshot.value = null
+  }
+
+  return {
+    items, addProject, addLearning, remove,
+    learningViewing, learningSnapshot, viewLearning, backToLiveLearning,
+  }
 })

@@ -46,4 +46,43 @@ describe('graphHistory store', () => {
     setActivePinia(createPinia())
     expect(useGraphHistoryStore().items).toHaveLength(12)
   })
+
+  // ---- 历史回看态 (issue: 此前点历史直接覆盖 live 图谱, 钻进去回不来) ----
+
+  it('viewLearning 进入回看态, backToLiveLearning 返回; live 数据不被改写', () => {
+    const s = useGraphHistoryStore()
+    const snap = { learning_path: [{ node_id: 'PY-001' }] }
+    s.addLearning({ sessionId: 's1', name: 'Python 入门', snapshot: snap })
+    const item = s.items[0]
+    expect(s.viewLearning(item)).toBe(true)
+    expect(s.learningViewing).toEqual({ id: 'learning:s1', name: 'Python 入门', ts: item.ts })
+    expect(s.learningSnapshot).toEqual(snap)
+
+    s.backToLiveLearning()
+    expect(s.learningViewing).toBe(null)
+    expect(s.learningSnapshot).toBe(null)
+  })
+
+  it('viewLearning 空快照返回 false 且不改状态; 删除回看中的条目自动退出回看态', () => {
+    const s = useGraphHistoryStore()
+    expect(s.viewLearning({ id: 'x', snapshot: {} })).toBe(false)
+    expect(s.learningViewing).toBe(null)
+
+    s.addLearning({ sessionId: 's1', name: 'A', snapshot: { learning_path: [{ node_id: 'PY-001' }] } })
+    s.viewLearning(s.items[0])
+    expect(s.learningViewing.id).toBe('learning:s1')
+    s.remove('learning:s1')
+    expect(s.learningViewing).toBe(null)
+    expect(s.learningSnapshot).toBe(null)
+  })
+
+  it('链式切换历史仅换快照 (备份语义由调用方保证, store 只记当前查看项)', () => {
+    const s = useGraphHistoryStore()
+    s.addLearning({ sessionId: 's1', name: 'A', snapshot: { learning_path: [{ node_id: 'PY-001' }] } })
+    s.addLearning({ sessionId: 's2', name: 'B', snapshot: { learning_path: [{ node_id: 'PY-002' }] } })
+    s.viewLearning(s.items[1])
+    s.viewLearning(s.items[0])
+    expect(s.learningViewing.id).toBe('learning:s2') // items 最新在前
+    expect(s.learningSnapshot.learning_path[0].node_id).toBe('PY-002')
+  })
 })

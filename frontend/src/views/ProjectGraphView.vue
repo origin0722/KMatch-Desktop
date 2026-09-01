@@ -72,6 +72,11 @@
     </div>
 
     <template v-else>
+      <!-- 历史回看横幅: 明示只读回看 + 一键返回当前项目图谱 (此前钻入历史后无返回路径) -->
+      <div v-if="pg.historyViewing" class="pg-history-banner" data-test="pg-history-banner">
+        <span class="phb-text">🛠 正在查看历史项目图谱「<b>{{ pg.historyViewing.name }}</b>」（只读回看，源码跳转不可用）</span>
+        <el-button size="small" type="primary" data-test="pg-back-to-current" @click="pg.backToCurrentProject">返回当前项目图谱</el-button>
+      </div>
       <!-- 工具栏 (C2: 图例+深度分析收"更多", 重置+重新解析合并, 统计移入页头, 主行 6 组) -->
       <el-card class="toolbar-card" shadow="never">
         <div class="toolbar">
@@ -469,7 +474,6 @@ import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useChatStore } from '@/stores/chat'
 import { useGraphHistoryStore } from '@/stores/graphHistory'
-import { useAssessmentStore } from '@/stores/assessment'
 import { buildEntityQuestion } from '@/utils/askAi'
 import { cjkAwareWidth } from '@/utils/nodeSize'
 import { graphToExcalidraw, downloadExcalidraw, collectG6Positions } from '@/utils/excalidrawExport'
@@ -487,14 +491,13 @@ const chat = useChatStore()
 const lr = useLearningResourcesStore()
 const aiSettings = useAiSettingsStore()
 const graphHistory = useGraphHistoryStore()
-const aStore = useAssessmentStore()
 
 // issue: 两类图谱历史 (按类型分组; 学情图谱从本地快照恢复)
 const projectHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'project').slice(0, 5))
 const learningHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'learning').slice(0, 5))
 function openLearningHistory(item) {
-  if (!item?.snapshot?.learning_path?.length) return
-  aStore.knowledgeGraph = item.snapshot
+  // 只读回看: 经 graphHistory 回看态切到知识图谱视图显示, 不再覆盖 live 图谱 (可随时返回当前)
+  if (!graphHistory.viewLearning(item)) return
   sidebar.setView('graph')
 }
 const containerRef = ref(null)
@@ -1136,6 +1139,15 @@ watch(() => pg.graph, () => {
 .pg-empty-actions { display: flex; gap: 8px; justify-content: center; }
 /* issue: 历史图谱列表 */
 .pg-history { margin-top: 16px; width: min(420px, 90%); text-align: left; }
+/* 历史回看横幅 (只读回看 + 返回当前项目图谱) */
+.pg-history-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 14px; margin-bottom: 12px;
+  border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);
+  background: color-mix(in srgb, var(--km-primary) 7%, transparent);
+}
+.pg-history-banner .phb-text { font-size: 12.5px; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-history-banner .phb-text b { color: var(--km-primary); }
 .pg-history-title { font-size: 11px; color: var(--km-gray-500); margin-bottom: 6px; }
 .pg-history-item {
   display: flex; align-items: center; gap: 8px;

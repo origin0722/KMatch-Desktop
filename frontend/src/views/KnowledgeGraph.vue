@@ -28,6 +28,13 @@
     <!-- 有数据时：工具栏 + 主内容区 -->
     <!-- ============================================================ -->
     <template v-if="hasPathData || graphReady">
+      <!-- 历史回看横幅: 明示"只读回看"并提供一键返回当前图谱 -->
+      <div v-if="graphHistory.learningViewing" class="history-banner" data-test="history-banner">
+        <span class="hb-text">
+          🖼 正在查看历史快照「<b>{{ graphHistory.learningViewing.name }}</b> · {{ fmtTs(graphHistory.learningViewing.ts) }}」（只读回看，不影响当前测评数据）
+        </span>
+        <el-button size="small" type="primary" data-test="back-to-live" @click="graphHistory.backToLiveLearning()">返回当前图谱</el-button>
+      </div>
       <!-- 工具栏 -->
       <el-card class="toolbar-card" shadow="never">
         <div class="toolbar">
@@ -107,6 +114,38 @@
           <el-button size="small" @click="pathFinderVisible = true" :disabled="!graphReady">
             路径查找
           </el-button>
+
+          <!-- 历史快照回看 (常驻入口): 有数据时也能切换历史 / 返回当前 (此前只在空态可见) -->
+          <el-popover placement="bottom" :width="280" trigger="click">
+            <template #reference>
+              <el-button size="small" data-test="history-toggle" :class="{ 'filter-active': !!graphHistory.learningViewing }">
+                历史<span v-if="graphHistory.learningViewing" class="filter-badge">回看中</span>
+              </el-button>
+            </template>
+            <div class="history-pop">
+              <div v-if="!learningHistoryItems.length" class="history-pop-empty">暂无历史快照（完成学情测评后自动记录）</div>
+              <template v-else>
+                <div class="history-pop-title">学习图谱快照</div>
+                <div
+                  v-for="h in learningHistoryItems"
+                  :key="h.id"
+                  class="history-pop-item"
+                  :class="{ active: graphHistory.learningViewing?.id === h.id }"
+                  @click="graphHistory.viewLearning(h)"
+                >
+                  <span class="hp-name">{{ h.name }}</span>
+                  <span class="hp-time">{{ fmtTs(h.ts) }}</span>
+                </div>
+              </template>
+              <el-button
+                size="small"
+                class="history-pop-back"
+                data-test="history-back"
+                :disabled="!graphHistory.learningViewing"
+                @click="graphHistory.backToLiveLearning()"
+              >返回当前图谱</el-button>
+            </div>
+          </el-popover>
 
           <!-- 缩放控制 (治"放大看不全 / 缩小看不清"): 滚轮可缩放, 提供步进 + 一键适应全图 -->
           <div class="zoom-controls">
@@ -347,9 +386,14 @@ import { buildNodeQuestion, graphGuidePrompt } from '@/utils/askAi'
 import PathFinderModal from '@/components/PathFinderModal.vue'
 
 const store = useAssessmentStore()
-const data = useGraphData()
 const sidebar = useSidebarStore()
 const chat = useChatStore()
+
+// 历史回看态 (graphHistory store): learningSnapshot 非空 = 只读回看历史快照,
+// 显示层覆写 (displayGraph), live 图谱 (store.knowledgeGraph) 永不被覆盖 → 任意时刻可返回
+const graphHistory = useGraphHistoryStore()
+const displayGraph = computed(() => graphHistory.learningSnapshot || store.knowledgeGraph)
+const data = useGraphData(displayGraph)
 
 // 主题色常量 (镜像 styles/theme.css 的 --km-* token, 供 G6 canvas 使用)
 const THEME = {
@@ -400,12 +444,10 @@ function nodeWidthFor(d, cfg, scale) {
   return Math.round(cjkAwareWidth(cfg.label(d), { min: cfg.wMin, max: cfg.wMax, padding: 32 }) * scale)
 }
 
-// issue: 学习图谱历史 (本地快照载入后即时渲染)
-const graphHistory = useGraphHistoryStore()
+// issue: 学习图谱历史 (只读回看, 不覆盖 live; 渲染源经 displayGraph 覆写)
 const learningHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'learning').slice(0, 5))
 function loadLearningHistory(item) {
-  if (!item?.snapshot?.learning_path?.length) return
-  store.knowledgeGraph = item.snapshot
+  graphHistory.viewLearning(item)
 }
 function fmtTs(ts) {
   if (!ts) return ''
@@ -550,12 +592,12 @@ let graph = null
 const hasPathData = computed(() => data.rawNodes.value.length > 0)
 
 const estimatedHours = computed(() =>
-  store.knowledgeGraph?.estimated_total_hours ?? '--',
+  displayGraph.value?.estimated_total_hours ?? '--',
 )
 
 // issue-78: 节奏语境 — 按每周 6h 折周
 const estimatedWeeks = computed(() => {
-  const h = Number(store.knowledgeGraph?.estimated_total_hours || 0)
+  const h = Number(displayGraph.value?.estimated_total_hours || 0)
   return h > 0 ? Math.max(1, Math.ceil(h / 6)) : 0
 })
 
@@ -979,11 +1021,11 @@ function setCategoryFilter(cat) {
   handleFilterChange()
 }
 
-// 导出学习路径 JSON (借鉴 ExportMenu)
+// 导出学习路径 JSON (借鉴 ExportMenu); 导出当前正在查看的图谱 (历史回看时即快照)
 function exportGraph() {
   const payload = JSON.stringify({
     target_direction: store.profile?.target_direction,
-    knowledge_graph: store.knowledgeGraph,
+    knowledge_graph: displayGraph.value,
     profile: store.profile,
     exported_at: new Date().toISOString(),
   }, null, 2)
@@ -1098,14 +1140,23 @@ function bindCanvasCollapse(el) {
 }
 let disposeCanvasCollapse = null
 
-// 当 store 的 learning_path 变化时（测评完成后跳转过来）
-watch(() => store.knowledgeGraph, async (newVal) => {
+// 当显示源变化时重建 (live 图谱更新 / 进入·退出历史回看 / 历史快照间切换)
+watch(displayGraph, async (newVal) => {
   if (newVal?.learning_path?.length > 0) {
     destroyGraph()
     await fetchPrerequisites()
     initGraph()
+  } else {
+    // 回到无数据态 (如 live 为空时退出历史回看) → 回空态页, 历史列表可见
+    destroyGraph()
+    graphReady.value = false
   }
 }, { deep: true })
+
+// 新测评完成 (live 图谱更新) → 自动退出历史回看态, 展示最新结果
+watch(() => store.knowledgeGraph, (nv) => {
+  if (nv) graphHistory.backToLiveLearning()
+})
 
 // 快捷键 (借鉴 KeyboardShortcutsHelp): Esc 收起详情抽屉 / 清除高亮
 function handleKeydown(e) {
@@ -1222,6 +1273,29 @@ watch(layoutMode, () => { scheduleRebuild() })
 
 /* ---- 搜索无结果 ---- */
 .search-alert { margin-bottom: 16px; }
+
+/* ---- 历史回看横幅 + 历史弹层 (issue: 钻入历史后无返回路径) ---- */
+.history-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 14px; margin-bottom: 12px;
+  border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);
+  background: color-mix(in srgb, var(--km-primary) 7%, transparent);
+}
+.history-banner .hb-text { font-size: 12.5px; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-banner .hb-text b { color: var(--km-primary); }
+.history-pop { display: flex; flex-direction: column; gap: 6px; }
+.history-pop-empty { font-size: 12px; color: var(--km-gray-500); padding: 4px 0; }
+.history-pop-title { font-size: 11px; color: var(--km-gray-500); margin-bottom: 2px; }
+.history-pop-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border: 1px solid var(--km-border); border-radius: var(--km-radius-xs);
+  cursor: pointer; font-size: 12.5px;
+}
+.history-pop-item:hover { border-color: var(--km-primary); background: var(--km-primary-light); }
+.history-pop-item.active { border-color: var(--km-primary); background: color-mix(in srgb, var(--km-primary) 12%, transparent); }
+.history-pop-item .hp-name { flex: 1; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-pop-item .hp-time { font-size: 11px; color: var(--km-gray-400); font-family: var(--km-font-mono); }
+.history-pop-back { margin-top: 2px; }
 
 /* ---- 主内容区 ---- */
 .main-area { display: flex; flex: 1; min-height: 0; position: relative; }

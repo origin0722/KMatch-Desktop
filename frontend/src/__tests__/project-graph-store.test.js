@@ -276,3 +276,64 @@ describe('projectGraph store - analyze (P3 深度分析)', () => {
     expect(pg.analysis).toBe(null)
   })
 })
+
+describe('projectGraph store - 历史回看 (openFromHistory 备份 / 返回当前)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  const histResponse = (pid) => ({
+    project_id: pid,
+    nodes: [{ id: 'h1', label: 'baz', group: 'function', properties: {} }],
+    edges: [],
+    stats: { function: 1 },
+    written_to_neo4j: true,
+  })
+
+  it('openFromHistory 备份当前项目图谱, backToCurrentProject 一键还原', async () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'live-1', entities: [{ id: 'e1' }], relations: [], stats: {}, written: true }, '/live')
+
+    getProjectGraph.mockResolvedValue(histResponse('hist-9'))
+    const ok = await pg.openFromHistory('hist-9', '旧项目')
+    expect(ok).toBe(true)
+    expect(pg.historyViewing).toEqual({ projectId: 'hist-9', name: '旧项目' })
+    expect(pg.graph.projectId).toBe('hist-9')
+
+    pg.backToCurrentProject()
+    expect(pg.historyViewing).toBe(null)
+    expect(pg.graph.projectId).toBe('live-1')
+    expect(pg.graph.entities[0].id).toBe('e1')
+  })
+
+  it('链式浏览历史不覆盖最初备份; 真实解析 (setGraph 默认) 清除回看态', async () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'live-1', entities: [], relations: [], stats: {}, written: true }, '/live')
+
+    getProjectGraph.mockResolvedValue(histResponse('hist-A'))
+    await pg.openFromHistory('hist-A', 'A')
+    getProjectGraph.mockResolvedValue(histResponse('hist-B'))
+    await pg.openFromHistory('hist-B', 'B')
+    expect(pg.historyViewing.projectId).toBe('hist-B')
+
+    pg.backToCurrentProject()
+    expect(pg.graph.projectId).toBe('live-1') // 仍还原到最初 live, 而非 hist-A
+
+    pg.setGraph({ projectId: 'live-2', entities: [], relations: [], stats: {}, written: true }, '/live2')
+    expect(pg.historyViewing).toBe(null)
+    expect(pg.graph.projectId).toBe('live-2')
+  })
+
+  it('无 live 图谱时进历史浏览 (备份为空), 返回为安全 no-op', async () => {
+    const pg = useProjectGraphStore()
+    getProjectGraph.mockResolvedValue(histResponse('hist-1'))
+    await pg.openFromHistory('hist-1', '仅历史')
+    expect(pg.historyViewing.projectId).toBe('hist-1')
+
+    pg.backToCurrentProject() // 无备份 → no-op, 不清当前显示
+    expect(pg.historyViewing).toEqual({ projectId: 'hist-1', name: '仅历史' })
+    expect(pg.graph.projectId).toBe('hist-1')
+  })
+})

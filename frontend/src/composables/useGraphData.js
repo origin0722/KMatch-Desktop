@@ -13,11 +13,12 @@ import { ref, computed } from 'vue'
 import { useAssessmentStore } from '@/stores/assessment'
 import { masteryColor } from '@/utils/format'
 
-export function useGraphData() {
+export function useGraphData(sourceOverride = null) {
   const store = useAssessmentStore()
 
-  /** 原始节点列表（来自 graph_controller 组装的 learning_path） */
-  const rawNodes = computed(() => store.knowledgeGraph?.learning_path || [])
+  /** 原始节点列表（来自 graph_controller 组装的 learning_path）
+   *  sourceOverride: 显示源覆写 (学习图谱历史快照只读回看), 缺省读 assessment store 的 live 图谱 */
+  const rawNodes = computed(() => (sourceOverride ? sourceOverride.value : store.knowledgeGraph)?.learning_path || [])
 
   /** node_id → 完整节点对象的快速查找表 */
   const nodeMap = computed(() => {

@@ -23,6 +23,11 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   // { projectId, stats, entities, relations, sourcePath, written }
   const graph = ref(null)
 
+  // ---- 历史项目图谱回看态 (issue: 此前 openFromHistory 直接覆盖当前项目图谱, 钻进去回不来) ----
+  // 首次进入历史浏览时备份当前 graph, "返回当前项目图谱"一键还原; 链式浏览历史不覆盖备份。
+  const historyViewing = ref(null) // null | { projectId, name }
+  const historyBackup = ref(null) // { graph, stale }
+
   // P2: 自动解析状态机
   const parsing = ref(false)
   const parseError = ref(null)
@@ -47,7 +52,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     return ent ? ent.id : null
   })
 
-  function setGraph(result, sourcePath) {
+  function setGraph(result, sourcePath, { fromHistory = false } = {}) {
     graph.value = {
       projectId: result.projectId,
       stats: result.stats || {},
@@ -59,6 +64,11 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     activeLine.value = null
     revealTarget.value = null
     stale.value = false // 新图谱生成, 清过期标记
+    // 真实解析/重启恢复产生新图谱 → 历史回看态失效 (重新解析即"返回当前")
+    if (!fromHistory) {
+      historyViewing.value = null
+      historyBackup.value = null
+    }
     // C2: 订阅 workspace 文件变动, 源文件被改时自行 markStale (workspace 不再硬调 projectGraph)。
     // 只订阅一次; 失败忽略 (workspace 未就绪则无失效通知, 非致命)。
     if (!_unsubscribeWsChange) {
@@ -70,12 +80,17 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   let _unsubscribeWsChange = null
 
-  /** 从历史打开已解析过的项目图谱 (无需打开项目文件; 源码跳转不可用, 仅浏览) */
+  /** 从历史打开已解析过的项目图谱 (无需打开项目文件; 只读回看, 源码跳转不可用)。
+   *  不覆盖当前项目图谱: 首次进入时备份当前 graph, 可 backToCurrentProject 一键还原。 */
   async function openFromHistory(pid, name) {
     try {
       const data = await getProjectGraph(pid)
       const result = normalizeGraphResponse(data, '')
-      setGraph(result, '')
+      if (!historyViewing.value && graph.value) {
+        historyBackup.value = { graph: graph.value, stale: stale.value }
+      }
+      setGraph(result, '', { fromHistory: true })
+      historyViewing.value = { projectId: pid, name: name || '项目' }
       useGraphHistoryStore().addProject({ projectId: pid, name })
       return true
     } catch (e) {
@@ -88,6 +103,17 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
       }
       return false
     }
+  }
+
+  /** 返回当前项目图谱 (退出历史回看, 还原进入前的 graph/stale)。 */
+  function backToCurrentProject() {
+    if (!historyBackup.value) return
+    graph.value = historyBackup.value.graph
+    stale.value = historyBackup.value.stale
+    historyBackup.value = null
+    historyViewing.value = null
+    activeLine.value = null
+    revealTarget.value = null
   }
 
   /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转) */
@@ -250,7 +276,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     graph, stale, parsing, parseError, revealTarget, activeLine, activeEntityId,
     analyzing, analysis, lastTestReport,
     setGraph, clear, clearStale, markStale, setLastTestReport,
-    parseCurrentProject, restorePersisted, analyze, openFromHistory,
+    parseCurrentProject, restorePersisted, analyze, openFromHistory, backToCurrentProject, historyViewing,
     requestReveal, setActiveLine, consumeReveal,
   }
 })
