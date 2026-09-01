@@ -5,6 +5,9 @@
  * 组件曾用 `const { data } = await http...` 解构 → data undefined →
  * 保存后报 "Cannot read properties of undefined (reading 'embedding_applied')"。
  * mock 按真实契约返回「解包后的 body」。
+ *
+ * 折叠断言注意: VTU mount 默认游离树, jsdom getComputedStyle 对 v-show 动态翻转
+ * 有过期缓存 (isVisible 会说谎) → 断言内联 style 属性 (真相源)。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -33,6 +36,12 @@ const SETTINGS_BODY = {
   data: { local_dir: 'C:/Users/x/appdata/local' },
 }
 
+const UNCONFIGURED_BODY = {
+  ...SETTINGS_BODY,
+  embedding: { ...SETTINGS_BODY.embedding, configured: false, key_tail: '', source: 'unset' },
+  store: { kind: 'embedded', semantic_ready: false },
+}
+
 describe('DataQualitySettings', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -43,6 +52,9 @@ describe('DataQualitySettings', () => {
     global: { plugins: [ElementPlus], stubs: ['el-icon'] },
   })
 
+  const embControl = (w) => w.findAll('.setting-control')[0]
+  const embCollapsed = (w) => (embControl(w).attributes('style') || '').includes('display: none')
+
   it('load 按解包 body 正确填充: 状态就绪 / 来源本页配置 / 存储模式', async () => {
     httpGet.mockResolvedValue(SETTINGS_BODY)
     const w = mountCard()
@@ -50,6 +62,7 @@ describe('DataQualitySettings', () => {
     expect(w.find('[data-test="emb-status"]').text()).toContain('就绪')
     expect(w.text()).toContain('本页配置')
     expect(w.find('[data-test="store-kind"]').text()).toContain('本地嵌入存储')
+    // 修复回归: 数据目录曾绑定不存在的 localDir → 永远空白
     expect(w.text()).toContain('C:/Users/x/appdata/local')
   })
 
@@ -89,5 +102,32 @@ describe('DataQualitySettings', () => {
     await w.find('[data-test="emb-save"]').trigger('click')
     await flushPromises()
     expect(w.text()).toContain('已保存')
+  })
+
+  // ---- 可选增强定位: 默认折叠 + 徽标, 已配置自动展开, 点击卡头可切换 ----
+
+  it('未配置时语义检索卡默认折叠 (可选增强不误导), 徽标可见', async () => {
+    httpGet.mockResolvedValue(UNCONFIGURED_BODY)
+    const w = mountCard()
+    await flushPromises()
+    expect(w.text()).toContain('可选增强')
+    expect(embCollapsed(w)).toBe(true)
+  })
+
+  it('已配置时语义检索卡自动展开', async () => {
+    httpGet.mockResolvedValue(SETTINGS_BODY)
+    const w = mountCard()
+    await flushPromises()
+    expect(embCollapsed(w)).toBe(false)
+  })
+
+  it('点击卡头可切换折叠 (未配置 → 手动展开)', async () => {
+    httpGet.mockResolvedValue(UNCONFIGURED_BODY)
+    const w = mountCard()
+    await flushPromises()
+    expect(embCollapsed(w)).toBe(true)
+    await w.find('.setting-head.clickable').trigger('click')
+    await flushPromises() // prop 更新经父→子两层渲染
+    expect(embCollapsed(w)).toBe(false)
   })
 })

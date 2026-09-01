@@ -1,7 +1,15 @@
 <template>
   <div class="dq-settings">
-    <!-- 语义检索 (Embedding): 图谱语义搜索 / AI 助手 search_knowledge 依赖 -->
-    <SettingCard title="语义检索 (Embedding)" info="图谱语义搜索与 AI 助手知识检索依赖；此前只能改 .env，现可在本页配置并即时生效。Key 仅存本机。">
+    <!-- 语义检索 (Embedding): 可选增强, 默认折叠 (已配置时自动展开) —
+         此前常驻首卡+状态标签让用户误以为"不配就不完整", 实为可选 (纯图降级可用) -->
+    <SettingCard
+      title="语义检索 (Embedding)"
+      collapsible :open="embOpen" @update:open="embOpen = $event"
+      info="可选增强：不配置也能正常使用（自动纯图降级），出题/判分/学习路径均不依赖。配置后解锁图谱语义搜索与 AI 助手知识检索（需千问等支持 Embedding 的服务，Key 仅存本机）。"
+    >
+      <template #badge>
+        <el-tag size="small" type="info" class="dq-opt-badge">可选增强</el-tag>
+      </template>
       <div class="dq-rows">
         <div class="dq-row">
           <span class="dq-label">状态</span>
@@ -35,8 +43,11 @@
       </div>
     </SettingCard>
 
-    <!-- 质量裁判 (异源): M5 独立裁判口径 -->
-    <SettingCard title="质量裁判 (异源)" info="独立裁判质检生成内容的幻觉/适配度。与主模型不同源时才计入「独立裁判」口径；未启用则回落主模型（同源）。">
+    <!-- 质量裁判 (异源): M5 独立裁判口径 (同样可选: 未启用回落主模型同源) -->
+    <SettingCard title="质量裁判 (异源)" info="可选增强：独立裁判质检生成内容的幻觉/适配度。与主模型不同源时才计入「独立裁判」口径；未启用则回落主模型（同源）。">
+      <template #badge>
+        <el-tag size="small" type="info" class="dq-opt-badge">可选增强</el-tag>
+      </template>
       <div class="dq-rows">
         <div class="dq-row">
           <span class="dq-label">状态</span>
@@ -103,9 +114,12 @@
  * /api/settings/backend 持久化到本机 (LOCAL_DIR/backend_settings.json) 并即时生效。
  * key 回显脱敏 (configured + 尾4位), 留空 = 保持不变。
  */
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import http from '@/api'
 import SettingCard from './SettingCard.vue'
+
+// 语义检索卡折叠态: 默认收起 (可选增强, 不误导"必须配"); 后端显示已配置时自动展开
+const embOpen = ref(false)
 
 const emb = reactive({
   configured: false, keyTail: '', source: '', baseUrl: '', model: '',
@@ -156,6 +170,7 @@ async function load() {
     storeInfo.kind = data.store?.kind || null
     storeInfo.semanticReady = !!data.store?.semantic_ready
     storeInfo.localDir = data.data?.local_dir || ''
+    if (emb.configured) embOpen.value = true
   } catch (e) {
     emb.msg = { ok: false, text: e?.response?.data?.detail || e?.message || '加载设置失败（后端未就绪?）' }
   }
@@ -249,6 +264,7 @@ onMounted(load)
 <style scoped>
 .dq-rows { display: flex; flex-direction: column; gap: 10px; }
 .dq-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dq-opt-badge { flex-shrink: 0; font-weight: 400; }
 .dq-label { font-size: 13px; font-weight: 600; color: var(--km-gray-700); width: 72px; flex-shrink: 0; }
 .dq-hint { font-size: 11.5px; color: var(--km-gray-500); }
 .dq-msg {
