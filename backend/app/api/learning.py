@@ -188,8 +188,12 @@ def _judge_resources(state: dict, kg) -> dict | None:
     }
 
 
-def _report_ctx(req: LearningReportRequest, request: Request):
-    """report 校验序 (REST 与 stream 共用): session(404) → profile(409) → LLM(503) → kg(503)。"""
+def _report_session_profile(req: LearningReportRequest):
+    """report 校验前段 (REST 与 stream 共用): session(404) → profile(409)。
+
+    缓存命中检查位于本段之后、LLM/kg 检查之前 (终审修复: 拆分时曾把 503 检查挪到
+    缓存检查前 → "已缓存报告但 LLM/Neo4j 不可用"时幂等返回被破坏)。
+    """
     session = _INTERACTIVE_SESSIONS.get(req.session_id)
     if session is None:
         raise HTTPException(
@@ -202,12 +206,28 @@ def _report_ctx(req: LearningReportRequest, request: Request):
             status_code=409,
             detail="画像未就绪：请先 POST /api/diagnostics/submit 提交答题产出画像",
         )
-    # 预检须在 overrides 作用域内 (UI 独立 key 可见, 否则配了也报未配置)
+    return session, profile
+
+
+def _report_env(req: LearningReportRequest, request: Request):
+    """report 校验后段: LLM(503, overrides 作用域内) → kg(503)。"""
     with use_llm_overrides(req.llm_overrides):
         if not llm_configured():
             raise HTTPException(status_code=503, detail="LLM 未配置，无法补跑内容生成")
-    kg = _get_kg(request)
-    return session, profile, kg
+    return _get_kg(request)
+
+
+def _cached_report_response(req: LearningReportRequest, session, profile) -> LearningReportResponse:
+    return LearningReportResponse(
+        session_id=req.session_id,
+        profile=profile,
+        knowledge_graph=session.get("knowledge_graph", {}),
+        generated_content=session.get("generated_content", {}),
+        review_results=session.get("review_results", {}),
+        review_rounds=session.get("report_review_rounds", []),
+        learning_report=session.get("learning_report_cache"),
+        orchestration_log=session.get("report_log", []),
+    )
 
 
 def _report_compute(req: LearningReportRequest, request: Request, session, profile, kg,
@@ -230,6 +250,14 @@ def _report_compute(req: LearningReportRequest, request: Request, session, profi
     review_results = state.get("review_results", {})
     review_rounds = state.get("review_rounds", [])
 
+    # 终审修复: 用户"停止等待"取消时 content_generator 正常返回部分结果 (不抛异常),
+    # 此前会无条件回写缓存 → 半成品报告被幂等命中永久卡住。检测到取消记录则跳过缓存回写
+    # (重试时重新完整补跑), 报告仍返回 (供断开前的流式残留消费, 无害)。
+    _was_cancelled = any(
+        "已取消" in str(f.get("reason", ""))
+        for f in (generated_content.get("generation_failures") or []) if isinstance(f, dict)
+    ) or bool(cancel_check and cancel_check())
+
     # 赛题(4)① 交叉验证在线闭环: 独立裁判盲判生成资源 (有界), 失败降级不阻塞报告
     _emit("progress", {"step": "judge", "message": "独立裁判盲判质量中…"})
     try:
@@ -243,13 +271,16 @@ def _report_compute(req: LearningReportRequest, request: Request, session, profi
         profile, knowledge_graph, generated_content, review_results, kg=kg
     )
 
-    # 回写 session 缓存 (供后续 /feedback 及幂等复用)
-    session["knowledge_graph"] = knowledge_graph
-    session["generated_content"] = generated_content
-    session["review_results"] = review_results
-    session["report_review_rounds"] = review_rounds
-    session["learning_report_cache"] = learning_report
-    session["report_log"] = state.get("orchestration_log", [])
+    # 回写 session 缓存 (供后续 /feedback 及幂等复用); 取消时跳过 (见上)
+    if _was_cancelled:
+        logger.info("学习报告补跑被用户取消 session=%s, 缓存不回写 (重试将重新补跑)", req.session_id)
+    else:
+        session["knowledge_graph"] = knowledge_graph
+        session["generated_content"] = generated_content
+        session["review_results"] = review_results
+        session["report_review_rounds"] = review_rounds
+        session["learning_report_cache"] = learning_report
+        session["report_log"] = state.get("orchestration_log", [])
 
     logger.info("学习报告补跑完成 session=%s resources=%d rounds=%d passed=%s",
                 req.session_id,
@@ -280,23 +311,14 @@ def learning_report(req: LearningReportRequest, request: Request):
 
     W7: 审核不通过时携 retry_hint 定向再生再审 (≤2 轮)，review_rounds 记录轮次轨迹。
     """
-    session, profile, kg = _report_ctx(req, request)
+    session, profile = _report_session_profile(req)
 
-    # 幂等: 已缓存报告 → 直接返回
-    cached = session.get("learning_report_cache")
-    if cached:
+    # 幂等: 已缓存报告 → 直接返回 (在 LLM/kg 检查之前 — 查看已生成报告零 LLM 依赖)
+    if session.get("learning_report_cache"):
         logger.info("学习报告命中缓存 session=%s", req.session_id)
-        return LearningReportResponse(
-            session_id=req.session_id,
-            profile=profile,
-            knowledge_graph=session.get("knowledge_graph", {}),
-            generated_content=session.get("generated_content", {}),
-            review_results=session.get("review_results", {}),
-            review_rounds=session.get("report_review_rounds", []),
-            learning_report=cached,
-            orchestration_log=session.get("report_log", []),
-        )
+        return _cached_report_response(req, session, profile)
 
+    kg = _report_env(req, request)
     return _report_compute(req, request, session, profile, kg)
 
 
@@ -307,24 +329,16 @@ def learning_report_stream(req: LearningReportRequest, request: Request):
     校验段与 REST 完全一致且同步先做 (404/409/503 保持 HTTP 语义, 前端可按状态码降级/提示);
     通过后走 SSE: 事件流 start → progress*(path/generate {done,total}/review/judge) →
     done(完整 LearningReportResponse) | error。缓存命中直接同步返回 (无需流式)。
-    客户端断开 → 取消事件 → content_generator 检查点提前收摊 (已完成资源保留, 缓存不写半成品——
-    compute 异常/取消中断时 session 缓存不回写, 重试重新补跑)。
+    客户端断开 → 取消事件 → content_generator 检查点提前收摊 (已完成资源保留;
+    取消时缓存不回写, 重试重新完整补跑)。
     """
-    session, profile, kg = _report_ctx(req, request)
+    session, profile = _report_session_profile(req)
 
-    cached = session.get("learning_report_cache")
-    if cached:
+    if session.get("learning_report_cache"):
         logger.info("学习报告命中缓存 session=%s (stream 直接返回)", req.session_id)
-        return LearningReportResponse(
-            session_id=req.session_id,
-            profile=profile,
-            knowledge_graph=session.get("knowledge_graph", {}),
-            generated_content=session.get("generated_content", {}),
-            review_results=session.get("review_results", {}),
-            review_rounds=session.get("report_review_rounds", []),
-            learning_report=cached,
-            orchestration_log=session.get("report_log", []),
-        )
+        return _cached_report_response(req, session, profile)
+
+    kg = _report_env(req, request)
 
     def worker(emit, cancel_check):
         try:

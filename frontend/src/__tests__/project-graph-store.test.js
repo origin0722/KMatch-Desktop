@@ -34,6 +34,20 @@ const FAKE_RESPONSE = {
 }
 
 describe('normalizeGraphResponse (纯函数)', () => {
+  it('终审回归: 边关系归一补 type 字段 (后端契约是 label, 边过滤/样式/chat 裁剪读 type)', () => {
+    const r = normalizeGraphResponse({
+      project_id: 'p', stats: {},
+      nodes: [{ id: 'n1', label: 'a', group: 'function', properties: {} }],
+      edges: [
+        { source: 'n1', target: 'n2', label: 'CALLS' },
+        { source: 'n2', target: 'n3', label: 'CONTAINS' },
+      ],
+    })
+    expect(r.relations[0].type).toBe('CALLS')
+    expect(r.relations[1].type).toBe('CONTAINS')
+    expect(r.relations[0].label).toBe('CALLS') // 原字段保留
+  })
+
   it('G6 nodes -> entities 扁平化, 字段名驼峰化', () => {
     const r = normalizeGraphResponse(FAKE_RESPONSE, '/proj')
     expect(r.projectId).toBe('files-abc123')
@@ -328,7 +342,11 @@ describe('projectGraph store - 历史回看 (openFromHistory 备份 / 返回当�
 
   it('无 live 图谱时进历史浏览 (备份为空), 返回即退出回看清空回空态', async () => {
     const pg = useProjectGraphStore()
-    getProjectGraph.mockResolvedValue(histResponse('hist-1'))
+    getProjectGraph.mockResolvedValue({
+      project_id: 'hist-1', stats: {},
+      nodes: [{ id: 'h1', label: 'x', group: 'function', properties: { module_name: 'other' } }],
+      edges: [],
+    })
     await pg.openFromHistory('hist-1', '仅历史')
     expect(pg.historyViewing.projectId).toBe('hist-1')
 
@@ -384,6 +402,36 @@ describe('projectGraph store - stale 检测 (v1.3.3 修复)', () => {
     expect(pg.stale).toBe(false)      // 新图谱清过期
 
     pg.markStale('/proj')             // 旧语义: 传项目根
+    expect(pg.stale).toBe(true)
+  })
+})
+
+describe('projectGraph store - 历史回看期 stale 忽略 (终审修复)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it('回看历史时 markStale 不误标; 返回当前图谱还原备份的真实 stale', async () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'live', entities: [{ id: 'e1', module_name: 'utils' }], relations: [], stats: {}, written: true }, '/live')
+    getProjectGraph.mockResolvedValue({
+      project_id: 'hist-1', stats: {},
+      nodes: [{ id: 'h1', label: 'x', group: 'function', properties: { module_name: 'other' } }],
+      edges: [],
+    })
+    await pg.openFromHistory('hist-1', '历史B') // coveredModules 换成历史项目 B 的
+    expect(pg.historyViewing.projectId).toBe('hist-1')
+
+    // 改动当前项目 A 的 utils 模块 (与历史 B 覆盖集同名) — 回看期不得误标
+    pg.markStale('utils.py')
+    expect(pg.stale).toBe(false)
+
+    pg.backToCurrentProject()
+    expect(pg.historyViewing).toBe(null)
+    // 返回后 watcher 再报同一文件 → 正确标当前项目过期
+    pg.markStale('utils.py')
     expect(pg.stale).toBe(true)
   })
 })

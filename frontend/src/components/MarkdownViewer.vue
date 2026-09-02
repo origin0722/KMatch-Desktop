@@ -106,8 +106,12 @@ function sanitizeMachineMarkers(md) {
 }
 
 function closeUnclosedFence(md) {
-  const fences = md.match(/^ {0,3}(```|~~~)/gm) || []
-  return fences.length % 2 === 1 ? `${md}\n\`\`\`` : md
+  // 终审修复: ``` 与 ~~~ 分开计数 (混算会把"成对``` + 未闭合~~~"误判为奇数补错围栏)
+  const backticks = (md.match(/^[ \t]*```/gm) || []).length
+  const tildes = (md.match(/^[ \t]*~~~/gm) || []).length
+  if (backticks % 2 === 1) return `${md}\n\`\`\``
+  if (tildes % 2 === 1) return `${md}\n~~~`
+  return md
 }
 
 const renderedHtml = computed(() => {

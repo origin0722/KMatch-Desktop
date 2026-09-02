@@ -40,6 +40,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { difficultyColor } from '@/utils/format'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -52,10 +53,13 @@ const fromId = ref('')
 const toId = ref('')
 const pathResult = ref(null)
 
-// v1.3.3: chip 颜色对齐图谱节点填充色 (nodeColor=难度色) — 原按分类配色,
+// v1.3.3: chip 颜色对齐图谱节点填充色 (difficultyColor, KG.vue fill 同源) — 原按分类配色,
 // 与节点"颜色=难度"语义冲突, 查到路径后在图里对不上颜色
 const nodeLabel = (id) => props.nodes.find((n) => n.id === id)?.data?.label || id
-const nodeColorOf = (id) => props.nodes.find((n) => n.id === id)?.data?.nodeColor || '#c8c6c4'
+const nodeColorOf = (id) => {
+  const node = props.nodes.find((n) => n.id === id)
+  return difficultyColor(node?.data?.difficulty || 1)
+}
 
 function findPath() {
   if (!fromId.value || !toId.value || fromId.value === toId.value) {

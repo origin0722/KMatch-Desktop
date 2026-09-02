@@ -331,3 +331,34 @@ def test_regenerate_for_feedback_cancel(monkeypatch):
     assert len(result["resources"]) == 1
     assert len(result["generation_failures"]) == total - 1
     assert all("已取消" in f["reason"] for f in result["generation_failures"])
+
+
+def test_report_cancel_skips_cache_writeback(monkeypatch):
+    """终审回归: 用户停止等待 → content_generator 返回「已取消」失败记录 → 缓存不回写。
+
+    此前取消路径不抛异常, 半成品报告被无条件回写并被幂等命中永久卡住 (审查发现)。
+    """
+    app = _build_report_app(monkeypatch)
+    sid = _seed_session()
+    # 替换 content_generator fake: cancel_check 恒真 → 半成品 delta + 「已取消」失败记录
+    content_cancelled = {
+        "resources": [], "node_count": 1,
+        "generation_failures": [{"node_id": "PY-005", "content_type": "lecture",
+                                 "reason": "已取消（用户停止等待）"}],
+    }
+    def _cg_cancel(kg):
+        def _n(state, progress_cb=None, cancel_check=None):
+            assert cancel_check is not None
+            return {"generated_content": content_cancelled, "content_phase_entered": True,
+                    "orchestration_log": ["cg cancelled"]}
+        return _n
+    monkeypatch.setattr(learning_api, "content_generator_node", _cg_cancel)
+
+    client = TestClient(app)
+    resp = client.post("/api/learning/report/stream", json={"session_id": sid})
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    done = _events_of(events, "done")
+    assert done  # 流正常收尾
+    # 关键断言: 缓存未被回写 (重试将重新完整补跑)
+    assert diag_api._INTERACTIVE_SESSIONS[sid].get("learning_report_cache") is None

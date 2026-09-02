@@ -330,13 +330,22 @@ def content_generator_node(kg: KnowledgeGraph):
             previous_resources = [r for r in (state["generated_content"].get("resources") or [])
                                   if isinstance(r, dict) and (r.get("content") or "").strip()]
             rv = state.get("review_results") or {}
+            # reviewer 真实产出形状: issues 在 review_results.dimensions.<dim>.issues (两层深);
+            # 顶层 rv["issues"] 为兼容保留。终审修复: 此前只取一层导致 flagged 恒空 → 缓存永不生效。
             buckets = [rv.get("issues")] if isinstance(rv.get("issues"), list) else []
-            buckets += [v.get("issues") for v in rv.values()
-                        if isinstance(v, dict) and isinstance(v.get("issues"), list)]
+            dims = rv.get("dimensions")
+            if isinstance(dims, dict):
+                buckets += [d.get("issues") for d in dims.values()
+                            if isinstance(d, dict) and isinstance(d.get("issues"), list)]
             for bucket in buckets:
                 for issue in bucket:
                     if isinstance(issue, dict) and issue.get("source_node"):
                         flagged_ids.add(str(issue["source_node"]))
+            # 防空转兜底: LLM 产出的 source_node 可能是自由文本 (如 "resources[2]") 而非裸
+            # node_id — 点名与路径节点零交集时保守全量再生, 避免零再生沿用被点名的问题内容
+            target_ids = {n.get("node_id") for n in learning_path[:MAX_NODES_TO_GENERATE]}
+            if flagged_ids and not (flagged_ids & target_ids):
+                flagged_ids = set()
 
         theory_level = profile.get("theory_level", 2) or 2
         style_extra = _background_style_hint(profile)  # 赛题背景适配: VARK 风格 + 学历/专业

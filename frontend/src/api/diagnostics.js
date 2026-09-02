@@ -410,9 +410,13 @@ export function postSseJson(url, body, { onProgress, signal } = {}) {
     const settle = (fn, arg) => { if (!settled) { settled = true; fn(arg) } }
     const onDone = (data) => settle(resolve, data)
     const onError = (msg, status) => {
-      const e = new Error(msg || 'SSE 流失败')
-      if (status) e.status = status
-      settle(reject, e)
+      // 终审修复: Electron IPC 路径错误只回传字符串 ("HTTP 404: {body}", http-proxy.js:70),
+      // 无 status → 调用方 e.status!==404 恒真, 旧后端降级永不触发。此处用正则提取状态码。
+      const matched = String(msg || '').match(/^HTTP (\d{3}):/)
+      const err = new Error(msg || 'SSE 流失败')
+      const code = status || (matched ? Number(matched[1]) : undefined)
+      if (code) err.status = code
+      settle(reject, err)
     }
 
     // 停止等待: IPC 路径 fetch 不经此处, 显式挂 signal → detach + reject (浏览器路径 fetch 同时 abort)

@@ -23,7 +23,10 @@ def _make_node_fn(monkeypatch, calls):
 
 
 def _state(existing_ids, flagged_nodes, hint=True):
-    """existing_ids: 已有资源的 node_id 列表; flagged_nodes: 审核点名的 source_node 列表。"""
+    """existing_ids: 已有资源的 node_id 列表; flagged_nodes: 审核点名的 source_node 列表。
+
+    review_results 用 reviewer 真实产出形状: issues 在 dimensions.<dim>.issues (两层深)。
+    """
     issues = [{"severity": "high", "problem": "幻觉", "source_node": nid} for nid in flagged_nodes]
     return {
         "user_profile": {"theory_level": 2},
@@ -35,7 +38,7 @@ def _state(existing_ids, flagged_nodes, hint=True):
         "retry_count": 1,
         "review_results": {
             "retry_hint": "修正幻觉" if hint else "",
-            "issues": issues,
+            "dimensions": {"factual_accuracy": {"score": 0.5, "issues": issues}},
         },
         "generated_content": {
             "resources": [
@@ -97,3 +100,29 @@ def test_first_round_full_regen(monkeypatch):
 
     assert len(calls) == 2 * len(cg.CONTENT_TYPES)
     assert delta["content_phase_entered"] is True
+
+
+def test_flagged_extraction_supports_legacy_top_level_issues(monkeypatch):
+    """兼容顶层 issues 形状 (防御: 与 reviewer 内部单测等旧形状共存)。"""
+    calls = []
+    node_fn = _make_node_fn(monkeypatch, calls)
+    state = _state(existing_ids=["PY-001", "PY-002"], flagged_nodes=["PY-001"])
+    # 用顶层 issues 替换 dimensions 形状
+    state["review_results"] = {
+        "retry_hint": "修正幻觉",
+        "issues": [{"severity": "high", "problem": "幻觉", "source_node": "PY-001"}],
+    }
+    delta = node_fn(state)
+    assert ("PY-001", "lecture") in calls and ("PY-002", "lecture") not in calls
+
+
+def test_flagged_no_intersection_falls_back_to_full_regen(monkeypatch):
+    """LLM source_node 自由文本 (与路径节点零交集) → 保守全量再生 (防空转沿用问题内容)。"""
+    calls = []
+    node_fn = _make_node_fn(monkeypatch, calls)
+    state = _state(existing_ids=["PY-001", "PY-002"], flagged_nodes=["resources[2]"])
+    delta = node_fn(state)
+
+    total = 2 * len(cg.CONTENT_TYPES)
+    assert len(calls) == total  # 全量再生
+    assert len(delta["generated_content"]["resources"]) == total

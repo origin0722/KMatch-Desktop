@@ -38,6 +38,14 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   // v1.3.3: 图谱覆盖的模块集 (setGraph 时从 entities.module_name 构建), stale 判定依据
   const coveredModules = ref(new Set())
 
+  /** 从当前 graph 重建覆盖模块集 (setGraph 与 backToCurrentProject 还原时都要重建 —
+   *  终审修复: 回看历史会把覆盖集换成历史项目的, 还原时不重建则 stale 判定失效) */
+  function _rebuildCoveredModules() {
+    coveredModules.value = new Set(
+      (graph.value?.entities || []).map((e) => e.module_name).filter(Boolean),
+    )
+  }
+
   // Monaco 跳转目标 (chat → Monaco): { path, lineStart, lineEnd, name }
   const revealTarget = ref(null)
 
@@ -68,9 +76,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     // v1.3.3 stale 检测修复: 记录图谱覆盖的模块集 (module_name 由文件相对路径推导,
     // 与 watcher 事件 path 同源), markStale 按「改动文件 ∈ 覆盖集」判定。
     // 此前比较 g.sourcePath(项目根) === 事件 path(具体文件) 永假 → 过期横幅从不出现。
-    coveredModules.value = new Set(
-      entities.map((e) => e.module_name).filter(Boolean),
-    )
+    _rebuildCoveredModules()
     activeLine.value = null
     revealTarget.value = null
     stale.value = false // 新图谱生成, 清过期标记
@@ -123,6 +129,7 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     if (historyBackup.value) {
       graph.value = historyBackup.value.graph
       stale.value = historyBackup.value.stale
+      _rebuildCoveredModules() // 终审修复: 覆盖集随当前图谱还原 (回看期间被换成了历史项目的)
       historyBackup.value = null
     } else {
       // 进入历史前没有当前图谱 (如未打开项目直接看历史) → "返回"即清空回空态 (此前 early return 无任何效果)
@@ -134,8 +141,11 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转)
    *  v1.3.3 修复: 原实现比较 sourcePath(项目根) === path(具体文件) 永假, 过期横幅从不出现,
    *  用户会按旧行号跳错位置。现按「改动文件推导的模块 ∈ 图谱覆盖模块集」判定;
-   *  兼容旧调用方直接传项目根路径 (与 sourcePath 全等) 的语义。 */
+   *  兼容旧调用方直接传项目根路径 (与 sourcePath 全等) 的语义。
+   *  终审补充: 历史回看态忽略 — 覆盖集此时属于历史项目, 误标会在"返回当前图谱"
+   *  还原备份 stale 时冲掉当前项目的真实过期标记。 */
   function markStale(path) {
+    if (historyViewing.value) return
     const g = graph.value
     if (!g || !path) return
     if (g.sourcePath === path) {

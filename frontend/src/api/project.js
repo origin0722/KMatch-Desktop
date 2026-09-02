@@ -126,7 +126,9 @@ export function normalizeGraphResponse(data, sourcePath = '') {
     projectId: d.project_id,
     stats: _mapStats(d.stats),
     entities,
-    relations: d.edges || [],
+    // 终审修复: 后端边契约是 {source, target, label}(label=关系类型), 三处消费
+    // (边类型过滤/EDGE_STYLES/query_project_graph 裁剪) 读 type → 归一补 type 字段
+    relations: (d.edges || []).map((e) => ({ ...e, type: e.label || e.type })),
     sourcePath,
     written: !!d.written_to_neo4j,
   }

@@ -333,17 +333,22 @@ class KnowledgeGraph:
                 "RETURN p",
                 id=node_id,
             )
-            return [self._node_from_record(r["p"]) for r in result]
+            prereqs = [self._node_from_record(r["p"]) for r in result]
+        # 难度升序 (与嵌入式及 batch 版排序一致, Neo4j RETURN 无序)
+        prereqs.sort(key=lambda d: int(d.get("difficulty", 1) or 1))
+        return prereqs
 
     def get_prerequisites_batch(self, node_ids: list[str]) -> dict[str, list[dict]]:
         """批量前置依赖 (v1.3.3: 图谱视图逐节点请求 N+1 → 单次 UNWIND; 嵌入式同实现)。
 
-        返回 {node_id: [前置节点]}; 不存在的节点值为空列表。按难度升序 (与嵌入式排序一致)。
+        返回 {node_id: [前置节点]}; 不存在/无前置的节点值为**空列表** (与嵌入式契约一致,
+        键恒存在 — 终审修复: UNWIND+MATCH 天然滤掉无前置节点, 需显式补空键)。
+        按难度升序 (与嵌入式排序一致)。
         """
         ids = [i for i in (node_ids or []) if i]
         if not ids:
             return {}
-        out: dict[str, list[dict]] = {}
+        out: dict[str, list[dict]] = {nid: [] for nid in ids}
         with self.driver.session() as s:
             result = s.run(
                 "UNWIND $ids AS nid "
