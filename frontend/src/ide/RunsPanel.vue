@@ -1,7 +1,7 @@
 <template>
   <div class="runs-panel">
     <div class="rp-head">
-      <span class="rp-title">🕘 运行历史</span>
+      <span class="rp-title">运行历史</span>
       <div class="rp-actions">
         <el-button size="small" :loading="loading" @click="refresh">刷新</el-button>
       </div>
@@ -16,9 +16,8 @@
       <div v-for="r in runs" :key="r.session_id" class="rp-row" @click="toggle(r.session_id)">
         <div class="rp-row-head">
           <span class="rp-mode" :class="r.mode">{{ modeLabel(r.mode) }}</span>
-          <!-- issue-66: 场景标识 (初次对话 vs 项目二次开发) -->
-          <span v-if="sceneLabel(sceneOf(r))" class="rp-scene">{{ sceneLabel(sceneOf(r)) }}</span>
-          <span class="rp-target" :title="targetOf(r)">{{ targetOf(r) }}</span>
+          <span v-if="r.scene_label" class="rp-scene">{{ r.scene_label }}</span>
+          <span class="rp-target" :title="displayTitle(r)">{{ displayTitle(r) }}</span>
           <span class="rp-time">{{ fmt(r.created_at) }}</span>
           <!-- issue-83: 删除该条运行记录 (二次确认) -->
           <el-button
@@ -81,10 +80,8 @@ const detailLoading = ref(false)
 const shownEvents = computed(() => (detail.value?.orchestration_events || []).slice(0, 40))
 
 const modeLabel = (m) => ({ demo: '演示测评', interactive: '自定义测评', pipeline: '场景二流水线' }[m] || m || 'run')
-const targetOf = (r) => r?.request?.target_direction || r?.summary?.target_direction || r?.request?.direction || '—'
-/** issue-66: 场景标识 — 初次对话(场景一·无项目) / 项目二次开发(场景二·有项目) */
-const sceneOf = (r) => r?.request?.scene || ''
-const sceneLabel = (s) => ({ no_project: '初次对话', with_project: '项目二次开发' }[s] || '')
+/** 列表接口只返回展示投影；request 仅在展开单次详情后可用。 */
+const displayTitle = (r) => r?.display_title || r?.target_direction || '未命名运行'
 function fmt(ts) {
   if (!ts) return ''
   try { return new Date(ts).toLocaleString('zh-CN', { hour12: false }) } catch { return ts }
@@ -153,9 +150,9 @@ async function rerun(run) {
 }
 
 function retake(run) {
-  const target = run?.request?.target_direction || targetOf(run)
+  const target = run?.request?.target_direction || run?.target_direction || '未命名目标'
   if (run?.mode === 'demo') {
-    store.startDemoStream({ targetDirection: target, scene: run.request?.scene || 'no_project' })
+    store.startDemoStream({ targetDirection: target, scene: run?.request?.scene || run?.scene || 'no_project' })
   } else {
     store.startAssessment({ targetDirection: target })
   }
@@ -165,7 +162,7 @@ function retake(run) {
 // issue-83: 删除单条运行记录 (二次确认 → 后端删除 → 本地刷新)
 async function removeRun(r) {
   try {
-    await ElMessageBox.confirm(`删除本次运行记录（${targetOf(r)}）？该操作不可撤销。`, '删除运行历史', { type: 'warning' })
+    await ElMessageBox.confirm(`删除本次运行记录（${displayTitle(r)}）？该操作不可撤销。`, '删除运行历史', { type: 'warning' })
   } catch { return }
   try {
     await deleteRun(r.session_id)
@@ -197,7 +194,7 @@ onMounted(refresh)
 .rp-mode.demo { background: rgba(240,160,64,0.14); color: #b9680d; }
 .rp-mode.interactive { background: rgba(24,144,255,0.12); color: var(--km-primary); }
 .rp-mode.pipeline { background: rgba(52,179,126,0.14); color: #1f8a5f; }
-/* issue-66: 场景标签 (初次对话/项目二次开发) */
+/* 场景标签由后端展示投影提供。 */
 .rp-scene { font-size: 11px; padding: 1px 8px; border-radius: 8px; flex-shrink: 0; background: rgba(52,179,126,0.12); color: var(--km-success); }
 .rp-target { font-weight: 550; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rp-time { margin-left: auto; font-size: 11px; color: var(--km-gray-400); flex-shrink: 0; }

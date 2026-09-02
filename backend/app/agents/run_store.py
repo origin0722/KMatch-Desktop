@@ -164,6 +164,41 @@ def load_run(session_id: str) -> Optional[dict]:
     return {"run": run, "events": events}
 
 
+def _run_list_item(meta: dict, fallback_id: str) -> dict:
+    """将耐久 run 投影为历史列表所需的最小展示摘要。
+
+    ``run.json`` 包含便于续跑和复盘的完整 request，不能随着列表接口下发；
+    前端列表仅依赖本函数显式列出的标题、场景和轻量汇总字段。
+    """
+    request = meta.get("request") if isinstance(meta.get("request"), dict) else {}
+    summary = meta.get("summary") if isinstance(meta.get("summary"), dict) else {}
+    scene = request.get("scene") or summary.get("scene") or ""
+    target = request.get("target_direction") or summary.get("target_direction") or ""
+    project_name = request.get("project_name") or summary.get("project_name") or ""
+    is_project = scene == "with_project" or meta.get("mode") == "pipeline"
+
+    if is_project:
+        display_title = f"{project_name or target or '未命名项目'} · 项目质量流水线"
+        scene_label = "有项目二次开发"
+    else:
+        display_title = f"学习 · {target or '未命名目标'}"
+        scene_label = "无项目技能学习"
+
+    return {
+        "session_id": meta.get("session_id", fallback_id),
+        "mode": meta.get("mode"),
+        "display_title": display_title,
+        "scene": scene,
+        "scene_label": scene_label,
+        "target_direction": target or None,
+        "project_name": project_name or None,
+        "status": summary.get("status") or "completed",
+        "created_at": meta.get("created_at"),
+        "updated_at": meta.get("updated_at"),
+        "summary": summary,
+    }
+
+
 def list_runs(limit: int = 20) -> list:
     """按 updated_at 倒序列出最近 run 摘要 (供历史运行入口)。"""
     base = _runs_dir()
@@ -179,15 +214,7 @@ def list_runs(limit: int = 20) -> list:
             continue
         if not meta:
             continue
-        items.append(
-            {
-                "session_id": meta.get("session_id", entry.name),
-                "mode": meta.get("mode"),
-                "created_at": meta.get("created_at"),
-                "updated_at": meta.get("updated_at"),
-                "summary": meta.get("summary", {}),
-            }
-        )
+        items.append(_run_list_item(meta, entry.name))
     items.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
     return items[: max(1, int(limit))]
 

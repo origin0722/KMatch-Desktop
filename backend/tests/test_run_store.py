@@ -103,6 +103,39 @@ def test_list_runs_order_desc(monkeypatch, tmp_path):
     assert ids[0] == "new" and ids[1] == "old"
 
 
+def test_list_runs_projects_safe_display_fields_without_request(monkeypatch, tmp_path):
+    """列表只给 UI 必要展示字段，完整 request 仍只能从详情端点读取。"""
+    _patch_data_dir(monkeypatch, tmp_path)
+    run_store.save_run(
+        session_id="learn-java",
+        mode="interactive",
+        request={"target_direction": "Java Spring Boot", "scene": "no_project"},
+        summary={"status": "completed"},
+    )
+    run_store.save_run(
+        session_id="shop-pipeline",
+        mode="pipeline",
+        request={"project_name": "shop-service", "scene": "with_project"},
+        summary={"status": "completed"},
+    )
+
+    runs = {item["session_id"]: item for item in run_store.list_runs(limit=10)}
+    learn = runs["learn-java"]
+    shop = runs["shop-pipeline"]
+
+    assert learn["display_title"] == "学习 · Java Spring Boot"
+    assert learn["scene"] == "no_project"
+    assert learn["scene_label"] == "无项目技能学习"
+    assert learn["target_direction"] == "Java Spring Boot"
+    assert learn["status"] == "completed"
+    assert shop["display_title"] == "shop-service · 项目质量流水线"
+    assert shop["scene"] == "with_project"
+    assert shop["scene_label"] == "有项目二次开发"
+    assert shop["project_name"] == "shop-service"
+    assert "request" not in learn
+    assert "request" not in shop
+
+
 # ---------------- API 端点 ----------------
 
 def _diag_app() -> FastAPI:

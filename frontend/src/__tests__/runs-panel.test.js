@@ -33,12 +33,14 @@ vi.mock('element-plus', async (importOriginal) => {
 const RunsPanel = (await import('@/ide/RunsPanel.vue')).default
 const SAMPLE = {
   session_id: 'demo-1', mode: 'demo', created_at: '2026-08-18T08:00:00Z',
-  request: { target_direction: 'Python 入门', scene: 'no_project' },
+  display_title: '学习 · Python 入门', scene: 'no_project', scene_label: '无项目技能学习',
+  target_direction: 'Python 入门', project_name: null, status: 'completed',
   summary: { review_passed: true, review_rounds: 2 },
 }
 const SAMPLE2 = {
   session_id: 'inter-1', mode: 'interactive', created_at: '2026-08-18T09:00:00Z',
-  request: { target_direction: '数据分析', scene: 'no_project' },
+  display_title: '学习 · 数据分析', scene: 'no_project', scene_label: '无项目技能学习',
+  target_direction: '数据分析', project_name: null, status: 'completed',
   summary: {
     correct_count: 7, total_count: 10, strategy: 'remediate', theory_level: 3, path_nodes: 12,
     profile_diff: { summary: {} },
@@ -46,6 +48,8 @@ const SAMPLE2 = {
     pacing: { total_hours: 5.2, hours_per_week: 6, weeks: 1 },
   },
 }
+const DETAIL_SAMPLE = { ...SAMPLE, request: { target_direction: 'Python 入门', scene: 'no_project' } }
+const DETAIL_SAMPLE2 = { ...SAMPLE2, request: { target_direction: '数据分析', scene: 'no_project' } }
 const EVENTS = [
   { type: 'agent-end', agent: 'diagnostics', status: 'done', message: '判分完成' },
   { type: 'agent-end', agent: 'reviewer', status: 'failed', message: '打回' },
@@ -59,7 +63,7 @@ describe('RunsPanel 后台任务页', () => {
     vi.clearAllMocks()
     mocks.fetchRuns.mockResolvedValue({ count: 2, runs: [SAMPLE, SAMPLE2] })
     mocks.fetchRun.mockImplementation(async (sid) => ({
-      ...(sid === 'inter-1' ? SAMPLE2 : SAMPLE),
+      ...(sid === 'inter-1' ? DETAIL_SAMPLE2 : DETAIL_SAMPLE),
       orchestration_events: EVENTS,
     }))
   })
@@ -77,7 +81,7 @@ describe('RunsPanel 后台任务页', () => {
     expect(w.text()).toContain('策略 remediate')
     expect(w.text()).toContain('📈 画像变化')
     // issue-66: 场景标签 + 薄弱点 chips
-    expect(w.text()).toContain('初次对话')
+    expect(w.text()).toContain('无项目技能学习')
     expect(w.text()).toContain('薄弱 缺失值处理')
     expect(w.text()).toContain('薄弱 SQL 连接')
   })
@@ -85,14 +89,15 @@ describe('RunsPanel 后台任务页', () => {
   it('issue-66/69: with_project 场景标签 + 详情 pacing/薄弱点摘要', async () => {
     const PROJ = {
       session_id: 'p-1', mode: 'demo', created_at: '2026-08-18T10:00:00Z',
-      request: { target_direction: 'Web 后端', scene: 'with_project' },
+      display_title: 'shop-service · 项目质量流水线', scene: 'with_project', scene_label: '有项目二次开发',
+      target_direction: 'Web 后端', project_name: 'shop-service', status: 'completed',
       summary: { weak_topics: ['装饰器'], pacing: { total_hours: 3.2, hours_per_week: 6, weeks: 1 } },
     }
     mocks.fetchRuns.mockResolvedValue({ count: 1, runs: [PROJ] })
-    mocks.fetchRun.mockResolvedValue({ ...PROJ, orchestration_events: [] })
+    mocks.fetchRun.mockResolvedValue({ ...PROJ, request: { target_direction: 'Web 后端', scene: 'with_project' }, orchestration_events: [] })
     const w = mount(RunsPanel, { global: { plugins: [pinia, ElementPlus] } })
     await flushPromises()
-    expect(w.text()).toContain('项目二次开发')
+    expect(w.text()).toContain('有项目二次开发')
     await w.find('.rp-row').trigger('click')
     await flushPromises()
     const txt = w.text()
