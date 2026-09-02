@@ -46,6 +46,7 @@ backend-dist/
 
 # brainstorming 可视化伴侣
 .superpowers/
+.worktrees/
 .agents/ 
 AGENTS.md
 
