@@ -113,6 +113,15 @@ def test_traversal(store):
     assert store.get_reachable([], 3) == []
 
 
+def test_prerequisites_batch(store):
+    """v1.3.3 批量前置依赖: 与单个 get_prerequisites 同契约 (难度升序), 缺失键为空列表。"""
+    batch = store.get_prerequisites_batch(["PY-004", "PY-003", "GHOST"])
+    assert [n["node_id"] for n in batch["PY-004"]] == ["PY-001", "PY-002"]
+    assert [n["node_id"] for n in batch["PY-003"]] == ["PY-002"]
+    assert batch["GHOST"] == []
+    assert store.get_prerequisites_batch([]) == {}
+
+
 def test_questions(store):
     qs = store.get_questions("PY-001", types=["choice"], limit=1)
     assert [q["qid"] for q in qs] == ["Q-PY001-001"]

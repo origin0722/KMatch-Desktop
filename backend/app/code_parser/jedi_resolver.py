@@ -24,6 +24,10 @@ from app.code_parser.models import CodeEntity, CodeRelation
 
 logger = logging.getLogger(__name__)
 
+# 单模块 Jedi infer 调用上限 (v1.3.3 提速: 每个 raw_call 一次 infer, 大文件数千调用时
+# Jedi 解析占解析耗时大头; 超限部分直接走语法名回退, 语义边损失有界且可接受)
+MAX_JEDI_INFER_CALLS = 300
+
 
 def resolve_calls(
     raw_calls: list[dict],
@@ -69,6 +73,11 @@ def resolve_calls(
     relations: list[CodeRelation] = []
     resolved_call_keys: set[tuple[str, str, int]] = set()  # (caller_id, callee_name, line) 已解析
 
+    # infer 结果缓存 (v1.3.3): 同一 (line, col) 只 infer 一次 — 循环/重复调用点常见,
+    # 命中直接复用; 超过上限的调用跳过 Jedi 直接走语法名回退。
+    infer_cache: dict[tuple[int, int], Optional[str]] = {}
+    infer_budget = MAX_JEDI_INFER_CALLS
+
     for rc in raw_calls:
         caller_id = rc["caller_entity_id"]
         callee_name = rc["callee_name"]
@@ -79,8 +88,16 @@ def resolve_calls(
         # → 回退语法名匹配 (resolved=False)。转成字符偏移。
         col = _byte_col_to_char_col(source_lines, line, col)
 
-        # 阶段1: Jedi 语义解析
-        target_id = _resolve_with_jedi(script, line, col, entity_by_qname, entity_by_simple)
+        # 阶段1: Jedi 语义解析 (带缓存与调用数上限)
+        target_id = None
+        if infer_budget > 0:
+            cache_key = (line, col)
+            if cache_key in infer_cache:
+                target_id = infer_cache[cache_key]
+            else:
+                infer_budget -= 1
+                target_id = _resolve_with_jedi(script, line, col, entity_by_qname, entity_by_simple)
+                infer_cache[cache_key] = target_id
         resolved = target_id is not None  # Jedi 成功解析
 
         # 阶段2: Jedi 不可用或未解析到 → 回退语法名匹配 (resolved=False)

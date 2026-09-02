@@ -109,7 +109,7 @@
             :prefix-icon="Search"
             clearable
             class="search-input"
-            @input="rebuildGraph"
+            @input="onSearchInput"
             @clear="rebuildGraph"
           />
           <el-divider direction="vertical" />
@@ -615,6 +615,17 @@ const kindFilter = ref('')
 const selectedEntity = ref(null)
 const panelCollapsed = ref(false)
 const docstringExpanded = ref(false)
+
+// v1.3.3: 搜索防抖 200ms — 原先每击键 destroy+init+dagre 全量重排, 数百节点时逐键卡顿
+let _searchDebounce = null
+function onSearchInput() {
+  if (_searchDebounce) clearTimeout(_searchDebounce)
+  _searchDebounce = setTimeout(() => {
+    _searchDebounce = null
+    rebuildGraph()
+  }, 200)
+}
+onBeforeUnmount(() => { if (_searchDebounce) clearTimeout(_searchDebounce) })
 
 // 实体详情: 参数列表 (从 params 数组格式化)
 const entityParams = computed(() => {

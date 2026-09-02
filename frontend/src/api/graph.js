@@ -46,6 +46,14 @@ export function getPrerequisites(nodeId) {
   return http.get(`/api/graph/prerequisites/${nodeId}`)
 }
 
+/**
+ * 批量查询节点前置依赖 (v1.3.3: 图谱视图消 N+1, 20 节点路径 20 RTT → 1)
+ * @returns {Promise<Object>} {node_id: [前置节点]}
+ */
+export function getPrerequisitesBatch(nodeIds) {
+  return http.post('/api/graph/prerequisites/batch', { node_ids: nodeIds })
+}
+
 /** 查询依赖该节点的后继 */
 export function getDependents(nodeId) {
   return http.get(`/api/graph/dependents/${nodeId}`)

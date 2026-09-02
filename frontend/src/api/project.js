@@ -21,14 +21,18 @@ export async function readProjectPyFiles(dirPath = '') {
   if (!hasIpc) return {}
   const entries = await window.api.fs.listDirectory(dirPath, { deep: true })
   const pyFiles = (entries || []).filter((e) => !e.isDirectory && e.path.endsWith('.py'))
+  // v1.3.3 提速: 并行读 (原串行 for..of, 大项目几百文件时读盘耗时线性叠加);
+  // IPC invoke 本就各自独立, Promise.all 即安全并行, 单文件失败跳过 (skip unreadable)
+  const contents = await Promise.all(pyFiles.map((f) =>
+    window.api.fs.readFile(f.path).catch(() => null),
+  ))
   const sources = {}
-  for (const f of pyFiles) {
-    try {
-      const content = await window.api.fs.readFile(f.path)
-      const module = (f.path || '').replace(/\.py$/, '').replace(/[\/\\]/g, '.')
-      sources[module] = content
-    } catch { /* skip unreadable */ }
-  }
+  pyFiles.forEach((f, i) => {
+    const content = contents[i]
+    if (content == null) return
+    const module = (f.path || '').replace(/\.py$/, '').replace(/[\/\\]/g, '.')
+    sources[module] = content
+  })
   return sources
 }
 

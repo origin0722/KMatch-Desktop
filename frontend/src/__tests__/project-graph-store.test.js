@@ -338,3 +338,52 @@ describe('projectGraph store - 历史回看 (openFromHistory 备份 / 返回当�
     expect(pg.graph).toBe(null)
   })
 })
+
+// ============================================================
+// v1.3.3 stale 检测修复: 改动文件 ∈ 图谱覆盖模块集 → 标过期 (原比较项目根===文件路径永假)
+// ============================================================
+describe('projectGraph store - stale 检测 (v1.3.3 修复)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  const entitiesWithModules = [
+    { id: 'e1', module_name: 'main' },
+    { id: 'e2', module_name: 'pkg.mod' },
+  ]
+
+  it('改动文件命中覆盖模块集 → stale=true; 未命中文件/非 .py 不误标', () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'p1', entities: entitiesWithModules, relations: [], stats: {}, written: true }, '/proj')
+
+    pg.markStale('main.py')           // 命中 main 模块
+    expect(pg.stale).toBe(true)
+  })
+
+  it('修复回归: 项目根路径 !== 文件路径, 改动具体文件也能标过期 (原 bug 永假)', () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'p1', entities: entitiesWithModules, relations: [], stats: {}, written: true }, '/proj')
+    expect(pg.stale).toBe(false)
+
+    pg.markStale('pkg/mod.py')        // 子目录文件, 原 bug 下 g.sourcePath==='/proj' 永不等于它
+    expect(pg.stale).toBe(true)
+  })
+
+  it('无关文件不误标; setGraph 新图谱清过期; 兼容旧 sourcePath 全等语义', () => {
+    const pg = useProjectGraphStore()
+    pg.setGraph({ projectId: 'p1', entities: entitiesWithModules, relations: [], stats: {}, written: true }, '/proj')
+
+    pg.markStale('other.py')          // 不在覆盖集
+    expect(pg.stale).toBe(false)
+
+    pg.markStale('main.py')
+    expect(pg.stale).toBe(true)
+    pg.setGraph({ projectId: 'p1', entities: entitiesWithModules, relations: [], stats: {}, written: true }, '/proj')
+    expect(pg.stale).toBe(false)      // 新图谱清过期
+
+    pg.markStale('/proj')             // 旧语义: 传项目根
+    expect(pg.stale).toBe(true)
+  })
+})

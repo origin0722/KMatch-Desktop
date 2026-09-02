@@ -74,8 +74,9 @@ def parse_project(project_id: str, sources: dict[str, str]) -> ParsedProject:
     modules = list(sources.keys())
 
     for module_name, source in sources.items():
-        entities, relations = parse_module_source(source, module_name, project_id)
-        attach_source_code(entities, source)
+        # return_tree=True: 复用已解析 AST 回填 source_code, 免第二次 ast.parse (v1.3.3 提速)
+        entities, relations, tree = parse_module_source(source, module_name, project_id, return_tree=True)
+        attach_source_code(entities, source, tree=tree)
 
         # ast_parser 已把语法级 raw_calls 存入调用方 external_calls (无 col)。
         # 重建 raw_calls 列表补 col=0 供 Jedi；resolve_calls 会就地从 external_calls

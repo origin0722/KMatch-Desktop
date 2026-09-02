@@ -392,7 +392,7 @@ import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { masteryColor, difficultyColor } from '@/utils/format'
 import { cjkAwareWidth } from '@/utils/nodeSize'
 import { graphToExcalidraw, downloadExcalidraw, collectG6Positions } from '@/utils/excalidrawExport'
-import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
+import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites, getPrerequisitesBatch } from '@/api/graph'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
@@ -655,6 +655,8 @@ const currentPhase = computed(() => {
 
 // ---------------------------------------------------------------
 // BUG-045: 批量获取前置依赖，注入 useGraphData
+// v1.3.3: 单条 POST /prerequisites/batch 取代逐节点 GET (20 节点路径原为 20 RTT);
+// 旧后端无批量端点 (404) 时回退逐节点并行 (行为不变)。
 // ---------------------------------------------------------------
 async function fetchPrerequisites() {
   const nodes = data.rawNodes.value
@@ -663,18 +665,27 @@ async function fetchPrerequisites() {
   loadingPrereqs.value = true
   const ids = nodes.map((n) => n.node_id).filter(Boolean)
   const map = {}
+  let results
 
-  // 并行获取所有节点的前置依赖（最多 20 个并行请求，后端 API 无副作用）
-  const results = await Promise.all(
-    ids.map(async (nid) => {
-      try {
-        const prereqs = await getPrerequisites(nid)
-        return { nid, prereqIds: (prereqs || []).map((p) => p.node_id).filter(Boolean) }
-      } catch {
-        return { nid, prereqIds: [] }
-      }
-    }),
-  )
+  try {
+    const batchMap = await getPrerequisitesBatch(ids)
+    results = ids.map((nid) => ({
+      nid,
+      prereqIds: (batchMap[nid] || []).map((p) => p.node_id).filter(Boolean),
+    }))
+  } catch {
+    // 回退: 并行逐节点获取 (最多 20 个并行请求，后端 API 无副作用)
+    results = await Promise.all(
+      ids.map(async (nid) => {
+        try {
+          const prereqs = await getPrerequisites(nid)
+          return { nid, prereqIds: (prereqs || []).map((p) => p.node_id).filter(Boolean) }
+        } catch {
+          return { nid, prereqIds: [] }
+        }
+      }),
+    )
+  }
 
   for (const { nid, prereqIds } of results) {
     map[nid] = prereqIds
@@ -944,7 +955,7 @@ async function handleSearch() {
       highlightIds.value = new Set(searchNodes.map((n) => n.node_id))
     }
 
-    rebuildGraph()
+    applyHighlight()
   } catch {
     if (currentSeq === searchSeq) {
       // 只有当前请求出错才清状态
@@ -1018,7 +1029,7 @@ async function handleFilterChange() {
 
   extraNodes.value = []
   searchNoResult.value = false
-  rebuildGraph()
+  applyHighlight()
 }
 
 function clearHighlight() {
@@ -1029,7 +1040,33 @@ function clearHighlight() {
   categoryFilter.value = ''
   difficultyFilter.value = null
   masteryFilter.value = ''
-  rebuildGraph()
+  applyHighlight()
+}
+
+// ---------------------------------------------------------------
+// v1.3.3: 高亮/暗化增量更新 — updateNodeData/updateEdgeData + draw() 只重绘不重排,
+// 保留布局与用户拖拽位置 (原 rebuildGraph 每次高亮都 destroy+init+布局全量重来,
+// 交互观感是"闪一下重排")。图元数量变化 (搜索新增 extraNodes) 时结构变了才回退全量重建。
+// ---------------------------------------------------------------
+function applyHighlight() {
+  if (!graph) {
+    rebuildGraph()
+    return
+  }
+  try {
+    const { nodes, edges } = buildG6Data()
+    const curNodes = graph.getNodeData()
+    const curEdges = graph.getEdgeData()
+    if (curNodes.length !== nodes.length || curEdges.length !== edges.length) {
+      rebuildGraph() // extraNodes 增删 → 结构变化, 全量重建
+      return
+    }
+    graph.updateNodeData(nodes)
+    graph.updateEdgeData(edges)
+    graph.draw()
+  } catch {
+    rebuildGraph() // 增量失败兜底 (G6 版本差异/时序)
+  }
 }
 
 // 筛选 popover "清空筛选": 复位三个筛选条件并重算高亮 (C2)

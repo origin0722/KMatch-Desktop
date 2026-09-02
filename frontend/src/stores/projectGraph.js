@@ -35,6 +35,9 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   // 阶段8: 图谱是否已过期 (源文件被外部改动, 行号可能漂移, 跳转会指错行)
   const stale = ref(false)
 
+  // v1.3.3: 图谱覆盖的模块集 (setGraph 时从 entities.module_name 构建), stale 判定依据
+  const coveredModules = ref(new Set())
+
   // Monaco 跳转目标 (chat → Monaco): { path, lineStart, lineEnd, name }
   const revealTarget = ref(null)
 
@@ -53,14 +56,21 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
   })
 
   function setGraph(result, sourcePath, { fromHistory = false } = {}) {
+    const entities = result.entities || []
     graph.value = {
       projectId: result.projectId,
       stats: result.stats || {},
-      entities: result.entities || [],
+      entities,
       relations: result.relations || [],
       sourcePath: sourcePath || result.sourcePath,
       written: !!result.written,
     }
+    // v1.3.3 stale 检测修复: 记录图谱覆盖的模块集 (module_name 由文件相对路径推导,
+    // 与 watcher 事件 path 同源), markStale 按「改动文件 ∈ 覆盖集」判定。
+    // 此前比较 g.sourcePath(项目根) === 事件 path(具体文件) 永假 → 过期横幅从不出现。
+    coveredModules.value = new Set(
+      entities.map((e) => e.module_name).filter(Boolean),
+    )
     activeLine.value = null
     revealTarget.value = null
     stale.value = false // 新图谱生成, 清过期标记
@@ -121,13 +131,22 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
     }
   }
 
-  /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转) */
+  /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转)
+   *  v1.3.3 修复: 原实现比较 sourcePath(项目根) === path(具体文件) 永假, 过期横幅从不出现,
+   *  用户会按旧行号跳错位置。现按「改动文件推导的模块 ∈ 图谱覆盖模块集」判定;
+   *  兼容旧调用方直接传项目根路径 (与 sourcePath 全等) 的语义。 */
   function markStale(path) {
     const g = graph.value
     if (!g || !path) return
     if (g.sourcePath === path) {
       stale.value = true
+      return
     }
+    if (!coveredModules.value.size) return
+    // watcher 事件 path 为工作区相对路径 (watcher-worker path.relative), 与
+    // readProjectPyFiles 推导 module_name 的路径同源 → 同一归一化即可精确匹配
+    const mod = String(path).replace(/\.py$/i, '').replace(/[\\/]/g, '.')
+    if (coveredModules.value.has(mod)) stale.value = true
   }
 
   function clearStale() {

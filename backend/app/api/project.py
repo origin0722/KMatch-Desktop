@@ -64,6 +64,8 @@ class ParseRequest(BaseModel):
     filename: str = "main.py"            # text 源文件名
     sources: Optional[dict] = None       # source_type=files 时必填 {module_name: source}
     write_to_neo4j: bool = True          # False=仅解析返回不落库 (前端预览)
+    with_source: bool = False            # v1.3.3: 响应是否携带函数 source_code (前端只存不读,
+                                         # 默认裁掉 — 大项目响应体积显著下降; 需要时显式开启)
 
 
 class ProjectGraphResponse(BaseModel):
@@ -122,7 +124,7 @@ def parse_project_api(req: ParseRequest, request: Request):
             raise HTTPException(status_code=500, detail=f"项目图谱写入失败: {e}")
 
     # 4. 返回 G6 结构
-    return _to_g6_response(parsed, written)
+    return _to_g6_response(parsed, written, with_source=req.with_source)
 
 
 # ============================================================
@@ -408,8 +410,12 @@ def list_examples():
 # 辅助: ParsedProject → G6 响应
 # ============================================================
 
-def _to_g6_response(parsed: ParsedProject, written: bool) -> ProjectGraphResponse:
-    """ParsedProject → ProjectGraphResponse (G6 友好)。"""
+def _to_g6_response(parsed: ParsedProject, written: bool, with_source: bool = False) -> ProjectGraphResponse:
+    """ParsedProject → ProjectGraphResponse (G6 友好)。
+
+    with_source=False (默认, v1.3.3) 时响应裁掉函数 source_code — 前端只存不读
+    (跳源码走 file+line), 大项目响应体积显著下降; 落 Neo4j 的完整数据不受影响。
+    """
     nodes = []
     for e in parsed.entities:
         nodes.append({
@@ -429,7 +435,7 @@ def _to_g6_response(parsed: ParsedProject, written: bool) -> ProjectGraphRespons
                 "decorators": e.decorators,
                 "line_start": e.line_start,
                 "line_end": e.line_end,
-                "source_code": e.source_code,
+                "source_code": e.source_code if with_source else None,
                 "is_method": e.is_method,
                 "parent_class_id": e.parent_class_id,
                 "external_calls": e.external_calls,

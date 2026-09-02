@@ -296,6 +296,18 @@ class EmbeddedGraphStore:
         ordered = sorted(prereqs, key=lambda i: int(self._nodes[i].get("difficulty", 1)))
         return [self._node_out(self._nodes[i]) for i in ordered]
 
+    def get_prerequisites_batch(self, node_ids: list[str]) -> dict[str, list[dict]]:
+        """批量前置依赖 (v1.3.3: 与 engine.get_prerequisites_batch 同契约, 内存遍历零网络往返)。"""
+        self._ensure_loaded()
+        out: dict[str, list[dict]] = {}
+        for nid in node_ids or []:
+            if not nid:
+                continue
+            ordered = sorted(self._parents.get(nid, []),
+                             key=lambda i: int(self._nodes[i].get("difficulty", 1)))
+            out[nid] = [self._node_out(self._nodes[i]) for i in ordered]
+        return out
+
     def get_dependents(self, node_id: str) -> list[dict]:
         self._ensure_loaded()
         deps = self._children.get(node_id, set())

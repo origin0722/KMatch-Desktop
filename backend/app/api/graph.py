@@ -89,6 +89,19 @@ def get_prerequisites(node_id: str, request: Request):
     return kg.get_prerequisites(node_id)
 
 
+class PrereqBatchRequest(BaseModel):
+    """批量前置依赖请求 (图谱视图消 N+1: 一条路径 ≤20 节点原需 20 次单查)。"""
+    node_ids: list[str] = Field(..., min_length=1, max_length=50,
+                                description="节点 ID 列表 (单路径上限 20, 留余量取 50)")
+
+
+@router.post("/prerequisites/batch", summary="批量查询节点前置依赖 (图谱视图消 N+1)")
+def get_prerequisites_batch(req: PrereqBatchRequest, request: Request):
+    """返回 {node_id: [前置节点]}; 不存在/无前置的节点值为空列表 (前端无需判错)。"""
+    kg = _get_kg(request)
+    return kg.get_prerequisites_batch(req.node_ids)
+
+
 @router.get("/dependents/{node_id}", summary="查询依赖该节点的后继")
 def get_dependents(node_id: str, request: Request):
     kg = _get_kg(request)

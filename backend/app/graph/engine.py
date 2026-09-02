@@ -335,6 +335,28 @@ class KnowledgeGraph:
             )
             return [self._node_from_record(r["p"]) for r in result]
 
+    def get_prerequisites_batch(self, node_ids: list[str]) -> dict[str, list[dict]]:
+        """批量前置依赖 (v1.3.3: 图谱视图逐节点请求 N+1 → 单次 UNWIND; 嵌入式同实现)。
+
+        返回 {node_id: [前置节点]}; 不存在的节点值为空列表。按难度升序 (与嵌入式排序一致)。
+        """
+        ids = [i for i in (node_ids or []) if i]
+        if not ids:
+            return {}
+        out: dict[str, list[dict]] = {}
+        with self.driver.session() as s:
+            result = s.run(
+                "UNWIND $ids AS nid "
+                "MATCH (n:KnowledgeNode {id: nid})-[:REQUIRES]->(p:KnowledgeNode) "
+                "RETURN nid, p",
+                ids=ids,
+            )
+            for r in result:
+                out.setdefault(r["nid"], []).append(self._node_from_record(r["p"]))
+        for lst in out.values():
+            lst.sort(key=lambda d: int(d.get("difficulty", 1) or 1))
+        return out
+
     def get_dependents(self, node_id: str) -> list[dict]:
         with self.driver.session() as s:
             result = s.run(

@@ -35,7 +35,8 @@ def parse_module_source(
     source: str,
     module_name: str,
     project_id: str,
-) -> tuple[list[CodeEntity], list[CodeRelation]]:
+    return_tree: bool = False,
+):
     """解析单个模块源码，返回 (实体列表, 关系列表)。
 
     产出:
@@ -50,6 +51,8 @@ def parse_module_source(
         source: 模块源码字符串
         module_name: 模块名 (文件 stem)
         project_id: 项目 ID (构造 entity_id 命名空间)
+        return_tree: True 时返回 (entities, relations, tree) — loader 复用已解析的
+            AST 回填 source_code, 免去 attach_source_code 的第二次 ast.parse (大项目减半解析)
 
     Raises:
         SyntaxError: 源码语法错误 (由 API 层转 422)
@@ -123,7 +126,7 @@ def parse_module_source(
                 "col": rc["col"],
             })
 
-    return entities, relations
+    return (entities, relations, tree) if return_tree else (entities, relations)
 
 
 def _find_func_node(class_node: ast.ClassDef, func_name: str) -> Optional[ast.AST]:
@@ -206,16 +209,18 @@ def _extract_function(
     )
 
 
-def attach_source_code(entities: list[CodeEntity], source: str) -> None:
+def attach_source_code(entities: list[CodeEntity], source: str, tree: Optional[ast.AST] = None) -> None:
     """用 ast.get_source_segment 为函数/方法实体回填 source_code。
 
-    单独成函数: parse_module_source 已 ast.parse 一次，这里需重 parse 以拿到节点行号映射。
+    tree 可传 parse_module_source(return_tree=True) 的已解析 AST (v1.3.3: 免第二次
+    ast.parse, 大项目解析减半); 缺省时自行 parse (兼容旧调用方)。
     为控制体积，仅函数/方法存 source (类/模块不存)。
     """
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return
+    if tree is None:
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return
 
     # 建立 qualified_name → source_segment 映射
     seg_map: dict[str, str] = {}
