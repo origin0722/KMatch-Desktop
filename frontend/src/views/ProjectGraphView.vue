@@ -131,7 +131,7 @@
             :loading="pipelineRunning"
             :disabled="!pg.graph?.entities?.length"
             @click="runPipeline"
-          >协同流水线</el-button>
+          >当前文件质量检查</el-button>
 
           <!-- W2 缩放工具: 步进 + 适配画布 (此前项目图谱无任何缩放入口) -->
           <el-divider direction="vertical" />
@@ -390,7 +390,7 @@
     <!-- W6: 协同流水线结果 (审查→测试→修复指引) -->
     <el-dialog
       v-model="pipelineVisible"
-      title="协同流水线 · 代码审查 → 代码测试 → 修复指引"
+      title="当前文件质量检查 · 代码审查 → 代码测试 → 修复指引"
       width="640px"
       class="pipeline-dialog"
     >
@@ -472,6 +472,7 @@ import { Graph } from '@antv/g6'
 import { useProjectGraphStore } from '@/stores/projectGraph'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useAssessmentStore } from '@/stores/assessment'
 import { useChatStore } from '@/stores/chat'
 import { useGraphHistoryStore } from '@/stores/graphHistory'
 import { buildEntityQuestion } from '@/utils/askAi'
@@ -487,6 +488,7 @@ import { useAiSettingsStore } from '@/stores/aiSettings'
 const pg = useProjectGraphStore()
 const sidebar = useSidebarStore()
 const ws = useWorkspaceStore()
+const assessment = useAssessmentStore()
 const chat = useChatStore()
 const lr = useLearningResourcesStore()
 const aiSettings = useAiSettingsStore()
@@ -987,8 +989,8 @@ const pipelineResult = ref(null)
 async function runPipeline() {
   const wsStore = useWorkspaceStore()
   const path = wsStore.activeFile
-  if (!path || !path.endsWith('.py')) {
-    ElMessage.warning('请先在编辑器打开要审查的 .py 文件')
+  if (!path || !path.toLowerCase().endsWith('.py')) {
+    ElMessage.warning('当前文件质量检查仅支持 Python 文件')
     return
   }
   let code = ''
@@ -999,11 +1001,11 @@ async function runPipeline() {
     return
   }
   // 开发目标方向 (审查/测试的知识检索上下文): 默认取学情画像方向
-  let direction = store.profile?.target_direction || ''
+  let direction = assessment.profile?.target_direction || 'Python 项目质量检查'
   try {
     const { value } = await ElMessageBox.prompt(
-      '输入开发目标方向 (对照领域规范审查代码并生成测试)',
-      '协同流水线',
+      '输入开发目标方向。当前文件将依次进行代码审查、代码测试并生成修复指引；全程只读，不会修改源文件（当前仅支持 Python 文件）。',
+      '当前文件质量检查',
       {
         inputValue: direction,
         inputPattern: /\S/,
@@ -1027,7 +1029,7 @@ async function runPipeline() {
     pipelineResult.value = data
     pipelineVisible.value = true
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || e.message || '流水线执行失败')
+    ElMessage.error(e.response?.data?.detail || e.message || '质量检查执行失败')
   } finally {
     pipelineRunning.value = false
   }
