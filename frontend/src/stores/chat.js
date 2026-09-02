@@ -874,7 +874,10 @@ export const useChatStore = defineStore('chat', () => {
         // 2) 审批门: 等待用户决定 (用户可编辑内容)
         const decision = await _requestApproval(call, safety)
         if (!decision.approved) {
-          return { path: relPath, rejected: true, error: '用户拒绝写入' }
+          return {
+            path: relPath, rejected: !decision.stopped, stopped: !!decision.stopped,
+            error: decision.stopped ? '用户停止了本次生成（未写入文件，非拒绝写入）' : '用户拒绝写入',
+          }
         }
 
         // 3) 执行写入 (用可能被用户编辑后的 content)
@@ -1258,6 +1261,7 @@ export const useChatStore = defineStore('chat', () => {
     } catch (e) {
       if (e.name === 'AbortError') {
         if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
+        else assistantMsg._stopped = true // 部分输出后停止: 角标标记 (不改写正文, 复制/重发不带杂质)
         streaming.value = false; currentStreamId.value = null; return 'abort'
       }
       // F2: 流内错误 (e.streamError) 已由 _applySseBlock 渲染 ❌ chunk + 设 error.value, 勿重复
@@ -1291,7 +1295,7 @@ export const useChatStore = defineStore('chat', () => {
     // issue-75: 长思考耗尽 token → 只有 think 无正文, 明确提示而非静默空白
     if (!contentTextOf(assistantMsg) && thinkTextOf(assistantMsg)) {
       appendTextChunk(activeChunksOf(assistantMsg), 'content',
-        '⚠️ 思考超长被截断，未生成回复。可点击「重试」；若反复出现，请在 AI 设置中调低思考模式。')
+        '⚠️ 思考超长被截断，未生成回复。可点击消息右下角「重新生成」；若反复出现，请在 AI 设置中调低思考模式。')
     }
 
     // 流式累积后, 把 content 文本切成 [content?, tool_call, ...] 段, 重建非 think chunks
@@ -1359,7 +1363,14 @@ export const useChatStore = defineStore('chat', () => {
 
     // 收集工作区上下文
     const context = await _collectContext()
+    await _runAssistantTurn(context, '对话请求失败')
+  }
 
+  /**
+   * 助手回合 (sendMessage / editUserMessage 共用): 工具循环 + 每轮重建历史。
+   * context 由调用方收集 (send 后收 / 编辑重发沿用编辑时点)。
+   */
+  async function _runAssistantTurn(context, errorLabel) {
     // 工具循环 (最多 maxToolRounds() 轮, 设置页可调)
     let toolRound = 0
     const maxRounds = maxToolRounds()
@@ -1377,9 +1388,38 @@ export const useChatStore = defineStore('chat', () => {
       // 每轮添加新的助手占位消息 (空 chunks)
       const assistantMsg = _addMessage('assistant', [])
 
-      const outcome = await _runToolRound({ apiMessages, assistantMsg, errorLabel: '对话请求失败' })
+      const outcome = await _runToolRound({ apiMessages, assistantMsg, errorLabel })
       if (outcome !== 'continue') break // done (纯文本) 或 abort (中止/出错)
     }
+  }
+
+  /**
+   * 编辑用户消息并重发: 更新该消息文本, 截断其后所有消息, 重新走助手回合。
+   * "改历史"语义 — 后续对话基于编辑后的分支重建 (附件保留, 只改文本)。
+   */
+  async function editUserMessage(msgId, newContent) {
+    if (isBusy.value) return
+    const trimmed = String(newContent || '').trim()
+    if (!trimmed) return
+    const idx = messages.value.findIndex((m) => m.id === msgId)
+    if (idx === -1 || messages.value[idx].role !== 'user') return
+
+    const target = messages.value[idx]
+    if (Array.isArray(target.content)) {
+      // 多模态消息 (带附件): 只换 text 段, 附件保留
+      const textSeg = target.content.find((s) => s && s.type === 'text')
+      if (textSeg) textSeg.text = trimmed
+      else target.content.unshift({ type: 'text', text: trimmed })
+    } else {
+      target.chunks = [{ type: 'content', content: trimmed }]
+    }
+    // 截断其后消息; 前面助手版本 trailingAfter 里残留的已删 id 无害 (消息不存在即不可见)
+    messages.value = messages.value.slice(0, idx + 1)
+
+    error.value = null
+    abortController.value = new AbortController()
+    const context = await _collectContext()
+    await _runAssistantTurn(context, '对话请求失败')
   }
 
   /** 重生成指定助手消息 (追加新 version, 不覆盖原) */
@@ -1420,8 +1460,9 @@ export const useChatStore = defineStore('chat', () => {
 
   function stopStreaming() {
     abortController.value?.abort()
-    // F8: 停止时若有未决审批, 按拒绝解开 await (防 hung promise)
-    _cancelPendingApproval()
+    // F8: 停止时若有未决审批, 按"中止"解开 await (防 hung promise)。
+    // stopped 标记区别于用户主动拒绝 — 停止生成 ≠ 拒绝写入, 回喂措辞不含"拒绝"误导。
+    _cancelPendingApproval({ approved: false, stopped: true })
   }
 
   /** 切助手消息的版本 (prev/next 导航) */
@@ -1459,7 +1500,7 @@ export const useChatStore = defineStore('chat', () => {
     tutorMode, setTutorMode,
     // 对话
     sendMessage, stopStreaming, clearMessages,
-    setVersion, regenMessage,
+    setVersion, regenMessage, editUserMessage,
     // 附件 (Spec A 图片上传, 阶段PR-5)
     pendingAttachments, addAttachment, removeAttachment, clearAttachments,
   }

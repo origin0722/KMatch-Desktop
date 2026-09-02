@@ -219,13 +219,15 @@
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </span>
               <span v-else-if="!hasContent(msg) && !hasThink(msg)" class="empty-msg">—</span>
+              <!-- 中断标记: 部分输出后停止 (不改写正文, 角标提示) -->
+              <span v-if="msg._stopped && hasContent(msg) && !chat.streaming" class="stopped-tag">⏹ 已停止</span>
               <div class="msg-actions" v-if="hasContent(msg) && !chat.streaming">
                 <el-button size="small" text @click="copyText(contentText(msg))">复制</el-button>
               </div>
             </div>
           </div>
 
-          <!-- 用户消息: 纯文本气泡 + 附件缩略图 -->
+          <!-- 用户消息: 纯文本气泡 + 附件缩略图 + 消息级操作 (复制/编辑重发) -->
           <div v-else class="msg-body user-msg">
             <div class="msg-content">
               <div v-if="msg._attachments?.length" class="msg-attachments">
@@ -238,7 +240,33 @@
                   @click="openImagePreview(a.base64DataUrl)"
                 />
               </div>
-              <pre class="user-text">{{ contentText(msg) }}</pre>
+              <!-- 编辑态: textarea 替换气泡, 保存后截断其后对话重发 (附件保留只改文本) -->
+              <div v-if="editingMsgId === msg.id" class="user-edit">
+                <el-input
+                  v-model="editingText"
+                  type="textarea"
+                  :rows="3"
+                  resize="none"
+                  class="user-edit-input"
+                />
+                <div class="user-edit-actions">
+                  <el-button size="small" @click="cancelEditMsg">取消</el-button>
+                  <el-button size="small" type="primary" :disabled="!editingText.trim()" @click="submitEditMsg(msg)">保存并发送</el-button>
+                </div>
+              </div>
+              <template v-else>
+                <pre class="user-text">{{ contentText(msg) }}</pre>
+                <div class="msg-actions user-actions">
+                  <el-button size="small" text @click="copyText(contentText(msg))">复制</el-button>
+                  <el-button
+                    size="small"
+                    text
+                    :disabled="chat.isBusy"
+                    title="编辑该消息并重新发送（其后的对话将被移除）"
+                    @click="startEditMsg(msg)"
+                  >编辑重发</el-button>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -345,7 +373,7 @@
           v-model="inputText"
           type="textarea"
           :rows="2"
-          :disabled="chat.isBusy || backend.status === false"
+          :disabled="backend.status === false"
           :placeholder="inputPlaceholder"
           resize="none"
           class="input-main"
@@ -401,8 +429,7 @@
               type="button"
               class="model-chip"
               :class="{ unset: !aiSettings.apiKey }"
-              :disabled="chat.streaming"
-              :title="aiSettings.apiKey ? '点击切换厂商 / 模型 / 思考模式' : '未设置 API Key, 点击配置'"
+              :title="aiSettings.apiKey ? '点击切换厂商 / 模型 / 思考模式（只影响下一次请求）' : '未设置 API Key, 点击配置'"
             >
               <img :src="iconUrlOf(aiSettings.providerMeta().iconKey)" class="provider-icon" alt="" />
               <span class="model-chip-name">{{ aiSettings.model }}</span>
@@ -415,7 +442,6 @@
               <el-select
                 :model-value="providerSelectValue"
                 size="small"
-                :disabled="chat.streaming"
                 style="width: 100%"
                 @change="onProviderChange"
               >
@@ -457,7 +483,6 @@
               <SegmentedControl
                 :model-value="aiSettings.reasoningMode"
                 :options="REASONING_OPTIONS"
-                :disabled="chat.streaming"
                 @update:model-value="aiSettings.setReasoningMode"
               />
             </div>
@@ -778,7 +803,8 @@ watch(() => {
 // ---------------------------------------------------------------
 function handleSend() {
   const text = inputText.value.trim()
-  if (!text || chat.streaming) return
+  // isBusy (流中/审批门/工具循环) 时静默保留草稿 — 输入框已不再整体禁用, 用户可提前打草稿
+  if (!text || chat.isBusy) return
   // B4: 未配 Key 拦截 (ollama 本地免 key) - 提示并打开配置, 不发请求
   if (!aiSettings.apiKey && aiSettings.provider !== 'ollama') {
     ElMessage.warning('请先配置 API Key 再发送消息')
@@ -925,6 +951,8 @@ async function saveApiKey() {
 }
 
 function onKeydown(e) {
+  // IME 组合输入中的回车 (中文输入法选词) 不发送 — 否则半截拼音被误发
+  if (e.isComposing || e.keyCode === 229) return
   // Enter 发送 (无 Shift)
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -942,6 +970,27 @@ async function copyText(text) {
   } catch {
     ElMessage.warning('复制失败')
   }
+}
+
+// ---------------------------------------------------------------
+// 用户消息编辑重发 (编辑态本地状态; 保存走 chat.editUserMessage 截断其后重发)
+// ---------------------------------------------------------------
+const editingMsgId = ref(null)
+const editingText = ref('')
+function startEditMsg(msg) {
+  editingMsgId.value = msg.id
+  editingText.value = contentText(msg)
+}
+function cancelEditMsg() {
+  editingMsgId.value = null
+  editingText.value = ''
+}
+async function submitEditMsg(msg) {
+  const text = editingText.value
+  if (!text.trim()) return
+  cancelEditMsg()
+  scrollToBottomForce()
+  await chat.editUserMessage(msg.id, text)
 }
 </script>
 
@@ -1141,6 +1190,15 @@ async function copyText(text) {
   transition: opacity 0.15s var(--km-ease);
 }
 .msg-body:hover .msg-actions { opacity: 1; }
+/* 用户消息操作右对齐 (气泡在右侧) */
+.user-actions { justify-content: flex-end; }
+/* 中断标记 (部分输出后停止) */
+.stopped-tag { font-size: 11px; color: var(--km-gray-400); margin-top: 4px; display: inline-block; }
+
+/* 用户消息编辑重发 */
+.user-edit { width: 100%; }
+.user-edit-input :deep(.el-textarea__inner) { font-size: 13px; font-family: var(--km-font-ui); }
+.user-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 
 /* 用户消息 */
 .user-msg .msg-content {
@@ -1596,7 +1654,7 @@ async function copyText(text) {
   position: absolute; right: 4px; bottom: 4px;
   border: 0; background: transparent; color: var(--km-gray-400);
   cursor: pointer; padding: 4px; border-radius: var(--km-radius-xs);
-  opacity: 0; transition: opacity 0.12s var(--km-ease);
+  opacity: 0.45; transition: opacity 0.12s var(--km-ease);
 }
 .message.assistant:hover .regen-btn { opacity: 1; }
 .regen-btn:hover:not(:disabled) { color: var(--km-primary); background: var(--km-primary-light); }
