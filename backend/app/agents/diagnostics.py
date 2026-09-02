@@ -529,7 +529,7 @@ def _select_from_bank(
 
     - 调 kg.get_questions_for_nodes 取每节点最多 QUESTIONS_PER_NODE 道 (type 限定 BANK_TYPES)
     - 题库题已带 source_node_id (import 时存), _question_from_record 注入 node_id 别名
-    - random.shuffle 保证不每次抽同样题 (seed=None 每次不同; 单测传 seed 固定)
+    - rng.shuffle 保证不每次抽同样题 (显式 seed 可复现供单测; 缺省由 OS 熵源播种)
     - 返回题数 <= target_count; 不足部分由调用方 LLM 补
     """
     node_ids = [n.get("node_id") or n.get("id") for n in nodes
@@ -539,7 +539,8 @@ def _select_from_bank(
     banked = kg.get_questions_for_nodes(node_ids, types=list(BANK_TYPES), max_per_node=QUESTIONS_PER_NODE)
     # 仅保留 BANK_TYPES (防御: 引擎 type 筛选已做, 此处再兜底)
     banked = [q for q in banked if q.get("type") in BANK_TYPES]
-    rng = random.Random(seed) if seed is not None else random
+    # 独立 Random 实例: 显式 seed 可复现 (单测); 缺省由 OS 熵源播种, 不用模块级共享随机
+    rng = random.Random(seed)
     rng.shuffle(banked)
     return banked[:target_count]
 
