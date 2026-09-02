@@ -30,6 +30,7 @@ function defaultState() {
     baseUrl: providerBaseUrl('deepseek'),
     model: 'deepseek-v4-pro',
     feedbackModel: 'deepseek-v4-flash', // 反馈专用快模型; 留空 = 跟随引擎模型
+    gradingFastModel: false, // v1.3.3: 判分也走反馈快模型 (实验, 默认关 — 慢端点下 45s 判分超时的提速选项)
     protocol: 'openai',
   }
 }
@@ -74,6 +75,16 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
   function setBaseUrl(url) { state.value.baseUrl = (url || '').trim(); persist() }
   function setModel(m) { state.value.model = (m || '').trim(); persist() }
   function setFeedbackModel(m) { state.value.feedbackModel = (m || '').trim(); persist() }
+  function setGradingFastModel(on) { state.value.gradingFastModel = !!on; persist() }
+
+  /**
+   * 判分专用 overrides (v1.3.3): gradingFastModel 开 → 判分复用反馈快模型 (换 model,
+   * key/base_url 不变); 关 → 与引擎一致 (buildOverrides)。默认关, 判分质量优先。
+   */
+  function buildGradingOverrides() {
+    if (!state.value.gradingFastModel) return buildOverrides()
+    return buildFeedbackOverrides()
+  }
 
   /** 回退来源: AI 助手 Key (OpenAI 兼容厂商), 用于学习引擎未独立配置时。 */
   function aiFallbackOverrides() {
@@ -143,7 +154,8 @@ export const useAgentLlmStore = defineStore('agentLlm', () => {
 
   return {
     state, setUseOverrides, setProvider, setApiKey, setBaseUrl, setModel, setFeedbackModel,
-    buildOverrides, buildFeedbackOverrides, effectiveSource,
+    setGradingFastModel,
+    buildOverrides, buildFeedbackOverrides, buildGradingOverrides, effectiveSource,
   }
 })
 
@@ -164,6 +176,16 @@ export function withOverrides(body) {
  */
 export function withFeedbackOverrides(body) {
   const overrides = useAgentLlmStore().buildFeedbackOverrides()
+  if (!overrides) return body
+  return { ...(body || {}), llm_overrides: overrides }
+}
+
+/**
+ * 判分注入 helper (v1.3.3)：submit 判分用它 — 默认与引擎一致 (buildOverrides),
+ * 设置页开启「判分走快模型」后复用反馈快模型 (慢端点 45s 判分超时的可选提速)。
+ */
+export function withGradingOverrides(body) {
+  const overrides = useAgentLlmStore().buildGradingOverrides()
   if (!overrides) return body
   return { ...(body || {}), llm_overrides: overrides }
 }

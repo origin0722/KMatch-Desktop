@@ -130,6 +130,20 @@ describe('agentLlm store', () => {
     expect(body2.session_id).toBe('s1')
   })
 
+  // ---- v1.3.3 判分快模型分流 (默认关) ----
+  it('buildGradingOverrides 默认与引擎一致; 开关后复用反馈快模型', () => {
+    const s = useAgentLlmStore()
+    // 默认关: 判分 = 引擎链 (未配置 → null, 走后端 .env)
+    expect(s.state.gradingFastModel).toBe(false)
+    expect(s.buildGradingOverrides()).toBeNull()
+    // 开启: 复用反馈快模型链 (部分覆写仅 model)
+    s.setGradingFastModel(true)
+    expect(s.buildGradingOverrides()).toEqual({ model: 'deepseek-v4-flash' })
+    // 关闭还原
+    s.setGradingFastModel(false)
+    expect(s.buildGradingOverrides()).toBeNull()
+  })
+
   it('setProvider to non-deepseek clears default flash feedbackModel (mismatch guard)', () => {
     const s = useAgentLlmStore()
     expect(s.state.feedbackModel).toBe('deepseek-v4-flash')

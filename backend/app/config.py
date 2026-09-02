@@ -55,6 +55,8 @@ class Settings:
     LLM_TEMPERATURE: float = 0.3
     REVIEW_PASS_THRESHOLD: float = float(os.getenv("REVIEW_PASS_THRESHOLD", "0.85"))
     CONTENT_GEN_CONCURRENCY: int = int(os.getenv("CONTENT_GEN_CONCURRENCY", "5"))
+    # 独立裁判并发度 (quality_judge 幻觉/难度判定; 原逐条串行最多 10 次 LLM 是 report 补跑大头)
+    JUDGE_CONCURRENCY: int = int(os.getenv("JUDGE_CONCURRENCY", "4"))
 
     # --- 联网搜索 (Tavily, 学情反馈搜薄弱知识点相关网站) ---
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")

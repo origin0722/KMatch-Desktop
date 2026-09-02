@@ -16,6 +16,7 @@ overall_score ≥ REVIEW_PASS_THRESHOLD 通过，否则打回。
 """
 
 import json
+import time
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -291,10 +292,11 @@ def reviewer_node(kg: KnowledgeGraph):
         assessment = state.get("assessment", {})
         retry = state.get("retry_count", 0)
         log = [f"[{datetime.utcnow().isoformat()}] 🔍 内容审核: 开始审画像 (第{retry+1}轮)"]
+        _rv_t0 = time.perf_counter()  # 审核耗时打点 (LLM 语义审核 + 硬规则)
 
-        return _node_body(state, profile, assessment, retry, log)
+        return _node_body(state, profile, assessment, retry, log, _rv_t0)
 
-    def _node_body(state, profile, assessment, retry, log) -> dict:
+    def _node_body(state, profile, assessment, retry, log, _rv_t0=None) -> dict:
         # 空画像（LLM 未配置/降级/失败）→ 直接判不通过
         # dimensions 仍返回四维度默认满分 (履行对接契约: 不会缺失 key)，
         # overall_score=0 因 passed=False，B 端可安全访问 dimensions.*.score
@@ -395,7 +397,9 @@ def reviewer_node(kg: KnowledgeGraph):
                 f"{'✅' if passed else '❌'} {review_subject}审核{'通过' if passed else '不通过'}: "
                 f"总分={overall} (阈值{settings.REVIEW_PASS_THRESHOLD})"
             )
-            logger.info("%s审核完成: score=%s passed=%s", review_subject, overall, passed)
+            logger.info("%s审核完成: score=%s passed=%s (耗时=%dms)",
+                        review_subject, overall, passed,
+                        int((time.perf_counter() - _rv_t0) * 1000) if _rv_t0 else -1)
 
             return {
                 "review_results": {

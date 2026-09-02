@@ -53,6 +53,12 @@
     <SettingCard title="反馈快模型" info="仅「获取针对性反馈」请求生效：先跑此快模型减等待；留空 = 跟随引擎模型。换厂商时请确认模型属于该厂商">
       <el-input v-model="feedbackModelInput" size="small" style="width: 280px"
                 placeholder="如 deepseek-v4-flash（留空跟随引擎）" @change="agent.setFeedbackModel" />
+      <!-- v1.3.3 判分提速 (实验, 默认关): 慢端点下判分 45s 超时的可选缓解 -->
+      <div class="grading-fast-row">
+        <el-switch v-model="gradingFastModel" size="small" @change="agent.setGradingFastModel" />
+        <span class="grading-fast-label">判分也使用此快模型（实验）</span>
+        <span class="grading-fast-hint">默认关：判分质量优先；开启后提交答题判分换用上方快模型，明显减少等待</span>
+      </div>
     </SettingCard>
   </div>
 </template>
@@ -88,6 +94,9 @@ const modelInput = ref(agent.state.model || '')
 watch(() => agent.state.model, (v) => { modelInput.value = v || '' })
 const feedbackModelInput = ref(agent.state.feedbackModel || '')
 watch(() => agent.state.feedbackModel, (v) => { feedbackModelInput.value = v || '' })
+// v1.3.3: 判分走快模型开关 (实验, 默认关)
+const gradingFastModel = ref(!!agent.state.gradingFastModel)
+watch(() => agent.state.gradingFastModel, (v) => { gradingFastModel.value = !!v })
 
 async function runPing(auto = false) {
   const overrides = agent.buildOverrides()
@@ -165,6 +174,9 @@ async function fetchEngineModels() {
 .conn-ok { color: var(--km-success, #67c23a); margin-left: 8px; font-size: 12.5px; }
 .conn-err { color: var(--km-danger, #f56c6c); margin-left: 8px; font-size: 12.5px; }
 .model-count { margin-left: 8px; font-size: 12px; color: var(--km-gray-500, #909399); }
+.grading-fast-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.grading-fast-label { font-size: 12.5px; color: var(--km-gray-700); }
+.grading-fast-hint { font-size: 11.5px; color: var(--km-gray-500); }
 .unified-banner {
   padding: 8px 12px; font-size: 12px; line-height: 1.6;
   border: 1px dashed var(--km-primary); border-radius: var(--km-radius-sm);

@@ -17,6 +17,7 @@
 """
 
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import datetime
@@ -312,21 +313,46 @@ def content_generator_node(kg: KnowledgeGraph):
             if retry_hint:
                 log.append(f"🔁 携带审核诊断定向再生: {retry_hint[:80]}")
 
+        # 节点级再生缓存 (v1.3.3 提速): 打回时只重生成被审核点名的节点 (issues[].source_node),
+        # 未被点名且有既有资源的节点直接沿用 (免 15 次全量重跑)。点名信息缺失或该节点
+        # 此前生成失败 (无资源) → 仍重生成; 首轮 (无既有资源) → 全量, 行为与旧版一致。
+        previous_resources: list[dict] = []
+        flagged_ids: set[str] = set()
+        if retry_hint and isinstance(state.get("generated_content"), dict):
+            previous_resources = [r for r in (state["generated_content"].get("resources") or [])
+                                  if isinstance(r, dict) and (r.get("content") or "").strip()]
+            rv = state.get("review_results") or {}
+            buckets = [rv.get("issues")] if isinstance(rv.get("issues"), list) else []
+            buckets += [v.get("issues") for v in rv.values()
+                        if isinstance(v, dict) and isinstance(v.get("issues"), list)]
+            for bucket in buckets:
+                for issue in bucket:
+                    if isinstance(issue, dict) and issue.get("source_node"):
+                        flagged_ids.add(str(issue["source_node"]))
+
         theory_level = profile.get("theory_level", 2) or 2
         style_extra = _background_style_hint(profile)  # 赛题背景适配: VARK 风格 + 学历/专业
         target_nodes = learning_path[:MAX_NODES_TO_GENERATE]
         log.append(f"📖 为 {len(target_nodes)} 个节点生成资源 (每节点3种, level={theory_level})")
 
-        # 并行生成: _generate_one 是无共享状态的纯调用 (LangChain ChatModel 线程安全，
-        # 内部 httpx 连接池)，9 次独立 LLM 调用可并发。
-        # 按原 (node, ctype) 顺序提交并聚合结果，保持 resources 顺序稳定 (B 端虽不依赖顺序，
-        # 但稳定顺序便于调试与回归比对)。
-        tasks = [(node, ctype) for node in target_nodes for ctype in CONTENT_TYPES]
+        prev_by_node = {r.get("target_node_id") for r in previous_resources}
+        regen_nodes = [
+            n for n in target_nodes
+            if not flagged_ids  # 审核未点名任何节点 → 保守全量再生 (行为不变)
+            or n.get("node_id") in flagged_ids  # 被点名的节点重生成
+            or n.get("node_id") not in prev_by_node  # 无既有资源 (此前失败) 也重生成
+        ]
+        if flagged_ids and len(regen_nodes) < len(target_nodes):
+            log.append(f"⚡ 审核点名 {len(flagged_ids)} 个节点 → 重生成 {len(regen_nodes)} 个, "
+                       f"沿用 {len(target_nodes) - len(regen_nodes)} 个未点名节点的既有资源")
+        tasks = [(node, ctype) for node in regen_nodes for ctype in CONTENT_TYPES]
 
         # Spec B: ContextVar 不跨线程传播；safe_llm_call 在 worker 内重设 overrides。
         overrides = _current_overrides.get()
 
-        resources = []
+        # 沿用未被点名的既有资源 (重生成节点的新资源稍后合并)
+        resources: list[dict] = [r for r in previous_resources
+                                 if r.get("target_node_id") not in {n.get("node_id") for n in regen_nodes}]
         generation_failures = []
         # 并发度: 可配 (CONTENT_GEN_CONCURRENCY), 默认 5; max(1,...) 防配置为 0 崩溃。
         # 实测 (DeepSeek V4 Pro API, 9 次生成): 并发5 内容生成 137s, 并发3 反而 190s。
@@ -339,6 +365,7 @@ def content_generator_node(kg: KnowledgeGraph):
         total = len(tasks)
         outcomes: dict = {}
         cancelled = False
+        _gen_t0 = time.perf_counter()  # 生成段耗时打点 (与 submit _tick 同口径, 入 orchestration_log)
         pool = ThreadPoolExecutor(max_workers=max_workers)
         future_args = {
             pool.submit(
@@ -377,9 +404,12 @@ def content_generator_node(kg: KnowledgeGraph):
 
         if generation_failures:
             log.append(f"⚠️ {len(generation_failures)} 段生成失败 (详见 generation_failures)")
-        log.append(f"✅ 生成完成: {len(resources)} 段资源")
-        logger.info("内容生成: resources=%d failures=%d (并发=%d)",
-                    len(resources), len(generation_failures), max_workers)
+        _gen_elapsed = int((time.perf_counter() - _gen_t0) * 1000)
+        log.append(f"✅ 生成完成: {len(resources)} 段资源 (耗时 {_gen_elapsed}ms, "
+                   f"重生成 {len(regen_nodes)}/{len(target_nodes)} 节点)")
+        logger.info("内容生成: resources=%d failures=%d (并发=%d, 耗时=%dms, regen_nodes=%d/%d)",
+                    len(resources), len(generation_failures), max_workers, _gen_elapsed,
+                    len(regen_nodes), len(target_nodes))
 
         return {
             "generated_content": {

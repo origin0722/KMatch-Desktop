@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional
 
@@ -86,6 +88,30 @@ def _invoke_judge(prompt: str, judge_llm) -> dict:
         return {"error": str(e)}
 
 
+def _parallel_invoke(prompts_with_idx: list, judge_llm) -> dict:
+    """并发执行裁判调用 (v1.3.3 提速: 原逐条串行最多 10 次 LLM 是 report 补跑大头)。
+
+    prompts_with_idx: [(idx, prompt)] — idx 任意可哈希键 (原始下标/资源下标)。
+    返回 {idx: result_dict}。_invoke_judge 自身不抛 (失败返回 {"error"}), worker
+    兜底同语义。prompt 预构建 (_node_facts_text 等纯内存读) 在调用方主线程完成,
+    线程里只跑 LLM 调用。单条任务直接串行 (省线程池开销)。
+    """
+    if len(prompts_with_idx) <= 1:
+        return {i: _invoke_judge(p, judge_llm) for i, p in prompts_with_idx}
+    max_workers = max(1, min(settings.JUDGE_CONCURRENCY, len(prompts_with_idx)))
+    outcomes: dict = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_invoke_judge, p, judge_llm): i for i, p in prompts_with_idx}
+        for f in as_completed(futures):
+            i = futures[f]
+            try:
+                outcomes[i] = f.result()
+            except Exception as e:  # noqa: BLE001 — 与 _invoke_judge 失败同语义
+                logger.warning("裁判并发调用失败: %s", e)
+                outcomes[i] = {"error": str(e)}
+    return outcomes
+
+
 # ---------------------------------------------------------------
 # 幻觉判定
 # ---------------------------------------------------------------
@@ -142,18 +168,27 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
     """
     judge, same_source = (judge_llm, False) if judge_llm is not None else get_judge_llm()
     resources = resources or []
-    verdicts = []
-    counts = {"grounded": 0, "hallucinated": 0, "unverifiable": 0}
+    _t0 = time.perf_counter()  # 批量判定耗时 (并发化效果观测)
     # 遍历原始列表, 下标即原始坐标 (issue-04): 旧实现先过滤再 enumerate, resource_index 是
     # 过滤后下标, 与 quality_regen 用原始列表 out 索引不一致 → 含 content="" 资源时定向再生改错资源。
     # 现在仅"跳过"无内容资源本身, 下标保持原始列表位置。
+    # v1.3.3: prompt 预构建 (纯内存) → LLM 调用并发 (_parallel_invoke), 结果按原序组装。
+    prompts = []
     for i, r in enumerate(resources):
         if not (isinstance(r, dict) and r.get("content")):
             continue
         node_id = r.get("target_node_id", "")
         facts = _node_facts_text(kg, node_id, r.get("source_nodes"))
         unverified = r.get("unverified_claims") if isinstance(r.get("unverified_claims"), list) else None
-        result = _invoke_judge(_build_hallucination_prompt(r["content"], facts, unverified), judge)
+        prompts.append((i, _build_hallucination_prompt(r["content"], facts, unverified)))
+    outcomes = _parallel_invoke(prompts, judge)
+
+    verdicts = []
+    counts = {"grounded": 0, "hallucinated": 0, "unverifiable": 0}
+    for i, r in enumerate(resources):
+        if i not in outcomes:
+            continue
+        result = outcomes[i]
         verdict = result.get("verdict", "") if isinstance(result, dict) else ""
         if verdict not in counts:
             verdict = "unverifiable"  # 解析失败/非法判定 → 保守计为无法核实
@@ -165,7 +200,7 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
         verdicts.append({
             "resource_index": i,
             "content_type": r.get("content_type", ""),
-            "target_node_id": node_id,
+            "target_node_id": r.get("target_node_id", ""),
             "verdict": verdict,
             "evidence_node_ids": [str(n) for n in evidence if n] if isinstance(evidence, list) else [],
             "coverage": coverage if coverage in ("full", "partial", "none") else "none",
@@ -173,12 +208,16 @@ def judge_hallucination(resources: list[dict], kg=None, judge_llm=None) -> dict:
         })
     total = len(verdicts)
     rate = round(counts["hallucinated"] / total, 3) if total else 0.0
+    logger.info("幻觉判定: total=%d grounded=%d hallucinated=%d (耗时=%dms, 并发=%d)",
+                total, counts["grounded"], counts["hallucinated"],
+                int((time.perf_counter() - _t0) * 1000), settings.JUDGE_CONCURRENCY)
     return {
         "rate": rate,
         "total": total,
         **counts,
         "same_source": same_source,
         "verdicts": verdicts,
+        "elapsed_ms": int((time.perf_counter() - _t0) * 1000),
     }
 
 
@@ -211,10 +250,14 @@ def judge_adaptation(resources: list[dict], profile: dict, judge_llm=None) -> di
     judge, same_source = (judge_llm, False) if judge_llm is not None else get_judge_llm()
     theory = int((profile or {}).get("theory_level") or 0)
     resources = [r for r in (resources or []) if isinstance(r, dict) and r.get("content")]
+    # v1.3.3: LLM 调用并发 (_parallel_invoke), 结果按原序组装
+    prompts = [(i, _build_difficulty_prompt(r["content"])) for i, r in enumerate(resources)]
+    outcomes = _parallel_invoke(prompts, judge)
+
     judged = []
     matched = 0
     for i, r in enumerate(resources):
-        result = _invoke_judge(_build_difficulty_prompt(r["content"]), judge)
+        result = outcomes[i]
         difficulty = result.get("difficulty") if isinstance(result, dict) else None
         if not isinstance(difficulty, (int, float)) or isinstance(difficulty, bool):
             difficulty = None  # 判定失败

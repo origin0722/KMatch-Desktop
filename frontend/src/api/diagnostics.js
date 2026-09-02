@@ -9,7 +9,7 @@
  * 对齐 backend/app/api/diagnostics.py
  */
 import http from './index'
-import { withOverrides, withFeedbackOverrides } from '@/stores/agentLlm'
+import { withOverrides, withFeedbackOverrides, withGradingOverrides } from '@/stores/agentLlm'
 
 /**
  * 发起学情测评
@@ -198,9 +198,9 @@ export function isDemographicsFilled(demographics) {
   ))
 }
 
-/** submit 请求体组包 (REST 与 stream 单一源; withOverrides 注入 UI 配置的 key) */
+/** submit 请求体组包 (REST 与 stream 单一源; 判分默认走引擎模型, 设置页开「判分快模型」后换 flash) */
 export function submitAnswersBody({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence, demographics, timePerWeek, preferredPace }) {
-  return withOverrides({
+  return withGradingOverrides({
     session_id: sessionId,
     answers,
     learner_key: learnerKey || undefined,
