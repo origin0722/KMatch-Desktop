@@ -2,6 +2,25 @@
 
 > 从 CLAUDE.md 迁出的历史阶段日志。详细 devlog 见同目录按端分类的日期文件。架构决策见 [../adr/](../adr/)。
 
+## v1.3.2 (2026/09/02): P0 项目图谱可信度 + 预览版用户反馈收口 ✅
+
+P0 批次（分支 `codex/project-semantic-graph-p0`，设计 spec 见 [../superpowers/specs/2026-09-02-project-semantic-graph-design.md](../superpowers/specs/2026-09-02-project-semantic-graph-design.md)，总方案见 [../项目规划/2026-09-02_画像协同历史与体验升级总方案.md](../项目规划/2026-09-02_画像协同历史与体验升级总方案.md)）：
+
+- **当前文件质量检查**：修复 `useAssessmentStore` 未定义引用（入口此前必然 ReferenceError 死键）+ 更名"当前文件质量检查"并明示仅支持 Python、只读不改源码
+- **运行历史展示契约**：`/runs` 列表改展示投影（不泄漏完整 request）；RunsPanel/AssistantSidePanel 消费 `display_title`
+- **图谱历史单项移除**：学习/项目图谱历史快照均可单项删除（含确认弹窗，明示不动当前图谱/源码/画像）
+- **Agent 延后启动**：新增 `deferred` 派生状态——诊断+图谱就绪、资源未生成时显示"生成资源后启动"，不再误标待触发/卡死；流程 DAG 同步 deferred 视觉
+
+预览版 v1.3.2-preview.1 用户反馈收口（真机报告两问题 + 审查发现）：
+
+- **未开项目仍显示旧项目图谱且无返回键**：`restorePersisted` 恢复的图谱在未打开项目时显示来源横幅 +「清除该图谱」入口；`backToCurrentProject` 无备份时退出回看清空（此前 no-op）；移除回看中快照联动退出回看
+- **获取针对性反馈被自动取消**：根因是后端 120s 硬超时 + SDK 静默重试拖长单调用 + 到点整单丢弃；改为再生截止 270s 有界收集（到点返回已完成部分）、单调用显式 90s 封顶重试≤1、路由硬上限 300s（5min 口径）、前端 330s、loading 文案如实标注
+- **P1 回归**：AssistantSidePanel"最近运行"在投影契约后全显"—" → 对齐 `display_title`
+- **run_store 标题兜底**：pipeline 标题从真实落盘的 filename 去扩展名兜底（`project_name` 为无写入方死路径）
+- **版本与文档同步**：后端 `APP_VERSION`/frontend package.json/README/真机核验清单对齐 v1.3.2
+
+测试数字以本批回归实测为准（见 [B_前端/](B_前端/) 日期 devlog）。
+
 ## 阶段16 (2026/08/14): 动态建域 — 领域未收录时 LLM 当场构建知识图谱 ✅
 
 用户想学的领域不在 6 域知识库内时的兜底链路（详见 [A_后端/2026-08-14_动态建域.md](A_后端/2026-08-14_动态建域.md) + [../../data/prompts/08_domain_bootstrap_agent.txt](../../data/prompts/08_domain_bootstrap_agent.txt)）：
