@@ -198,6 +198,17 @@ export function useAgentStatus() {
     return out
   })
 
+  // interactive submit 在学情检测与图谱组装后结束；学习资源生成及其内容审核
+  // 由用户进入后续学习资源流程时再启动。它们不是失败/卡死，需与普通 idle 区分。
+  const resourcePipelineDeferred = computed(() => Boolean(
+    store.hasResults
+    && store.profile
+    && store.knowledgeGraph
+    && !store.generatedContent?.resources?.length
+    && !store.feedbackContent?.resources?.length
+    && !store.reviewResults,
+  ))
+
   // ---------------------------------------------------------------
   // agentNodes: 优先结构化事件(events)推导; 无事件回退日志正则。
   // 产出覆盖仍为 ground truth (有产出即 done)。retryCount 始终取日志 "(第N轮)"。
@@ -208,10 +219,17 @@ export function useAgentStatus() {
     const prod = productions.value
     return AGENT_DEFS.map((def) => {
       let status = states[def.key]?.status || 'idle'
+      let activationHint = ''
       // retryCount 来自日志推导 (事件不带轮数)
       const retryCount = logStates[def.key]?.retryCount || 0
       if (prod[def.key]) status = 'done'
-      return { ...def, status, retryCount }
+      // 已有事件的 running/failed/degraded 状态优先于派生提示。
+      if (status === 'idle' && resourcePipelineDeferred.value
+        && (def.key === 'content_generator' || def.key === 'reviewer')) {
+        status = 'deferred'
+        activationHint = '生成学习资源后启动'
+      }
+      return { ...def, status, retryCount, activationHint }
     })
   })
 
@@ -248,7 +266,8 @@ export function useAgentStatus() {
   })
 
   const completedCount = computed(() => agentNodes.value.filter((n) => n.status === 'done').length)
-  const pendingCount = computed(() => agentNodes.value.filter((n) => n.status === 'idle').length)
+  const pendingCount = computed(() => agentNodes.value.filter((n) => n.status === 'idle' || n.status === 'deferred').length)
+  const deferredCount = computed(() => agentNodes.value.filter((n) => n.status === 'deferred').length)
 
-  return { agentNodes, pipelineRunning, productions, currentAction, completedCount, pendingCount }
+  return { agentNodes, pipelineRunning, productions, currentAction, completedCount, pendingCount, deferredCount }
 }

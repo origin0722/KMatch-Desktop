@@ -3,7 +3,7 @@
     <header class="stage-head" @click="toggleExpand">
       <span class="stage-no">03</span>
       <h4>Agent 协同</h4>
-      <span v-if="collabOn && !isActive" class="collab-pill">✨ 协同已就绪</span>
+      <span v-if="collabOn && !isActive" class="collab-pill">协同已就绪</span>
       <span v-else-if="hasLogs && !isActive" class="stage-done">✓ 已完成</span>
       <span v-if="status.pipelineRunning.value" class="running-pill">运行中</span>
       <span class="expand-toggle">{{ expanded ? '▾' : '▸' }}</span>
@@ -12,17 +12,17 @@
       <div v-show="expanded && hasLogs" class="stage-body">
         <!-- #30: 答题完成默认展示 AI 协同 - 下一步建议横幅, 可点击收起 -->
         <div v-if="collabOn" class="collab-tip">
-          <span class="collab-icon">🤖</span>
+          <span class="collab-icon" aria-hidden="true"></span>
           <span class="collab-msg"><strong>下一步建议</strong>　{{ nextSuggestion }}</span>
           <button class="collab-fold" title="收起协同" @click.stop="toggleExpand">收起 ▴</button>
         </div>
 
         <!-- 总进度 + 实时动作: 告诉用户"完成情况"与"现在在做什么" -->
         <div class="progress-bar">
-          <span class="progress-done">✅ {{ status.completedCount.value }} 项完成</span>
-          <span v-if="status.pendingCount.value" class="progress-pending">· ⏸ {{ status.pendingCount.value }} 项待触发</span>
+          <span class="progress-done">{{ status.completedCount.value }} 项完成</span>
+          <span v-if="status.pendingCount.value" class="progress-pending">· {{ status.pendingCount.value }} 项{{ status.deferredCount.value ? '待后续资源流程启动' : '待触发' }}</span>
           <span v-if="status.pipelineRunning.value && status.currentAction.value" class="progress-live">
-            · ⏳ {{ status.currentAction.value.label }} 正在{{ status.currentAction.value.action }}…
+            · {{ status.currentAction.value.label }} 正在{{ status.currentAction.value.action }}…
           </span>
         </div>
 
@@ -42,14 +42,14 @@
         <div class="prod-list">
           <div v-for="agent in status.agentNodes.value" :key="agent.key"
                class="prod-row" :class="[`status-${agent.status}`]">
-            <span class="prod-icon">{{ agent.icon }}</span>
+            <span class="status-dot" :class="`dot-${agent.status}`" aria-hidden="true"></span>
             <div class="prod-main">
               <div class="prod-head">
                 <span class="prod-label">{{ agent.label }}</span>
                 <span class="prod-badge" :class="`badge-${agent.status}`">{{ statusBadge(agent.status) }}</span>
                 <span v-if="agent.retryCount > 0" class="prod-retry">打回 ×{{ agent.retryCount }}</span>
               </div>
-              <p class="prod-summary">{{ status.productions.value[agent.key] || agent.role }}</p>
+              <p class="prod-summary">{{ status.productions.value[agent.key] || agent.activationHint || agent.role }}</p>
             </div>
           </div>
         </div>
@@ -126,14 +126,15 @@ const parsedLogs = computed(() => {
 })
 
 function toggleExpand() { expanded.value = !expanded.value }
-// 面向学习者的状态文案 (idle=按需待触发, 非"待命"--避免暗示即将自动运行)
+// 面向学习者的状态文案 (idle=按需待触发, deferred=后续资源流程再启动)
 function statusBadge(s) {
   return {
-    idle: '⏸ 待触发',
-    running: '⏳ 执行中',
-    done: '✅ 完成',
-    degraded: '⚠️ 降级',
-    failed: '❌ 失败',
+    idle: '待触发',
+    deferred: '生成资源后启动',
+    running: '执行中',
+    done: '完成',
+    degraded: '降级',
+    failed: '失败',
   }[s] || s
 }
 
@@ -170,7 +171,7 @@ watch([() => session.showCollab, hasLogs], () => {
   border-radius: var(--km-radius-sm);
   font-size: 13px; color: var(--km-gray-800);
 }
-.collab-icon { font-size: 15px; flex-shrink: 0; }
+.collab-icon { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--km-primary); }
 .collab-msg { flex: 1; line-height: 1.5; }
 .collab-fold { border: 0; background: transparent; color: var(--km-gray-500); cursor: pointer; font-size: 12px; flex-shrink: 0; padding: 2px 4px; }
 .collab-fold:hover { color: var(--km-gray-800); }
@@ -194,15 +195,22 @@ watch([() => session.showCollab, hasLogs], () => {
 .prod-row { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--km-border-light); border-left: 3px solid var(--km-border-light); border-radius: var(--km-radius-sm); background: var(--km-bg-layer-2); transition: border-color 0.2s var(--km-ease); }
 .prod-row.status-running { border-left-color: var(--km-warning); background: rgba(240,160,64,0.06); }
 .prod-row.status-done { border-left-color: var(--km-success); }
+.prod-row.status-deferred { border-left-color: var(--km-primary); background: color-mix(in srgb, var(--km-primary) 5%, transparent); }
 .prod-row.status-degraded { border-left-color: #d98b3c; background: rgba(217,139,60,0.07); }
 .prod-row.status-failed { border-left-color: var(--km-danger); }
-.prod-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; background: var(--km-gray-400); }
+.status-dot.dot-running { background: var(--km-warning); box-shadow: 0 0 0 3px rgba(240,160,64,0.15); }
+.status-dot.dot-done { background: var(--km-success); }
+.status-dot.dot-deferred { background: var(--km-primary); }
+.status-dot.dot-degraded { background: #d98b3c; }
+.status-dot.dot-failed { background: var(--km-danger); }
 .prod-main { flex: 1; min-width: 0; }
 .prod-head { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
 .prod-label { font-size: 13px; font-weight: 650; color: var(--km-gray-800); }
 .prod-badge { font-size: 11px; padding: 1px 6px; border-radius: 8px; background: var(--km-bg-layer-3); color: var(--km-gray-600); }
 .prod-badge.badge-running { background: rgba(240,160,64,0.15); color: var(--km-warning); }
 .prod-badge.badge-done { background: rgba(52,179,126,0.12); color: var(--km-success); }
+.prod-badge.badge-deferred { background: color-mix(in srgb, var(--km-primary) 12%, transparent); color: var(--km-primary); }
 .prod-badge.badge-degraded { background: rgba(217,139,60,0.15); color: #b9680d; }
 .prod-badge.badge-failed { background: rgba(224,85,85,0.12); color: var(--km-danger); }
 .prod-badge.badge-idle { background: var(--km-bg-layer-3); color: var(--km-gray-500); }

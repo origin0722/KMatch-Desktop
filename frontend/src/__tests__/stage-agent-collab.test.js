@@ -15,7 +15,9 @@ const { mockAssessment } = vi.hoisted(() => {
   return {
     mockAssessment: reactive({
       hasResults: false, loading: false, phase: 'idle', orchestrationLog: [],
-      profile: null, feedbackStrategy: null,
+      orchestrationEvents: [], profile: null, assessment: null, knowledgeGraph: null,
+      learningReport: null, generatedContent: null, feedbackContent: null, reviewResults: null,
+      feedbackStrategy: null,
     }),
   }
 })
@@ -38,6 +40,14 @@ describe('StageAgent #30 协同自动展开', () => {
     mockAssessment.loading = false
     mockAssessment.phase = 'idle'
     mockAssessment.orchestrationLog = []
+    mockAssessment.orchestrationEvents = []
+    mockAssessment.profile = null
+    mockAssessment.assessment = null
+    mockAssessment.knowledgeGraph = null
+    mockAssessment.learningReport = null
+    mockAssessment.generatedContent = null
+    mockAssessment.feedbackContent = null
+    mockAssessment.reviewResults = null
     mockAssessment.feedbackStrategy = null
   })
 
@@ -80,5 +90,24 @@ describe('StageAgent #30 协同自动展开', () => {
     await w.find('.collab-fold').trigger('click')
     expect(bodyDisplay(w)).toBe('none')
     expect(w.find('.collab-pill').exists()).toBe(true) // 收起后入口仍"就绪"
+  })
+
+  it('测评与图谱已完成、资源未生成时明确显示后续资源阶段尚未启动', async () => {
+    mockAssessment.hasResults = true
+    mockAssessment.profile = { theory_level: 2, practical_level: 1, weak_topics: [] }
+    mockAssessment.assessment = { correct_count: 6, total_count: 10 }
+    mockAssessment.knowledgeGraph = { learning_path: [{ node_id: 'PY-001' }] }
+    mockAssessment.orchestrationLog = ['[10:00] ✅ 学情检测 完成']
+    mockAssessment.phase = 'feedback'
+    const session = useSessionStore()
+    const w = mount(StageAgent, { global: { plugins: [pinia] } })
+    session.setShowCollab(true)
+    await nextTick()
+
+    const rows = w.findAll('.prod-row')
+    const generator = rows.find((row) => row.text().includes('内容生成'))
+    const reviewer = rows.find((row) => row.text().includes('内容审核'))
+    expect(generator.find('.prod-badge').text()).toBe('生成资源后启动')
+    expect(reviewer.find('.prod-badge').text()).toBe('生成资源后启动')
   })
 })
