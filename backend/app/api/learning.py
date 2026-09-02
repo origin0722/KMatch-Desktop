@@ -18,13 +18,14 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.agents.content_generator import content_generator_node
+from app.agents.content_generator import CONTENT_TYPE_LABELS, content_generator_node
 from app.agents.graph_controller import graph_controller_node
 from app.agents.llm import llm_configured, use_llm_overrides
 from app.agents.orchestrator import _decide_after_review
 from app.agents.report_builder import build_learning_report
 from app.agents.reviewer import reviewer_node
 from app.api.diagnostics import _INTERACTIVE_SESSIONS
+from app.api.sse import sse_stream_response
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -65,7 +66,8 @@ def _get_kg(request: Request):
     return kg
 
 
-def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
+def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None,
+                         emit=None, cancel_check=None) -> dict:
     """补跑 graph_controller → content_generator ⇄ reviewer (有界审核回环)。
 
     绕过 LangGraph 直接 fold 调用 node 函数 (签名均为 (state)->partial delta)，
@@ -80,7 +82,11 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
     worker 线程不继承路由层 use_llm_overrides 设的 ContextVar, 必须经 state.llm_overrides
     由 _safe_generate 在 worker 内 re-set。graph_controller/reviewer 在主线程,
     路由层 use_llm_overrides 已覆盖 (state 里也有, 节点入口 set 为同一值, 无副作用)。
+
+    emit(event, data) / cancel_check(): SSE 流式端点注入的进度打点与取消检查
+    (REST 调用不传 → 行为不变)。
     """
+    _emit = emit or (lambda *_a, **_k: None)
     state = {
         "user_profile": profile,
         "knowledge_graph": {},
@@ -121,11 +127,22 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
             snap["rebuttal_verdicts"] = review["rebuttal_verdicts"]
         return snap
 
+    def _resource_progress(done, total, node, ctype):
+        """content_generator 逐资源完成回调 → SSE 进度 (节点名·类型中文)。"""
+        _emit("progress", {
+            "step": "generate", "done": done, "total": total,
+            "message": f"正在生成学习内容 {done}/{total}："
+                       f"{node.get('name') or node.get('node_id')}·{CONTENT_TYPE_LABELS.get(ctype, ctype)}",
+        })
+
     # ① 路径组装
+    _emit("progress", {"step": "path", "message": "正在组装专属学习路径…"})
     _fold(graph_controller_node(kg)(state))
     # ② 内容生成 (置 content_phase_entered=True，reviewer 据此进内容模式)
-    _fold(content_generator_node(kg)(state))
+    _emit("progress", {"step": "generate", "message": "正在生成学习内容（讲义/实操/测试题）…"})
+    _fold(content_generator_node(kg)(state, progress_cb=_resource_progress, cancel_check=cancel_check))
     # ③ 首轮内容审核
+    _emit("progress", {"step": "review", "message": "正在审核内容质量…"})
     _fold(reviewer_node(kg)(state))
     rounds = [_review_round_snapshot(1)]
 
@@ -133,7 +150,9 @@ def _run_report_pipeline(profile: dict, kg, llm_overrides: dict = None) -> dict:
     while _decide_after_review(state) == "content_generator":
         hint = (state.get("review_results") or {}).get("retry_hint") or ""
         log.append(f"[{datetime.utcnow().isoformat()}] 🔁 审核打回 → 携诊断定向再生 (第 {len(rounds) + 1} 轮)")
-        _fold(content_generator_node(kg)(state))
+        _emit("progress", {"step": "generate", "message": "审核打回，携诊断定向再生中…"})
+        _fold(content_generator_node(kg)(state, progress_cb=_resource_progress, cancel_check=cancel_check))
+        _emit("progress", {"step": "review", "message": "重新审核内容质量…"})
         _fold(reviewer_node(kg)(state))
         rounds.append(_review_round_snapshot(len(rounds) + 1))
 
@@ -169,63 +188,42 @@ def _judge_resources(state: dict, kg) -> dict | None:
     }
 
 
-@router.post("/report", response_model=LearningReportResponse,
-             summary="可视化报告 (interactive 补跑路径+内容+审核回环，返回三类可视化数据)")
-def learning_report(req: LearningReportRequest, request: Request):
-    """interactive 模式可视化报告。
-
-    B 端在 submit 拿到画像后，进报告页时调用本接口:
-      - 首次: 补跑 graph_controller/content_generator/reviewer 有界回环 → 组装 learning_report → 缓存
-      - 后续: 命中缓存直接返回 (幂等，省 LLM 调用)
-
-    校验序: session(404) → profile(409) → LLM(503) → kg(503) → 补跑。
-    W7: 审核不通过时携 retry_hint 定向再生再审 (≤2 轮)，review_rounds 记录轮次轨迹。
-    """
-    # ① session 存在
+def _report_ctx(req: LearningReportRequest, request: Request):
+    """report 校验序 (REST 与 stream 共用): session(404) → profile(409) → LLM(503) → kg(503)。"""
     session = _INTERACTIVE_SESSIONS.get(req.session_id)
     if session is None:
         raise HTTPException(
             status_code=404,
             detail=f"会话 {req.session_id} 不存在或已过期（缓存上限 {len(_INTERACTIVE_SESSIONS)}）",
         )
-
-    # ② profile 已缓存 (submit 后回写)
     profile = session.get("profile")
     if not profile:
         raise HTTPException(
             status_code=409,
             detail="画像未就绪：请先 POST /api/diagnostics/submit 提交答题产出画像",
         )
-
-    # ③ 幂等: 已缓存报告 → 直接返回
-    cached = session.get("learning_report_cache")
-    if cached:
-        logger.info("学习报告命中缓存 session=%s", req.session_id)
-        return LearningReportResponse(
-            session_id=req.session_id,
-            profile=profile,
-            knowledge_graph=session.get("knowledge_graph", {}),
-            generated_content=session.get("generated_content", {}),
-            review_results=session.get("review_results", {}),
-            review_rounds=session.get("report_review_rounds", []),
-            learning_report=cached,
-            orchestration_log=session.get("report_log", []),
-        )
-
-    # ④ 环境依赖 — 预检须在 overrides 作用域内 (UI 独立 key 可见, 否则配了也报未配置)
+    # 预检须在 overrides 作用域内 (UI 独立 key 可见, 否则配了也报未配置)
     with use_llm_overrides(req.llm_overrides):
         if not llm_configured():
             raise HTTPException(status_code=503, detail="LLM 未配置，无法补跑内容生成")
     kg = _get_kg(request)
+    return session, profile, kg
+
+
+def _report_compute(req: LearningReportRequest, request: Request, session, profile, kg,
+                    emit=None, cancel_check=None) -> LearningReportResponse:
+    """补跑 + 裁判 + 组装 + 缓存回写 (REST 与 stream 共用; stream 注入 emit/cancel_check)。"""
+    _emit = emit or (lambda *_a, **_k: None)
 
     # ⑤ 补跑 (Spec B: 用 use_llm_overrides 包裹主线程节点; llm_overrides 经 state
     # 下传供 content_generator worker 线程 re-set ContextVar)
     try:
         with use_llm_overrides(req.llm_overrides):
-            state = _run_report_pipeline(profile, kg, llm_overrides=req.llm_overrides)
+            state = _run_report_pipeline(profile, kg, llm_overrides=req.llm_overrides,
+                                         emit=emit, cancel_check=cancel_check)
     except Exception as e:
         logger.error("学习报告补跑失败 session=%s", req.session_id, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"报告补跑失败: {e}")
+        raise HTTPException(status_code=500, detail=f"报告补跑失败: {e}") from e
 
     knowledge_graph = state.get("knowledge_graph", {})
     generated_content = state.get("generated_content", {})
@@ -233,6 +231,7 @@ def learning_report(req: LearningReportRequest, request: Request):
     review_rounds = state.get("review_rounds", [])
 
     # 赛题(4)① 交叉验证在线闭环: 独立裁判盲判生成资源 (有界), 失败降级不阻塞报告
+    _emit("progress", {"step": "judge", "message": "独立裁判盲判质量中…"})
     try:
         judge_summary = _judge_resources(state, kg)
         if judge_summary:
@@ -268,3 +267,71 @@ def learning_report(req: LearningReportRequest, request: Request):
         learning_report=learning_report,
         orchestration_log=state.get("orchestration_log", []),
     )
+
+
+@router.post("/report", response_model=LearningReportResponse,
+             summary="可视化报告 (interactive 补跑路径+内容+审核回环，返回三类可视化数据)")
+def learning_report(req: LearningReportRequest, request: Request):
+    """interactive 模式可视化报告。
+
+    B 端在 submit 拿到画像后，进报告页时调用本接口:
+      - 首次: 补跑 graph_controller/content_generator/reviewer 有界回环 → 组装 learning_report → 缓存
+      - 后续: 命中缓存直接返回 (幂等，省 LLM 调用)
+
+    W7: 审核不通过时携 retry_hint 定向再生再审 (≤2 轮)，review_rounds 记录轮次轨迹。
+    """
+    session, profile, kg = _report_ctx(req, request)
+
+    # 幂等: 已缓存报告 → 直接返回
+    cached = session.get("learning_report_cache")
+    if cached:
+        logger.info("学习报告命中缓存 session=%s", req.session_id)
+        return LearningReportResponse(
+            session_id=req.session_id,
+            profile=profile,
+            knowledge_graph=session.get("knowledge_graph", {}),
+            generated_content=session.get("generated_content", {}),
+            review_results=session.get("review_results", {}),
+            review_rounds=session.get("report_review_rounds", []),
+            learning_report=cached,
+            orchestration_log=session.get("report_log", []),
+        )
+
+    return _report_compute(req, request, session, profile, kg)
+
+
+@router.post("/report/stream", summary="可视化报告补跑（SSE 流式：逐阶段 + 逐资源进度，可取消）")
+def learning_report_stream(req: LearningReportRequest, request: Request):
+    """interactive 报告补跑的 SSE 版。
+
+    校验段与 REST 完全一致且同步先做 (404/409/503 保持 HTTP 语义, 前端可按状态码降级/提示);
+    通过后走 SSE: 事件流 start → progress*(path/generate {done,total}/review/judge) →
+    done(完整 LearningReportResponse) | error。缓存命中直接同步返回 (无需流式)。
+    客户端断开 → 取消事件 → content_generator 检查点提前收摊 (已完成资源保留, 缓存不写半成品——
+    compute 异常/取消中断时 session 缓存不回写, 重试重新补跑)。
+    """
+    session, profile, kg = _report_ctx(req, request)
+
+    cached = session.get("learning_report_cache")
+    if cached:
+        logger.info("学习报告命中缓存 session=%s (stream 直接返回)", req.session_id)
+        return LearningReportResponse(
+            session_id=req.session_id,
+            profile=profile,
+            knowledge_graph=session.get("knowledge_graph", {}),
+            generated_content=session.get("generated_content", {}),
+            review_results=session.get("review_results", {}),
+            review_rounds=session.get("report_review_rounds", []),
+            learning_report=cached,
+            orchestration_log=session.get("report_log", []),
+        )
+
+    def worker(emit, cancel_check):
+        try:
+            resp = _report_compute(req, request, session, profile, kg,
+                                   emit=emit, cancel_check=cancel_check)
+            emit("done", resp.model_dump(mode="json"))
+        except HTTPException as e:
+            emit("error", {"detail": e.detail, "status": e.status_code})
+
+    return sse_stream_response({"session_id": req.session_id, "step": "report"}, worker)

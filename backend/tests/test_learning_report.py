@@ -258,7 +258,7 @@ def _fake_node_factory(calls: list, kg_result: dict, content_result: dict, revie
             return {"knowledge_graph": kg_result, "orchestration_log": ["gc done"]}
         return _n
     def _cg_factory(kg):
-        def _n(state):
+        def _n(state, progress_cb=None, cancel_check=None):
             calls.append("content_generator")
             return {"generated_content": content_result, "content_phase_entered": True, "orchestration_log": ["cg done"]}
         return _n

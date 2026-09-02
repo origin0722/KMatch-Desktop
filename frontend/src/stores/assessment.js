@@ -12,8 +12,8 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback, fetchRun } from '@/api/diagnostics'
-import { fetchLearningReport } from '@/api/learning'
+import { submitAssessment, startAssessmentStream, submitAnswers, submitAnswersBody, requestFeedback, feedbackBody, submitStream, feedbackStream, fetchRun } from '@/api/diagnostics'
+import { fetchLearningReport, fetchLearningReportStream } from '@/api/learning'
 import { useGraphHistoryStore } from '@/stores/graphHistory'
 
 export const useAssessmentStore = defineStore('assessment', () => {
@@ -162,6 +162,17 @@ export const useAssessmentStore = defineStore('assessment', () => {
 
   /** 请求取消控制器 */
   const abortController = ref(null)
+
+  // ---- v1.3.3 等待优化感知层: 流式进度文案 + 用户「停止等待」 ----
+  // progressMessage 由 submit/feedback/report 的 SSE progress 事件驱动
+  // (如「正在生成学习内容 3/15：循环·讲义」), REST 兜底时为空串回退旧文案。
+  const progressMessage = ref('')
+  /** 等待期取消控制器 (独立于 assess 的 abortController, 语义是放弃等待而非放弃会话) */
+  const waitAbort = ref(null)
+  /** 用户停止等待: 中止当前流式等待 (后台结果照常落 session 缓存, 重试复用) */
+  function cancelWait() {
+    waitAbort.value?.abort()
+  }
 
   // ============================================================
   // 计算属性
@@ -321,8 +332,11 @@ export const useAssessmentStore = defineStore('assessment', () => {
     if (!sessionId.value || phase.value !== 'answering') return
     loading.value = true
     error.value = null
+    progressMessage.value = ''
+    waitAbort.value = new AbortController()
+    const signal = waitAbort.value.signal
     try {
-      const data = await submitAnswers({
+      const params = {
         sessionId: sessionId.value,
         answers: userAnswers.value,
         learnerKey: learnerKey.value,
@@ -340,7 +354,19 @@ export const useAssessmentStore = defineStore('assessment', () => {
             return r ? { tests_passed: r.passed, tests_total: r.total } : null
           } catch { return null }
         })(),
-      })
+      }
+      // 流式优先 (v1.3.3): 判分→画像→路径组装逐步进度; 旧后端无流端点 (404) → REST 兜底
+      let data
+      try {
+        data = await submitStream(submitAnswersBody(params), {
+          onProgress: (p) => { if (p?.message) progressMessage.value = p.message },
+          signal,
+        })
+      } catch (e) {
+        if (e?.name === 'AbortError' || e?.message === '已停止等待' || signal.aborted) throw e
+        if (e?.status !== 404) throw e
+        data = await submitAnswers(params, signal)
+      }
       // submit 返回: { session_id, profile, assessment, review_results, feedback:{strategy,...}, profile_diff }
       profile.value = data.profile
       assessment.value = data.assessment
@@ -351,6 +377,7 @@ export const useAssessmentStore = defineStore('assessment', () => {
       orchestrationEvents.value = data.orchestration_events || []
       profileDiff.value = data.profile_diff || null
       phase.value = 'feedback'
+      progressMessage.value = ''
 
       // issue: 学情图谱 (场景一) 入历史 — 本地快照
       if (data.knowledge_graph?.learning_path?.length) {
@@ -363,7 +390,13 @@ export const useAssessmentStore = defineStore('assessment', () => {
         } catch { /* 历史记录尽力而为 */ }
       }
     } catch (e) {
+      // 用户「停止等待」: 非错误, 后台判分照常完成入缓存; 提示可重试
+      if (e?.name === 'AbortError' || e?.name === 'CanceledError' || e?.message === '已停止等待') {
+        progressMessage.value = '已停止等待，可重新提交'
+        return
+      }
       error.value = e.response?.data?.detail || e.message || '提交答题失败'
+      progressMessage.value = ''
     } finally {
       loading.value = false
     }
@@ -378,10 +411,25 @@ export const useAssessmentStore = defineStore('assessment', () => {
     if (!sessionId.value || !feedbackStrategy.value) return
     loading.value = true
     error.value = null
+    progressMessage.value = ''
+    waitAbort.value = new AbortController()
+    const signal = waitAbort.value.signal
     try {
       const { useAiSettingsStore } = await import('@/stores/aiSettings')
       const tavilyKey = useAiSettingsStore().tavilyKey
-      const data = await requestFeedback({ sessionId: sessionId.value, strategy: feedbackStrategy.value, profile: profile.value, tavilyKey })
+      const params = { sessionId: sessionId.value, strategy: feedbackStrategy.value, profile: profile.value, tavilyKey }
+      // 流式优先 (v1.3.3): 检索/逐段生成进度; 旧后端 (404) → REST 兜底
+      let data
+      try {
+        data = await feedbackStream(feedbackBody(params), {
+          onProgress: (p) => { if (p?.message) progressMessage.value = p.message },
+          signal,
+        })
+      } catch (e) {
+        if (e?.name === 'AbortError' || e?.message === '已停止等待' || signal.aborted) throw e
+        if (e?.status !== 404) throw e
+        data = await requestFeedback(params, signal)
+      }
       feedbackContent.value = data
       // #30 后续: 反馈产物落入「学习资源」页 (Learning.vue 读取)——
       //   再生知识点 (lecture/practice_guide/test) → generatedContent (讲义/实操/测试 tab)
@@ -409,8 +457,15 @@ export const useAssessmentStore = defineStore('assessment', () => {
         const { useSessionStore } = await import('@/stores/session')
         useSessionStore().setSplitView('learning')
       }
+      progressMessage.value = ''
     } catch (e) {
+      // 用户「停止等待」: 非错误 (后台生成照常完成, 产物已在 Learning 页可见)
+      if (e?.name === 'AbortError' || e?.name === 'CanceledError' || e?.message === '已停止等待') {
+        progressMessage.value = '已停止等待，可重新获取'
+        return
+      }
       error.value = e.response?.data?.detail || e.message || '动态反馈再生失败'
+      progressMessage.value = ''
     } finally {
       loading.value = false
     }
@@ -426,8 +481,22 @@ export const useAssessmentStore = defineStore('assessment', () => {
   async function loadLearningReport() {
     if (!sessionId.value || !profile.value || reportLoading.value || reportLoaded.value) return
     reportLoading.value = true
+    progressMessage.value = ''
+    waitAbort.value = new AbortController()
+    const signal = waitAbort.value.signal
     try {
-      const data = await fetchLearningReport({ sessionId: sessionId.value })
+      // 流式优先 (v1.3.3): 逐阶段 + 逐资源进度; 旧后端 (404) → REST 兜底
+      let data
+      try {
+        data = await fetchLearningReportStream({ sessionId: sessionId.value }, {
+          onProgress: (p) => { if (p?.message) progressMessage.value = p.message },
+          signal,
+        })
+      } catch (e) {
+        if (e?.name === 'AbortError' || e?.message === '已停止等待' || signal.aborted) throw e
+        if (e?.status !== 404) throw e
+        data = await fetchLearningReport({ sessionId: sessionId.value }, signal)
+      }
       learningReport.value = data.learning_report || null
       // W7: 审核轮次轨迹 (打回再生回环的可视化数据)
       reviewRounds.value = data.review_rounds || []
@@ -437,10 +506,17 @@ export const useAssessmentStore = defineStore('assessment', () => {
       if (!generatedContent.value && data.generated_content) generatedContent.value = data.generated_content
       if (!reviewResults.value && data.review_results) reviewResults.value = data.review_results
       reportLoaded.value = true
+      progressMessage.value = ''
     } catch (e) {
-      const st = e?.response?.status
+      // 用户「停止等待」: 非错误 (后台补跑照常完成, 重进 Dashboard 命中缓存秒开)
+      if (e?.name === 'AbortError' || e?.name === 'CanceledError' || e?.message === '已停止等待') {
+        progressMessage.value = '已停止等待，可重新加载'
+        return
+      }
+      const st = e?.response?.status || e?.status
       if (st === 404 || st === 409) reportLoaded.value = true // 会话失效 → 不再补跑
       if (import.meta.env.DEV) console.debug('[assessment] 学习报告补跑失败', e?.message)
+      progressMessage.value = ''
     } finally {
       reportLoading.value = false
     }
@@ -623,6 +699,9 @@ export const useAssessmentStore = defineStore('assessment', () => {
     // 画像档案: 稳定 learner 标识 + 版本 diff
     learnerKey,
     profileDiff,
+    // v1.3.3 等待优化: 流式进度文案 + 用户停止等待
+    progressMessage,
+    cancelWait,
     // computed
     hasResults,
     reviewPassed,

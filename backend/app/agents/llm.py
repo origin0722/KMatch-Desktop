@@ -255,11 +255,13 @@ def with_state_overrides(fn: Callable) -> Callable:
     无 overrides 时为 no-op（不设 ContextVar）。
     """
     @functools.wraps(fn)
-    def wrapper(state):
+    def wrapper(state, *args, **kwargs):
+        # 透传额外 kwargs (如 progress_cb/cancel_check): LangGraph 仍以 _node(state) 调用不受影响,
+        # report 补跑等直调路径可注入进度/取消回调。
         overrides = state.get("llm_overrides")
         token = _current_overrides.set(overrides) if overrides else None
         try:
-            return fn(state)
+            return fn(state, *args, **kwargs)
         finally:
             if token is not None:
                 _current_overrides.reset(token)

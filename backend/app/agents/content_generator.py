@@ -36,6 +36,9 @@ MAX_NODES_TO_GENERATE = 5
 # 每节点3种资源
 CONTENT_TYPES = ("lecture", "practice_guide", "test")
 
+# 内容类型中文标签 (SSE 进度文案 / 前端展示单一源)
+CONTENT_TYPE_LABELS = {"lecture": "讲义", "practice_guide": "实操指南", "test": "测试题"}
+
 
 def _failure_record(node: dict, content_type, reason: str) -> dict:
     """单条生成失败记录 (B 端透出, 治"失败静默为空")。"""
@@ -269,14 +272,17 @@ def content_generator_node(kg: KnowledgeGraph):
     """返回 LangGraph 节点函数。闭包注入 KnowledgeGraph 实例。"""
 
     @with_state_overrides
-    def _node(state) -> dict:
+    def _node(state, progress_cb=None, cancel_check=None) -> dict:
+        # progress_cb(done, total, node, ctype) / cancel_check() -> bool:
+        # SSE 流式端点注入的进度打点与取消检查点 (LangGraph 调用不传 → None, 行为不变)。
         profile = state.get("user_profile", {})
         kg_state = state.get("knowledge_graph", {}) or {}
         log = [f"[{datetime.utcnow().isoformat()}] 📚 领域知识生成: 开始"]
 
-        return _node_body(state, profile, kg_state, log)
+        return _node_body(state, profile, kg_state, log,
+                          progress_cb=progress_cb, cancel_check=cancel_check)
 
-    def _node_body(state, profile, kg_state, log) -> dict:
+    def _node_body(state, profile, kg_state, log, progress_cb=None, cancel_check=None) -> dict:
         # 无学习路径 (图谱未组装/降级) → 跳过生成 (字段结构与正常分支对齐)
         # 仍标记 content_phase_entered=True: 防止 reviewer 回退画像模式 (BUG-031)
         learning_path = kg_state.get("learning_path", [])
@@ -327,16 +333,41 @@ def content_generator_node(kg: KnowledgeGraph):
         # 降并发未能减少 429 退避 (DeepSeek 对并发5 限流不严重), 却多了轮次 (2轮 vs 3轮) 更慢。
         # 故默认 5; 仅在确认重度限流时调低, 或换更快模型/减资源数 (减 LLM 调用) 才能真降耗时。
         max_workers = max(1, min(settings.CONTENT_GEN_CONCURRENCY, len(tasks)))
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            results = list(pool.map(
-                lambda args: safe_llm_call(
-                    _generate_one, args[0], theory_level, args[1], retry_hint, style_extra,
-                    overrides=overrides, logger=logger,
-                    label=f"node={args[0].get('node_id')} type={args[1]}"),
-                tasks,
-            ))
+        # submit + as_completed (原 pool.map 无法在完成时打点/取消): 每段资源完成即回调
+        # progress_cb(done, total, node, ctype) 供 SSE 上报「3/15 · 循环·讲义」; cancel_check
+        # 在检查点为真时停止提交后续等待任务 (运行中的单次 LLM 调用自然收尾, 结果丢弃)。
+        total = len(tasks)
+        outcomes: dict = {}
+        cancelled = False
+        pool = ThreadPoolExecutor(max_workers=max_workers)
+        future_args = {
+            pool.submit(
+                safe_llm_call,
+                _generate_one, node, theory_level, ctype, retry_hint, style_extra,
+                overrides=overrides, logger=logger,
+                label=f"node={node.get('node_id')} type={ctype}"): (node, ctype)
+            for node, ctype in tasks
+        }
+        try:
+            for future in as_completed(future_args):
+                node_arg, ctype = future_args[future]
+                outcomes[(node_arg.get("node_id"), ctype)] = future.result()
+                if progress_cb:
+                    progress_cb(len(outcomes), total, node_arg, ctype)
+                if cancel_check and cancel_check() and len(outcomes) < total:
+                    cancelled = True
+                    log.append("⏹ 用户停止等待, 内容生成提前收摊 (已完成部分保留)")
+                    break
+        finally:
+            pool.shutdown(wait=False, cancel_futures=cancelled)
 
-        for (node, ctype), (ok, res) in zip(tasks, results):
+        for (node, ctype) in tasks:
+            outcome = outcomes.get((node.get("node_id"), ctype))
+            if outcome is None:
+                # 未跑到的任务: 仅取消时出现 (无超时语义, safe_llm_call 内部已兜底异常)
+                generation_failures.append(_failure_record(node, ctype, "已取消（用户停止等待）"))
+                continue
+            ok, res = outcome
             if ok and res is not None and str(res.get("content") or "").strip():
                 resources.append(res)
             elif ok:
@@ -465,11 +496,15 @@ def regenerate_for_feedback(
     profile: dict,
     learning_path: list[dict],
     kg: KnowledgeGraph,
+    progress_cb=None,
+    cancel_check=None,
 ) -> dict:
     """按动态反馈策略针对性再生学习内容 (W4 计划⑤闭环)。
 
     返回 {strategy, resources, node_count, generated_at}。
     LLM 未配置/无目标节点 → 空 resources (不抛)。
+    progress_cb(done, total, node, ctype) / cancel_check() -> bool:
+    SSE 流式端点注入的进度打点与取消检查点 (REST 调用不传 → 行为不变)。
     """
     log_hint = FEEDBACK_STRATEGY_SPEC.get(strategy, {}).get("hint", "")
     if not llm_configured():
@@ -511,9 +546,18 @@ def regenerate_for_feedback(
     ]
     index_by_future = {f: i for i, f in enumerate(futures)}
     outcomes: dict = {}
+    cancelled = False
     try:
         for future in as_completed(futures, timeout=FEEDBACK_REGEN_DEADLINE):
-            outcomes[index_by_future[future]] = future.result()
+            idx = index_by_future[future]
+            outcomes[idx] = future.result()
+            if progress_cb:
+                node_arg, ctype = tasks[idx]
+                progress_cb(len(outcomes), len(tasks), node_arg, ctype)
+            if cancel_check and cancel_check():
+                cancelled = True
+                logger.info("feedback 再生: 用户停止等待, 提前收摊 (已完成 %d/%d)", len(outcomes), len(tasks))
+                break
     except FuturesTimeout:
         pass  # 到点收摊: 未完成的调用记"生成超时"失败, 不再无限等
     finally:
@@ -522,9 +566,9 @@ def regenerate_for_feedback(
     for i, (node, ctype) in enumerate(tasks):
         outcome = outcomes.get(i)
         if outcome is None:
-            generation_failures.append(_failure_record(
-                node, ctype,
-                f"生成超时（>{FEEDBACK_REGEN_DEADLINE}s，端点过慢或网络不稳，已返回其余已完成内容）"))
+            reason = "已取消（用户停止等待）" if cancelled else \
+                f"生成超时（>{FEEDBACK_REGEN_DEADLINE}s，端点过慢或网络不稳，已返回其余已完成内容）"
+            generation_failures.append(_failure_record(node, ctype, reason))
             continue
         ok, res = outcome
         if ok and res is not None and str(res.get("content") or "").strip():

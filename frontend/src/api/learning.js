@@ -8,6 +8,7 @@
  * 对齐 backend/app/api/learning.py
  */
 import http from './index'
+import { postSseJson } from './diagnostics'
 import { withOverrides } from '@/stores/agentLlm'
 
 /**
@@ -31,4 +32,19 @@ export function fetchLearningReport({ sessionId }, signal) {
   return http.post('/api/learning/report', withOverrides({
     session_id: sessionId,
   }), { signal, timeout: 300_000 })
+}
+
+/**
+ * 报告补跑（SSE 流式）— /api/learning/report/stream (v1.3.3 等待优化感知层)
+ *
+ * 进度: path 组装 → generate 逐资源 (done/total) → review 审核 → judge 裁判。
+ * 后端缓存命中时直接同步返回 JSON (非流), Promise 同样 resolve。
+ * 后端缺流式端点时 reject e.status===404, 调用方降级 fetchLearningReport。
+ *
+ * @param {Object} params - { sessionId }
+ * @param {Object} [opts] - { onProgress, signal }
+ * @returns {Promise<Object>} done 事件 data (LearningReportResponse 结构)
+ */
+export function fetchLearningReportStream({ sessionId }, { onProgress, signal } = {}) {
+  return postSseJson('/api/learning/report/stream', withOverrides({ session_id: sessionId }), { onProgress, signal })
 }

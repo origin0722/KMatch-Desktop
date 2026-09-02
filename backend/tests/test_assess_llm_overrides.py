@@ -138,7 +138,7 @@ def test_feedback_with_overrides_sees_configured(app, monkeypatch):
     seen = {}
     _seed_session("s-fb-1")
 
-    def fake_regen(strategy, profile, learning_path, kg):
+    def fake_regen(strategy, profile, learning_path, kg, **kwargs):
         seen["llm_configured"] = llm.llm_configured()
         return {"resources": [], "node_count": 0}
 

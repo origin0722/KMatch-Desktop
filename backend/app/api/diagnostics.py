@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.agents import make_initial_state
-from app.agents.content_generator import regenerate_for_feedback
+from app.agents.content_generator import CONTENT_TYPE_LABELS, regenerate_for_feedback
 from app.agents.diagnostics import (
     _build_profile,
     _grade,
@@ -50,6 +50,7 @@ from app.agents.workflow_def import (
     workflow_for,
 )
 from app.config import settings
+from app.api.sse import sse_stream_response
 from app.utils.logging import get_logger
 from app.utils.web_search import search_weak_topics
 
@@ -681,11 +682,13 @@ async def submit(req: SubmitRequest, request: Request):
         ) from None
 
 
-def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
+def _run_submit(req: SubmitRequest, request: Request, emit=None) -> SubmitResponse:
     """提交 interactive 模式的答题，后端判分并产出画像 + 动态反馈策略。
 
     流程: 取缓存题目 → _grade 判分 → _build_profile 画像 → decide_feedback 动态反馈。
+    emit(event, data) 可选: SSE 流式端点注入的进度打点 (REST 调用不传 → 行为不变)。
     """
+    _emit = emit or (lambda *_a, **_k: None)
     kg = _get_kg(request)  # 前置检查 + 供 graph_controller 组装路径
 
     # 预检必须落在 use_llm_overrides 作用域内: 否则 UI 配置的 key (req.llm_overrides)
@@ -728,8 +731,14 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
 
     try:
         with use_llm_overrides(req.llm_overrides):
+            _emit("progress", {"step": "grading", "message": "正在逐题判分…"})
             grading = _grade(questions, answers)
             _tick("判分(grading)")
+            _emit("progress", {
+                "step": "grading_done",
+                "message": f"判分完成 {grading['correct_count']}/{grading['total_count']}",
+            })
+            _emit("progress", {"step": "profile", "message": "正在构建学情画像…"})
             profile = _build_profile(
                 target, nodes, grading, questions=questions,
                 learning_style_quiz=req.learning_style_quiz,
@@ -752,6 +761,7 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
         )
 
         # 复用 graph_controller 节点组装专属学习路径 (同 demo 工作流, 产出 knowledge_graph + log)
+        _emit("progress", {"step": "path", "message": "正在组装专属学习路径…"})
         graph_node = graph_controller_node(kg)
         graph_update = graph_node({"user_profile": profile})
         _tick("路径组装(path)")
@@ -848,14 +858,18 @@ async def feedback(req: FeedbackRequest, request: Request):
         ) from None
 
 
-def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
+def _run_feedback(req: FeedbackRequest, request: Request, emit=None, cancel_check=None) -> FeedbackResponse:
     """按动态反馈策略针对性再生学习内容 (W4 计划⑤闭环)。
 
     B 端在 submit 拿到 feedback.strategy 后，调用本接口获取针对性内容:
       - remediate: 弱项节点的降维讲义 (换角度重讲)
       - scaffold:  弱项前置基础节点的入门讲义
       - advance:   路径下一节点的进阶挑战题
+
+    emit(event, data) / cancel_check(): SSE 流式端点注入的进度打点与取消检查
+    (REST 调用不传 → 行为不变)。
     """
+    _emit = emit or (lambda *_a, **_k: None)
     # 参数校验顺序: strategy(Pydantic Literal→422) → session(404) → LLM(503) → KG(503) → 再生
     # 先查 session (纯内存, 无副作用), 再查环境依赖
     session = _INTERACTIVE_SESSIONS.get(req.session_id)
@@ -880,6 +894,7 @@ def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
     tavily_future = None
     tavily_pool = None
     if tavily_key:
+        _emit("progress", {"step": "search", "message": "正在联网检索相关资料…"})
         tavily_pool = ThreadPoolExecutor(max_workers=1)
         tavily_future = tavily_pool.submit(
             search_weak_topics, req.profile, tavily_key, nodes=session.get("nodes"),
@@ -887,7 +902,15 @@ def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
 
     try:
         with use_llm_overrides(req.llm_overrides):
-            result = regenerate_for_feedback(req.strategy, req.profile, learning_path, kg)
+            result = regenerate_for_feedback(
+                req.strategy, req.profile, learning_path, kg,
+                progress_cb=lambda done, total, node, ctype: _emit("progress", {
+                    "step": "generate", "done": done, "total": total,
+                    "message": f"正在生成针对性内容 {done}/{total}："
+                               f"{node.get('name') or node.get('node_id')}·{CONTENT_TYPE_LABELS.get(ctype, ctype)}",
+                }),
+                cancel_check=cancel_check,
+            )
     except Exception as e:
         logger.error("feedback 再生失败 session=%s", req.session_id, exc_info=True)
         if tavily_pool is not None:
@@ -916,6 +939,56 @@ def _run_feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
         node_count=result["node_count"],
         generation_failures=result.get("generation_failures", []),
     )
+
+
+# ============================================================
+# interactive 流式端点 (submit/feedback) — 等待优化感知层
+# 复用 _run_submit/_run_feedback 单一实现, 经 sse_stream_response 队列桥接
+# 逐步推送进度; 客户端断开 → 取消事件 → 生成循环检查点提前收摊。
+# 旧 REST 端点保留: 前端 404 (旧后端) 时可降级回 REST。
+# ============================================================
+
+
+@router.post("/submit/stream", summary="提交答题（SSE 流式：判分/画像/路径组装逐步进度）")
+async def submit_stream(req: SubmitRequest, request: Request):
+    """interactive submit 的 SSE 版。
+
+    事件流:
+      event: start    data: {session_id, step}
+      event: progress data: {step, message}           (grading → grading_done → profile → path)
+      event: done     data: {完整 SubmitResponse}
+      event: error    data: {detail, status?}
+
+    判分为单次 LLM 调用无中间检查点: 客户端停止等待时本轮照常跑完并回写 session 缓存
+    (重试提交复用该结果, 不白跑)。错误语义在事件里 (HTTP 层 200), status 字段对齐 REST 码。
+    """
+
+    def worker(emit, _cancel_check):
+        try:
+            resp = _run_submit(req, request, emit=emit)
+            emit("done", resp.model_dump(mode="json"))
+        except HTTPException as e:
+            emit("error", {"detail": e.detail, "status": e.status_code})
+
+    return sse_stream_response({"session_id": req.session_id, "step": "submit"}, worker)
+
+
+@router.post("/feedback/stream", summary="动态反馈内容再生（SSE 流式：检索/逐段生成进度，可取消）")
+async def feedback_stream(req: FeedbackRequest, request: Request):
+    """interactive feedback 的 SSE 版。
+
+    事件流: start → progress*(search / generate {done,total}) → done(完整 FeedbackResponse) | error。
+    客户端断开 → 取消事件 → regenerate_for_feedback 检查点提前收摊 (已完成资源照常返回并入缓存语义)。
+    """
+
+    def worker(emit, cancel_check):
+        try:
+            resp = _run_feedback(req, request, emit=emit, cancel_check=cancel_check)
+            emit("done", resp.model_dump(mode="json"))
+        except HTTPException as e:
+            emit("error", {"detail": e.detail, "status": e.status_code})
+
+    return sse_stream_response({"session_id": req.session_id, "step": "feedback"}, worker)
 
 
 # ============================================================

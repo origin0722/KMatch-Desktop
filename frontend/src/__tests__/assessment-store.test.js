@@ -15,17 +15,25 @@ vi.mock('@/api/diagnostics', () => ({
   submitAssessment: vi.fn(),
   startAssessmentStream: vi.fn(),
   submitAnswers: vi.fn(),
+  submitAnswersBody: vi.fn((params) => params),
+  submitStream: vi.fn(),
   requestFeedback: vi.fn(),
+  feedbackBody: vi.fn((params) => params),
+  feedbackStream: vi.fn(),
   fetchRun: vi.fn(),
 }))
 
 import { useAssessmentStore } from '@/stores/assessment'
-import { submitAssessment, startAssessmentStream, submitAnswers, requestFeedback, fetchRun } from '@/api/diagnostics'
+import { submitAssessment, startAssessmentStream, submitAnswers, submitStream, requestFeedback, feedbackStream, fetchRun } from '@/api/diagnostics'
 
 describe('useAssessmentStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    // v1.3.3 流式优先: 默认让 stream 端点 404 → 走 REST 兜底 (既有断言基于 REST mock 不变);
+    // stream 主路径与取消/进度行为在「流式等待 (v1.3.3)」describe 单独覆盖
+    submitStream.mockRejectedValue({ status: 404 })
+    feedbackStream.mockRejectedValue({ status: 404 })
   })
 
   describe('初始状态', () => {
@@ -454,5 +462,88 @@ describe('useAssessmentStore', () => {
       store.profile = null
       expect(store.hasResults).toBe(false)
     })
+  })
+})
+
+// ============================================================
+// v1.3.3 等待优化感知层: stream 主路径 / 取消 / 进度文案
+// ============================================================
+describe('useAssessmentStore — 流式等待 (v1.3.3)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  function _seed(store, answers = ['A']) {
+    store.sessionId = 'sess-001'
+    store.phase = 'answering'
+    store.userAnswers = answers
+  }
+
+  it('submit 流式优先: resolve done 数据 → 填充画像进反馈阶段, onProgress 已挂', async () => {
+    submitStream.mockImplementationOnce(async (_body, { onProgress } = {}) => {
+      onProgress?.({ step: 'grading', message: '正在逐题判分…' })
+      return { session_id: 'sess-001', profile: { theory_level: 2 }, assessment: { correct_count: 1 },
+               feedback: { strategy: 'remediate' }, knowledge_graph: null,
+               orchestration_log: [], orchestration_events: [], profile_diff: null }
+    })
+    const store = useAssessmentStore()
+    _seed(store)
+    await store.submitAssessmentAnswers()
+
+    expect(store.phase).toBe('feedback')
+    expect(store.profile).toEqual({ theory_level: 2 })
+    expect(store.progressMessage).toBe('')  // 成功后清空
+    expect(submitStream.mock.calls[0][1]).toHaveProperty('onProgress')
+    expect(submitAnswers).not.toHaveBeenCalled()  // 流式成功不回退 REST
+  })
+
+  it('stream 404 (旧后端) → 降级 REST submitAnswers', async () => {
+    submitStream.mockRejectedValueOnce({ status: 404 })
+    submitAnswers.mockResolvedValueOnce({
+      session_id: 'sess-001', profile: { theory_level: 2 }, assessment: { correct_count: 1 },
+      feedback: { strategy: 'remediate' }, knowledge_graph: null,
+      orchestration_log: [], orchestration_events: [], profile_diff: null,
+    })
+    const store = useAssessmentStore()
+    _seed(store)
+    await store.submitAssessmentAnswers()
+    expect(store.phase).toBe('feedback')
+    expect(submitAnswers).toHaveBeenCalledTimes(1)
+  })
+
+  it('停止等待: 非错误, 提示可重试, loading 复位', async () => {
+    submitStream.mockRejectedValueOnce(new Error('已停止等待'))
+    const store = useAssessmentStore()
+    _seed(store)
+    await store.submitAssessmentAnswers()
+
+    expect(store.error).toBeNull()
+    expect(store.loading).toBe(false)
+    expect(store.progressMessage).toBe('已停止等待，可重新提交')
+    expect(store.phase).toBe('answering')  // 阶段不变, 可重新提交
+  })
+
+  it('feedback 流式优先: resolve done 数据 → feedbackContent 填充', async () => {
+    feedbackStream.mockResolvedValueOnce({
+      session_id: 'sess-001', strategy: 'scaffold',
+      resources: [{ content_type: 'lecture', target_node_id: 'PY-001' }], node_count: 1,
+      generation_failures: [],
+    })
+    const store = useAssessmentStore()
+    store.sessionId = 'sess-001'
+    store.feedbackStrategy = 'scaffold'
+    store.profile = { theory_level: 2 }
+    await store.fetchFeedback()
+
+    expect(store.feedbackContent?.resources).toHaveLength(1)
+    expect(feedbackStream.mock.calls[0][1]).toHaveProperty('onProgress')
+    expect(requestFeedback).not.toHaveBeenCalled()
+  })
+
+  it('cancelWait 调用 abort — 暴露为 action 供 StageQuiz 停止按钮', () => {
+    const store = useAssessmentStore()
+    expect(typeof store.cancelWait).toBe('function')
+    expect(() => store.cancelWait()).not.toThrow()  // 未在等待时调用也安全
   })
 })

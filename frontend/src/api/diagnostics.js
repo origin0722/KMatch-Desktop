@@ -198,11 +198,9 @@ export function isDemographicsFilled(demographics) {
   ))
 }
 
-export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence, demographics, timePerWeek, preferredPace }, signal) {
-  // 判分+画像+图谱组装为 LLM 关键路径, 显式放宽到 300s (慢网络/慢模型不误杀)
-  const cfg = { timeout: 300_000 }
-  if (signal) cfg.signal = signal
-  return http.post('/api/diagnostics/submit', withOverrides({
+/** submit 请求体组包 (REST 与 stream 单一源; withOverrides 注入 UI 配置的 key) */
+export function submitAnswersBody({ sessionId, answers, learnerKey, learningStyleQuiz, practicalEvidence, demographics, timePerWeek, preferredPace }) {
+  return withOverrides({
     session_id: sessionId,
     answers,
     learner_key: learnerKey || undefined,
@@ -214,7 +212,24 @@ export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQui
     // 画像字段真实化: 每周可投入学时 + 学习节奏 (0/空不上送 → 后端默认 6/normal)
     time_per_week: timePerWeek && timePerWeek > 0 ? timePerWeek : undefined,
     preferred_pace: preferredPace || undefined,
-  }), cfg)
+  })
+}
+
+/** feedback 请求体组包 (REST 与 stream 单一源; withFeedbackOverrides 反馈走快模型) */
+export function feedbackBody({ sessionId, strategy, profile, tavilyKey }) {
+  return withFeedbackOverrides({
+    session_id: sessionId,
+    strategy,
+    profile,
+    tavily_key: tavilyKey || undefined,
+  })
+}
+
+export function submitAnswers(params, signal) {
+  // 判分+画像+图谱组装为 LLM 关键路径, 显式放宽到 300s (慢网络/慢模型不误杀)
+  const cfg = { timeout: 300_000 }
+  if (signal) cfg.signal = signal
+  return http.post('/api/diagnostics/submit', submitAnswersBody(params), cfg)
 }
 
 /**
@@ -233,16 +248,10 @@ export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQui
  *   node_count: number
  * }>}
  */
-export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, signal) {
+export function requestFeedback(params, signal) {
   // timeout 330s: feedback 逐节点 LLM 再生 + 可选 Tavily 联网; 须大于后端 300s 硬上限
   // (5min 放宽: 后端再生自带 270s 截止的有界收集, 到点返回已完成部分, 不再整单 504)
-  // withFeedbackOverrides: 反馈走「快模型」(设置页反馈快模型), 交互式等待敏感
-  return http.post('/api/diagnostics/feedback', withFeedbackOverrides({
-    session_id: sessionId,
-    strategy,
-    profile,
-    tavily_key: tavilyKey || undefined,
-  }), { signal, timeout: 330_000 })
+  return http.post('/api/diagnostics/feedback', feedbackBody(params), { signal, timeout: 330_000 })
 }
 
 // ============================================================
@@ -263,6 +272,7 @@ export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, sig
  * @returns {Promise<void>}
  */
 // SSE block 解析 (event/data 段落, 取首行单行标记; 与 IPC 代理分帧契约一致)
+// 未知事件 (ping/start) 忽略; error 事件附带 status (对齐 REST 码, 供降级判断)
 function _dispatchSseBlock(block, { onProgress, onDone, onError }) {
   if (!block || !block.trim()) return
   const event = block.match(/^event:\s*(.+)$/m)?.[1]
@@ -272,29 +282,31 @@ function _dispatchSseBlock(block, { onProgress, onDone, onError }) {
   try { data = JSON.parse(dataStr) } catch { return }
   if (event === 'progress') onProgress?.(data)
   else if (event === 'done') onDone?.(data)
-  else if (event === 'error') onError?.(data.detail || '测评流程失败')
-  // start 事件可忽略
+  else if (event === 'error') onError?.(data.detail || '流程失败', data.status)
+  // start/ping 事件可忽略
 }
 
 // 浏览器 dev 回退: fetch + ReadableStream 直连 /api (Vite proxy → 后端)。
 // 与 useChatStream 浏览器回退同款 \n\n 分帧 + 看门狗 (60s 无数据判断流, issue-07/m5)。
-async function _streamViaFetch(url, body, cbs) {
+// 后端流式端点带 15s 心跳 (ping), 看门狗不会误杀长生成; signal 支持用户「停止等待」。
+async function _streamViaFetch(url, body, cbs, signal) {
   let settled = false
-  const fail = (msg) => { if (!settled) { settled = true; cbs.onError?.(msg) } }
+  const fail = (msg, status) => { if (!settled) { settled = true; cbs.onError?.(msg, status) } }
   let resp
   try {
     resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     })
   } catch (e) {
-    fail(e?.message || '网络请求失败')
+    fail(e?.name === 'AbortError' ? '已停止等待' : (e?.message || '网络请求失败'))
     return
   }
   if (!resp.ok || !resp.body) {
     const text = await resp.text().catch(() => '')
-    fail(text || `HTTP ${resp.status}`)
+    fail(text || `HTTP ${resp.status}`, resp.status)
     return
   }
   const reader = resp.body.getReader()
@@ -376,6 +388,85 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
     offChunk(); offDone(); offError()
     onError?.(e.message || '网络请求失败')
   }
+}
+
+// ============================================================
+// interactive 流式端点 (submit/feedback) — 等待优化感知层 (v1.3.3)
+// promise 化: resolve(done data) / reject(Error, e.status 对齐 REST 码供 404 降级)
+// ============================================================
+
+/**
+ * POST SSE → Promise 通用壳 (submit/feedback/report 流式共用)。
+ *
+ * 双环境同 startAssessmentStream: Electron 走 IPC SSE 代理, 浏览器 dev 走 fetch 回退。
+ * signal 触发「停止等待」: 浏览器路径 abort fetch; IPC 路径 detach 监听并立即 reject
+ * (后台流自然收尾, 结果照常入 session 缓存, 重试复用)。
+ *
+ * @returns {Promise<Object>} done 事件 data (完整响应结构)
+ */
+export function postSseJson(url, body, { onProgress, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const settle = (fn, arg) => { if (!settled) { settled = true; fn(arg) } }
+    const onDone = (data) => settle(resolve, data)
+    const onError = (msg, status) => {
+      const e = new Error(msg || 'SSE 流失败')
+      if (status) e.status = status
+      settle(reject, e)
+    }
+
+    // 停止等待: IPC 路径 fetch 不经此处, 显式挂 signal → detach + reject (浏览器路径 fetch 同时 abort)
+    let onAbort = null
+    if (signal) {
+      onAbort = () => onError('已停止等待')
+      if (signal.aborted) { onAbort(); return }
+      signal.addEventListener('abort', onAbort, { once: true })
+    }
+
+    const cleanup = () => { if (signal && onAbort) signal.removeEventListener('abort', onAbort) }
+
+    if (typeof window === 'undefined' || !window.api?.http) {
+      _streamViaFetch(url, body, {
+        onProgress,
+        onDone: (d) => { cleanup(); onDone(d) },
+        onError: (m, s) => { cleanup(); onError(m, s) },
+      }, signal)
+      return
+    }
+
+    const reqId = `s${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+    const offChunk = window.api.http.onChunk((rid, block) => {
+      if (rid !== reqId) return
+      _dispatchSseBlock(block, { onProgress, onDone, onError })
+    })
+    const offDone = window.api.http.onDone((rid) => { if (rid === reqId) { offChunk(); offDone(); offError(); cleanup() } })
+    const offError = window.api.http.onError((rid, err) => {
+      if (rid !== reqId) return
+      offChunk(); offDone(); offError(); cleanup()
+      onError(err || 'SSE 流失败')
+    })
+    window.api.http.stream(url, body, reqId).catch((e) => {
+      offChunk(); offDone(); offError(); cleanup()
+      onError(e.message || '网络请求失败')
+    })
+  })
+}
+
+/**
+ * 提交答题（SSE 流式）— /api/diagnostics/submit/stream
+ * onProgress: ({step, message, done?, total?}) => void
+ * 后端缺流式端点 (旧版本) 时 reject e.status===404, 调用方降级 REST submitAnswers。
+ */
+export function submitStream(body, { onProgress, signal } = {}) {
+  return postSseJson('/api/diagnostics/submit/stream', body, { onProgress, signal })
+}
+
+/**
+ * 动态反馈再生（SSE 流式）— /api/diagnostics/feedback/stream
+ * 进度含逐段生成 (step='generate', done/total) 与联网检索 (step='search')。
+ */
+export function feedbackStream(body, { onProgress, signal } = {}) {
+  return postSseJson('/api/diagnostics/feedback/stream', body, { onProgress, signal })
 }
 
 // ============================================================

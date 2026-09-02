@@ -112,7 +112,7 @@ def test_feedback_passes_overrides_to_regenerate(monkeypatch):
 
     seen = {}
 
-    def fake_regenerate(strategy, profile, learning_path, kg):
+    def fake_regenerate(strategy, profile, learning_path, kg, **kwargs):
         seen["ctx"] = _current_overrides.get()
         return {"resources": [], "node_count": 0}
 
@@ -162,7 +162,7 @@ def test_learning_report_passes_overrides_to_pipeline(monkeypatch):
 
     seen = {}
 
-    def fake_pipeline(profile, kg, llm_overrides=None):
+    def fake_pipeline(profile, kg, llm_overrides=None, emit=None, cancel_check=None):
         seen["overrides"] = llm_overrides
         return {"knowledge_graph": {}, "generated_content": {}, "review_results": {},
                 "orchestration_log": []}

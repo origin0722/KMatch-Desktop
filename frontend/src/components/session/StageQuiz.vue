@@ -87,7 +87,12 @@
       </template>
 
       <!-- interactive loading: 按 phase 区分文案 (出题 / 判分 / 取反馈), 三阶段都不白屏 -->
-      <div v-if="store.loading" class="quiz-loading" v-loading="true" :element-loading-text="loadingText"></div>    </div>
+      <div v-if="store.loading" class="quiz-loading" v-loading="true" :element-loading-text="loadingText"></div>
+      <!-- 停止等待 (v1.3.3): 流式等待期可放弃; 后台结果照常落缓存, 重试复用 -->
+      <div v-if="store.loading && (store.phase === 'answering' || store.phase === 'feedback')" class="quiz-wait-cancel">
+        <el-button size="small" text @click="store.cancelWait()">停止等待</el-button>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -122,11 +127,15 @@ watch(() => store.loading, (v) => {
 })
 onBeforeUnmount(() => { if (_timer) clearInterval(_timer) })
 
-// loading 文案按阶段: 出题(idle, 新领域含建域) / 判分(answering) / 取反馈(feeddown) -- 内容生成只在提交答题之后
+// loading 文案按阶段: 出题(idle, 新领域含建域) / 判分(answering) / 取反馈(feedback)。
+// v1.3.3: SSE 真实进度优先 (后端逐步推送, 如「正在生成学习内容 3/15：循环·讲义」),
+// 无进度事件 (REST 兜底/出题阶段) 才回退阶段文案; 均附已等待秒数, 不再用硬编码猜测时长。
 const loadingText = computed(() => {
-  if (store.phase === 'answering') return `正在判分并生成学情画像…（已等待 ${loadingElapsed.value}s，最长约 1 分钟，超时会自动提示）`
-  if (store.phase === 'feedback') return `正在生成针对性学习内容（含联网搜索，最长约 5 分钟；已等待 ${loadingElapsed.value}s）…`
-  return '正在根据学习目标定制题目（若为新领域将检索资料并构建知识图谱，最长约 3 分钟）…'
+  const elapsed = `（已等待 ${loadingElapsed.value}s）`
+  if (store.progressMessage) return `${store.progressMessage} ${elapsed}`
+  if (store.phase === 'answering') return `正在判分并生成学情画像…${elapsed}`
+  if (store.phase === 'feedback') return `正在生成针对性学习内容（含联网搜索）…${elapsed}`
+  return `正在根据学习目标定制题目（若为新领域将检索资料并构建知识图谱）…${elapsed}`
 })
 const progressPct = computed(() => store.pendingQuestions.length ? (answeredCount.value / store.pendingQuestions.length) * 100 : 0)
 function isAnswered(idx) { const a = store.userAnswers[idx]; return !!(a && String(a).trim()) }
@@ -213,4 +222,6 @@ function openLearning() {
 }
 .feedback-done-text { font-size: 13px; color: var(--km-gray-700); flex: 1; min-width: 180px; }
 .quiz-loading { min-height: 140px; display: flex; align-items: center; justify-content: center; }
+.quiz-wait-cancel { display: flex; justify-content: center; margin-top: -8px; }
+.quiz-wait-cancel .el-button { color: var(--km-gray-500); }
 </style>
