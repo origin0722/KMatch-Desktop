@@ -141,14 +141,15 @@ describe('useAgentStatus 产出概览', () => {
     await nextTick()
     // pipelineRunning=false (loading=false) -> 不再误显示运行中
     expect(pipelineRunning.value).toBe(false)
-    // orchestrator + diagnostics + graph_controller 完成 (产出覆盖); content_generator/reviewer 待触发
+    // orchestrator + diagnostics + graph_controller 完成 (产出覆盖);
+    // 内容生成/reviewer 将在用户进入资源流程时启动，不应误显示为卡死或自动执行中。
     expect(completedCount.value).toBe(3)
     expect(pendingCount.value).toBe(2)
     const byKey = Object.fromEntries(agentNodes.value.map((a) => [a.key, a.status]))
     expect(byKey.diagnostics).toBe('done')
     expect(byKey.graph_controller).toBe('done')
     expect(byKey.orchestrator).toBe('done')
-    expect(byKey.content_generator).toBe('idle')
-    expect(byKey.reviewer).toBe('idle')
+    expect(byKey.content_generator).toBe('deferred')
+    expect(byKey.reviewer).toBe('deferred')
   })
 })

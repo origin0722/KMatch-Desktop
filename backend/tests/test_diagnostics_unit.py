@@ -819,6 +819,9 @@ def test_diagnostics_node_demo_uses_bank_not_judge(monkeypatch):
             return _FakeModel(c).invoke(msgs)
 
     monkeypatch.setattr("app.agents.diagnostics.get_default_chat_model", _SeqModel)
+    # 判分使用专属 get_chat_model（45s/零重试），也必须隔离为同一序列假模型，
+    # 避免该离线单测意外使用本机 API key 发起真实网络请求。
+    monkeypatch.setattr("app.agents.diagnostics.get_chat_model", lambda **_kwargs: _SeqModel())
 
     node_fn = diagnostics_node(kg)
     state = {"target_direction": "Python", "known_topics": [], "mode": "demo"}

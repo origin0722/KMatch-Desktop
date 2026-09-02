@@ -39,9 +39,9 @@ def test_get_chat_model_default_temperature():
     assert model.temperature == settings.LLM_TEMPERATURE
 
 
-def test_llm_configured_with_real_key():
-    """已配置真实 key 时 llm_configured 返回 True。"""
-    # .env 已配真实 DeepSeek key（非 sk-placeholder）
+def test_llm_configured_with_real_key(monkeypatch):
+    """显式配置非占位 key 时 llm_configured 返回 True。"""
+    monkeypatch.setattr(settings, "LLM_API_KEY", _STUB_OVERRIDE_KEY)
     assert llm_configured() is True
 
 

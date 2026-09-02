@@ -28,6 +28,9 @@ def _build_app(monkeypatch):
     """构造带 fake kg 的 FastAPI app，注册 diagnostics 路由。"""
     # 清空会话缓存，避免测试间污染
     diag_api._INTERACTIVE_SESSIONS.clear()
+    # submit 路由会先检查 LLM 是否已配置；常规闭环夹具显式表示可用，
+    # 未配置分支由 test_submit_llm_not_configured_503 单独覆盖。
+    monkeypatch.setattr(diag_api, "llm_configured", lambda: True)
 
     # mock resolve_direction (阶段16 域判定): unknown → 走旧选点行为, 不碰 LLM/向量
     monkeypatch.setattr(
