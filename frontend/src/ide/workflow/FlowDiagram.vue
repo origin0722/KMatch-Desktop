@@ -7,7 +7,8 @@
  * FlowDiagram — 只读流程进度 DAG (Phase 3a)
  *
  * 用 AntV G6 v5 把协作 Agent 流水渲染成"节点+边"的流程进度图:
- *  - 节点 = 阶段 (status 着色: idle 灰 / running 琥珀+当前步高亮 / done 绿 / failed 红)
+ *  - 节点 = 阶段 (status 着色: idle 灰 / deferred 蓝底待启动 / running 琥珀+当前步高亮 /
+ *    done 绿 / degraded 淡琥珀 / failed 红)
  *  - 边 = 相邻阶段的前驱关系 (线性链近似; Phase 3b 由 workflow 定义驱动真实拓扑)
  *  - 交互 = 平移/缩放 (只读, 无节点编辑)
  *
@@ -39,9 +40,9 @@ const C = {
   white: '#ffffff',
 }
 
-const NODE_FILL = { idle: '#f3f4f8', running: '#fff4e6', done: '#e8f6f0', degraded: '#fdf3e7', failed: '#fdeeee' }
-const NODE_STROKE = { idle: C.gray300, running: C.warning, done: C.success, degraded: '#d98b3c', failed: C.danger }
-const NODE_LABEL_FILL = { idle: C.gray500, running: '#c7771a', done: '#207a55', degraded: '#b9680d', failed: C.danger }
+const NODE_FILL = { idle: '#f3f4f8', deferred: '#eef2ff', running: '#fff4e6', done: '#e8f6f0', degraded: '#fdf3e7', failed: '#fdeeee' }
+const NODE_STROKE = { idle: C.gray300, deferred: '#a5b4fc', running: C.warning, done: C.success, degraded: '#d98b3c', failed: C.danger }
+const NODE_LABEL_FILL = { idle: C.gray500, deferred: '#4f46e5', running: '#c7771a', done: '#207a55', degraded: '#b9680d', failed: C.danger }
 
 function buildData() {
   const nodes = (props.stages || []).map((s, i) => ({

@@ -124,4 +124,28 @@ describe('useFlowStatus (Phase 3a 流程进度)', () => {
     await nextTick()
     expect(flow.stages.value.find((s) => s.key === 'reviewer').status).toBe('failed')
   })
+
+  it('资源阶段全员延后时聚合为 deferred (不落回 idle 灰色)', async () => {
+    // 诊断+图谱就绪、资源未生成 → useAgentStatus 派生 deferred (与 StageAgent 列表文案同源)
+    mockAssessment.hasResults = true
+    mockAssessment.loading = false
+    mockAssessment.profile = { theory_level: 2, practical_level: 1, weak_topics: [] }
+    mockAssessment.assessment = { correct_count: 6, total_count: 10 }
+    mockAssessment.knowledgeGraph = { learning_path: [{ node_id: 'PY-001' }] }
+    mockAssessment.generatedContent = null
+    mockAssessment.reviewResults = null
+    mockAssessment.orchestrationEvents = []
+    const DEF = {
+      id: 'x', name: 'X',
+      stages: [
+        { id: 'content', label: '内容生成', agents: ['content_generator'], dependencies: ['diagnostics'] },
+        { id: 'review-content', label: '内容审核', agents: ['reviewer'], dependencies: ['content'] },
+      ],
+    }
+    const flow = useFlowStatus(DEF)
+    await nextTick()
+    const byKey = Object.fromEntries(flow.stages.value.map((s) => [s.key, s]))
+    expect(byKey.content.status).toBe('deferred')
+    expect(byKey['review-content'].status).toBe('deferred')
+  })
 })

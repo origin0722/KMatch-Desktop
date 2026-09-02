@@ -33,6 +33,8 @@ function definitionStages(agent, defStages) {
     else if (ags.some((a) => a.status === 'failed')) status = 'failed'
     else if (ags.some((a) => a.status === 'degraded')) status = 'degraded'
     else if (ags.length && ags.every((a) => a.status === 'done')) status = 'done'
+    // 全员延后 (诊断+图谱就绪、资源未生成) → deferred, 不再落回 idle 灰色与列表文案打架
+    else if (ags.length && ags.every((a) => a.status === 'deferred')) status = 'deferred'
     return {
       key: s.id || `s${i}`,
       label: s.label || s.id || `阶段 ${i + 1}`,
