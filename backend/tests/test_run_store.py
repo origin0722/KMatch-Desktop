@@ -112,10 +112,11 @@ def test_list_runs_projects_safe_display_fields_without_request(monkeypatch, tmp
         request={"target_direction": "Java Spring Boot", "scene": "no_project"},
         summary={"status": "completed"},
     )
+    # pipeline run 的真实落盘形态: request 带 filename (project.py 落库), 无 project_name
     run_store.save_run(
         session_id="shop-pipeline",
         mode="pipeline",
-        request={"project_name": "shop-service", "scene": "with_project"},
+        request={"filename": "shop-service.py", "scene": "with_project"},
         summary={"status": "completed"},
     )
 
@@ -128,10 +129,11 @@ def test_list_runs_projects_safe_display_fields_without_request(monkeypatch, tmp
     assert learn["scene_label"] == "无项目技能学习"
     assert learn["target_direction"] == "Java Spring Boot"
     assert learn["status"] == "completed"
+    # 标题从真实落盘的 filename 去扩展名兜底 (此前 project_name 是无写入方的死路径)
     assert shop["display_title"] == "shop-service · 项目质量流水线"
     assert shop["scene"] == "with_project"
     assert shop["scene_label"] == "有项目二次开发"
-    assert shop["project_name"] == "shop-service"
+    assert shop["project_name"] is None
     assert "request" not in learn
     assert "request" not in shop
 

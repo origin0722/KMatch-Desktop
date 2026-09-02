@@ -18,7 +18,8 @@
       <div v-else class="side-list">
         <div v-for="r in runs" :key="r.session_id" class="side-item" @click="goRuns">
           <span class="si-mode" :class="r.mode">{{ r.mode === 'demo' ? '演示' : '自定义' }}</span>
-          <span class="si-text">{{ r.request?.target_direction || '—' }}</span>
+          <!-- /runs 列表为展示投影 (不含完整 request), 标题用 display_title (32c013b 契约) -->
+          <span class="si-text">{{ r.display_title || r.target_direction || '—' }}</span>
           <span class="si-time">{{ shortTime(r.created_at) }}</span>
         </div>
       </div>

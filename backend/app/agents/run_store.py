@@ -175,10 +175,13 @@ def _run_list_item(meta: dict, fallback_id: str) -> dict:
     scene = request.get("scene") or summary.get("scene") or ""
     target = request.get("target_direction") or summary.get("target_direction") or ""
     project_name = request.get("project_name") or summary.get("project_name") or ""
+    # pipeline run 实际落盘的是 filename (如 a.py); project_name 仅为兼容预留, 现网无写入方
+    filename = request.get("filename") or summary.get("filename") or ""
     is_project = scene == "with_project" or meta.get("mode") == "pipeline"
 
     if is_project:
-        display_title = f"{project_name or target or '未命名项目'} · 项目质量流水线"
+        name = project_name or filename.removesuffix(".py") or target or "未命名项目"
+        display_title = f"{name} · 项目质量流水线"
         scene_label = "有项目二次开发"
     else:
         display_title = f"学习 · {target or '未命名目标'}"
