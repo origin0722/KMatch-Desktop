@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KMatch·知链｜项目语义图谱框架图</title>
+  <style>
+    :root { --ink:#17313a; --muted:#5d7178; --teal:#0f766e; --teal-soft:#e7f4f1; --coral:#c65f36; --coral-soft:#fff3ed; --line:#c9deda; --paper:#fff; --bg:#f3f7f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 "Microsoft YaHei", system-ui, sans-serif; }
+    main { max-width:1160px; margin:0 auto; padding:44px 28px 64px; }
+    header { border:1px solid var(--line); border-radius:24px; background:var(--paper); padding:30px; }
+    .eyebrow { margin:0; color:var(--teal); font-size:12px; font-weight:700; letter-spacing:.09em; }
+    h1 { margin:6px 0 8px; font-size:30px; line-height:1.25; }
+    .lead { max-width:820px; margin:0; color:var(--muted); }
+    .flow { display:grid; grid-template-columns:repeat(5,minmax(145px,1fr)); align-items:stretch; gap:12px; margin-top:26px; }
+    .step { position:relative; min-height:176px; padding:18px; border:1px solid var(--line); border-radius:18px; background:var(--paper); }
+    .step.primary { border-color:var(--teal); background:var(--teal-soft); }
+    .step.review { border-color:#e8bda7; background:var(--coral-soft); }
+    .step:not(:last-child)::after { content:"→"; position:absolute; top:50%; right:-18px; z-index:1; color:var(--teal); font-size:24px; transform:translateY(-50%); }
+    .num { color:var(--teal); font-size:12px; font-weight:700; letter-spacing:.07em; }
+    h2 { margin:5px 0 8px; font-size:18px; }
+    .step p { margin:0; color:var(--muted); font-size:13px; }
+    section { margin-top:28px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { border:1px solid var(--line); border-radius:18px; background:var(--paper); padding:22px; }
+    .card h2 { margin-top:0; }
+    ul { margin:10px 0 0; padding-left:20px; color:var(--muted); }
+    li + li { margin-top:5px; }
+    .chain { padding:18px; border-radius:14px; background:#102e36; color:#e9f8f4; font-family:Consolas,monospace; font-size:14px; overflow:auto; }
+    .chain span { color:#a6ded3; }
+    .table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid var(--line); border-radius:18px; background:var(--paper); }
+    th, td { padding:14px; text-align:left; vertical-align:top; border-bottom:1px solid #e5eeec; }
+    th { background:#f6faf9; font-size:13px; }
+    tr:last-child td { border-bottom:0; }
+    .verified { color:var(--teal); font-weight:700; }
+    .inferred { color:var(--coral); font-weight:700; }
+    footer { margin-top:24px; color:var(--muted); font-size:13px; }
+    @media (max-width:850px) { .flow { grid-template-columns:1fr; } .step:not(:last-child)::after { content:"↓"; right:50%; top:auto; bottom:-24px; transform:translateX(50%); } .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">KMATCH · PROJECT SEMANTIC GRAPH · 2026-09-02</p>
+      <h1>从代码文件图到项目语义图谱</h1>
+      <p class="lead">Agent 读取项目事实，语言与框架适配器提取结构和语义，审核 Agent 只让有来源的结论进入正式图谱。该图说明目标架构，而非表示所有语言和框架已实现。</p>
+    </header>
+
+    <section class="flow" aria-label="项目语义图谱生成流程">
+      <article class="step">
+        <div class="num">01</div>
+        <h2>项目侦察</h2>
+        <p>目录、语言、构建文件、依赖、配置、测试和入口。预览范围，忽略密钥、产物和越界链接。</p>
+      </article>
+      <article class="step">
+        <div class="num">02</div>
+        <h2>结构提取</h2>
+        <p>语言适配器提取模块、符号、导入、调用、实现、构建依赖与解析诊断。</p>
+      </article>
+      <article class="step primary">
+        <div class="num">03</div>
+        <h2>框架理解</h2>
+        <p>框架适配器按规则识别角色、路由、依赖注入、ORM、配置和测试关系。</p>
+      </article>
+      <article class="step review">
+        <div class="num">04</div>
+        <h2>证据审核</h2>
+        <p>每条框架边核验文件、行号、配置、依赖或测试证据；低置信候选不进入主链。</p>
+      </article>
+      <article class="step primary">
+        <div class="num">05</div>
+        <h2>语义图谱</h2>
+        <p>架构、框架流程、代码细节、配置依赖和质量证据五种可切换视图。</p>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Spring Boot 第一条完整纵切</h2>
+        <div class="chain"><span>POST /api/users</span> → UserController → UserService → UserRepository → User Entity → users 表<br><br><span>pom.xml</span> → Spring/JPA 依赖　|　<span>application.yml</span> → 数据源/Profiles　|　<span>UserServiceTest</span> → 测试证据</div>
+      </article>
+      <article class="card">
+        <h2>多语言的分层支持</h2>
+        <ul>
+          <li>Python：迁移现有 AST/Jedi/Pytest 能力至统一适配器。</li>
+          <li>Java：Spring Boot 完整框架 profile。</li>
+          <li>TypeScript：NestJS 作为第二条框架纵切。</li>
+          <li>JavaScript、Rust、C：先提供结构图谱，再按已验证 framework profile 提供语义层。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section>
+      <table class="table">
+        <thead><tr><th>关系状态</th><th>进入正式图谱的条件</th><th>界面呈现</th></tr></thead>
+        <tbody>
+          <tr><td class="verified">已验证</td><td>AST/符号、框架规则、manifest/config 或测试中至少一项可追溯证据。</td><td>实线关系；可跳转到文件与行号。</td></tr>
+          <tr><td class="inferred">待确认推断</td><td>只有启发式或 Agent 候选，证据尚不足。</td><td>默认不显示在主流程；在证据抽屉中说明原因。</td></tr>
+          <tr><td>结构降级</td><td>语言可解析但没有命中已支持框架。</td><td>显示文件、模块、符号和调用，不声称理解框架。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>设计依据：<code>docs/superpowers/specs/2026-09-02-project-semantic-graph-design.md</code>。项目内容按不可信数据处理；分析默认只读，测试或构建须经用户确认并在隔离环境执行。</footer>
+  </main>
+</body>
+</html>
