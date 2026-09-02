@@ -34,7 +34,7 @@
 - Modify: `frontend/src/views/ProjectGraphView.vue:120-136, 454-490, 982-1034`
 - Create: `frontend/src/__tests__/project-graph-view.test.js`
 
-- [ ] **Step 1: 写入失败的入口回归测试**
+- [x] **Step 1: 写入失败的入口回归测试**
 
 在 `project-graph-view.test.js` mock `useWorkspaceStore`、`useAssessmentStore`、`runProjectPipeline` 与 `window.api.fs.readFile`。挂载页面后设置 `activeFile='src/a.py'`、`profile.target_direction='Python Web 后端'`，确认点击 `[data-test="run-pipeline"]` 后：
 
@@ -51,7 +51,7 @@ expect(runProjectPipeline).toHaveBeenCalledWith(expect.objectContaining({
 
 另设 `activeFile='README.md'`，断言不调用 API，且提示文本包含“仅支持 Python 文件”。
 
-- [ ] **Step 2: 运行测试确认当前缺陷**
+- [x] **Step 2: 运行测试确认当前缺陷**
 
 Run:
 
@@ -62,7 +62,7 @@ npx vitest run src/__tests__/project-graph-view.test.js
 
 Expected: FAIL；当前实现没有 `useAssessmentStore` 的 `store`，运行 Python 入口会抛 `ReferenceError`，并且按钮/弹窗仍称“协同流水线”。
 
-- [ ] **Step 3: 实现最小修复**
+- [x] **Step 3: 实现最小修复**
 
 在 `ProjectGraphView.vue`：
 
@@ -84,7 +84,7 @@ let direction = assessment.profile?.target_direction || 'Python 项目质量检�
 
 按钮文本、弹窗标题和辅助文案统一为“当前文件质量检查”；说明必须包含“代码审查 → 代码测试 → 修复指引”“只读，不会修改源文件”“当前仅支持 Python 文件”。保留 API 名 `runProjectPipeline` 和结果对话框，避免改变后端契约。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run:
 
@@ -95,7 +95,7 @@ npx vitest run src/__tests__/project-graph-view.test.js src/__tests__/project-gr
 
 Expected: PASS，且既有项目图谱 store 回归通过。
 
-- [ ] **Step 5: 提交本任务**
+- [x] **Step 5: 提交本任务**
 
 ```powershell
 git add frontend/src/views/ProjectGraphView.vue frontend/src/__tests__/project-graph-view.test.js
@@ -110,7 +110,7 @@ git commit -m "fix(project-graph): 修复当前文件质量检查入口"
 - Modify: `frontend/src/ide/RunsPanel.vue:1-125`
 - Modify: `frontend/src/__tests__/runs-panel.test.js:28-115`
 
-- [ ] **Step 1: 写入后端失败测试**
+- [x] **Step 1: 写入后端失败测试**
 
 在 `test_run_store.py` 保存两条 run：
 
@@ -137,7 +137,7 @@ assert shop["display_title"] == "shop-service · 项目质量流水线"
 assert "request" not in learn
 ```
 
-- [ ] **Step 2: 运行后端测试确认失败**
+- [x] **Step 2: 运行后端测试确认失败**
 
 Run:
 
@@ -147,7 +147,7 @@ pytest backend/tests/test_run_store.py -q
 
 Expected: FAIL；现有 `list_runs()` 没有展示字段，前端只能从未返回的 `request` 猜标题。
 
-- [ ] **Step 3: 实现 `run_list_item` 投影**
+- [x] **Step 3: 实现 `run_list_item` 投影**
 
 在 `run_store.py` 增加纯函数：
 
@@ -167,7 +167,7 @@ def _run_list_item(meta: dict, fallback_id: str) -> dict:
 
 在 `RunsPanel.vue` 删除 `targetOf/sceneOf` 对 `request` 的读取，改为 `r.display_title` 与 `r.scene_label`；详情与重新测评继续使用 `fetchRun()` 的完整记录。将“初次对话”改为“无项目技能学习”，并用 Element Plus 图标或纯文本替代标题中的 Emoji。
 
-- [ ] **Step 4: 用真实 API 形状更新前端测试并运行**
+- [x] **Step 4: 用真实 API 形状更新前端测试并运行**
 
 将 `SAMPLE` 与 `SAMPLE2` 改为仅包含 `list_runs()` 的展示字段；在 detail mock 中保留 request。运行：
 
@@ -179,7 +179,7 @@ npx vitest run src/__tests__/runs-panel.test.js src/__tests__/diagnostics-api.te
 
 Expected: PASS，列表在没有 `request` 时仍显示标题和场景。
 
-- [ ] **Step 5: 提交本任务**
+- [x] **Step 5: 提交本任务**
 
 ```powershell
 git add backend/app/agents/run_store.py backend/tests/test_run_store.py frontend/src/ide/RunsPanel.vue frontend/src/__tests__/runs-panel.test.js
@@ -194,7 +194,7 @@ git commit -m "fix(runs): 固化运行历史展示契约"
 - Modify: `frontend/src/__tests__/graph-history.test.js`
 - Create: `frontend/src/__tests__/knowledge-graph-history.test.js`
 
-- [ ] **Step 1: 写入失败的 UI 删除回归**
+- [x] **Step 1: 写入失败的 UI 删除回归**
 
 在新测试中预置一个 learning snapshot，挂载 `KnowledgeGraph.vue`，点击历史条目里的 `[data-test="history-delete-learning:s1"]`，确认：
 
@@ -205,7 +205,7 @@ expect(useGraphHistoryStore().learningViewing).toBe(null)
 
 在项目图谱历史中使用 `[data-test="history-delete-project:p1"]`，确认只调用 `graphHistory.remove('project:p1')`，不调用文件系统、项目删除 API 或源码删除动作。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run:
 
@@ -216,7 +216,7 @@ npx vitest run src/__tests__/graph-history.test.js src/__tests__/knowledge-graph
 
 Expected: FAIL；当前页面没有删除控件。
 
-- [ ] **Step 3: 实现删除控件与安全文案**
+- [x] **Step 3: 实现删除控件与安全文案**
 
 在两个历史列表项末尾加入 `el-button`，使用 `@click.stop`：
 
@@ -230,7 +230,7 @@ Expected: FAIL；当前页面没有删除控件。
 
 实现 `removeLearningHistory/removeProjectHistory`：调用 `ElMessageBox.confirm('仅从本地历史列表移除快照；不会删除当前图谱、项目源码或已累计的学习画像。', '移除历史快照')` 后调用 `graphHistory.remove(h.id)`。项目历史使用同一语义；不要调用后端 project graph 删除接口。
 
-- [ ] **Step 4: 运行历史测试确认通过**
+- [x] **Step 4: 运行历史测试确认通过**
 
 Run:
 
@@ -241,7 +241,7 @@ npx vitest run src/__tests__/graph-history.test.js src/__tests__/knowledge-graph
 
 Expected: PASS；删除回看中的学习快照会退出回看态。
 
-- [ ] **Step 5: 提交本任务**
+- [x] **Step 5: 提交本任务**
 
 ```powershell
 git add frontend/src/views/KnowledgeGraph.vue frontend/src/views/ProjectGraphView.vue frontend/src/__tests__/graph-history.test.js frontend/src/__tests__/knowledge-graph-history.test.js
@@ -256,7 +256,7 @@ git commit -m "feat(graph-history): 支持单项移除历史快照"
 - Create: `frontend/src/__tests__/use-agent-status.test.js`
 - Modify: `frontend/src/__tests__/stage-agent-collab.test.js`
 
-- [ ] **Step 1: 写入失败的 deferred 状态测试**
+- [x] **Step 1: 写入失败的 deferred 状态测试**
 
 先在 `use-agent-status.test.js` 设置：
 
@@ -273,7 +273,7 @@ mockAssessment.orchestrationLog = ['[10:00] ✅ 学情检测 完成']
 
 再在 `stage-agent-collab.test.js` 使用同一测评状态，断言这两个 Agent 的 badge 文案是“生成资源后启动”，而不是“待触发”“失败”或“完成”。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run:
 
@@ -284,7 +284,7 @@ npx vitest run src/__tests__/use-agent-status.test.js src/__tests__/stage-agent-
 
 Expected: FAIL；当前两个 Agent 都被笼统标为 `idle/待触发`。
 
-- [ ] **Step 3: 实现 `deferred` 状态**
+- [x] **Step 3: 实现 `deferred` 状态**
 
 在 `useAgentStatus.js` 中定义：
 
@@ -305,7 +305,7 @@ deferred: '生成资源后启动'
 
 并显示 `agent.activationHint || agent.role`。使用文字状态和 CSS 状态点；不要新增 Emoji 作为正式状态。`pendingCount` 仍包含 `idle/deferred`，但进度文案改为“待后续资源流程启动”。
 
-- [ ] **Step 4: 运行协同测试确认通过**
+- [x] **Step 4: 运行协同测试确认通过**
 
 Run:
 
@@ -316,7 +316,7 @@ npx vitest run src/__tests__/use-agent-status.test.js src/__tests__/stage-agent-
 
 Expected: PASS；诊断结束后的未启动内容流程不会被表示为卡死。
 
-- [ ] **Step 5: 提交本任务**
+- [x] **Step 5: 提交本任务**
 
 ```powershell
 git add frontend/src/composables/useAgentStatus.js frontend/src/components/session/StageAgent.vue frontend/src/__tests__/stage-agent-collab.test.js
@@ -329,7 +329,7 @@ git commit -m "fix(agent-status): 区分延后启动的资源审核阶段"
 - Modify: `docs/项目规划/2026-09-02_画像协同历史与体验升级总方案.md`
 - Modify: `docs/superpowers/specs/2026-09-02-project-semantic-graph-design.md`
 
-- [ ] **Step 1: 运行前后端相关回归**
+- [x] **Step 1: 运行前后端相关回归**
 
 Run:
 
@@ -342,11 +342,11 @@ npm run build
 
 Expected: 所有指定 pytest/Vitest 测试及前端构建通过。
 
-- [ ] **Step 2: 更新状态与已知边界**
+- [x] **Step 2: 更新状态与已知边界**
 
 在总方案 P0 清单中标记已完成项；在项目语义图谱设计中保留“当前产品代码图谱仅 Python，Spring Boot 为下一独立纵切”的事实，不能提前宣称 Java 已实现。
 
-- [ ] **Step 3: 提交验收文档**
+- [x] **Step 3: 提交验收文档**
 
 ```powershell
 git add docs/项目规划/2026-09-02_画像协同历史与体验升级总方案.md docs/superpowers/specs/2026-09-02-project-semantic-graph-design.md
