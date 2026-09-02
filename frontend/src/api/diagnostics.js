@@ -404,7 +404,13 @@ export async function startAssessmentStream(payload, { onProgress, onDone, onErr
  *
  * @returns {Promise<Object>} done 事件 data (完整响应结构)
  */
-export function postSseJson(url, body, { onProgress, signal } = {}) {
+export function postSseJson(url, rawBody, { onProgress, signal } = {}) {
+  // v1.3.4 热修: IPC 结构化克隆不能拷贝 Vue 响应式 Proxy — 提交载荷携带
+  // styleQuiz/demographics/profile 的 .value (深层 reactive 代理) 时,
+  // ipcRenderer.invoke 直接抛 "An object could not be cloned." (答题提交/反馈全部失败)。
+  // 旧 REST 路径经 axios transformRequest 先 stringify 成字符串所以从未暴露;
+  // 流式路径绕过 axios 裸传对象, 必须在此单点转纯对象 (fetch 分支本就要 stringify, 无害)。
+  const body = JSON.parse(JSON.stringify(rawBody ?? {}))
   return new Promise((resolve, reject) => {
     let settled = false
     const settle = (fn, arg) => { if (!settled) { settled = true; fn(arg) } }
