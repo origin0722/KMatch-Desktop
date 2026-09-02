@@ -69,7 +69,7 @@ function spawnBackend() {
   }
   const proc = usePackaged
     ? spawn(exe, [], { cwd, stdio: ['ignore', 'pipe', 'pipe'], env })
-    : spawn(process.env.PYTHON || 'python', [
+    : spawn('python', [
         '-m', 'uvicorn', 'app.main:app',
         '--host', '127.0.0.1', '--port', '8000',
       ], { cwd, stdio: ['ignore', 'pipe', 'pipe'], env })
