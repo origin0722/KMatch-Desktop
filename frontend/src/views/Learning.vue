@@ -5,7 +5,7 @@
     <!-- ============================================================ -->
     <!-- issue-91: 空态 = 页面标题 + 一句话说明 + 主按钮, 居中展示 -->
     <div v-if="!hasResources" class="page-empty" data-test="learning-empty">
-      <div class="pe-badge">📚</div>
+      <div class="pe-badge">资源</div>
       <h2 class="pe-title">学习资源</h2>
       <p class="pe-line">按你的学情生成讲义、实操与测试，联网搜索补充教程</p>
       <div class="empty-actions">

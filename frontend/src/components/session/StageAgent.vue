@@ -102,11 +102,11 @@ async function onResume() {
 // #30: 答题完成默认展示 AI 协同 - showCollab 点亮 (session store 由 assessment.phase=feedback 自动触发)
 const collabOn = computed(() => session.showCollab && hasLogs.value)
 
-// #30: 下一步建议 - 由反馈策略驱动, 指向协同产出与后续动作
+// #30: 下一步建议 - 由反馈策略驱动, 指向协同产出与后续动作 (v1.3.3: 三条句式差异化, 去同构模板腔)
 const NEXT_STEP = {
-  advance: '正确率高，建议进入进阶挑战：直接查看协同产出的进阶资源，或在右侧图谱定位进阶节点继续深入。',
-  remediate: '掌握度一般，建议换个角度理解：协同已生成降维讲解与配套练习，可从中选取继续学习。',
-  scaffold: '仍有基础薄弱点，建议先补前置基础：协同已生成补基础方案与知识点溯源，按序巩固即可。',
+  advance: '基础扎实。协同产出的进阶资源已就绪，可以直接开始；也可以在右侧图谱里挑一个进阶节点深入。',
+  remediate: '有几个知识点掌握得不够牢。协同已经用另一种讲法重讲了薄弱点并配了练习，换个角度再过一遍。',
+  scaffold: '先补前置会更顺——这次的薄弱点卡在前置知识上。协同已生成补基础方案（含溯源），按顺序过一遍再回来。',
 }
 const nextSuggestion = computed(() => NEXT_STEP[store.feedbackStrategy]
   || '协同已完成，各 Agent 产出已就绪，可继续获取针对性反馈或查看右侧图谱。')
@@ -118,12 +118,26 @@ const parsedLogs = computed(() => {
     const m = entry?.match(/^\[(.+?)\]/)
     const time = m ? m[1] : lastTime
     const msgStart = entry?.indexOf('] ')
-    const msg = msgStart >= 0 ? entry.slice(msgStart + 2) : entry
+    const raw = msgStart >= 0 ? entry.slice(msgStart + 2) : entry
     lastTime = time
+    // v1.3.3: 日志 emoji 仅展示层转译为文字标签 (log_events 事件契约不动 —
+    // useAgentStatus 状态推导正则仍依赖原始 emoji), 用户界面不再出现符号刷屏
+    const msg = stripEmojiForDisplay(raw)
     result.push({ time, msg, isReject: entry?.includes('❌') || entry?.includes('打回') })
   }
   return result
 })
+
+const EMOJI_LABELS = [
+  ['✅', '[完成]'], ['❌', '[未通过]'], ['⚠️', '[注意]'], ['⚠', '[注意]'],
+  ['🔧', '[学情]'], ['📚', '[生成]'], ['🗺️', '[路径]'], ['🗺', '[路径]'],
+  ['🔍', '[审核]'], ['📊', '[报告]'], ['📋', '[画像]'], ['🔁', '[重试]'], ['⏹', '[停止]'], ['⏱', '[计时]'],
+]
+function stripEmojiForDisplay(text) {
+  let out = String(text || '')
+  for (const [emoji, label] of EMOJI_LABELS) out = out.split(emoji).join(label)
+  return out
+}
 
 function toggleExpand() { expanded.value = !expanded.value }
 // 面向学习者的状态文案 (idle=按需待触发, deferred=后续资源流程再启动)

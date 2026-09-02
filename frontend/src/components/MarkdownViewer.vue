@@ -94,9 +94,26 @@ function monacoTheme() {
 }
 
 // ---- 渲染 ----
+// v1.3.3 净化: 剥离泄漏到正文的机器标记 (提示词 v1.3.3 起已禁止产出, 此处兜底历史消息/旧资源):
+//   [ref: PY-012.key_points[2]] 溯源标记 / [已心算验证] 验证标记 — 仅剥这两类精确模式,
+//   不做标题 emoji 等宽泛清理 (本组件聊天与学习页共用, 防误伤用户内容)。
+// 流式防跳变: 未闭合代码围栏在渲染时自动补闭合 (仅渲染层, 不改原始内容) —
+// 流式输出跨围栏边界时排版不再整体塌一下。
+function sanitizeMachineMarkers(md) {
+  return String(md)
+    .replace(/[ \t]*\[ref:[^\]]*\]/g, '')
+    .replace(/[ \t]*\[已心算验证\]/g, '')
+}
+
+function closeUnclosedFence(md) {
+  const fences = md.match(/^ {0,3}(```|~~~)/gm) || []
+  return fences.length % 2 === 1 ? `${md}\n\`\`\`` : md
+}
+
 const renderedHtml = computed(() => {
   if (!props.content) return ''
-  const raw = marked.parse(props.content, { breaks: true, gfm: true, renderer })
+  const cleaned = closeUnclosedFence(sanitizeMachineMarkers(props.content))
+  const raw = marked.parse(cleaned, { breaks: true, gfm: true, renderer })
   return DOMPurify.sanitize(raw, {
     ADD_ATTR: ['data-code', 'data-lang'],
   })
@@ -155,12 +172,19 @@ function bindCodeExpandButtons() {
 }
 
 // 监听 content 变化 → 等 DOM 更新后高亮
+// v1.3.3 流式防卡: colorize 防抖 250ms — 流式期间每增量全量 colorize 所有代码块
+// (Monaco colorizeElement 较重, 长回答多代码块时明显卡), 合并为一帧收尾; 展开按钮绑定不延迟。
+let _colorizeTimer = null
 watch(() => props.content, async () => {
   await nextTick()
   // 额外延迟一帧，确保 v-html 的 DOM 已被挂载
   requestAnimationFrame(() => {
-    colorizeCodeBlocks()
     bindCodeExpandButtons()
+    if (_colorizeTimer) clearTimeout(_colorizeTimer)
+    _colorizeTimer = setTimeout(() => {
+      _colorizeTimer = null
+      colorizeCodeBlocks()
+    }, 250)
   })
 }, { immediate: true })
 

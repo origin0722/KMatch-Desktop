@@ -50,7 +50,7 @@
               :title="`点击直接查看 ${h.name} 的图谱（源码跳转不可用）`"
               @click="pg.openFromHistory(h.projectId, h.name)"
             >
-              <span class="ph-name">🛠 {{ h.name }}</span>
+              <span class="ph-name">{{ h.name }}</span>
               <span class="ph-time">{{ fmtTs(h.ts) }}</span>
               <el-button
                 text
@@ -89,7 +89,7 @@
       <!-- 无项目恢复横幅: 重启恢复的旧图谱在未打开项目时明示来源并提供清除/前往入口
            (issue: 此前 restorePersisted 恢复的旧项目图谱静默展示, 且该状态无任何返回路径) -->
       <div v-if="showRestoredBanner" class="pg-history-banner" data-test="pg-restored-banner">
-        <span class="phb-text">📂 正在查看上次会话的项目图谱（当前未打开项目，源码跳转不可用）</span>
+        <span class="phb-text">正在查看上次会话的项目图谱（当前未打开项目，源码跳转不可用）</span>
         <div class="pg-banner-actions">
           <el-button size="small" data-test="pg-clear-restored" @click="clearRestoredGraph">清除该图谱</el-button>
           <el-button size="small" type="primary" @click="goCode">前往代码视图</el-button>
@@ -97,7 +97,7 @@
       </div>
       <!-- 历史回看横幅: 明示只读回看 + 一键返回当前项目图谱 (此前钻入历史后无返回路径) -->
       <div v-if="pg.historyViewing" class="pg-history-banner" data-test="pg-history-banner">
-        <span class="phb-text">🛠 正在查看历史项目图谱「<b>{{ pg.historyViewing.name }}</b>」（只读回看，源码跳转不可用）</span>
+        <span class="phb-text">正在查看历史项目图谱「<b>{{ pg.historyViewing.name }}</b>」（只读回看，源码跳转不可用）</span>
         <el-button size="small" type="primary" data-test="pg-back-to-current" @click="pg.backToCurrentProject">返回当前项目图谱</el-button>
       </div>
       <!-- 工具栏 (C2: 图例+深度分析收"更多", 重置+重新解析合并, 统计移入页头, 主行 6 组) -->

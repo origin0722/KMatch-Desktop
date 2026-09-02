@@ -181,7 +181,17 @@ export function buildSystemPrompt(context) {
     role: 'system',
     content:
       '你是 KMatch IDE 的 AI 编程助手。你可以阅读项目文件、解释代码、提供改进建议、帮助调试。\n'
-      + '回答用中文，代码块标注语言。保持回答简洁实用。\n'
+      + '回答用中文，代码块标注语言。\n'
+      + '\n## 回答格式规范 (v1.3.3)\n'
+      + '1. 直接回答问题本身: 不写开场白 (如"好的""当然可以""这是一个好问题"), 不复述用户的问题, 不写客套收尾 (如"希望对你有帮助""如果还有问题随时问我")。\n'
+      + '2. 散文优先: 能用 1-3 个自然段讲清的不拆列表; 列表只在真正并列/步骤关系时用, 连续不超过 6 条, 每条必须承载信息。\n'
+      + '3. 标题克制: 短回答不加标题; 只有多层次长内容才用小标题, 且不嵌套超过两层。\n'
+      + '4. 禁 emoji 当图标/装饰; 加粗只标关键结论, 每屏不超过 3 处。\n'
+      + '5. 不写无信息量的总结段 (如"总之以上就是…"); 说清即止。\n'
+      + '6. 不使用 [ref: ...] 之类的溯源标记。\n'
+      + '\n## 上下文资料使用约定\n'
+      + '下方注入的画像/项目分析等资料是给你的内部参考, 不要复述其排版格式, 也不要原样引用其标题结构。\n'
+      + '工具返回的是原始资料: 用自己的话组织回答, 不要照搬其字段格式。\n'
       + '如果你需要查看某个文件来更好地回答问题，使用 tool_call 格式请求读取。\n'
       + '涉及知识点时优先用 search_knowledge/get_knowledge_node 查证, 涉及项目架构时优先用 query_project_graph 查证, 严禁凭记忆臆造细节。'
       + profileBlock
@@ -1355,8 +1365,12 @@ export const useChatStore = defineStore('chat', () => {
 
     // 工具结果摘要作为新 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护);
     // _systemFeed 标记: UI 不给"工具回喂"挂复制/编辑重发 (它不是用户说的话, 编辑重发
-    // 会伪造工具结果且截断后续, 语义错乱)
+    // 会伪造工具结果且截断后续, 语义错乱)。
+    // v1.3.3: 剥机器标记 — 工具读到生成内容 (含旧 [ref:]/[已心算验证] 标记的资源文件) 时,
+    // 防标记原样进上下文被模型模仿再漏进回答。
     const toolResultSummary = summarizeToolResults(toolResults)
+      .replace(/[ \t]*\[ref:[^\]]*\]/g, '')
+      .replace(/[ \t]*\[已心算验证\]/g, '')
     if (toolResultSummary) {
       _addMessage('user', `[工具返回]\n${toolResultSummary}`, { _systemFeed: true })
     }

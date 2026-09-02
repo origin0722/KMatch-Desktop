@@ -37,11 +37,11 @@
         <p class="ph-title">AI 助手</p>
         <!-- T4 wide 形态: Codex 式建议 chip (点击直接发送) -->
         <div v-if="variant === 'wide'" class="ph-chips">
-          <button class="ph-chip" @click="quickAction('根据我的学情画像, 我现在最该学什么?')">🎯 我该学什么</button>
-          <button class="ph-chip" @click="quickAction(GUIDE_PROMPT)">🧭 知识图谱导读</button>
-          <button class="ph-chip" @click="quickAction('请结合我的学情画像薄弱点，搜索相关教程并逐条给我讲解（按薄弱点搜索）')">📚 补薄弱点</button>
-          <button class="ph-chip" @click="quickAction('给我出一道 Python 基础练习题, 我做完你帮我批改')">📝 来道练习题</button>
-          <button class="ph-chip" @click="quickAction('结合知识图谱, 给我规划一条从零到爬虫的学习路径')">🕸️ 规划学习路径</button>
+          <button class="ph-chip" @click="quickAction('根据我的学情画像, 我现在最该学什么?')">我该学什么</button>
+          <button class="ph-chip" @click="quickAction(GUIDE_PROMPT)">知识图谱导读</button>
+          <button class="ph-chip" @click="quickAction('请结合我的学情画像薄弱点，搜索相关教程并逐条给我讲解（按薄弱点搜索）')">补薄弱点</button>
+          <button class="ph-chip" @click="quickAction('给我出一道 Python 基础练习题, 我做完你帮我批改')">来道练习题</button>
+          <button class="ph-chip" @click="quickAction('结合知识图谱, 给我规划一条从零到爬虫的学习路径')">规划学习路径</button>
         </div>
       </div>
 

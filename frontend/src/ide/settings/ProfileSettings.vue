@@ -9,7 +9,7 @@
     <SettingCard v-else-if="notFound || !learnerKey" title="学习画像" info="稳定学习者档案，跨次测评自动累积掌握度">
       <div class="ps-empty">
         <p>尚未生成画像档案——完成一次学习测评后自动创建。</p>
-        <p class="ps-empty-sub">前往「学习会话」选择一个目标方向开始测评，即可生成你的专属画像。</p>
+        <p class="ps-empty-sub">前往「学习会话」选择一个目标方向开始测评，测评完成即生成画像，之后每次测评都会更新它。</p>
       </div>
     </SettingCard>
 

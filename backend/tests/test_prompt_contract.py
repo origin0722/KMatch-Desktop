@@ -100,3 +100,23 @@ def test_graph_controller_embedding_degradation_clause():
     assert "降级" in t
     assert "semantic_search" in t and "hybrid_retrieve" in t
     assert "图遍历" in t
+
+
+def test_style_contract_and_machine_markers_banned():
+    """v1.3.3 文风契约: 00 有文风契约节 (含豁免区); 04 有文风条款且机器标记不入正文。
+
+    机器标记 ([ref:]/[已心算验证]) 此前泄漏到用户可见正文 (前端零剥离),
+    现约定: 溯源走 source_nodes 字段, 心算自检在生成时完成, 标记不入 content。
+    """
+    t = _read("00_shared_contracts.md")
+    assert "文风契约" in t
+    assert "豁免" in t                      # test 类资源格式冻结条款
+    assert "**题目**" in t and "**答案**" in t  # 前端解析契约格式逐字钉住
+
+    t4 = _read("04_content_generator_agent.txt")
+    assert "文风" in t4                     # 04 引用文风契约
+    # 钉"正向标注要求"消失 (可保留禁令式提及): 旧文本要求"标注 [已心算验证]"/"溯源标记: [ref: ...]"
+    assert "标注 [已心算验证]" not in t4 and "标注[已心算验证]" not in t4
+    assert "溯源标记: [ref:" not in t4
+    assert "心算" in t4                     # 心算自检要求保留 (幻觉治理锚点不动)
+    assert "**题目**" in t4 and "**答案**" in t4  # test 格式冻结仍在 (前端解析依赖)

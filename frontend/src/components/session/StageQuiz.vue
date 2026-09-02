@@ -54,11 +54,11 @@
         </el-descriptions>
         <!-- 画像跨次进化: 本次相对上次的变化 -->
         <div v-if="store.profileDiff" class="profile-diff">
-          <div class="pd-title">📈 画像进化 · 本次变化</div>
+          <div class="pd-title">画像进化 · 本次变化</div>
           <div class="pd-list">
             <span v-for="(p, i) in diffParts" :key="i" class="pd-item" :class="p.kind">{{ p.text }}</span>
             <span v-if="!diffParts.length" class="pd-none">掌握度稳定，无新增变化</span>
-            <span v-if="staleCount" class="pd-item warn">⚠️ {{ staleCount }} 个知识点已超 30 天未重测，建议复习/重测</span>
+            <span v-if="staleCount" class="pd-item warn">{{ staleCount }} 个知识点已超 30 天未重测，建议复习/重测</span>
           </div>
         </div>
         <div style="margin-bottom: 12px;">

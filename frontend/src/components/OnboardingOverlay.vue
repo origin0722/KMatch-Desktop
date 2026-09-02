@@ -14,11 +14,11 @@
             <!-- Step 0: 欢迎 -->
             <template v-if="step === 0">
               <h2 class="ob-title">欢迎来到 KMatch·知链</h2>
-              <p class="ob-sub">知识图谱驱动的个性化 Python 学习平台。几步配置, 开启你的专属学习路径。</p>
+              <p class="ob-sub">围绕知识图谱组织的 Python 学习工具: 先摸底你的水平, 再按依赖顺序组装学习路径, 生成配套讲义与练习。三步配置即可开始。</p>
               <div class="ob-feat-list">
-                <div class="ob-feat"><span class="ob-feat-ico">🎯</span><div><b>学习会话</b><span>答题诊断 → 专属图谱 → 讲义</span></div></div>
-                <div class="ob-feat"><span class="ob-feat-ico">🕸️</span><div><b>知识图谱</b><span>可视化路径, 节点可溯源</span></div></div>
-                <div class="ob-feat"><span class="ob-feat-ico">🤖</span><div><b>AI 助手</b><span>基于学情讲义答疑</span></div></div>
+                <div class="ob-feat"><span class="ob-feat-ico">①</span><div><b>学习会话</b><span>答题摸底 → 生成学习路径 → 配套讲义</span></div></div>
+                <div class="ob-feat"><span class="ob-feat-ico">②</span><div><b>知识图谱</b><span>知识点依赖关系可视化, 每个论断可溯源</span></div></div>
+                <div class="ob-feat"><span class="ob-feat-ico">③</span><div><b>AI 助手</b><span>结合你的学情讲义答疑与导学</span></div></div>
               </div>
             </template>
 
@@ -50,11 +50,11 @@
                 :class="{ set: aiSettings.apiKey && !keyInput }"
                 @keydown.enter="next"
               >
-                <template #prefix><span class="ob-input-prefix">🔑</span></template>
+                <template #prefix><span class="ob-input-prefix">KEY</span></template>
               </el-input>
               <div class="ob-key-meta">
                 <a v-if="providerKeyUrl" :href="providerKeyUrl" target="_blank" rel="noopener" class="ob-key-link">获取 {{ providerLabel }} Key ↗</a>
-                <span class="ob-privacy">🔒 密钥仅存本机, 不上传</span>
+                <span class="ob-privacy">密钥仅存本机, 不上传</span>
               </div>
               <p class="ob-hint" v-if="aiSettings.apiKey && !keyInput">已配置 API Key, 留空保持不变。可在「设置」页随时更换厂商。</p>
               <p class="ob-hint ob-hint-warn" v-else-if="keyInput.trim() && keyInput.trim().length < 20">这个 Key 看起来偏短, 请确认已完整粘贴 (可继续, 保存后可测试连接)。</p>

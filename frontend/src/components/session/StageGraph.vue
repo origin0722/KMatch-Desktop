@@ -2,7 +2,7 @@
   <section class="stage-card stage-graph km-surface" :class="{ active: isActive }">
     <header class="stage-head">
       <span class="stage-no">04</span>
-      <h4>专属知识图谱</h4>
+      <h4>本次学习路径图谱</h4>
       <span class="stage-done">✓ 已生成</span>
     </header>
     <div class="stage-body">

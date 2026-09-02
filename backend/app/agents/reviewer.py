@@ -74,7 +74,11 @@ def _llm_review(profile: dict, assessment: dict) -> dict:
         '"hallucination":{"score":0-1,"issues":[]},'
         '"logic_consistency":{"score":0-1,"issues":[]},'
         '"teaching_appropriateness":{"score":0-1,"issues":[]}}。'
-        "issues 元素: {severity,problem,source_node}。不输出 JSON 以外文字。"
+        "issues 元素: {severity,problem,source_node}。"
+        "problem 会展示给用户, 必须指名具体位置 + 具体改法, 禁泛泛建议"
+        "(禁:「内容需更准确」; 正例:「第2条称 'pop() 删除末尾元素' 有误, "
+        "应为 'pop(i) 删除并返回索引 i 的元素', 请按 key_points[2] 修正表述」)。"
+        "不输出 JSON 以外文字。"
     ))
     user = HumanMessage(content=(
         f"待审画像:\n{json.dumps(profile, ensure_ascii=False, indent=2)}\n\n"
@@ -163,7 +167,11 @@ def _llm_review_content(resources: list[dict], profile: dict) -> dict:
         '"logic_consistency":{"score":0-1,"issues":[]},'
         '"teaching_appropriateness":{"score":0-1,"issues":[]},'
         '"rebuttal_verdicts":[]}。'
-        "issues 元素: {severity,problem,source_node}。不输出 JSON 以外文字。"
+        "issues 元素: {severity,problem,source_node}。"
+        "problem 会展示给用户, 必须指名具体位置 + 具体改法, 禁泛泛建议"
+        "(禁:「内容需更准确」; 正例:「第2条称 'pop() 删除末尾元素' 有误, "
+        "应为 'pop(i) 删除并返回索引 i 的元素', 请按 key_points[2] 修正表述」)。"
+        "不输出 JSON 以外文字。"
         "\n【申诉-复审 (赛题辩论与交叉验证)】资源带 rebuttal 数组时 (生成Agent对上轮判定的申诉举证), "
         "你必须逐条裁定并写入 rebuttal_verdicts: "
         '{"issue":"对应申诉","verdict":"accepted|rejected","reason":"裁定理由"}。'

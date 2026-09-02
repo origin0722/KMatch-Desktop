@@ -2,7 +2,7 @@
   <div class="graph-page km-workbench">
     <!-- issue-91: 空态 = 页面标题 + 一句话说明 + 主按钮, 居中 -->
     <div v-if="!hasPathData && !graphReady" class="page-empty" data-test="graph-empty">
-      <div class="pe-badge">🕸️</div>
+      <div class="pe-badge">图谱</div>
       <h2 class="pe-title">知识图谱</h2>
       <p class="pe-line">完成学情测评后，这里展示你的个性化学习路径图谱</p>
       <div class="empty-actions">

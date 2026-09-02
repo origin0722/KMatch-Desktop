@@ -123,10 +123,11 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
 
     type_spec = {
         "lecture": (
-            "生成【分层讲义】: 含标题(带难度标签)、3-5条可检验学习目标、"
-            "核心概念讲解(缩进≤3层)、带注释代码示例、常见误区提醒、小节总结。"
+            "生成【分层讲义】: 首行 # 标题(带难度标签)、核心概念讲解(缩进≤3层, 结论先行)、"
+            "带注释代码示例、常见误区提醒; 「学习目标/小节总结」仅当对学习者有实际价值时出现, "
+            "无信息量则省略(骨架按需, 非固定模板)。"
             "\n【内容丰富度要求(只用节点已有事实, 禁编造新事实)】"
-            "①覆盖全部key_points, 每条至少独立展开; "
+            "①覆盖全部key_points, 每条充分展开(以讲清为准, 不以字数为准); "
             "②难度≥3且key_points含可比概念时, 用Markdown表格对比(≥3行); "
             "③每条key_point配一个边界/反例(优先取自common_mistakes); "
             "④开头1-2句衔接prerequisites(已提供), 无前置则点明基础地位; "
@@ -146,6 +147,8 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
             "生成【分阶测试题】: 基础题50%(直接考察key_points)+进阶题30%(综合2-3个key_points)+"
             "挑战题20%(跨知识点推理)。题型含选择题(4选项含干扰项来自common_mistakes)/填空题/代码题。"
             "代码题须同时给出测试用例。"
+            "\n【格式冻结——前端本地判分解析依赖, 必须逐字保持】题目用「**题目**：…」、"
+            "选项行用「A. …」「B. …」、答案用「**答案**：X」、解析用「**解析**：…」。"
             "\n【答案自检--消除测试题答案幻觉】每道题的答案/预期输出在写入前必须逐步心算执行验证, "
             "重点复核以下高频易错点(历次独立裁判质检发现的真实错误): "
             "①列表方法: pop(i)删除并返回索引i的元素(非删除末尾), remove(v)删首个等于v的元素且返回None, "
@@ -153,7 +156,7 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
             "②字符串方法: find()找不到返回-1(非None/非False), join()由分隔符字符串调用(非列表调用), "
             "strip()/replace()/upper()/lower()返回新字符串不改原串(字符串不可变); "
             "③切片: s[a:b]不含索引b(右界不包含), 负索引从末尾计数。"
-            "每道输出推断题/填空题答案后标注[已心算验证], 若无法确定则改出题方式避免写不确定的答案。"
+            "心算自检在生成时完成, 验证标记不得写入正文; 无法确定则改出题方式避免写不确定的答案。"
         ),
     }[content_type]
 
@@ -172,6 +175,11 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
     system = SystemMessage(content=(
         "你是 KMatch 领域知识生成 Agent。基于知识图谱节点事实生成个性化学习资源。"
         f"{style_hint}。"
+        "\n【文风契约——内容直接展示给用户, 见 00 共享契约第 7 节】"
+        "\n结论先行, 禁「首先/其次/总之/综上所述」式模板行文与空总结段; 列表连续≤6条且"
+        "每条承载事实, 不凑空心列表; 禁 emoji; 加粗每屏≤3处; 表格仅用于真正多维对比; "
+        "每段承载节点事实或可操作动作, 讲清即止反对灌水。"
+        "溯源写 source_nodes 字段; [ref: ...] 与 [已心算验证] 等机器标记不得写入 content 正文。"
         "\n【高保真约束——消除幻觉，赛题核心要求】"
         "\n你只能依据本节点提供的 summary/key_points/common_mistakes 生成内容。"
         "严禁补充图谱以外的实现细节、内部表示、具体数值/位数/字节宽度、版本号、"
@@ -197,7 +205,7 @@ def _build_generation_prompt(node: dict, theory_level: int, content_type: str, c
         '"adaptation_profile": "beginner|intermediate|advanced", '
         '"source_nodes": ["PY-xxx.key_points[0]", "PY-xxx.summary", ...], '
         '"unverified_claims": ["图谱事实之外的陈述, 每条一句; 完全锚定为空数组"], '
-        '"content": "markdown格式正文"}。'
+        '"content": "markdown格式正文, 首行 # 标题; 不含 [ref:] 等机器标记"}。'
         "\n注意: difficulty_level 由系统按知识点难度统一赋值, 你不要输出该字段。"
         "不要输出 JSON 以外文字。"
     ))
@@ -638,9 +646,10 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
     type_spec = {
         "lecture": (
             "生成【分层讲义】(issue-67 专业性升级): 正文 500–800 字。结构: "
-            "①标题(带难度标签) ②3-5 条可检验学习目标 ③核心概念讲解: 覆盖该节点 >=3 个 key_points, "
-            "每个独立展开, 含至少 1 个带注释的代码/结构示例 ④常见误区: 每条 common_mistake 做"
-            "「错误做法 → 正确做法」对照 ⑤小节总结 + 1 个自检问题。难度>=3 时用 Markdown 表格对比 >=3 行。"
+            "①标题(首行 # 标题, 带难度标签) ②核心概念讲解: 覆盖该节点 >=3 个 key_points, "
+            "每个充分展开, 含至少 1 个带注释的代码/结构示例 ③常见误区: 每条 common_mistake 做"
+            "「错误做法 → 正确做法」对照; 「学习目标/小节总结」仅当对学习者有实际价值时出现, "
+            "无信息量则省略。难度>=3 时用 Markdown 表格对比 >=3 行。"
             "只用节点已有事实充分展开, 禁编造新事实/数值/版本号 (高保真约束见 system)。"
         ),
         "practice_guide": (
@@ -653,10 +662,11 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         "test": (
             "生成【分阶测试题】(issue-67 专业性升级): 共 3 道 (基础 1 + 进阶 1 + 挑战 1), "
             "题型覆盖选择题(4 选项, 干扰项来自 common_mistakes)/填空题/代码题(代码题附测试用例)。"
-            "每道题格式: **题目**、选项(若有)、**答案**、**解析**(一句到位, 说明为什么/错在哪)。"
+            "每道题格式冻结 (前端本地判分解析依赖, 逐字保持): **题目**、选项(若有)、**答案**、"
+            "**解析**(一句到位, 说明为什么/错在哪)。"
             "挑战题须跨 2-3 个 key_points 推理。"
-            "【答案自检--消除测试题答案幻觉】每道题答案/预期输出在写入前必须逐步心算验证; "
-            "无法确定的答案宁可改题, 不得编造。总字数 300–600 字, 只用节点已有事实, 禁编造。"
+            "【答案自检--消除测试题答案幻觉】每道题答案/预期输出在写入前必须逐步心算验证 "
+            "(验证标记不入正文); 无法确定的答案宁可改题, 不得编造。总字数 300–600 字, 只用节点已有事实, 禁编造。"
         ),
     }.get(content_type, "")
 
@@ -664,6 +674,11 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         "你是 KMatch 领域知识生成 Agent，按动态反馈策略针对性再生学习内容。"
         f"{_adaptation_style(label)}{style_extra}。"
         f"特别要求: {hint}。"
+        "\n【文风契约——内容直接展示给用户, 见 00 共享契约第 7 节】"
+        "结论先行, 禁「首先/其次/总之/综上所述」式模板行文与空总结段; 列表连续≤6条且每条"
+        "承载事实; 禁 emoji; 加粗每屏≤3处; 每段承载节点事实或可操作动作, 讲清即止。"
+        "test 类资源的题目/选项/答案/解析加粗格式为豁免区, 必须逐字保持。"
+        "溯源写 source_nodes 字段; [ref: ...] 等机器标记不得写入 content 正文。"
         "\n【高保真约束——消除幻觉】只能依据本节点 summary/key_points/common_mistakes "
         "生成内容，严禁补充图谱外的实现细节/内部表示/具体数值/版本号/性能数据"
         "(训练记忆非图谱事实)。每条断言须能在节点信息中找到依据，未提供者留白不补全。"
@@ -672,7 +687,7 @@ def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hin
         '"adaptation_profile": "beginner|intermediate|advanced", '
         '"source_nodes": ["PY-xxx.key_points[0]", "PY-xxx.summary"], '
         '"unverified_claims": ["图谱事实之外的陈述; 完全锚定为空数组"], '
-        '"content": "markdown格式正文"}。'
+        '"content": "markdown格式正文, 首行 # 标题; 不含 [ref:] 等机器标记"}。'
         "\n注意: difficulty_level 由系统按知识点难度统一赋值, 你不要输出该字段。"
         "不要输出 JSON 以外文字。"
     ))
