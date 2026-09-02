@@ -587,7 +587,7 @@ def test_generate_feedback_one_forces_difficulty_to_node(monkeypatch):
             class _Resp:
                 content = json.dumps(payload, ensure_ascii=False)
             return _Resp()
-    monkeypatch.setattr("app.agents.content_generator.get_default_chat_model", lambda: _Model())
+    monkeypatch.setattr("app.agents.content_generator._feedback_chat_model", lambda: _Model())
     node = _make_node(difficulty=2)
     result = _generate_feedback_one(node, 2, "lecture", "换角度重讲")
     assert result["difficulty_level"] == 2, "反馈路径难度须被节点难度强制覆盖, 非 LLM 自填的 5"
@@ -631,7 +631,7 @@ def test_regenerate_for_feedback_parallel_generates_all_nodes(monkeypatch):
 
     seen = {"node_ids": [], "worker_overrides": []}
     monkeypatch.setattr(
-        "app.agents.content_generator.get_default_chat_model",
+        "app.agents.content_generator._feedback_chat_model",
         lambda: _fake_model_recording(seen),
     )
     monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
@@ -659,7 +659,7 @@ def test_regenerate_for_feedback_overrides_propagate_to_workers(monkeypatch):
 
     seen = {"node_ids": [], "worker_overrides": []}
     monkeypatch.setattr(
-        "app.agents.content_generator.get_default_chat_model",
+        "app.agents.content_generator._feedback_chat_model",
         lambda: _fake_model_recording(seen),
     )
     monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
@@ -702,7 +702,7 @@ def test_regenerate_for_feedback_partial_failure_tolerated(monkeypatch):
                 content = json.dumps(payload, ensure_ascii=False)
             return _Resp()
     monkeypatch.setattr(
-        "app.agents.content_generator.get_default_chat_model", lambda: _Model(),
+        "app.agents.content_generator._feedback_chat_model", lambda: _Model(),
     )
     monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
 
@@ -717,3 +717,52 @@ def test_regenerate_for_feedback_partial_failure_tolerated(monkeypatch):
     assert len(result["resources"]) == 0
     assert len(result["generation_failures"]) == 3
     assert all(f["node_id"] == "PY-005" for f in result["generation_failures"])
+
+
+# ============================================================
+# 截止时间有界收集 (issue: 慢端点撞 120s 硬超时整单 504, 已生成结果一并丢弃)
+# 前端 330s > 路由硬上限 300s > 再生截止 FEEDBACK_REGEN_DEADLINE 270s
+# ============================================================
+
+def test_regenerate_for_feedback_deadline_returns_partial(monkeypatch):
+    """截止时间到点: 已完成的资源照常返回, 未完成的记"生成超时"失败 (不再整单丢弃)。"""
+    import time as _time
+    import app.agents.content_generator as cg
+
+    class _SlowModel:
+        def invoke(self, messages):
+            # system 消息的 JSON 模板含 content_type 字面量, 以此区分慢/快调用
+            all_text = "".join(str(m.content) for m in messages)
+            if "practice_guide" in all_text:
+                _time.sleep(1.5)  # 超过测试截止时间, 模拟慢端点
+            payload = {
+                "content_type": "lecture", "target_node_id": "PY-005",
+                "adaptation_profile": "beginner", "source_nodes": ["PY-005.summary"],
+                "content": "# 针对性内容",
+            }
+            class _Resp:
+                content = json.dumps(payload, ensure_ascii=False)
+            return _Resp()
+
+    monkeypatch.setattr(cg, "FEEDBACK_REGEN_DEADLINE", 0.5)
+    monkeypatch.setattr("app.agents.content_generator._feedback_chat_model", lambda: _SlowModel())
+    monkeypatch.setattr("app.agents.content_generator.llm_configured", lambda: True)
+
+    nodes = [_make_node("PY-005", "循环", 2)]
+    profile = {"theory_level": 2, "weak_topics": [
+        {"node_id": "PY-005", "mastery": 0.0, "error_patterns": []},
+    ]}
+    result = cg.regenerate_for_feedback("remediate", profile, nodes, kg=None)
+    # lecture/test 按时完成 → 2 份资源; practice_guide 超时 → 1 条失败 (而非整单 504 / 0 资源)
+    assert len(result["resources"]) == 2
+    assert len(result["generation_failures"]) == 1
+    assert "超时" in result["generation_failures"][0]["reason"]
+
+
+def test_feedback_chat_model_caps_timeout_and_retries():
+    """单调用封顶契约: feedback 模型 max_retries<=1 且显式超时 (SDK 默认静默重试 2 次会拖穿硬上限)。"""
+    import app.agents.content_generator as cg
+
+    model = cg._feedback_chat_model()
+    assert model.max_retries <= 1
+    assert model.request_timeout == cg.FEEDBACK_CALL_TIMEOUT

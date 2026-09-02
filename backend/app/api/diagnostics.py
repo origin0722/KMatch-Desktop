@@ -833,14 +833,18 @@ def _run_submit(req: SubmitRequest, request: Request) -> SubmitResponse:
 
 @router.post("/feedback", response_model=FeedbackResponse, summary="动态反馈内容再生（按策略针对性生成）")
 async def feedback(req: FeedbackRequest, request: Request):
-    """异步入口: 再生走 to_thread + 120s 硬上限 (同 submit 的线程池排队防护)。"""
+    """异步入口: 再生走 to_thread + 300s 硬上限 (5min 口径对齐项目质量流水线)。
+
+    再生内部自带 270s 截止的有界收集 (到点返回已完成部分), 本硬上限只是兜底;
+    前端等待 330s > 本上限, 慢端点不再被"自动取消"。
+    """
     try:
-        return await asyncio.wait_for(asyncio.to_thread(_run_feedback, req, request), timeout=120)
+        return await asyncio.wait_for(asyncio.to_thread(_run_feedback, req, request), timeout=300)
     except asyncio.TimeoutError:
-        logger.error("feedback 再生处理超时(>120s) session=%s", getattr(req, "session_id", None))
+        logger.error("feedback 再生处理超时(>300s) session=%s", getattr(req, "session_id", None))
         raise HTTPException(
             status_code=504,
-            detail="内容再生超时（>120s）。可稍后重试，或检查网络/换更快的模型。",
+            detail="内容再生超时（>300s）。可稍后重试，或检查网络/换更快的模型。",
         ) from None
 
 

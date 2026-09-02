@@ -17,12 +17,13 @@
 """
 
 import json
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agents.llm import _current_overrides, get_default_chat_model, llm_configured, safe_llm_call, with_state_overrides
+from app.agents.llm import _current_overrides, get_chat_model, get_default_chat_model, llm_configured, safe_llm_call, with_state_overrides
 from app.graph.engine import KnowledgeGraph
 from app.config import settings
 from app.utils.json_utils import parse_llm_json
@@ -447,6 +448,18 @@ def select_feedback_nodes(
     return []
 
 
+# feedback 再生时间预算 (issue: 路由 120s 硬超时把慢端点的整单结果掐掉, 用户感知"自动取消"):
+# 前端等待 330s > 路由硬上限 300s > 再生截止 270s; 到点收已完成的, 未完成记失败而非整单丢弃。
+FEEDBACK_REGEN_DEADLINE = 270
+# 单调用封顶: 显式超时 + SDK 重试至多 1 次 (默认静默重试 2 次可把坏端点拖到 3×timeout+, 必撞硬上限)
+FEEDBACK_CALL_TIMEOUT = 90
+
+
+def _feedback_chat_model():
+    """feedback 单调用模型: 显式封顶超时与重试 (ContextVar overrides 同样生效)。"""
+    return get_chat_model(max_retries=1, timeout=FEEDBACK_CALL_TIMEOUT)
+
+
 def regenerate_for_feedback(
     strategy: str,
     profile: dict,
@@ -483,18 +496,37 @@ def regenerate_for_feedback(
 
     # 任务 = 目标节点 × 三种内容类型 (通常 1-2 节点 × 3 = 3-6 次 LLM 调用)
     tasks = [(node, ctype) for node in target_nodes for ctype in CONTENT_TYPES]
-    # 并行生成: 全部任务并发 (wall-clock ≈ 单次调用, 而非 N×串行)。
-    # _generate_feedback_one 是无共享状态的纯 LLM 调用 (LangChain ChatModel 线程安全)。
-    with ThreadPoolExecutor(max_workers=min(len(tasks), 6)) as pool:
-        results = list(pool.map(
-            lambda task: safe_llm_call(
-                _generate_feedback_one, task[0], theory_level, task[1], log_hint, style_extra,
-                overrides=overrides, logger=logger,
-                label=f"feedback node={task[0].get('node_id')} {task[1]}"),
-            tasks,
-        ))
+    # 并行生成 + 截止时间有界收集: 全部完成提前返回; 到点未完成的记"生成超时"失败,
+    # 已完成的照常返回 (issue: 此前上层 wait_for 到点整单 504, 已生成结果一并丢弃)。
+    # shutdown(wait=False, cancel_futures=True): 未启动的任务直接取消, 运行中的自然收尾,
+    # 孤儿线程结果丢弃 (与 to_thread 超时同代价, 不阻塞响应)。
+    pool = ThreadPoolExecutor(max_workers=min(len(tasks), 6))
+    futures = [
+        pool.submit(
+            safe_llm_call,
+            _generate_feedback_one, node, theory_level, ctype, log_hint, style_extra,
+            overrides=overrides, logger=logger,
+            label=f"feedback node={node.get('node_id')} {ctype}")
+        for node, ctype in tasks
+    ]
+    index_by_future = {f: i for i, f in enumerate(futures)}
+    outcomes: dict = {}
+    try:
+        for future in as_completed(futures, timeout=FEEDBACK_REGEN_DEADLINE):
+            outcomes[index_by_future[future]] = future.result()
+    except FuturesTimeout:
+        pass  # 到点收摊: 未完成的调用记"生成超时"失败, 不再无限等
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
-    for (node, ctype), (ok, res) in zip(tasks, results):
+    for i, (node, ctype) in enumerate(tasks):
+        outcome = outcomes.get(i)
+        if outcome is None:
+            generation_failures.append(_failure_record(
+                node, ctype,
+                f"生成超时（>{FEEDBACK_REGEN_DEADLINE}s，端点过慢或网络不稳，已返回其余已完成内容）"))
+            continue
+        ok, res = outcome
         if ok and res is not None and str(res.get("content") or "").strip():
             resources.append(res)
         elif ok:
@@ -525,7 +557,7 @@ def _empty_feedback_result(strategy: str, reason: str = None) -> dict:
 
 def _generate_feedback_one(node: dict, theory_level: int, content_type: str, hint: str, style_extra: str = "") -> dict:
     """按 feedback hint 生成单段针对性内容 (复用 _generate_one 的字段补全逻辑)。"""
-    model = get_default_chat_model()
+    model = _feedback_chat_model()
     kps = node.get("key_points", [])
     label = _adaptation_label(theory_level)
 

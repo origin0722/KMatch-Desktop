@@ -234,14 +234,15 @@ export function submitAnswers({ sessionId, answers, learnerKey, learningStyleQui
  * }>}
  */
 export function requestFeedback({ sessionId, strategy, profile, tavilyKey }, signal) {
-  // timeout 150s: feedback 逐节点 LLM 再生 + 可选 Tavily 联网, 常超默认 60s
+  // timeout 330s: feedback 逐节点 LLM 再生 + 可选 Tavily 联网; 须大于后端 300s 硬上限
+  // (5min 放宽: 后端再生自带 270s 截止的有界收集, 到点返回已完成部分, 不再整单 504)
   // withFeedbackOverrides: 反馈走「快模型」(设置页反馈快模型), 交互式等待敏感
   return http.post('/api/diagnostics/feedback', withFeedbackOverrides({
     session_id: sessionId,
     strategy,
     profile,
     tavily_key: tavilyKey || undefined,
-  }), { signal, timeout: 300_000 })
+  }), { signal, timeout: 330_000 })
 }
 
 // ============================================================

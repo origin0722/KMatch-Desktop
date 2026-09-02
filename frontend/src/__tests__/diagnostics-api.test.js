@@ -143,8 +143,8 @@ describe('api/diagnostics', () => {
           // 反馈快模型: 独立配置关时部分覆写仅 model, key/baseUrl 走后端 .env
           llm_overrides: { model: 'deepseek-v4-flash' },
         },
-        // #30 反馈: timeout 300s (逐节点并发 LLM 再生 + Tavily, 防掐断)
-        { signal: undefined, timeout: 300000 },
+        // #30 反馈: timeout 330s (须大于后端 300s 硬上限; 后端再生 270s 截止有界收集, 防整单取消)
+        { signal: undefined, timeout: 330_000 },
       )
     })
 
