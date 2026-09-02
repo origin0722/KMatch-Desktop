@@ -125,6 +125,21 @@
             <el-option label="method 方法" value="method" />
             <el-option label="module 模块" value="module" />
           </el-select>
+          <!-- v1.3.3: 边类型过滤 + 图例 (三种关系原同为灰箭头, 调用关系被层级边淹没) -->
+          <el-select
+            v-model="edgeTypeFilter"
+            placeholder="全部关系"
+            clearable
+            class="filter-select"
+            @change="rebuildGraph"
+          >
+            <el-option v-for="t in EDGE_TYPES" :key="t.value" :label="t.label" :value="t.value" />
+          </el-select>
+          <span class="edge-legend" title="关系类型颜色">
+            <span class="el-line" :style="{ background: EDGE_STYLES.CONTAINS.stroke }"></span>包含
+            <span class="el-line" :style="{ background: EDGE_STYLES.CALLS.stroke }"></span>调用
+            <span class="el-line el-dash" :style="{ backgroundImage: `repeating-linear-gradient(90deg, ${EDGE_STYLES.INHERITS.stroke} 0 6px, transparent 6px 10px)` }"></span>继承
+          </span>
           <!-- 重置+重新解析合并: 一次操作复位视图并拉取最新源码 -->
           <el-button :icon="RefreshRight" :loading="pg.parsing" @click="handleReparse">重新解析</el-button>
           <el-divider direction="vertical" />
@@ -594,15 +609,26 @@ const nonPyCount = computed(() => {
 // 视图模式: layered 分层 dagre (调用层级) / grouped 模块分组 combo (架构视角,
 // 借鉴 Understand-Anything 按架构层级自动分组带颜色编码)
 const VIEW_MODES = [
-  { id: 'layered', label: '分层', desc: '按调用依赖自顶向下分层 (默认)' },
+  { id: 'layered', label: '分层', desc: '按调用依赖自顶向下分层' },
   { id: 'grouped', label: '模块分组', desc: '同模块实体收进一个带底色容器, 一眼看懂项目结构' },
 ]
+// v1.3.3: 大项目默认模块聚合 (数百实体平铺 dagre 无从读起); 图谱异步解析到位时按规模选,
+// 用户手选过 (_viewModeTouched) 后不再自动切换
+const BIG_PROJECT_GROUPED_THRESHOLD = 150
 const viewMode = ref('layered')
+let _viewModeTouched = false
 
 function setViewMode(id) {
   if (viewMode.value === id) return
+  _viewModeTouched = true
   viewMode.value = id
 }
+
+watch(() => pg.graph, (g) => {
+  if (g && !_viewModeTouched) {
+    viewMode.value = (g.entities?.length || 0) > BIG_PROJECT_GROUPED_THRESHOLD ? 'grouped' : 'layered'
+  }
+})
 
 // combo 容器配色 (浅色系循环, 与节点 KIND_COLORS 错开饱和度: 容器当"底色"不当主角)
 const MODULE_COLORS = ['#8f9bb3', '#79a5b2', '#b2a179', '#a189b2', '#88b28d', '#b28787', '#7f8fb2', '#a3b287']
@@ -692,15 +718,30 @@ const filteredEntities = computed(() => {
   })
 })
 
-// 过滤后的关系 (两端实体都在过滤集合中才保留)
+// 过滤后的关系 (两端实体都在过滤集合中才保留; v1.3.3 增加边类型过滤 —
+// 层级 CONTAINS 数量远多于调用 CALLS 时, 调用关系会被淹没, 可单独看)
+const edgeTypeFilter = ref('')
+const EDGE_TYPES = [
+  { value: 'CONTAINS', label: '包含 (模块→类/函数)' },
+  { value: 'CALLS', label: '调用' },
+  { value: 'INHERITS', label: '继承' },
+]
 const filteredEdges = computed(() => {
   const g = pg.graph
   if (!g) return []
   const ids = new Set(filteredEntities.value.map((e) => String(e.id)))
   return (g.relations || []).filter(
-    (r) => ids.has(String(r.source)) && ids.has(String(r.target)),
+    (r) => ids.has(String(r.source)) && ids.has(String(r.target))
+      && (!edgeTypeFilter.value || (r.type || 'CONTAINS') === edgeTypeFilter.value),
   )
 })
+
+// v1.3.3: 边类型样式区分 (原三种关系同为灰箭头, 语义不可读)
+const EDGE_STYLES = {
+  CONTAINS: { stroke: '#c8c6c4', lineWidth: 1, lineDash: 0 },
+  CALLS: { stroke: '#6c7ce0', lineWidth: 1.5, lineDash: 0 },
+  INHERITS: { stroke: '#b8860b', lineWidth: 1.5, lineDash: [6, 4] },
+}
 
 const entityById = (id) =>
   (pg.graph?.entities || []).find((e) => String(e.id) === String(id))
@@ -852,8 +893,15 @@ function initGraph() {
     edge: {
       style: {
         // 导读模式: 当前站关联边高亮, 其余淡化
-        stroke: (d) => (d.data?.tourEdge ? '#6c7ce0' : '#c8c6c4'),
-        lineWidth: (d) => (d.data?.tourEdge ? 2 : 1),
+        stroke: (d) => {
+          if (d.data?.tourEdge) return '#6c7ce0'
+          return (EDGE_STYLES[d.data?.type] || EDGE_STYLES.CONTAINS).stroke
+        },
+        lineWidth: (d) => {
+          if (d.data?.tourEdge) return 2
+          return (EDGE_STYLES[d.data?.type] || EDGE_STYLES.CONTAINS).lineWidth
+        },
+        lineDash: (d) => (EDGE_STYLES[d.data?.type] || EDGE_STYLES.CONTAINS).lineDash,
         endArrow: true,
         opacity: (d) => (tourActive.value && tourStop.value && !d.data?.tourEdge ? 0.15 : 1),
       },
@@ -1262,6 +1310,10 @@ watch(() => pg.graph, () => {
 .zoom-group :deep(.el-button + .el-button) { margin-left: 4px; }
 .search-input { width: 220px; }
 .filter-select { width: 140px; }
+/* v1.3.3: 关系类型图例 (色线样本) */
+.edge-legend { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--km-gray-500); white-space: nowrap; }
+.edge-legend .el-line { display: inline-block; width: 16px; height: 3px; border-radius: 2px; margin: 0 2px 0 8px; }
+.edge-legend .el-line.el-dash { background: transparent; }
 /* 视图模式切换 (分层/模块分组), 视觉对齐 KnowledgeGraph 的 persona-selector */
 .view-mode-selector { display: inline-flex; gap: 2px; background: var(--km-bg-layer-2); border: 1px solid var(--km-border-light); border-radius: var(--km-radius-sm); padding: 2px; }
 .vm-btn { border: 0; background: transparent; color: var(--km-gray-500); font-size: 12px; padding: 3px 10px; border-radius: var(--km-radius-xs); cursor: pointer; transition: color 0.15s, background 0.15s; }

@@ -18,12 +18,22 @@
       <div v-if="pathResult" class="pf-result">
         <div v-if="pathResult.length" class="pf-path">
           <template v-for="(id, i) in pathResult" :key="id">
-            <span class="pf-node" :style="{ background: categoryColorOf(id) }">{{ nodeLabel(id) }}</span>
+            <span class="pf-node" :style="{ background: nodeColorOf(id) }">{{ nodeLabel(id) }}</span>
             <span v-if="i < pathResult.length - 1" class="pf-sep">→</span>
           </template>
         </div>
         <el-empty v-else description="无可达路径 (两节点间无依赖链)" :image-size="60" />
       </div>
+      <el-button
+        v-if="pathResult?.length"
+        type="primary"
+        size="small"
+        plain
+        style="margin-top:12px"
+        @click="$emit('locate', pathResult)"
+      >
+        在图中高亮该路径 →
+      </el-button>
     </div>
   </el-dialog>
 </template>
@@ -36,24 +46,16 @@ const props = defineProps({
   nodes: { type: Array, default: () => [] },
   prereqMap: { type: Object, default: () => ({}) },
 })
-defineEmits(['update:modelValue'])
+defineEmits(['update:modelValue', 'locate'])
 
 const fromId = ref('')
 const toId = ref('')
 const pathResult = ref(null)
 
-const COLORS = {
-  '基础语法': '#5b8ff9', '数据结构与算法': '#5ad8a6', '面向对象编程': '#f6bd16',
-  'Python进阶': '#6dc8ec', '常用库与工具': '#e86452', '项目实战': '#945fb9',
-  '机器学习': '#61c0bf', '数据分析与可视化': '#f25f9e', 'Web后端开发': '#ff9d6c',
-  '数据库与缓存': '#4253a4', '工程化实践': '#82b366',
-}
-
+// v1.3.3: chip 颜色对齐图谱节点填充色 (nodeColor=难度色) — 原按分类配色,
+// 与节点"颜色=难度"语义冲突, 查到路径后在图里对不上颜色
 const nodeLabel = (id) => props.nodes.find((n) => n.id === id)?.data?.label || id
-const categoryColorOf = (id) => {
-  const cat = props.nodes.find((n) => n.id === id)?.data?.category
-  return COLORS[cat] || '#c8c6c4'
-}
+const nodeColorOf = (id) => props.nodes.find((n) => n.id === id)?.data?.nodeColor || '#c8c6c4'
 
 function findPath() {
   if (!fromId.value || !toId.value || fromId.value === toId.value) {

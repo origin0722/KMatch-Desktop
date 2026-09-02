@@ -222,6 +222,17 @@
         class="search-alert"
       />
 
+      <!-- v1.3.3: 语义检索不可用提示 (Embedding 未配置 503) — 已用名称子串匹配兜底, 不再静默失败 -->
+      <el-alert
+        v-if="semanticFallback"
+        title="语义检索不可用（Embedding 未配置），已改用名称匹配"
+        type="warning"
+        :closable="true"
+        @close="semanticFallback = false"
+        show-icon
+        class="search-alert"
+      />
+
       <!-- 主内容区 -->
       <div class="main-area">
         <!-- 图谱画布 -->
@@ -364,7 +375,12 @@
         </div>
       </div>
 
-      <PathFinderModal v-model="pathFinderVisible" :nodes="data.g6Nodes.value" :prereq-map="data.prereqMap.value" />
+      <PathFinderModal
+        v-model="pathFinderVisible"
+        :nodes="data.g6Nodes.value"
+        :prereq-map="data.prereqMap.value"
+        @locate="locatePath"
+      />
     </template>
   </div>
 </template>
@@ -433,6 +449,8 @@ const CATEGORY_COLORS = {
   'Web后端开发': '#ff9d6c',
   '数据库与缓存': '#4253a4',
   '工程化实践': '#82b366',
+  // v1.3.3: 动态建域产生的「动态领域」分类 (70 节点此前灰色不可筛)
+  '动态领域': '#b8860b',
 }
 const categoryColor = (cat) => CATEGORY_COLORS[cat] || THEME.gray400
 
@@ -515,6 +533,8 @@ function reassessNode() {
 const searchQuery = ref('')
 const searching = ref(false)
 const searchNoResult = ref(false)
+// v1.3.3: 语义检索不可用 (503 Embedding 未配置) → 名称子串匹配兜底 + 提示条 (原静默吞错)
+const semanticFallback = ref(false)
 const categoryFilter = ref('')
 const difficultyFilter = ref(null)
 const masteryFilter = ref('')
@@ -532,6 +552,7 @@ const categories = [
   'Python进阶', '常用库与工具', '项目实战',
   '机器学习', '数据分析与可视化', 'Web后端开发',
   '数据库与缓存', '工程化实践',
+  '动态领域', // v1.3.3: 动态建域分类可筛 (70 节点此前无色不可筛)
 ]
 
 // 学习角色 (借鉴 Understand-Anything PersonaSelector): 调整节点卡片详略
@@ -597,6 +618,21 @@ const graphContainer = ref(null)
 let _ro = null
 const graphReady = ref(false)
 const pathFinderVisible = ref(false)
+
+// v1.3.3: 路径查找结果上图 — 高亮路径节点并聚焦 (复用搜索的 dimmed 机制; 原 Modal 只列
+// chip 序列, 查完还得自己在图里挨个找)
+function locatePath(pathIds) {
+  pathFinderVisible.value = false
+  if (!pathIds?.length) return
+  highlightIds.value = new Set(pathIds)
+  searchNoResult.value = false
+  applyHighlight()
+  try {
+    graph?.focusElement?.(pathIds.filter((id) => data.nodeMap.value[id] || extraNodes.value.some((n) => n.id === id)), true)
+  } catch {
+    graph?.fitView?.({ when: 'always', direction: 'both' })
+  }
+}
 const panelCollapsed = ref(false)
 const selectedNode = ref(null)
 const prereqNodes = ref([])
@@ -925,46 +961,59 @@ async function handleSearch() {
   searching.value = true
   searchNoResult.value = false
 
+  // 语义检索 → 失败 (如 Embedding 未配置 503) 降级名称子串匹配 (v1.3.3: 原静默吞错,
+  // 搜索"看起来坏了"); 降级结果与语义结果同形 ({node_id,name,category,difficulty})。
+  const toResults = (nodes) => nodes.filter((n) => n.node_id || n.id)
+  let searchNodes = []
   try {
     const result = await semanticSearch(q, 10)
-    // BUG-048: 丢弃过期响应
+    if (currentSeq !== searchSeq) return // BUG-048: 丢弃过期响应
+    searchNodes = toResults(result.nodes || [])
+    semanticFallback.value = false
+  } catch (e) {
     if (currentSeq !== searchSeq) return
-
-    const searchNodes = result.nodes || []
-
-    // BUG-046: 空结果 → null (不强转空 Set)
-    if (searchNodes.length === 0) {
-      highlightIds.value = null
-      extraNodes.value = []
-      searchNoResult.value = true
-    } else {
-      // 搜索结果中不在当前路径的节点加入 extraNodes
-      extraNodes.value = searchNodes
-        .filter((n) => !data.nodeMap.value[n.node_id])
-        .map((n) => ({
-          id: n.node_id,
-          data: {
-            label: n.name || n.node_id,
-            mastery: 0,
-            nodeColor: THEME.gray400,
-            nodeSize: 28,
-            category: n.category || '',
-            difficulty: n.difficulty || 1,
-          },
-        }))
-      highlightIds.value = new Set(searchNodes.map((n) => n.node_id))
-    }
-
-    applyHighlight()
-  } catch {
-    if (currentSeq === searchSeq) {
-      // 只有当前请求出错才清状态
-    }
-  } finally {
-    if (currentSeq === searchSeq) {
-      searching.value = false
-    }
+    const st = e?.response?.status
+    semanticFallback.value = st === 503 // 仅语义不可用才提示, 其余错误不打扰
+    const needle = q.toLowerCase()
+    searchNodes = (data.rawNodes.value || [])
+      .filter((n) => {
+        const hay = `${n.name || ''} ${n.node_id || ''}`.toLowerCase()
+        return hay.includes(needle)
+      })
+      .slice(0, 10)
+      .map((n) => ({
+        node_id: n.node_id,
+        name: n.name,
+        category: n.category || '',
+        difficulty: n.difficulty || 1,
+      }))
   }
+
+  // BUG-046: 空结果 → null (不强转空 Set)
+  if (searchNodes.length === 0) {
+    highlightIds.value = null
+    extraNodes.value = []
+    searchNoResult.value = true
+  } else {
+    // 搜索结果中不在当前路径的节点加入 extraNodes
+    extraNodes.value = searchNodes
+      .filter((n) => !data.nodeMap.value[n.node_id])
+      .map((n) => ({
+        id: n.node_id,
+        data: {
+          label: n.name || n.node_id,
+          mastery: 0,
+          nodeColor: THEME.gray400,
+          nodeSize: 28,
+          category: n.category || '',
+          difficulty: n.difficulty || 1,
+        },
+      }))
+    highlightIds.value = new Set(searchNodes.map((n) => n.node_id))
+  }
+
+  applyHighlight()
+  searching.value = false
 }
 
 function handleSearchClear() {
@@ -1036,6 +1085,7 @@ function clearHighlight() {
   highlightIds.value = null
   extraNodes.value = []
   searchNoResult.value = false
+  semanticFallback.value = false
   searchQuery.value = ''
   categoryFilter.value = ''
   difficultyFilter.value = null

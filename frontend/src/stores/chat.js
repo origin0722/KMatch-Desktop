@@ -1107,12 +1107,32 @@ export const useChatStore = defineStore('chat', () => {
         try {
           const data = await getProjectGraph(pid)
           const result = normalizeGraphResponse(data, '')
+          // v1.3.3 上下文裁剪: CONTAINS 层级边通常占大头且信息量低 (模块归属已在
+          // entities.module_name), 全量塞 relation 原是 token 成本/截断风险源。
+          // 保留语义边 (CALLS/INHERITS, 上限 200) + 按类型统计 + 模块实体分布。
+          const byType = {}
+          const semanticRels = []
+          for (const r of result.relations || []) {
+            const t = r.type || 'CONTAINS'
+            byType[t] = (byType[t] || 0) + 1
+            if (t !== 'CONTAINS' && semanticRels.length < 200) {
+              semanticRels.push({ source: r.source, target: r.target, type: t })
+            }
+          }
+          const byModule = {}
+          for (const e of result.entities) {
+            const m = e.module_name || '(unknown)'
+            byModule[m] = (byModule[m] || 0) + 1
+          }
           return {
             tool: 'query_project_graph', project_id: pid,
             entity_count: result.entities.length,
             relation_count: result.relations.length,
-            entities: result.entities.map((e) => ({ name: e.name, kind: e.kind, qualified_name: e.qualified_name })),
-            relations: result.relations,
+            relation_stats: byType,
+            modules: byModule,
+            entities: result.entities.map((e) => ({ name: e.name, kind: e.kind, qualified_name: e.qualified_name, module: e.module_name })),
+            relations: semanticRels,
+            relations_note: '仅 CALLS/INHERITS 语义边 (上限 200); CONTAINS 层级边已省略, 模块归属见 entities.module 与 modules 统计',
           }
         } catch (e) {
           const status = e.response?.status
