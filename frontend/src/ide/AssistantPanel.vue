@@ -219,8 +219,8 @@
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </span>
               <span v-else-if="!hasContent(msg) && !hasThink(msg)" class="empty-msg">—</span>
-              <!-- 中断标记: 部分输出后停止 (不改写正文, 角标提示) -->
-              <span v-if="msg._stopped && hasContent(msg) && !chat.streaming" class="stopped-tag">⏹ 已停止</span>
+              <!-- 中断标记: 部分输出后停止 (版本级, regen/切版不残留; 不改写正文) -->
+              <span v-if="isVersionStopped(msg) && hasContent(msg) && !chat.streaming" class="stopped-tag">⏹ 已停止</span>
               <div class="msg-actions" v-if="hasContent(msg) && !chat.streaming">
                 <el-button size="small" text @click="copyText(contentText(msg))">复制</el-button>
               </div>
@@ -256,7 +256,8 @@
               </div>
               <template v-else>
                 <pre class="user-text">{{ contentText(msg) }}</pre>
-                <div class="msg-actions user-actions">
+                <!-- 工具回喂 (_systemFeed) 不是用户输入, 不挂复制/编辑重发 -->
+                <div v-if="msg._systemFeed !== true" class="msg-actions user-actions">
                   <el-button size="small" text @click="copyText(contentText(msg))">复制</el-button>
                   <el-button
                     size="small"
@@ -988,9 +989,20 @@ function cancelEditMsg() {
 async function submitEditMsg(msg) {
   const text = editingText.value
   if (!text.trim()) return
+  // isBusy 竞态守卫: 编辑期间若流已开始, editUserMessage 会静默 no-op — 先提示保留编辑态
+  if (chat.isBusy) {
+    ElMessage.warning('生成中，请等当前回复完成后再发送')
+    return
+  }
   cancelEditMsg()
   scrollToBottomForce()
   await chat.editUserMessage(msg.id, text)
+}
+
+/** 版本级停止角标 (部分输出后中止); 兼容旧持久化的消息级字段 */
+function isVersionStopped(msg) {
+  if (msg?.versions?.length) return !!msg.versions[msg.activeVersion ?? 0]?._stopped
+  return !!msg?._stopped
 }
 </script>
 

@@ -359,6 +359,7 @@ export function formatChatStats(s) {
 export function summarizeToolResults(toolResults) {
   return toolResults.map((tr) => {
     const r = tr.result
+    if (r.stopped) return `工具 ${tr.call.tool} 已中止: ${r.note || '用户停止了本次操作'}`
     if (r.error) return `工具 ${tr.call.tool} 失败: ${r.error}`
     // hint 型降级结果 (未完成测评/未解析项目的引导) 须回喂 AI——否则它会看到
     // "0 个节点"之类的空数据而误解; 成功态也带 hint 的工具 (generate_learning_resources)
@@ -670,7 +671,10 @@ export const useChatStore = defineStore('chat', () => {
       const v = prevAssistant.versions[prevAssistant.activeVersion ?? 0]
       if (v && Array.isArray(v.trailingAfter)) v.trailingAfter.push(msg.id)
     }
-    return msg
+    // 必须返回响应式代理而非上面的 raw msg: 流式 delta 经返回值追加时才能触发重渲染 —
+    // 直接改 raw 对象绕过 proxy 的 set trap, 发送路径会退化成"打字点→整段一次性弹出"
+    // (regen 路径的 target 经 messages.value.find 取到 proxy, 反而一直正常)。
+    return messages.value[messages.value.length - 1]
   }
 
   /**
@@ -874,10 +878,11 @@ export const useChatStore = defineStore('chat', () => {
         // 2) 审批门: 等待用户决定 (用户可编辑内容)
         const decision = await _requestApproval(call, safety)
         if (!decision.approved) {
-          return {
-            path: relPath, rejected: !decision.stopped, stopped: !!decision.stopped,
-            error: decision.stopped ? '用户停止了本次生成（未写入文件，非拒绝写入）' : '用户拒绝写入',
+          // 停止生成 ≠ 拒绝写入: stopped 走"已中止"语义 (无 error 字段, UI 不标红失败)
+          if (decision.stopped) {
+            return { path: relPath, stopped: true, note: '用户停止了本次生成（未写入文件）' }
           }
+          return { path: relPath, rejected: true, error: '用户拒绝写入' }
         }
 
         // 3) 执行写入 (用可能被用户编辑后的 content)
@@ -1260,8 +1265,12 @@ export const useChatStore = defineStore('chat', () => {
       await _streamResponse(apiMessages, assistantMsg)
     } catch (e) {
       if (e.name === 'AbortError') {
-        if (contentTextOf(assistantMsg) === '') appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
-        else assistantMsg._stopped = true // 部分输出后停止: 角标标记 (不改写正文, 复制/重发不带杂质)
+        const ver = Array.isArray(assistantMsg.versions) ? assistantMsg.versions[assistantMsg.activeVersion ?? 0] : null
+        if (contentTextOf(assistantMsg) === '') {
+          appendTextChunk(activeChunksOf(assistantMsg), 'content', '(已停止)')
+        } else if (ver) {
+          ver._stopped = true // 版本级角标: regen 新版本/切旧版本不残留"已停止" (正文不混入杂质)
+        }
         streaming.value = false; currentStreamId.value = null; return 'abort'
       }
       // F2: 流内错误 (e.streamError) 已由 _applySseBlock 渲染 ❌ chunk + 设 error.value, 勿重复
@@ -1324,10 +1333,12 @@ export const useChatStore = defineStore('chat', () => {
 
     if (toolResults.length === 0) return 'done'
 
-    // 工具结果摘要作为新 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护)
+    // 工具结果摘要作为新 user 消息塞回历史 (trailingAfter 由 _addMessage 钩子维护);
+    // _systemFeed 标记: UI 不给"工具回喂"挂复制/编辑重发 (它不是用户说的话, 编辑重发
+    // 会伪造工具结果且截断后续, 语义错乱)
     const toolResultSummary = summarizeToolResults(toolResults)
     if (toolResultSummary) {
-      _addMessage('user', `[工具返回]\n${toolResultSummary}`)
+      _addMessage('user', `[工具返回]\n${toolResultSummary}`, { _systemFeed: true })
     }
     return 'continue'
   }
@@ -1403,6 +1414,7 @@ export const useChatStore = defineStore('chat', () => {
     if (!trimmed) return
     const idx = messages.value.findIndex((m) => m.id === msgId)
     if (idx === -1 || messages.value[idx].role !== 'user') return
+    if (messages.value[idx]._systemFeed) return // 工具回喂消息不可编辑重发
 
     const target = messages.value[idx]
     if (Array.isArray(target.content)) {

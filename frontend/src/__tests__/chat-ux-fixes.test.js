@@ -108,7 +108,7 @@ describe('chat UX — 停止 ≠ 拒绝写入 + 中断标记', () => {
     expect(chat.pendingApproval).toBe(null)
   })
 
-  it('部分输出后停止: _stopped 角标, 正文保留且不混入"(已停止)"', async () => {
+  it('部分输出后停止: 版本级 _stopped 角标 (regen/切版不残留), 正文保留且不混入"(已停止)"', async () => {
     vi.doMock('@/ide/chat/useChatStream', () => ({
       streamChat: async ({ onBlock }) => {
         onBlock(`data: ${JSON.stringify({ delta: '已经生成了一半的内容' })}`)
@@ -120,7 +120,8 @@ describe('chat UX — 停止 ≠ 拒绝写入 + 中断标记', () => {
     await chat.sendMessage('q')
 
     const assistant = chat.messages.filter((m) => m.role === 'assistant').at(-1)
-    expect(assistant._stopped).toBe(true)
+    expect(assistant.versions[assistant.activeVersion ?? 0]._stopped).toBe(true)
+    expect(assistant._stopped).toBeUndefined() // 消息级字段不再写入 (兼容读取仅限旧持久化)
     const text = assistant.versions[0].chunks.map((c) => c.content || '').join('')
     expect(text).toContain('已经生成了一半的内容')
     expect(text).not.toContain('(已停止)')
