@@ -20,6 +20,13 @@
         >
           <span class="ph-name">🎓 {{ h.name }}</span>
           <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+          <el-button
+            text
+            type="danger"
+            size="small"
+            :data-test="`history-delete-learning:${h.sessionId}`"
+            @click.stop="removeLearningHistory(h)"
+          >移除</el-button>
         </div>
       </div>
     </div>
@@ -135,6 +142,13 @@
                 >
                   <span class="hp-name">{{ h.name }}</span>
                   <span class="hp-time">{{ fmtTs(h.ts) }}</span>
+                  <el-button
+                    text
+                    type="danger"
+                    size="small"
+                    :data-test="`history-delete-learning:${h.sessionId}`"
+                    @click.stop="removeLearningHistory(h)"
+                  >移除</el-button>
                 </div>
               </template>
               <el-button
@@ -379,7 +393,7 @@ import { masteryColor, difficultyColor } from '@/utils/format'
 import { cjkAwareWidth } from '@/utils/nodeSize'
 import { graphToExcalidraw, downloadExcalidraw, collectG6Positions } from '@/utils/excalidrawExport'
 import { semanticSearch, getByCategory, getByDifficulty, getNode, getPrerequisites } from '@/api/graph'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useChatStore } from '@/stores/chat'
 import { buildNodeQuestion, graphGuidePrompt } from '@/utils/askAi'
@@ -448,6 +462,17 @@ function nodeWidthFor(d, cfg, scale) {
 const learningHistoryItems = computed(() => graphHistory.items.filter((i) => i.type === 'learning').slice(0, 5))
 function loadLearningHistory(item) {
   graphHistory.viewLearning(item)
+}
+async function removeLearningHistory(item) {
+  try {
+    await ElMessageBox.confirm(
+      '仅从本地历史列表移除快照；不会删除当前图谱、项目源码或已累计的学习画像。',
+      '移除历史快照',
+    )
+  } catch {
+    return
+  }
+  graphHistory.remove(item.id)
 }
 function fmtTs(ts) {
   if (!ts) return ''

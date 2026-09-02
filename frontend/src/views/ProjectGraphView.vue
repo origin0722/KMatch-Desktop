@@ -52,6 +52,13 @@
             >
               <span class="ph-name">🛠 {{ h.name }}</span>
               <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+              <el-button
+                text
+                type="danger"
+                size="small"
+                :data-test="`history-delete-project:${h.projectId}`"
+                @click.stop="removeHistory(h)"
+              >移除</el-button>
             </div>
           </template>
           <template v-if="learningHistoryItems.length">
@@ -65,6 +72,13 @@
             >
               <span class="ph-name">🎓 {{ h.name }}</span>
               <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+              <el-button
+                text
+                type="danger"
+                size="small"
+                :data-test="`history-delete-learning:${h.sessionId}`"
+                @click.stop="removeHistory(h)"
+              >移除</el-button>
             </div>
           </template>
         </div>
@@ -122,6 +136,31 @@
             :disabled="!pg.graph?.entities?.length"
             @click="startTour"
           >项目导读</el-button>
+
+          <el-popover placement="bottom" :width="300" trigger="click">
+            <template #reference>
+              <el-button size="small" data-test="project-history-toggle">历史</el-button>
+            </template>
+            <div class="pg-history-pop">
+              <template v-if="projectHistoryItems.length">
+                <div class="pg-history-title">项目图谱</div>
+                <div v-for="h in projectHistoryItems" :key="h.id" class="pg-history-pop-item" @click="pg.openFromHistory(h.projectId, h.name)">
+                  <span class="ph-name">{{ h.name }}</span>
+                  <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+                  <el-button text type="danger" size="small" :data-test="`history-delete-project:${h.projectId}`" @click.stop="removeHistory(h)">移除</el-button>
+                </div>
+              </template>
+              <template v-if="learningHistoryItems.length">
+                <div class="pg-history-title">学习图谱</div>
+                <div v-for="h in learningHistoryItems" :key="h.id" class="pg-history-pop-item" @click="openLearningHistory(h)">
+                  <span class="ph-name">{{ h.name }}</span>
+                  <span class="ph-time">{{ fmtTs(h.ts) }}</span>
+                  <el-button text type="danger" size="small" :data-test="`history-delete-learning:${h.sessionId}`" @click.stop="removeHistory(h)">移除</el-button>
+                </div>
+              </template>
+              <div v-if="!projectHistoryItems.length && !learningHistoryItems.length" class="pg-history-pop-empty">暂无历史图谱</div>
+            </div>
+          </el-popover>
 
           <!-- W6: 场景二多 Agent 流水线 (审查→测试打回再生→修复指引, LangGraph 编排) -->
           <el-button
@@ -501,6 +540,17 @@ function openLearningHistory(item) {
   // 只读回看: 经 graphHistory 回看态切到知识图谱视图显示, 不再覆盖 live 图谱 (可随时返回当前)
   if (!graphHistory.viewLearning(item)) return
   sidebar.setView('graph')
+}
+async function removeHistory(item) {
+  try {
+    await ElMessageBox.confirm(
+      '仅从本地历史列表移除快照；不会删除当前图谱、项目源码或已累计的学习画像。',
+      '移除历史快照',
+    )
+  } catch {
+    return
+  }
+  graphHistory.remove(item.id)
 }
 const containerRef = ref(null)
 let g6 = null
@@ -1161,6 +1211,14 @@ watch(() => pg.graph, () => {
 .pg-history-item:hover { border-color: var(--km-primary); background: var(--km-primary-light); }
 .ph-name { flex: 1; font-size: 12.5px; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ph-time { font-size: 11px; color: var(--km-gray-400); font-family: var(--km-font-mono); }
+.pg-history-pop { display: flex; flex-direction: column; gap: 6px; }
+.pg-history-pop-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border: 1px solid var(--km-border-light); border-radius: var(--km-radius-xs);
+  cursor: pointer;
+}
+.pg-history-pop-item:hover { border-color: var(--km-primary); background: var(--km-primary-light); }
+.pg-history-pop-empty { padding: 4px 0; font-size: 12px; color: var(--km-gray-500); }
 
 /* ---- 工具栏 ---- */
 .toolbar-card { margin-bottom: 12px; }
