@@ -86,6 +86,15 @@
     </div>
 
     <template v-else>
+      <!-- 无项目恢复横幅: 重启恢复的旧图谱在未打开项目时明示来源并提供清除/前往入口
+           (issue: 此前 restorePersisted 恢复的旧项目图谱静默展示, 且该状态无任何返回路径) -->
+      <div v-if="showRestoredBanner" class="pg-history-banner" data-test="pg-restored-banner">
+        <span class="phb-text">📂 正在查看上次会话的项目图谱（当前未打开项目，源码跳转不可用）</span>
+        <div class="pg-banner-actions">
+          <el-button size="small" data-test="pg-clear-restored" @click="clearRestoredGraph">清除该图谱</el-button>
+          <el-button size="small" type="primary" @click="goCode">前往代码视图</el-button>
+        </div>
+      </div>
       <!-- 历史回看横幅: 明示只读回看 + 一键返回当前项目图谱 (此前钻入历史后无返回路径) -->
       <div v-if="pg.historyViewing" class="pg-history-banner" data-test="pg-history-banner">
         <span class="phb-text">🛠 正在查看历史项目图谱「<b>{{ pg.historyViewing.name }}</b>」（只读回看，源码跳转不可用）</span>
@@ -551,6 +560,14 @@ async function removeHistory(item) {
     return
   }
   graphHistory.remove(item.id)
+  // 移除的正是正在回看的项目快照 → 退出回看 (有备份还原当前图谱, 无备份回空态), 不再残留横幅
+  if (pg.historyViewing?.projectId === item.projectId) pg.backToCurrentProject()
+}
+// issue: 重启恢复的旧图谱在未打开项目时明示来源, 并提供清除/前往入口 (此前静默展示且无返回路径)
+const showRestoredBanner = computed(() => !!pg.graph && !ws.hasProject && !pg.historyViewing)
+function clearRestoredGraph() {
+  pg.clear()
+  ElMessage.success('已清除上次会话的项目图谱')
 }
 const containerRef = ref(null)
 let g6 = null
@@ -1200,6 +1217,7 @@ watch(() => pg.graph, () => {
 }
 .pg-history-banner .phb-text { font-size: 12.5px; color: var(--km-gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pg-history-banner .phb-text b { color: var(--km-primary); }
+.pg-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .pg-history-title { font-size: 11px; color: var(--km-gray-500); margin-bottom: 6px; }
 .pg-history-item {
   display: flex; align-items: center; gap: 8px;

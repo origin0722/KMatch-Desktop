@@ -107,13 +107,18 @@ export const useProjectGraphStore = defineStore('projectGraph', () => {
 
   /** 返回当前项目图谱 (退出历史回看, 还原进入前的 graph/stale)。 */
   function backToCurrentProject() {
-    if (!historyBackup.value) return
-    graph.value = historyBackup.value.graph
-    stale.value = historyBackup.value.stale
-    historyBackup.value = null
     historyViewing.value = null
     activeLine.value = null
     revealTarget.value = null
+    if (historyBackup.value) {
+      graph.value = historyBackup.value.graph
+      stale.value = historyBackup.value.stale
+      historyBackup.value = null
+    } else {
+      // 进入历史前没有当前图谱 (如未打开项目直接看历史) → "返回"即清空回空态 (此前 early return 无任何效果)
+      graph.value = null
+      stale.value = false
+    }
   }
 
   /** 阶段8: 源文件被外部改动 → 标记图谱过期 (AssistantPanel 提示, 禁用实体跳转) */

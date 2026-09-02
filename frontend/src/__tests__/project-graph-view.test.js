@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
       historyViewing: null,
       restorePersisted: vi.fn(), parseCurrentProject: vi.fn(), requestReveal: vi.fn(),
       openFromHistory: vi.fn(), backToCurrentProject: vi.fn(), analyze: vi.fn(),
+      clear: vi.fn(),
     }),
     workspace: reactive({ activeFile: 'src/a.py', hasProject: true }),
     assessment: reactive({ profile: { target_direction: 'Python Web 后端' } }),
@@ -95,7 +96,9 @@ function mountView() {
 describe('ProjectGraphView 当前文件质量检查', () => {
   beforeEach(() => {
     mocks.workspace.activeFile = 'src/a.py'
+    mocks.workspace.hasProject = true
     mocks.assessment.profile = { target_direction: 'Python Web 后端' }
+    mocks.projectGraph.historyViewing = null
     mocks.projectGraph.graph = {
       projectId: 'project-1',
       entities: [{ id: 'main', name: 'main', kind: 'function', line_start: 1, line_end: 1 }],
@@ -153,5 +156,40 @@ describe('ProjectGraphView 当前文件质量检查', () => {
     )
     expect(mocks.graphHistory.remove).toHaveBeenCalledWith('project:p1')
     expect(mocks.graphHistory.items).toEqual([])
+  })
+
+  it('未打开项目时恢复的旧图谱显示横幅, 可一键清除回到空态', async () => {
+    mocks.workspace.hasProject = false
+    mocks.workspace.activeFile = null
+    mocks.projectGraph.clear = vi.fn(() => { mocks.projectGraph.graph = null })
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-test="pg-restored-banner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="pg-history-banner"]').exists()).toBe(false)
+
+    await wrapper.find('[data-test="pg-clear-restored"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.projectGraph.clear).toHaveBeenCalled()
+    expect(wrapper.find('[data-test="pg-restored-banner"]').exists()).toBe(false)
+  })
+
+  it('打开项目时不显示无项目恢复横幅', () => {
+    const wrapper = mountView()
+    expect(wrapper.find('[data-test="pg-restored-banner"]').exists()).toBe(false)
+  })
+
+  it('移除正在回看的历史项目快照时退出回看态', async () => {
+    mocks.projectGraph.graph = null
+    mocks.projectGraph.historyViewing = { projectId: 'p1', name: '旧项目' }
+    mocks.graphHistory.items = [{ id: 'project:p1', type: 'project', projectId: 'p1', name: '旧项目', ts: Date.now() }]
+    mocks.confirm.mockResolvedValue()
+    const wrapper = mountView()
+
+    await wrapper.find('[data-test="history-delete-project:p1"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.graphHistory.remove).toHaveBeenCalledWith('project:p1')
+    expect(mocks.projectGraph.backToCurrentProject).toHaveBeenCalled()
   })
 })

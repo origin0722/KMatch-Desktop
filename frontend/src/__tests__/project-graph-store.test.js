@@ -326,14 +326,15 @@ describe('projectGraph store - 历史回看 (openFromHistory 备份 / 返回当�
     expect(pg.graph.projectId).toBe('live-2')
   })
 
-  it('无 live 图谱时进历史浏览 (备份为空), 返回为安全 no-op', async () => {
+  it('无 live 图谱时进历史浏览 (备份为空), 返回即退出回看清空回空态', async () => {
     const pg = useProjectGraphStore()
     getProjectGraph.mockResolvedValue(histResponse('hist-1'))
     await pg.openFromHistory('hist-1', '仅历史')
     expect(pg.historyViewing.projectId).toBe('hist-1')
 
-    pg.backToCurrentProject() // 无备份 → no-op, 不清当前显示
-    expect(pg.historyViewing).toEqual({ projectId: 'hist-1', name: '仅历史' })
-    expect(pg.graph.projectId).toBe('hist-1')
+    // 无备份 (进历史前无当前图谱) → 返回 = 退出回看并清空 (issue: 此前 no-op, "返回"键点了没反应)
+    pg.backToCurrentProject()
+    expect(pg.historyViewing).toBe(null)
+    expect(pg.graph).toBe(null)
   })
 })
