@@ -1,0 +1,53 @@
+{
+  "$schema": "profile_schema.json",
+  "profile_id": "UP-BEG-001",
+  "name": "零基础的小王",
+  "created_at": "2026-07-01T09:00:00Z",
+  "type": "零基础学习者",
+  "description": "完全零编程基础的大一学生，对编程有好奇心但无任何经验。需要通过最基础的知识节点入门，每一步都需要详细解释。",
+  "demographics": {
+    "age_range": "18-25",
+    "education": "本科在读（大一）",
+    "major": "信息管理与信息系统",
+    "programming_experience_months": 0,
+    "python_experience_months": 0,
+    "previously_learned_languages": []
+  },
+  "theory_level": 1,
+  "practical_level": 1,
+  "learning_style": "read_write",
+  "target_direction": "Python 基础语法入门",
+  "preferred_pace": "slow",
+  "time_per_week": 6,
+  "known_topics": [],
+  "weak_topics": [],
+  "weakness_areas": [
+    "无任何编程经验，对变量、数据类型等基本概念无认知",
+    "逻辑思维训练不足，条件判断和循环结构需要从零引导",
+    "对编程术语（IDE、编译器、解释器）不熟悉"
+  ],
+  "raw_assessment_data": {
+    "theory_test": {
+      "total_questions": 10,
+      "correct": 2,
+      "answers": []
+    },
+    "practical_test": {
+      "total_exercises": 5,
+      "completed": 0,
+      "average_score": 0
+    },
+    "learning_style_quiz": {
+      "visual": 1,
+      "auditory": 1,
+      "read_write": 4,
+      "kinesthetic": 1
+    }
+  },
+  "learning_history": [],
+  "recommended_path": {
+    "current_node": "PY-001",
+    "next_nodes": ["PY-002", "PY-003", "PY-004"],
+    "estimated_completion_weeks": 8
+  }
+}

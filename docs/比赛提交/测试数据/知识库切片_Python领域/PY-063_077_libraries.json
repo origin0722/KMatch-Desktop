@@ -1,0 +1,576 @@
+[
+  {
+    "id": "PY-063",
+    "name": "NumPy 数组基础",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "NumPy 提供多维数组 ndarray，比 Python list 快 50 倍以上。np.array() 创建数组，.shape 查看形状，.reshape() 变形，广播(broadcast)自动扩展维度。切片返回视图(view)而非拷贝。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "np.array([1,2,3]) 创建数组，dtype 指定类型",
+      "arr.shape 元组表示各维度大小",
+      "reshape(-1,1) 自动计算维度",
+      "广播: 不同形状数组自动扩展对齐运算",
+      "切片是视图(内存共享)，拷贝用 .copy()"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "创建 3x4 全零数组并修改第一行为 1",
+        "answer": "import numpy as np\narr=np.zeros((3,4))\narr[0,:]=1",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "NumPy",
+      "数组",
+      "科学计算"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "对数组进行切片会返回一个拷贝，修改切片内容不会影响原始数组",
+      "广播操作要求参与运算的数组形状完全一致，否则会报错",
+      "arr.reshape() 会直接修改原数组的形状，无需赋值给新变量"
+    ]
+  },
+  {
+    "id": "PY-064",
+    "name": "NumPy 矩阵运算",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "NumPy 支持向量化矩阵运算：np.dot()/ @ 矩阵乘法，np.linalg.inv() 求逆，np.linalg.eig() 特征值。mean/var/std 统计，sum/axis 沿轴运算。向量化避免 Python 循环。",
+    "prerequisites": [
+      "PY-063"
+    ],
+    "key_points": [
+      "A @ B 或 np.dot(A,B) 矩阵乘法",
+      "np.linalg.inv(A) 求逆矩阵",
+      "axis=0 沿行方向(垂直)，axis=1 沿列方向(水平)",
+      "mean/var/std 统计运算，sum/prod 累加/累乘",
+      "向量化运算比逐元素循环快 100+ 倍"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 NumPy 计算两个 3x3 矩阵的乘积和矩阵的迹",
+        "answer": "import numpy as np\nA=np.random.rand(3,3)\nB=np.random.rand(3,3)\nC=A@B\ntrace=np.trace(C)",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "NumPy",
+      "矩阵",
+      "线性代数"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "向量化运算在任何数据规模下都能比循环快 100 倍以上",
+      "使用 axis=0 进行求和是沿着列方向（水平）操作",
+      "mean、sum 等统计函数只能对整个数组计算，不能指定轴向",
+      "矩阵乘法 @ 运算符只能用于严格二维的数组"
+    ]
+  },
+  {
+    "id": "PY-065",
+    "name": "Pandas 数据结构",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "Pandas 两大核心：Series（一维标签数组）和 DataFrame（二维表）。pd.read_csv/excel() 读取数据，.head()/.info()/.describe() 预览，.iloc/.loc 索引选择。",
+    "prerequisites": [
+      "PY-063"
+    ],
+    "key_points": [
+      "pd.Series([1,2,3],index=['a','b','c'])",
+      "pd.DataFrame(dict) 或读取 CSV/Excel",
+      "df.head() 前5行，df.info() 概览，df.describe() 统计",
+      "df['col'] 选择列，df.loc[row] 标签选择",
+      "df.iloc[row_idx] 整数位置选择"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "读取 CSV 文件，筛选 age>25 的行，按 salary 降序排列",
+        "answer": "import pandas as pd\ndf=pd.read_csv('data.csv')\nresult=df[df['age']>25].sort_values('salary',ascending=False)",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Pandas",
+      "DataFrame",
+      "数据处理"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "认为 df.loc[0] 总是根据整数位置选取第一行",
+      "认为 df.iloc[0] 根据行标签选取第一行",
+      "将 df.head() 误用作获取数据统计信息的方法",
+      "将 df.describe() 误用作查看数据前5行的方法"
+    ]
+  },
+  {
+    "id": "PY-066",
+    "name": "Pandas 数据清洗",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "数据清洗是数据分析最耗时的步骤。Pandas 处理缺失值(.dropna/.fillna)、去重(.drop_duplicates)、类型转换(.astype)、字符串清理(.str.strip)、合并(.merge/.concat)。",
+    "prerequisites": [
+      "PY-065"
+    ],
+    "key_points": [
+      "df.isnull().sum() 统计缺失值",
+      "df.dropna() 删除含 NaN 的行",
+      "df.fillna(value) 填充缺失值",
+      "df.drop_duplicates() 去重",
+      "df.merge(other,on='key') 表连接"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "清洗数据：去掉含空值的行，去重，将 'price' 列转为 float",
+        "answer": "import pandas as pd\ndf=pd.read_csv('data.csv')\ndf=df.dropna().drop_duplicates()\ndf['price']=pd.to_numeric(df['price'],errors='coerce')",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Pandas",
+      "数据清洗",
+      "预处理"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "df.dropna()会原地删除DataFrame中的缺失值行，无需赋值",
+      "df.fillna(value)会直接修改原DataFrame",
+      "df.drop_duplicates()默认根据索引值判断重复",
+      "df.merge(other, on='key')是外连接，会保留两个表的所有行"
+    ]
+  },
+  {
+    "id": "PY-067",
+    "name": "Matplotlib 基础绘图",
+    "difficulty": 2,
+    "category": "常用库与工具",
+    "summary": "Matplotlib 是 Python 最基础的绘图库。plt.plot() 线图，plt.scatter() 散点图，plt.bar() 柱状图，plt.hist() 直方图。设置标题/标签/图例，保存用 plt.savefig()。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "plt.plot(x,y) 折线图，支持颜色/线型/标记",
+      "plt.scatter(x,y) 散点图，c/size 映射数据",
+      "plt.xlabel/ylabel/title/legend 标注",
+      "fig,axes=plt.subplots(2,2) 子图布局",
+      "plt.savefig('name.png',dpi=150) 保存"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "绘制 y=x² 和 y=x³ 的双曲线图",
+        "answer": "import matplotlib.pyplot as plt\nimport numpy as np\nx=np.linspace(-3,3,100)\nplt.plot(x,x**2,label='x²')\nplt.plot(x,x**3,label='x³')\nplt.legend()\nplt.xlabel('x')\nplt.ylabel('y')\nplt.title('Power Curves')",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Matplotlib",
+      "可视化",
+      "绘图"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "plt.plot() 可替代 plt.scatter() 绘制所有散点图，包括需要颜色和大小的数据映射",
+      "plt.scatter(x,y) 无法根据数据列映射点的颜色或大小",
+      "plt.plot(x,y) 完成后图形会自动显示，无需调用 plt.show() 或保存",
+      "plt.subplots(2,2) 返回的 axes 是单一坐标轴对象，而非二维数组"
+    ]
+  },
+  {
+    "id": "PY-068",
+    "name": "Seaborn 统计可视化",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "Seaborn 基于 Matplotlib，提供更美观的统计图表。sns.heatmap() 热力图，sns.pairplot() 成对关系图，sns.boxplot() 箱线图，sns.countplot() 计数图。与 Pandas DataFrame 无缝集成。",
+    "prerequisites": [
+      "PY-067"
+    ],
+    "key_points": [
+      "Seaborn 是高阶统计可视化封装",
+      "sns.heatmap(corr_matrix) 相关性热力图",
+      "sns.pairplot(df,hue='category') 成对关系矩阵",
+      "sns.boxplot(x='cat',y='val') 箱线图展示分布",
+      "sns.set_theme() 设置全局样式"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 Seaborn 画一个 DataFrame 的相关性热力图",
+        "answer": "import seaborn as sns\nimport pandas as pd\ndf=pd.read_csv('data.csv')\nsns.heatmap(df.corr(),annot=True,cmap='coolwarm')",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Seaborn",
+      "可视化",
+      "统计"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "Seaborn 是完全独立的可视化库，无需安装或导入 Matplotlib 即可使用",
+      "sns.heatmap() 可以直接传入原始 DataFrame 并自动计算出相关性矩阵再绘图",
+      "sns.pairplot() 的 hue 参数可以接受任意数值型列名来生成渐变色",
+      "sns.boxplot() 的 x 参数只能传入数值型变量"
+    ]
+  },
+  {
+    "id": "PY-069",
+    "name": "爬虫基础实践",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "requests 获取网页 HTML，BeautifulSoup 解析提取数据。爬虫流程：发请求→解析→提取→存储。遵守 robots.txt，设置合理间隔，处理反爬（User-Agent、IP 代理）。",
+    "prerequisites": [
+      "PY-016",
+      "PY-058"
+    ],
+    "key_points": [
+      "requests.get(url,headers).text 获取 HTML",
+      "BeautifulSoup(html,'html.parser') 解析",
+      ".find()/.find_all() 按标签/class/id 提取",
+      "robots.txt 检查爬虫权限",
+      "time.sleep() 控制频率，try/except 处理异常"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "爬取一个网页的标题和所有链接",
+        "answer": "import requests\nfrom bs4 import BeautifulSoup\nr=requests.get('https://example.com')\nsoup=BeautifulSoup(r.text,'html.parser')\ntitle=soup.title.string\nlinks=[a['href'] for a in soup.find_all('a',href=True)]",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "爬虫",
+      "requests",
+      "BeautifulSoup"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "认为爬取公开网站时不需要检查和遵守 robots.txt 权限规定",
+      "误以为 requests 的 response.text 直接是提取好的可见文字，无需再用 BeautifulSoup 解析",
+      "使用 .find() 提取元素时认为始终会返回结果，忽略返回 None 的情况",
+      "只要设置了 User-Agent 就一定能绕过所有反爬措施"
+    ]
+  },
+  {
+    "id": "PY-070",
+    "name": "Scrapy 框架入门",
+    "difficulty": 4,
+    "category": "常用库与工具",
+    "summary": "Scrapy 是企业级爬虫框架，提供 Spider/Pipeline/Middleware 架构。用 XPath/CSS 选择器提取数据。支持自动限速、并发控制、数据管道输出到 JSON/DB。scrapy crawl myspider 运行。",
+    "prerequisites": [
+      "PY-069"
+    ],
+    "key_points": [
+      "scrapy startproject 创建项目，genspider 生成爬虫",
+      "parse() 方法处理响应，yield 输出 Item",
+      "Item Pipeline 清洗/验证/存储数据",
+      "Middleware 处理请求/响应：UA/代理/cookie",
+      "FEEDS 配置自动导出 JSON/CSV"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "Scrapy 中解析网页使用什么选择器？",
+        "options": [
+          "A. 只能用 CSS",
+          "B. 只能用 XPath",
+          "C. CSS 和 XPath 都支持",
+          "D. 只能用正则"
+        ],
+        "answer": "C",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Scrapy",
+      "爬虫",
+      "框架"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "Scrapy 中无法自动将抓取结果导出为 JSON 或 CSV，必须自己写文件输出代码。",
+      "在 parse() 方法中必须用 return 返回 Item 才能传递给 Pipeline。",
+      "Middleware 只能修改发出的请求，无法处理响应中的 cookie 或重试逻辑。",
+      "运行爬虫时只需执行 python 爬虫脚本文件即可，无需 scrapy crawl 命令。"
+    ]
+  },
+  {
+    "id": "PY-071",
+    "name": "Flask Web 框架基础",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "Flask 是 Python 的轻量级 Web 框架。@app.route() 定义路由，render_template() 渲染 Jinja2 模板，request 获取请求数据，redirect/url_for 跳转。适合小型应用和 API。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "app=Flask(__name__) 创建应用",
+      "@app.route('/path',methods=['GET','POST'])",
+      "render_template('index.html',**context)",
+      "request.args(GET)/request.form(POST)/request.json",
+      "flask run 或 app.run(debug=True)"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 Flask 写一个返回 JSON 数据的 API 端点",
+        "answer": "from flask import Flask,jsonify\napp=Flask(__name__)\n@app.route('/api/users')\ndef users():\n    return jsonify([{'id':1,'name':'Alice'}])",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Flask",
+      "Web",
+      "API"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "使用 @app.route('/login') 不指定 methods 时，该路由默认支持 GET 和 POST 请求",
+      "对于 URL 中的查询字符串参数，应使用 request.form 来获取",
+      "调用 url_for 函数会直接让浏览器跳转到指定端点",
+      "生产环境中应开启 app.run(debug=True) 以便查看详细错误信息"
+    ]
+  },
+  {
+    "id": "PY-072",
+    "name": "FastAPI 基础",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "FastAPI 是高性能异步 Web 框架，自动生成 OpenAPI 文档。用类型注解定义路径参数和请求体，Pydantic 自动验证。支持 async/await 异步处理。适合构建 API 和微服务。",
+    "prerequisites": [
+      "PY-012",
+      "PY-057"
+    ],
+    "key_points": [
+      "@app.get/post('/path') 定义路由",
+      "路径参数/查询参数用函数参数和类型注解声明",
+      "Pydantic BaseModel 定义请求/响应 Schema",
+      "自动生成 Swagger UI (/docs) 和 ReDoc",
+      "BackgroundTasks 后台任务，Depends 依赖注入"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 FastAPI 写一个 CRUD 接口：POST /items 和 GET /items/{id}",
+        "answer": "from fastapi import FastAPI\nfrom pydantic import BaseModel\napp=FastAPI()\nclass Item(BaseModel):\n    name:str\n    price:float\nitems={}\n@app.post('/items')\ndef create(item:Item):\n    import uuid\n    tid=str(uuid.uuid4())\n    items[tid]=item\n    return {'id':tid,'item':item}\n@app.get('/items/{tid}')\ndef get(tid:str):\n    return items[tid]",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "FastAPI",
+      "异步",
+      "API",
+      "Pydantic"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "FastAPI 中的查询参数和路径参数都是用相同的语法声明，没有区别。",
+      "使用 Pydantic BaseModel 定义的模型只能用作请求体，不能用于响应模型。",
+      "FastAPI 需要额外配置才能启用自动生成的 Swagger UI 文档。"
+    ]
+  },
+  {
+    "id": "PY-073",
+    "name": "SQLite 数据库操作",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "SQLite 是零配置的嵌入式关系数据库，Python 内置 sqlite3 模块。connect() 创建连接，cursor.execute(SQL) 执行语句，cursor.fetchall() 获取结果。事务用 commit/rollback，参数化查询防注入。",
+    "prerequisites": [
+      "PY-016"
+    ],
+    "key_points": [
+      "conn=sqlite3.connect('file.db') 创建/打开数据库",
+      "c=conn.cursor(); c.execute(SQL,params)",
+      "c.fetchone()/fetchall() 获取结果",
+      "conn.commit() 提交事务",
+      "参数化: ? 占位符防 SQL 注入",
+      "with conn: 自动 commit/rollback"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "创建 users 表并插入一条记录",
+        "answer": "import sqlite3\nconn=sqlite3.connect('users.db')\nc=conn.cursor()\nc.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT,age INTEGER)')\nc.execute('INSERT INTO users(name,age) VALUES(?,?)',('Alice',20))\nconn.commit()\nconn.close()",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "SQLite",
+      "数据库",
+      "SQL"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "执行写操作后无需提交事务，因为sqlite3会自动持久化更改",
+      "sqlite3的参数化查询使用%s占位符，与MySQL等数据库相同",
+      "调用cursor.execute()执行查询后，结果会直接自动加载到cursor中，无需再调用fetchone或fetchall",
+      "在with语句块内即使程序异常退出，也能保证之前所有写操作自动回滚"
+    ]
+  },
+  {
+    "id": "PY-074",
+    "name": "SQLAlchemy ORM 入门",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "SQLAlchemy 是 Python 最强大的 ORM 框架。声明式基类定义模型，Session 管理事务，Query API 构建查询。支持多种数据库后端。对比原生 SQL，ORM 提高开发效率但增加学习成本。",
+    "prerequisites": [
+      "PY-073"
+    ],
+    "key_points": [
+      "declarative_base() 创建基类",
+      "Column/Integer/String 定义字段",
+      "session.add(obj)/commit() 持久化对象",
+      "session.query(Model).filter(...) 查询",
+      "relationship() 定义模型关联"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 SQLAlchemy 定义一个 User 模型并查询所有用户",
+        "answer": "from sqlalchemy import create_engine,Column,Integer,String\nfrom sqlalchemy.orm import declarative_base,Session\nBase=declarative_base()\nclass User(Base):\n    __tablename__='users'\n    id=Column(Integer,primary_key=True)\n    name=Column(String)\nengine=create_engine('sqlite:///app.db')\nBase.metadata.create_all(engine)\nwith Session(engine) as s:\n    users=s.query(User).all()",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "SQLAlchemy",
+      "ORM",
+      "数据库"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "误以为调用 `declarative_base()` 会直接在数据库中创建对应的表",
+      "误以为 `session.add()` 执行后对象立即被写入数据库，而忽略 `commit()` 的必要性",
+      "误以为 `relationship()` 定义的关联会自动在表结构中外键约束，不需要显式指定 `ForeignKey`",
+      "误以为 `session.query().filter()` 返回的是普通列表，可以随意索引"
+    ]
+  },
+  {
+    "id": "PY-075",
+    "name": "Git 版本控制基础",
+    "difficulty": 1,
+    "category": "常用库与工具",
+    "summary": "Git 是最流行的分布式版本控制系统。工作区→暂存区→本地仓库→远程仓库。git init/clone 初始化，git add/commit 提交，git push/pull 远程同步，git branch/merge 分支管理。",
+    "prerequisites": [],
+    "key_points": [
+      "git init 初始化，git clone url 克隆",
+      "git add . 暂存，git commit -m 'msg' 提交",
+      "git push origin main 推送到远程",
+      "git pull 拉取合并，git fetch 仅获取",
+      "git branch feature 创建分支，git merge feature 合并",
+      "git log 查看历史，git diff 查看差异"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "git add 命令的作用是什么？",
+        "options": [
+          "A. 提交到本地仓库",
+          "B. 推送到远程",
+          "C. 添加文件到暂存区",
+          "D. 创建分支"
+        ],
+        "answer": "C",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "Git",
+      "版本控制",
+      "协作"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "执行 git add . 后，就可以直接使用 git push 将修改推送到远程仓库。",
+      "git branch feature 命令会创建并自动切换到新分支 feature。",
+      "git pull 和 git fetch 功能相同，都只是从远程下载更新而不合并本地分支。",
+      "git merge feature 合并分支后，feature 分支会被自动删除。"
+    ]
+  },
+  {
+    "id": "PY-076",
+    "name": "Docker 基础",
+    "difficulty": 2,
+    "category": "常用库与工具",
+    "summary": "Docker 用容器封装应用及其依赖，确保环境一致性。Dockerfile 定义构建步骤，docker build 创建镜像，docker run 启动容器。docker-compose.yml 编排多服务。",
+    "prerequisites": [
+      "PY-075"
+    ],
+    "key_points": [
+      "Dockerfile: FROM 基础镜像，COPY 复制代码，RUN 安装依赖，CMD 启动命令",
+      "docker build -t name . 构建镜像",
+      "docker run -p 8000:8000 name 运行容器",
+      "docker-compose up -d 一键启动多服务",
+      "-v 挂载卷持久化数据"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个 Python 应用的 Dockerfile",
+        "answer": "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ['python','main.py']",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "Docker",
+      "容器化",
+      "部署"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "CMD 是在镜像构建时执行的，而不是容器启动时执行的",
+      "docker run -p 8000:8000 中，前者是容器端口，后者是主机端口",
+      "docker-compose up 只能启动单个容器，不能同时启动多服务",
+      "Dockerfile 中 COPY 和 RUN 的先后顺序对构建缓存没有影响"
+    ]
+  },
+  {
+    "id": "PY-077",
+    "name": "CI/CD 入门",
+    "difficulty": 3,
+    "category": "常用库与工具",
+    "summary": "CI/CD 自动构建、测试和部署代码。GitHub Actions 用 YAML 定义工作流，触发条件为 push/PR。步骤包括：checkout→setup→install→test→build→deploy。marketplace 提供大量 Action 复用。",
+    "prerequisites": [
+      "PY-075",
+      "PY-076"
+    ],
+    "key_points": [
+      ".github/workflows/ci.yml 定义工作流",
+      "on: push/pull_request 触发条件",
+      "jobs: 可以并行运行的构建单元",
+      "steps: uses(社区Action)/run(自定义命令)",
+      "secrets 管理敏感信息"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "GitHub Actions 的工作流文件放在哪个目录？",
+        "options": [
+          "A. /actions",
+          "B. /.github/workflows",
+          "C. /.github/actions",
+          "D. /workflows"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "CI/CD",
+      "GitHub Actions",
+      "自动化"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "认为 GitHub Actions 的工作流 YAML 文件可以放在仓库的任意位置",
+      "误以为 CI/CD 只包含自动测试与构建，部署阶段必须手动完成",
+      "不清楚 workflow 中的敏感信息应存储在 secrets 中，而直接在 YAML 文件里硬编码"
+    ]
+  }
+]

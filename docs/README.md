@@ -11,7 +11,7 @@
 | [项目规划](项目规划/) | 开发计划、赛题对标 | [项目开发计划书.md](项目规划/项目开发计划书.md)、[赛题XH-202630比赛方案.md](项目规划/赛题XH-202630比赛方案.md) |
 | [指南手册](指南手册/) | 环境/数据准备、知识库扩展 | [前置数据准备指南.md](指南手册/前置数据准备指南.md)、[知识库扩展指南.md](指南手册/知识库扩展指南.md) |
 | [架构与设计](架构与设计/) | 架构总览、依赖、重构方案 | [ARCHITECTURE.md](架构与设计/ARCHITECTURE.md)、[DEPENDENCIES.md](架构与设计/DEPENDENCIES.md)、[重构方案_解耦.md](架构与设计/重构方案_解耦.md) |
-| [adr](adr/) —— 决策记录 | 架构决策记录 (ADR-0001 ~ 0007) | [0001-web-to-desktop-migration.md](adr/0001-web-to-desktop-migration.md) 等 |
+| [adr](adr/) —— 决策记录 | 架构决策记录 (ADR-0001 ~ 0008) | [0001-web-to-desktop-migration.md](adr/0001-web-to-desktop-migration.md)、[0008-embedded-graph-store.md](adr/0008-embedded-graph-store.md) 等 |
 | [质量与验收](质量与验收/) | M5 质检、审查报告、测试用例 | [质量检测报告.md](质量与验收/质量检测报告.md)、[体验审查报告_v1.3.3.md](质量与验收/体验审查报告_v1.3.3.md)、[测试用例表_v1.3.4.md](质量与验收/测试用例表_v1.3.4.md)、[测试数据说明_v1.3.4.md](质量与验收/测试数据说明_v1.3.4.md) |
 | [部署与发布](部署与发布/) | 部署/打包/发布 | [系统部署说明_v1.3.4.md](部署与发布/系统部署说明_v1.3.4.md) |
 | [接口对接](接口对接/) | 前后端/多端 API 契约 | [A端后端对接文档.md](接口对接/A端后端对接文档.md) |
@@ -19,6 +19,7 @@
 | [研究与调研](研究与调研/) | 模型调研、界面模板分析 | [模型更新调研_2026-08.md](研究与调研/模型更新调研_2026-08.md)、[研究_界面布局交互模板分析与KMatch优化.md](研究与调研/研究_界面布局交互模板分析与KMatch优化.md) |
 | [合规与安全](合规与安全/) | 数据合规与隐私 | [数据合规与隐私保护说明.md](合规与安全/数据合规与隐私保护说明.md) |
 | [交付材料](交付材料/) | 赛题提交材料 | [提交材料_视频脚本与方案大纲.md](交付材料/提交材料_视频脚本与方案大纲.md)、[软件说明_v1.3.4.md](交付材料/软件说明_v1.3.4.md)、[真机核验清单_v1.3.4.md](交付材料/真机核验清单_v1.3.4.md)、[测试数据_输入输出示例.md](交付材料/测试数据_输入输出示例.md) |
+| [比赛提交](比赛提交/) | 赛题提交聚合资料包（作品介绍/设计方案/单元测试/测试数据/PPT） | [README.md](比赛提交/README.md)（要求逐项对照 + 打包指引） |
 | [缺陷管理](缺陷管理/) | BUG 记录与决策（历史存档） | [BUG决策日志.md](缺陷管理/BUG决策日志.md) |
 | [agents](agents/) | Agent 协同约定（Issue/Triage/Domain） | [issue-tracker.md](agents/issue-tracker.md)、[triage-labels.md](agents/triage-labels.md)、[domain.md](agents/domain.md) |
 | [devlogs](devlogs/) | 开发日志（按端分类，持续更新） | [README.md](devlogs/README.md)、[Desktop_阶段总览.md](devlogs/Desktop_阶段总览.md) |

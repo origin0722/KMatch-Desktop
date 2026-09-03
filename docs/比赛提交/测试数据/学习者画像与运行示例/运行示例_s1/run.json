@@ -1,0 +1,151 @@
+{
+  "session_id": "s1",
+  "mode": "interactive",
+  "request": {
+    "target_direction": "x",
+    "scene": "no_project",
+    "workflow_id": "scene1-interactive"
+  },
+  "summary": {
+    "correct_count": 0,
+    "total_count": 1,
+    "strategy": "scaffold",
+    "theory_level": 1,
+    "path_nodes": 0,
+    "weak_topics": [],
+    "pacing": {
+      "total_hours": 0.0,
+      "hours_per_week": 6,
+      "weeks": 0
+    }
+  },
+  "workflow": {
+    "format": "kmatch.workflow",
+    "version": 1,
+    "id": "scene1-interactive",
+    "name": "场景一·交互测评",
+    "description": "interactive 出题→判分→专属路径组装",
+    "stages": [
+      {
+        "id": "diagnostics",
+        "label": "学情检测",
+        "agents": [
+          "diagnostics"
+        ],
+        "dependencies": []
+      },
+      {
+        "id": "graph",
+        "label": "图谱组装",
+        "agents": [
+          "graph_controller"
+        ],
+        "dependencies": [
+          "diagnostics"
+        ]
+      }
+    ],
+    "inputs": {
+      "required": [
+        "target_direction"
+      ],
+      "schema": {
+        "target_direction": "string"
+      }
+    },
+    "decisions": [
+      {
+        "id": "strategy",
+        "label": "反馈策略",
+        "on": "correct_ratio",
+        "rules": [
+          {
+            "when": {
+              "gte": 0.8
+            },
+            "then": "advance"
+          },
+          {
+            "when": {
+              "gte": 0.5
+            },
+            "then": "remediate"
+          },
+          {
+            "else": "scaffold"
+          }
+        ]
+      }
+    ]
+  },
+  "created_at": "2026-08-19T14:51:46.592345",
+  "updated_at": "2026-09-03T04:37:48.230465",
+  "orchestration_events": [
+    {
+      "type": "agent-start",
+      "agent": "diagnostics",
+      "status": "running",
+      "message": "判分(grading) 0ms",
+      "log": "[2026-09-03T04:37:48.229423] ⏱ 判分(grading) 0ms"
+    },
+    {
+      "type": "info",
+      "agent": null,
+      "status": "idle",
+      "message": "画像(profile) 0ms",
+      "log": "[2026-09-03T04:37:48.229423] ⏱ 画像(profile) 0ms"
+    },
+    {
+      "type": "agent-start",
+      "agent": "diagnostics",
+      "status": "running",
+      "message": "学情检测: 判分 0/1",
+      "log": "[2026-09-03T04:37:48.229423] 🔧 学情检测: 判分 0/1"
+    },
+    {
+      "type": "info",
+      "agent": null,
+      "status": "idle",
+      "message": "画像构建: theory_level=1 weak=0 known=0",
+      "log": "[2026-09-03T04:37:48.229423] 📋 画像构建: theory_level=1 weak=0 known=0"
+    },
+    {
+      "type": "agent-start",
+      "agent": "graph_controller",
+      "status": "running",
+      "message": "路径组装(path) 0ms",
+      "log": "[2026-09-03T04:37:48.229939] ⏱ 路径组装(path) 0ms"
+    },
+    {
+      "type": "agent-start",
+      "agent": "graph_controller",
+      "status": "running",
+      "message": "知识图谱管控: 开始组装学习路径",
+      "log": "[2026-09-03T04:37:48.229423] 🗺️ 知识图谱管控: 开始组装学习路径"
+    },
+    {
+      "type": "info",
+      "agent": null,
+      "status": "idle",
+      "message": "画像输入: known=0 weak=0 level=1 max_nodes=12",
+      "log": "📥 画像输入: known=0 weak=0 level=1 max_nodes=12"
+    },
+    {
+      "type": "agent-end",
+      "agent": "graph_controller",
+      "status": "done",
+      "message": "路径组装完成: 0 个节点，预估 0.0h，状态更新 0/0",
+      "log": "✅ 路径组装完成: 0 个节点，预估 0.0h，状态更新 0/0"
+    }
+  ],
+  "orchestration_log": [
+    "[2026-09-03T04:37:48.229423] ⏱ 判分(grading) 0ms",
+    "[2026-09-03T04:37:48.229423] ⏱ 画像(profile) 0ms",
+    "[2026-09-03T04:37:48.229423] 🔧 学情检测: 判分 0/1",
+    "[2026-09-03T04:37:48.229423] 📋 画像构建: theory_level=1 weak=0 known=0",
+    "[2026-09-03T04:37:48.229939] ⏱ 路径组装(path) 0ms",
+    "[2026-09-03T04:37:48.229423] 🗺️ 知识图谱管控: 开始组装学习路径",
+    "📥 画像输入: known=0 weak=0 level=1 max_nodes=12",
+    "✅ 路径组装完成: 0 个节点，预估 0.0h，状态更新 0/0"
+  ]
+}

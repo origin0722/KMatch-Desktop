@@ -1,0 +1,8 @@
+{"seq": 0, "ts": "2026-09-01T10:51:51.712044", "type": "agent-start", "agent": "diagnostics", "status": "running", "message": "判分(grading) 0ms", "log": "[2026-09-01T10:51:51.708965] ⏱ 判分(grading) 0ms"}
+{"seq": 1, "ts": "2026-09-01T10:51:51.712044", "type": "info", "agent": null, "status": "idle", "message": "画像(profile) 0ms", "log": "[2026-09-01T10:51:51.708965] ⏱ 画像(profile) 0ms"}
+{"seq": 2, "ts": "2026-09-01T10:51:51.712044", "type": "agent-start", "agent": "diagnostics", "status": "running", "message": "学情检测: 判分 1/2", "log": "[2026-09-01T10:51:51.708965] 🔧 学情检测: 判分 1/2"}
+{"seq": 3, "ts": "2026-09-01T10:51:51.712044", "type": "info", "agent": null, "status": "idle", "message": "画像构建: theory_level=2 weak=0 known=0", "log": "[2026-09-01T10:51:51.708965] 📋 画像构建: theory_level=2 weak=0 known=0"}
+{"seq": 4, "ts": "2026-09-01T10:51:51.712044", "type": "agent-start", "agent": "graph_controller", "status": "running", "message": "路径组装(path) 0ms", "log": "[2026-09-01T10:51:51.709482] ⏱ 路径组装(path) 0ms"}
+{"seq": 5, "ts": "2026-09-01T10:51:51.712044", "type": "agent-start", "agent": "graph_controller", "status": "running", "message": "知识图谱管控: 开始组装学习路径", "log": "[2026-09-01T10:51:51.708965] 🗺️ 知识图谱管控: 开始组装学习路径"}
+{"seq": 6, "ts": "2026-09-01T10:51:51.712044", "type": "info", "agent": null, "status": "idle", "message": "画像输入: known=0 weak=0 level=2 max_nodes=12", "log": "📥 画像输入: known=0 weak=0 level=2 max_nodes=12"}
+{"seq": 7, "ts": "2026-09-01T10:51:51.712044", "type": "agent-end", "agent": "graph_controller", "status": "done", "message": "路径组装完成: 0 个节点，预估 0.0h，状态更新 0/0", "log": "✅ 路径组装完成: 0 个节点，预估 0.0h，状态更新 0/0"}

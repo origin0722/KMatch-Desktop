@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KMatch 领域元知识库节点 Schema",
+  "description": "与 docs/指南手册/前置数据准备指南.md 完全对齐的节点标准格式。A、B、C 三人分别编写各分类节点。",
+  "type": "object",
+  "required": ["id", "name", "difficulty", "category", "summary", "prerequisites", "key_points", "practice_questions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}-\\d{3}$",
+      "description": "节点唯一标识。Python: PY-001~092, 机器学习: ML-001~030, 数据分析: DA-001~025, Web后端: WD-001~025, 数据库与缓存: DB-001~025, 工程化: EN-001~025"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 60,
+      "description": "知识点简洁名称"
+    },
+    "difficulty": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "1=零基础, 2=入门, 3=进阶, 4=高级, 5=专家"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["基础语法","数据结构与算法","面向对象编程","Python进阶","常用库与工具","项目实战","机器学习","数据分析与可视化","Web后端开发","数据库与缓存","工程化实践","动态领域"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 500,
+      "description": "知识点概要，2-5句话概括核心概念"
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Z]{2}-\\d{3}$"},
+      "description": "前置依赖节点ID列表，空数组=零基础入口"
+    },
+    "key_points": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 3,
+      "maxItems": 8,
+      "description": "核心要点列表，每条一句话。用于内容审核Agent的事实校验"
+    },
+    "practice_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "question", "answer", "difficulty"],
+        "properties": {
+          "type": {"type": "string", "enum": ["choice", "fill", "code"]},
+          "question": {"type": "string", "description": "题目描述"},
+          "options": {"type": "array", "items": {"type": "string"}, "description": "choice题型的选项"},
+          "answer": {"type": "string", "description": "正确答案"},
+          "difficulty": {"type": "integer", "minimum": 1, "maximum": 5},
+          "hint": {"type": "string", "description": "可选提示"}
+        }
+      },
+      "minItems": 1,
+      "maxItems": 6,
+      "description": "练习题列表（存档/校验用，运行时题目由独立 :Question 节点供给）"
+    },
+    "common_mistakes": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "maxItems": 6,
+      "description": "常见误区列表，每条一句话。用于 test 题干扰项/代码测试 suggestion/错误模式兜底"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "maxItems": 6,
+      "description": "标签列表"
+    },
+    "estimated_minutes": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 240,
+      "description": "预估学习时长（分钟）"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["manual", "llm_generated"],
+      "description": "节点来源标记：manual=人工编写，llm_generated=动态建域 Agent 生成（领域未收录时 LLM 当场构建，事实基准来自 Tavily 检索+LLM，不纳入 M5 质检口径）"
+    },
+    "domain_label": {
+      "type": "string",
+      "maxLength": 40,
+      "description": "动态域领域名（source=llm_generated 时记录，如 Java/Rust，供域命中复用与清理）"
+    }
+  },
+  "additionalProperties": false
+}

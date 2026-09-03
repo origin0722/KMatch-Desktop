@@ -1,0 +1,420 @@
+{
+  "_source": "data/quality_report.json per_run[UP-BEG-001] 摘取 (v1.3.4, 2026-09-03)",
+  "aggregate_independent": {
+    "n_runs": 10,
+    "hallucination_rate": {
+      "rate": 0.024,
+      "hallucinated": 2,
+      "unverifiable": 0,
+      "total": 83,
+      "target_lt": 0.05,
+      "passed": true
+    },
+    "adaptation_rate": {
+      "rate": 0.94,
+      "matched": 78,
+      "total": 83,
+      "target_gte": 0.85,
+      "passed": true
+    },
+    "same_source": true
+  },
+  "profile_id": "UP-BEG-001",
+  "name": "零基础的小王",
+  "type": "零基础学习者",
+  "target_direction": "Python 基础语法入门",
+  "resource_count": 9,
+  "weak_count": 3,
+  "review_passed": true,
+  "quality_metrics": {
+    "hallucination_rate": {
+      "rate": 0.0,
+      "score_avg": 1.0,
+      "issues": 0,
+      "passed": true,
+      "flagged": false
+    },
+    "adaptation_rate": {
+      "rate": 1.0,
+      "matched": 9,
+      "total": 9
+    },
+    "coverage_rate": {
+      "rate": 1.0,
+      "covered": 3,
+      "total_weak": 3
+    },
+    "targets": {
+      "hallucination_lt": 0.05,
+      "adaptation_gte": 0.85,
+      "coverage_gte": 0.9
+    },
+    "all_passed": true,
+    "generated_at": "2026-08-12T11:46:18.234354Z"
+  },
+  "independent": {
+    "hallucination": {
+      "rate": 0.0,
+      "total": 8,
+      "grounded": 8,
+      "hallucinated": 0,
+      "unverifiable": 0,
+      "same_source": true,
+      "verdicts": [
+        {
+          "resource_index": 0,
+          "content_type": "lecture",
+          "target_node_id": "PY-009",
+          "verdict": "grounded",
+          "reason": "资源内容中所有知识陈述均可从 PY-009 的 summary 和 key_points 中找到依据，教学化扩展与示例均属于该领域公认的正确知识，无与事实相悖的编造。"
+        },
+        {
+          "resource_index": 1,
+          "content_type": "test",
+          "target_node_id": "PY-009",
+          "verdict": "grounded",
+          "reason": "资源内容中所有列表操作、方法和行为均符合知识图谱PY-009节点的事实，且涉及的标准API行为和示例均为正确知识。"
+        },
+        {
+          "resource_index": 2,
+          "content_type": "lecture",
+          "target_node_id": "PY-005",
+          "verdict": "grounded",
+          "reason": "资源内容中的比较运算符、逻辑运算符、短路求值、链式比较、布尔算术及==/is区别等关键陈述均能在图谱事实中找到直接或间接依据，扩展的示例和解释均属正确教学表达，无相悖或编造信息。"
+        },
+        {
+          "resource_index": 3,
+          "content_type": "practice_guide",
+          "target_node_id": "PY-005",
+          "verdict": "grounded",
+          "reason": "资源内容中关于比较运算符、is与==区别、逻辑运算符短路求值、链式比较、布尔值算术特性等核心知识陈述均可在图谱事实中找到直接依据；教学扩展示例与常规做法一致，无违背事实的编造。"
+        },
+        {
+          "resource_index": 4,
+          "content_type": "test",
+          "target_node_id": "PY-005",
+          "verdict": "grounded",
+          "reason": "所有知识陈述均可从图谱节点 PY-005 中找到依据，无与事实相悖的编造。"
+        },
+        {
+          "resource_index": 5,
+          "content_type": "lecture",
+          "target_node_id": "PY-003",
+          "verdict": "grounded",
+          "reason": "资源内容对字符串索引、切片、不可变性及所有方法的说明均符合图谱事实和 Python 官方行为，教学示例与误区提示均正确，无编造或相悖之处。"
+        },
+        {
+          "resource_index": 6,
+          "content_type": "practice_guide",
+          "target_node_id": "PY-003",
+          "verdict": "grounded",
+          "reason": "资源内容对字符串方法（strip、split、join、replace、find返回值-1而非None）、索引、切片、f-string的描述及示例均与图谱事实一致，且领域公认正确，无编造错误。"
+        },
+        {
+          "resource_index": 7,
+          "content_type": "test",
+          "target_node_id": "PY-003",
+          "verdict": "grounded",
+          "reason": "所有知识陈述均可在图谱事实中找到依据，且无与事实相悖之处。"
+        }
+      ]
+    },
+    "adaptation": {
+      "rate": 1.0,
+      "matched": 8,
+      "total": 8,
+      "same_source": true,
+      "judged": [
+        {
+          "resource_index": 0,
+          "content_type": "lecture",
+          "difficulty": 2,
+          "matched": true,
+          "reason": "内容以列表的创建、索引、切片以及 append/extend/insert/remove/pop/sort 等基础操作方法为主，虽然提及列表推导式，但仅作简单介绍，整体难度仍属基础级。"
+        },
+        {
+          "resource_index": 1,
+          "content_type": "test",
+          "difficulty": 3,
+          "matched": true,
+          "reason": "内容围绕列表的常用操作及列表推导式，需要组合多个方法（如 remove、pop、sort、切片、列表推导）解决具体问题，符合多知识点组合的进阶特征。"
+        },
+        {
+          "resource_index": 2,
+          "content_type": "lecture",
+          "difficulty": 3,
+          "matched": true,
+          "reason": "内容组合了比较运算符、逻辑运算符、短路求值、链式比较和身份比较等多个知识点，且需要理解短路求值原理和链式比较的展开方式，属于多知识点组合并需要理解原理的进阶层次。"
+        },
+        {
+          "resource_index": 3,
+          "content_type": "practice_guide",
+          "difficulty": 3,
+          "matched": true,
+          "reason": "内容覆盖多个知识点（比较运算符、短路求值、链式比较、布尔算术），且需理解and/or短路求值原理，属于简单组合与原理理解层次的进阶难度"
+        },
+        {
+          "resource_index": 4,
+          "content_type": "test",
+          "difficulty": 3,
+          "matched": true,
+          "reason": "内容涉及比较运算符、布尔类型隐式转换、is与==区别、链式比较和短路求值等组合知识点，需要理解原理而非简单记忆，属于进阶范畴。"
+        },
+        {
+          "resource_index": 5,
+          "content_type": "lecture",
+          "difficulty": 1,
+          "matched": true,
+          "reason": "内容仅限于字符串的基本索引、切片、拼接和常用方法，用直观比喻解释，无复合结构或前置知识要求，属于入门级直接陈述。"
+        },
+        {
+          "resource_index": 6,
+          "content_type": "practice_guide",
+          "difficulty": 2,
+          "matched": true,
+          "reason": "内容围绕字符串的基本操作方法（strip、split、列表推导、索引、f-string）组合完成任务，属于多个基础知识点的简单串联，未涉及原理讲解或抽象概念，整体难度为基础级。"
+        },
+        {
+          "resource_index": 7,
+          "content_type": "test",
+          "difficulty": 3,
+          "matched": true,
+          "reason": "内容以字符串操作为主线，融入不可变性、方法链、split/join 组合以及较复杂的邮箱脱敏规则实现，属于多知识点综合运用的进阶难度"
+        }
+      ]
+    }
+  },
+  "resources": [
+    {
+      "content_type": "lecture",
+      "target_node_id": "PY-009",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-009.summary",
+        "PY-009.key_points[0]",
+        "PY-009.key_points[1]",
+        "PY-009.key_points[2]",
+        "PY-009.key_points[3]",
+        "PY-009.key_points[4]",
+        "PY-009.key_points[5]",
+        "PY-009.common_mistakes[0]",
+        "PY-009.common_mistakes[1]",
+        "PY-009.common_mistakes[2]",
+        "PY-009.common_mistakes[3]"
+      ],
+      "content": "# 列表基础操作（难度：入门）\n\n## 学习目标\n1. 能够用方括号 `[]` 创建列表，并通过索引和切片访问或修改其中的元素。\n2. 能够区分 `append` 与 `extend` 的用法，正确向列表添加单个元素或多个元素。\n3. 能够使用 `insert` 在指定位置插入元素，使用 `remove` 删除首个匹配值。\n4. 能够使用 `pop` 删除并返回元素，并理解其默认行为。\n5. 能够用 `sort` 对列表原地排序，用 `sorted` 得到排序后的新列表，并写出简单的列表推导式。\n\n## 核心概念讲解\n\n### 1. 列表就像一个可修改的收纳盒\n想象你有一个多格子的收纳盒，每个格子可以放进一样东西，你可以随时更换格子里的东西、增加新的格子或者拿走某些格子。这个收纳盒在 Python 里就叫**列表**，用一对方括号 `[]` 来创建，里面的每个“格子”就是列表的一个元素。\n\n**关键特性：**\n- 列表里的元素**可以修改**，不像字符串那样一旦创建就不能改其中的某个字符。\n- 可以通过**索引**（从0开始的编号）访问某个格子的内容，也可以通过**切片**（用冒号 `:` 指定范围）一次性取出多个连续格子里的内容。\n\n### 2. 向列表里添加东西\n- **在末尾加一个元素：`append(x)`**  \n  就像在收纳盒的最后一个格子后面再粘上一个新格子，里面放上 `x`。\n- **在末尾一次加一堆元素：`extend(iter)`**  \n  如果你有一串东西（比如另一个列表），想把它们逐个粘到收纳盒的末尾，就用 `extend`。它会把这串东西里的每个元素单独追加进去，而不是把整串当成一个元素塞进去。\n- **在指定位置插入：`insert(i, x)`**  \n  你可以指定把新元素 `x` 塞到编号为 `i` 的位置，原来的那个位置及其后面的元素会自动往后挪一个位置。\n\n### 3. 从列表中删除东西\n- **按值删除第一个匹配项：`remove(x)`**  \n  像从收纳盒里找到第一个写着“x”的格子并把它抽走，后面的格子会往前移。注意：它只删除**第一个**匹配的元素，如果后面还有同样的值不会被删除。\n- **按位置删除并取出该元素：`pop(i)`**  \n  你可以指定要拿掉哪个编号的格子，并且把这个格子里的东西拿到手上。如果**不写编号**，默认把最后一个格子里的东西拿走。它会把那个元素**返回**给你，同时列表里就没有它了。\n\n### 4. 让列表有序整理\n- **原地排序：`sort()`**  \n  它会直接把收纳盒里的东西按照从小到大的顺序重新排列，你原来的列表就被改变了。这个操作**不返回新列表**，而是直接修改原列表。\n- **得到新排序列表：`sorted()`**  \n  `sorted()` 是一个函数，它会照原样保留你的旧列表，然后给你一个重新排好序的新列表。\n\n### 5. 高效创建列表的技巧：列表推导式\n有时你想根据已有的东西快速生成一个新列表，比如把一串数字每个都平方后放进列表。列表推导式可以在一行里完成：  \n`[expr for item in iterable if cond]`  \n意思是：对于可迭代对象 `iterable` 中的每一个 `item`，如果满足条件 `cond`，就计算表达式 `expr`，并把结果收集成一个新列表。就像用一台自动分拣机，从一个箱子里取出每个东西，检查条件，然后加工一下，丢进新箱子里。\n\n## 带注释的代码示例\n\n```python\n# 创建列表：一个收纳盒，里面放着几个不同的数字\nmy_list = [10, 20, 30, 20, 50]\nprint(\"原始列表:\", my_list)\n\n# 通过索引修改\nmy_list[0] = 1          # 把第0号格子改成1\nprint(\"修改索引0后:\", my_list)\n\n# 切片访问\nprint(\"索引1到3（不包含3）的切片:\", my_list[1:3])\n\n# append：在末尾粘上一个新格子，里面放60\nmy_list.append(60)\nprint(\"append(60)后:\", my_list)\n\n# extend：把另一个列表里的每个元素逐个追加到末尾\nmy_list.extend([70, 80])\nprint(\"extend([70,80])后:\", my_list)   # 会变成 ... 60, 70, 80\n\n# 对比：如果用append加一个列表会怎样？\nmy_list.append([90, 100])    # 把整个列表当成一个元素塞进去了\nprint(\"append([90,100])后:\", my_list)   # 注意末尾多了一个嵌套列表\n\n# insert：在1号位置插入999\nmy_list.insert(1, 999)\nprint(\"insert(1, 999)后:\", my_list)\n\n# remove：删除第一个出现的20\nmy_list.remove(20)\nprint(\"remove(20)后:\", my_list)   # 只删除了第一个20，第二个20还在\n\n# pop：删除并返回最后一个元素（默认）\nlast = my_list.pop()\nprint(\"pop()返回的最后一个元素:\", last)\nprint(\"pop()后的列表:\", my_list)\n\n# pop(i)：删除并返回指定位置元素\nitem_at_2 = my_list.pop(2)\nprint(\"pop(2)返回的元素:\", item_at_2)\nprint(\"pop(2)后的列表:\", my_list)\n\n# sort：原地排序，直接修改原列表\nnumbers = [3, 1, 4, 1, 5]\nnumbers.sort()\nprint(\"sort()后:\", numbers)          # [1, 1, 3, 4, 5]\n\n# sorted：返回新排序列表，原列表不变\nanother = [3, 1, 4, 1, 5]\nnew_list = sorted(another)\nprint(\"sorted()返回的新列表:\", new_list)\nprint(\"原列表依然不变:\", another)\n\n# 列表推导式：生成1~5的平方，只取偶数的平方\nsquares = [x*x for x in range(1, 6)]\nprint(\"1~5的平方:\", squares)\neven_squares = [x*x for x in range(1, 11) if x % 2 == 0]\nprint(\"1~10中偶数的平方:\", even_squares)\n```\n\n## 常见误区提醒\n\n1. **`sort()` 会返回排序后的新列表？**  \n   ❌ 错误。`sort()` 是一个**原地**操作，它会直接修改原列表，**不返回新列表**。如果你写成 `result = my_list.sort()`，`result` 会是 `None`。要得到排序后的新列表并保留原列表，请使用 `sorted()`。\n\n2. **`remove(x)` 会删除列表中所有等于 `x` 的元素？**  \n   ❌ 错误。`remove(x)` 只删除**第一个**匹配的元素。如果列表中有多个相同的值，后面的仍然保留。\n\n3. **`append(x)` 和 `extend(x)` 效果相同，都是将多个元素追加到列表？**  \n   ❌ 错误。`append(x)` 是把 `x` 当作**一个**整体添加到列表末尾，即使 `x` 是一个列表，它也会变成列表中的一个嵌套元素。`extend(iter)` 则是把可迭代对象里的**每个**元素单独追加到列表末尾。\n\n4. **`pop()` 必须指定要删除元素的索引？**  \n   ❌ 错误。`pop()` 的索引参数是**可选**的。如果不提供索引，它默认删除并返回最后一个元素，这和“从盒子里取出最右边的东西”一样。\n\n## 小结\n列表是 Python 中最灵活的数据结构之一，像一个可以随时调整的储物格。我们可以用方括号创建它，用索引和切片读取内容，用 `append`、`extend`、`insert` 添加元素，用 `remove`、`pop` 移除元素，用 `sort` 和 `sorted` 排序，还能用列表推导式快速生成新列表。  \n关键要记住每个操作是修改原列表还是返回新结果，以及删除操作的具体行为，避免踩进常见的“陷阱”。多加练习，你会很快掌握这些基础操作。",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:43:13.729346Z"
+    },
+    {
+      "content_type": "practice_guide",
+      "target_node_id": "PY-009",
+      "difficulty_level": 1,
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-009.summary"
+      ],
+      "content": "",
+      "generated_at": "2026-08-12T11:43:35.205390Z"
+    },
+    {
+      "content_type": "test",
+      "target_node_id": "PY-009",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-009.key_points[0]",
+        "PY-009.key_points[1]",
+        "PY-009.key_points[2]",
+        "PY-009.key_points[3]",
+        "PY-009.key_points[4]",
+        "PY-009.key_points[5]",
+        "PY-009.common_mistakes[0]",
+        "PY-009.common_mistakes[1]",
+        "PY-009.common_mistakes[2]",
+        "PY-009.common_mistakes[3]",
+        "PY-009.summary"
+      ],
+      "content": "# 列表基础操作·分阶测试题\n\n本测试围绕 Python 列表（list）的常用操作设计，分为基础（50分）、进阶（30分）、挑战（20分）三部分。适合刚学完列表基础操作的初学者检验掌握程度。\n\n---\n\n## 一、基础题（共50分）\n\n### 1. 选择题（5分）\n下列关于列表的说法，正确的是？\n\nA. 列表使用圆括号 `()` 定义，元素不可修改。  \nB. 列表使用方括号 `[]` 定义，但元素不可修改。  \nC. 列表使用方括号 `[]` 定义，元素可以修改。  \nD. 列表是字符串的一种特殊表示。\n\n**答案：C**  \n[已心算验证]\n\n---\n\n### 2. 选择题（5分）\n执行以下代码后，列表 `a` 变成了什么？\n\n```python\na = [1, 2]\na.append([3, 4])\n```\n\nA. `[1, 2, 3, 4]`  \nB. `[1, 2, [3, 4]]`  \nC. `[1, 2, 3, 4]`  \nD. 抛出类型错误\n\n**答案：B**  \n[已心算验证]\n\n---\n\n### 3. 填空题（5分）\n已知列表 `lst = ['a', 'b', 'c']`，执行 `item = lst.pop()` 后，  \n`lst` 的内容是 `______`，变量 `item` 的值是 `______`。\n\n**答案：`['a', 'b']` ; `'c'`**  \n[已心算验证]\n\n---\n\n### 4. 代码题（10分）\n编写函数 `remove_third(lst)`，使用 `pop` 方法删除并返回列表中索引为 2 的元素（即第三个元素）。  \n如果列表长度不足 3，返回 `None`。\n\n```python\ndef remove_third(lst):\n    # 在此编写代码\n    pass\n```\n\n**测试用例与预期输出：**\n\n| 输入 | 预期返回值 | 修改后的原列表 |\n|------|-------------|----------------|\n| `[1, 2, 3, 4, 5]` | `3` | `[1, 2, 4, 5]` |\n| `['x', 'y']` | `None` | `['x', 'y']` |\n| `[10]` | `None` | `[10]` |\n\n**参考实现思路：** 先检查长度，若 `len(lst) < 3` 返回 `None`；否则用 `lst.pop(2)` 删除并返回。\n\n---\n\n### 5. 选择题（5分）\n执行以下代码，变量 `b` 的值是什么？\n\n```python\na = [3, 1, 2]\nb = a.sort()\n```\n\nA. `[1, 2, 3]`  \nB. `[3, 1, 2]`  \nC. `None`  \nD. `[1, 2, 3]` 且 `a` 保持不变\n\n**答案：C**  \n[已心算验证]\n\n---\n\n### 6. 填空题（5分）\n请用列表推导式写出生成 `1` 到 `10` 中所有偶数的平方的列表。  \n提示：使用 `range(1, 11)` 和条件 `x % 2 == 0`。\n\n**答案：`[x**2 for x in range(1, 11) if x % 2 == 0]`**  \n[已心算验证]\n\n---\n\n### 7. 选择题（5分）\n原有列表 `numbers = [5, 6, 7, 6, 8]`，执行 `numbers.remove(6)` 后，列表的内容是？\n\nA. `[5, 7, 8]`  \nB. `[5, 7, 6, 8]`  \nC. `[5, 6, 7, 8]`  \nD. `[5, 6, 7, 6, 8]`（不变）\n\n**答案：B**  \n[已心算验证]\n\n---\n\n### 8. 代码题（10分）\n实现函数 `sum_of_squares(lst)`，计算列表中所有数字的平方和。如果列表为空，返回 0。  \n可使用循环或列表推导式。\n\n```python\ndef sum_of_squares(lst):\n    # 在此编写代码\n    pass\n```\n\n**测试用例与预期输出：**\n\n| 输入 | 预期输出 |\n|------|----------|\n| `[1, 2, 3]` | `14` |\n| `[]` | `0` |\n| `[0, -1]` | `1` |\n\n**验证：** `1² + 2² + 3² = 1 + 4 + 9 = 14`；`0² + (-1)² = 0 + 1 = 1`。  \n[已心算验证]\n\n---\n\n## 二、进阶题（共30分）\n\n### 9. 选择题（5分）\n已知列表 `lst = [1, 2, 3, 2]`，依次执行以下操作：\n1. `lst.remove(2)`\n2. `lst.pop(1)`\n\n最终 `lst` 的内容是什么？\n\nA. `[1, 3]`  \nB. `[1, 2]`  \nC. `[1, 3, 2]`  \nD. `[2, 3]`\n\n**答案：B**  \n[已心算验证]\n\n---\n\n### 10. 填空题（5分）\n使用列表推导式，从 `range(10)`（即 0～9 的数字）中筛选出大于 5 的数，并求每个数的立方。  \n请补全代码：  \n`nums = [____ for x in range(10) if x > 5]`\n\n**答案：`x**3`**  \n完整表达式：`[x**3 for x in range(10) if x > 5]`  \n生成列表为 `[216, 343, 512, 729]`。  \n[已心算验证]\n\n---\n\n### 11. 代码题（10分）\n实现函数 `pop_max(lst)`，接收一个**非空**列表，先对列表进行**原地升序排序**，然后弹出并返回最大的元素，最后返回一个元组 `(max_val, lst)`（`lst` 为修改后的列表）。  \n不能使用内置的 `max` 函数。\n\n```python\ndef pop_max(lst):\n    # 假定 lst 非空\n    pass\n```\n\n**测试用例与预期输出：**\n\n| 输入 | 预期返回值 | 原列表被修改为 |\n|------|-------------|----------------|\n| `[3, 1, 4, 2]` | `(4, [1, 2, 3])` | `[1, 2, 3]` |\n| `[7]` | `(7, [])` | `[]` |\n\n**验证要点：** `sort()` 原地排序后 `pop()` 删除最后一个，并返回删除的元素；元组需包含被弹出的值和修改后的列表。  \n[已心算验证]\n\n---\n\n### 12. 选择题（5分）\n执行以下代码后，列表 `a` 将变成什么？\n\n```python\na = [1, 2]\na.extend([x*2 for x in range(3)])\n```\n\nA. `[1, 2, 0, 2, 4]`  \nB. `[1, 2, [0, 2, 4]]`  \nC. `[1, 2, 6]`  \nD. `[1, 2, 0, 2, 4, 6]`\n\n**答案：A**  \n[已心算验证]\n\n---\n\n### 13. 填空题（5分）\n已知列表 `data = [5, 2, 8, 2, 9]`，执行以下操作：\n\n```python\ndata.remove(2)\ndata.sort()\nresult = data[1:3]\n```\n\n最后 `result` 的值是 `______`。\n\n**答案：`[5, 8]`**  \n详细过程：`remove(2)` 删除第一个 2 → `[5, 8, 2, 9]`；`sort()` 后 → `[2, 5, 8, 9]`；切片 `[1:3]` 取索引 1、2 → `[5, 8]`。  \n[已心算验证]\n\n---\n\n## 三、挑战题（共20分）\n\n### 14. 代码题（10分）\n请实现函数 `remove_all_and_top3(lst, k)`，完成以下操作：\n- 删除列表中**所有**等于 `k` 的元素（注意 `remove` 方法每次只删除第一个匹配项）；\n- 将列表原地升序排序；\n- 返回排序后列表的前三个元素（不足三个则返回全部元素）。\n\n```python\ndef remove_all_and_top3(lst, k):\n    # 在此编写代码\n    pass\n```\n\n**测试用例与预期输出：**\n\n| 输入 `lst` | `k` | 预期返回值 |\n|-------------|-----|-------------|\n| `[3, 1, 2, 3, 4, 3]` | `3` | `[1, 2, 4]` |\n| `[5, 5, 5]` | `5` | `[]` |\n| `[7, 8, 9]` | `0` | `[7, 8, 9]` |\n\n**实现思路：** 使用 `while k in lst: lst.remove(k)` 删除所有匹配项；然后 `lst.sort()`；最后 `return lst[:3]`。  \n[已心算验证]\n\n---\n\n### 15. 选择题（5分）\n关于列表的 `pop` 方法，以下哪个操作会引发 `IndexError`？\n\nA. `lst = [1, 2, 3]; lst.pop()`  \nB. `lst = [1, 2, 3]; lst.pop(2)`  \nC. `lst = [1, 2, 3]; lst.pop(3)`  \nD. `lst = [1, 2, 3]; lst.pop(-1)`\n\n**答案：C**  \n解析：`pop(2)` 删除索引为 2 的元素（第三个），合法；`pop(-1)` 等同于 `pop()`，删除最后一个，合法；索引 3 超出范围，引发错误。  \n[已心算验证]\n\n---\n\n### 16. 填空题（5分）\n阅读下面代码，写出最终 `result` 的值和 `lst` 的内容。\n\n```python\nlst = [6, 1, 6, 4, 6]\nlst.remove(6)\nlst.sort()\nresult = lst.pop(1)\n```\n\n`result` 的值是 `______`，`lst` 的内容是 `______`。\n\n**答案：`result` 为 `4`，`lst` 为 `[1, 6, 6]`**  \n详细过程：`remove(6)` → `[1, 6, 4, 6]`；`sort()` → `[1, 4, 6, 6]`；`pop(1)` 删除并返回索引 1 的元素 `4`，列表变为 `[1, 6, 6]`。  \n[已心算验证]\n",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:45:00.107825Z"
+    },
+    {
+      "content_type": "lecture",
+      "target_node_id": "PY-005",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-005.summary",
+        "PY-005.key_points[0]",
+        "PY-005.key_points[1]",
+        "PY-005.key_points[2]",
+        "PY-005.key_points[3]",
+        "PY-005.key_points[4]",
+        "PY-005.key_points[5]",
+        "PY-005.common_mistakes[0]",
+        "PY-005.common_mistakes[1]",
+        "PY-005.common_mistakes[2]",
+        "PY-005.common_mistakes[3]"
+      ],
+      "content": "# 比较运算符与布尔逻辑（难度：★☆☆）\n\n欢迎来到 Python 的逻辑世界！在这里，程序学会了自己做判断，就像我们每天会回答“是”或“否”一样。\n\n## 学习目标\n完成本节后，你将能够：\n- 使用 `==`、`!=`、`<`、`>`、`<=`、`>=` 比较数据并解释返回的 `True`/`False`\n- 用 `and`、`or`、`not` 组合多个条件，并说明短路求值是如何工作的\n- 写出简洁的链式比较（如 `10 < x < 20`），并理解其等价写法\n- 利用 `True` 和 `False` 在算术运算中相当于 `1` 和 `0` 的特性\n- 准确区分 `==`（值比较）和 `is`（身份比较）的使用场景\n\n## 核心概念讲解\n### 比较运算符：向 Python 提问\n比较运算符就像我们日常问的问题：“这个苹果比那个苹果重吗？”或者“这个数字等于5吗？”。Python 用下面这些符号来提问，并且只会回答 `True`（是）或 `False`（否）。\n\n| 运算符 | 含义 | 例子（假设 x=3，y=5） | 结果 |\n|--------|------|----------------------|------|\n| `==` | 等于 | `x == 3` | `True` |\n| `!=` | 不等于 | `x != y` | `True` |\n| `<` | 小于 | `x < y` | `True` |\n| `>` | 大于 | `x > y` | `False` |\n| `<=` | 小于等于 | `x <= 3` | `True` |\n| `>=` | 大于等于 | `y >= 6` | `False` |\n\n`True` 和 `False` 是布尔值，也就是只有这两种可能的答案。任何非零的数字或非空的内容在需要做判断时，都会被 Python 当成 `True`，而 `0`、`None`、空字符串 `\"\"`、空列表 `[]` 等会被当成 `False`。\n\n### 逻辑运算符：组合多个问题\n我们经常需要同时问好几个问题，比如：“今天天气暖和吗？并且我有空闲时间吗？”，只有两个都满足才出门。Python 提供了 `and`、`or`、`not` 来连接布尔表达式。\n\n- **`and`（并且）**：两边都为 `True` 才返回 `True`。\n- **`or`（或者）**：只要有一边为 `True` 就返回 `True`。\n- **`not`（不是）**：把 `True` 变成 `False`，`False` 变成 `True`。\n\n更重要的是 **短路求值**——Python 会偷懒！\n想象你要在一筐球里找一个“红色并且圆形”的球。如果拿起第一个球发现它是蓝色的，你立刻就知道它不满足条件，根本不会再去检查它是不是圆形了。对于 `and`，如果左边的表达式已经为 `False`，Python 就不会再计算右边，直接给 `False`。同理，对于 `or`，如果左边已经是 `True`，右边就不用算了，直接给 `True`。这不仅可以加速程序，还能避免一些错误。\n\n### 链式比较：一次问两个问题\n数学里我们常写“10 < x < 20”，Python 也允许这样做。它实际上相当于 `10 < x and x < 20`，但更简洁。注意它不是先算 `10 < x` 得到一个 `True` 或 `False`，再和 `20` 比较（那样就错了！），而是把它展开为两个比较并用 `and` 连接起来。你可以连多个，比如 `a < b <= c == d`。\n\n### 布尔值也能做算术\n`True` 在 Python 里实际上和 `1` 差不多，`False` 和 `0` 差不多。所以你可以直接拿布尔值做数学运算。例如要计算一批数据中有多少大于10，可以把比较结果（`True`/`False`）加起来，每个 `True` 贡献1分，`False` 贡献0分。\n\n## 代码示例（带注释）\n\n```python\n# 比较运算符\na = 7\nb = 10\nprint(a == b)   # False，因为7不等于10\nprint(a < b)    # True，7小于10\n\n# 逻辑运算符\nis_warm = True\nis_weekend = False\nprint(is_warm and is_weekend)   # False，因为周末条件不满足\nprint(is_warm or is_weekend)    # True，只要天气暖和就考虑出门\nprint(not is_warm)              # False，把“暖和”变成“不暖和”\n\n# 短路求值演示\ndef check(x):\n    print(f\"检查了 {x}\")\n    return x > 0\n\n# and 短路：左边为False，右边不会执行\nresult = False and check(5)   # 不会打印“检查了 5”\nprint(result)                 # False\n\n# or 短路：左边为True，右边不会执行\nresult = True or check(-2)    # 不会打印“检查了 -2”\nprint(result)                 # True\n\n# 链式比较\nscore = 85\nprint(60 < score < 90)        # True，等价于 60 < score and score < 90\n\n# 布尔值参与算术\npoints = True + True + False   # 相当于 1 + 1 + 0\nprint(points)                  # 2\n\n# == 比较值，is 比较身份（是否是同一个对象）\nx = [1, 2]\ny = [1, 2]\nz = x\nprint(x == y)   # True，内容相同\nprint(x is y)   # False，两个不同的列表对象\nprint(x is z)   # True，z引用了同一个列表对象\n```\n\n## 常见误区提醒\n1. **搞混 `==` 和 `is`**  \n   想判断两个变量是不是指向同一个对象（身份相同）时，错误地使用了 `==`。实际上 `==` 只比较内容，身份比较必须用 `is`。\n   \n2. **忽略短路求值**  \n   以为 `and` 或 `or` 会把两边都算一遍，结果可能因为右边有副作用（比如修改变量）而产生意料外的行为。务必记住 Python 会“能省则省”。\n\n3. **误解链式比较**  \n   以为 `a < b < c` 会先算出 `a < b` 得到一个布尔值，再把这个布尔值与 `c` 比较。这是完全错误的，因为 `True < c` 会把 `True` 当成 1 来比较，而不是你想要的逻辑。链式比较的魔法是背后扩展成了 `a < b and b < c`。\n\n4. **不敢用布尔值做运算**  \n   很多人不知道 `True + 1`（结果是 2）是合法且常用的技巧，从而写了更复杂的 `if` 来累加统计。记住布尔值就是特殊的数字，可以放心参加算术。\n\n## 小节总结\n- 比较运算符返回 `True` 或 `False`，一切对象在需要判断时都会被当成 `True`（非零非空）或 `False`（零或空）。\n- `and` 和 `or` 采用短路求值，可以提升效率并避免不必要的计算。\n- 链式比较让你写出更接近数学直觉的连续判断，它内部等价于用 `and` 连接多个比较。\n- `True` 相当于 `1`，`False` 相当于 `0`，可直接用于算术计算。\n- 比内容用 `==`，比身份用 `is`，千万别混淆。\n\n现在你已经掌握了 Python 说“是”与“否”的所有基本语法，试着在代码中多问几个问题吧！",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:43:07.212271Z"
+    },
+    {
+      "content_type": "practice_guide",
+      "target_node_id": "PY-005",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-005.key_points[0]",
+        "PY-005.key_points[1]",
+        "PY-005.key_points[2]",
+        "PY-005.key_points[3]",
+        "PY-005.key_points[4]",
+        "PY-005.key_points[5]",
+        "PY-005.summary",
+        "PY-005.common_mistakes[0]",
+        "PY-005.common_mistakes[1]",
+        "PY-005.common_mistakes[2]",
+        "PY-005.common_mistakes[3]"
+      ],
+      "content": "# 阶梯式实操指南：Python比较运算符与布尔逻辑\n\n## 任务目标\n通过一系列动手练习，掌握Python中的比较运算符（`==`、`!=`、`<`、`>`、`<=`、`>=`）、逻辑运算符（`and`、`or`、`not`）、链式比较、短路求值以及布尔值的算术特性。每个步骤都配有渐进提示阶梯，你可以先尝试不看提示自己完成，遇到困难时再逐级展开。\n\n## 环境准备\n- 一台安装了Python 3的电脑，或者可以使用任何在线Python交互环境（例如Repl.it、Python自带的IDLE、终端下的`python3`解释器）。\n- 本指南中的所有代码都可以直接在交互式解释器中逐行输入运行，观察结果。\n\n---\n\n## 步骤1：比较运算初体验\n**目标**：熟悉比较运算符返回布尔值，并区分`==`（比较值）和`is`（比较对象身份）。\n\n### 挑战描述（第1级提示）\n- 创建两个列表`a = [1,2,3]`和`b = [1,2,3]`。\n- 分别用`a == b`和`a is b`比较它们，观察结果并记录。\n- 预期输出：第一个比较为`True`，第二个为`False`。\n\n<details>\n<summary>需要更多提示？点此展开（第2级）</summary>\n\n**算法思路**：`==`比较两个对象**包含的值**是否相等；`is`比较两个对象**在内存中是否是同一个对象**。这里`a`和`b`虽然内容相同，但它们是独立创建的列表，所以`==`返回`True`，`is`返回`False`。\n\n</details>\n\n<details>\n<summary>第3级：伪代码框架</summary>\n\n```pseudo\na = [1, 2, 3]\nb = [1, 2, 3]\n打印 a == b    # 值相等比较\n打印 a is b    # 身份比较\n```\n\n</details>\n\n<details>\n<summary>第4级：关键代码片段（含空白）</summary>\n\n```python\na = [1, 2, 3]\nb = _______\nprint(a __ b)    # 值比较\nprint(a __ b)    # 身份比较\n```\n\n</details>\n\n<details>\n<summary>第5级：完整参考代码</summary>\n\n```python\na = [1, 2, 3]\nb = [1, 2, 3]\nprint(a == b)   # True，因为内容相同\nprint(a is b)   # False，因为它们是不同的列表对象\n```\n\n</details>\n\n**检查点**：运行后，第一行输出`True`，第二行输出`False`。如果不是，请检查列表的写法是否一致。\n\n**反思问题**：\n- 如果先执行`a = b`，再执行`print(a is b)`，结果会是什么？你可以试一下，然后思考为什么。\n\n---\n\n## 步骤2：逻辑运算符与短路求值\n**目标**：理解`and`和`or`的**短路求值**特性——当左侧表达式已经能决定整个表达式的结果时，右侧表达式**不会被求值**。\n\n### 挑战描述（第1级提示）\n- 定义一个函数`side_effect()`，该函数会打印一行文字`\"我被调用了！\"`并返回`True`。\n- 分别测试以下两个表达式，看看函数是否被调用：\n  - `False and side_effect()`\n  - `True or side_effect()`\n- 预期：两个表达式都**不会**打印那一行文字，因为Python利用了短路求值跳过了函数调用。\n\n<details>\n<summary>需要更多提示？点此展开（第2级）</summary>\n\n**算法思路**：\n- 对于`and`：左侧为`False`时，整个表达式一定为`False`，右侧无需计算。\n- 对于`or`：左侧为`True`时，整个表达式一定为`True`，右侧无需计算。\n所以你在上面两种情况下，`side_effect`函数根本不会被执行。\n\n</details>\n\n<details>\n<summary>第3级：伪代码框架</summary>\n\n```pseudo\ndefine side_effect():\n    print(\"我被调用了！\")\n    return True\n\nresult1 = False and side_effect()\nresult2 = True or side_effect()\nprint(result1, result2)\n```\n\n</details>\n\n<details>\n<summary>第4级：关键代码片段（含空白）</summary>\n\n```python\ndef side_effect():\n    print(\"我被调用了！\")\n    return True\n\nprint(False ___ side_effect())  # and 还是 or？\nprint(True ___ side_effect())   # and 还是 or？\n```\n\n</details>\n\n<details>\n<summary>第5级：完整参考代码</summary>\n\n```python\ndef side_effect():\n    print(\"我被调用了！\")\n    return True\n\nresult1 = False and side_effect()  # \"我被调用了！\"不会打印\nresult2 = True or side_effect()    # \"我被调用了！\"不会打印\nprint(result1)  # 输出 False\nprint(result2)  # 输出 True\n```\n\n</details>\n\n**检查点**：运行代码后，你只能看到`False`和`True`两行输出，看不到任何\"我被调用了！\"的消息。\n\n**反思问题**：\n- 如果改成`True and side_effect()`，会发生什么？请实际操作验证。\n- 短路求值在哪些实际场景中能提高代码效率或安全性？例如，检查一个列表不为空再取其第一个元素：`if lst and lst[0] == \"apple\":`。\n\n---\n\n## 步骤3：链式比较的妙用\n**目标**：理解并运用链式比较，写出更简洁的区间判断。\n\n### 挑战描述（第1级提示）\n- 假设变量`x = 15`，请用一条语句判断`x`的值是否大于10且小于20。\n- 预期输出为`True`。\n\n<details>\n<summary>需要更多提示？点此展开（第2级）</summary>\n\n**算法思路**：Python支持`10 < x < 20`这样的链式写法，它等价于`10 < x and x < 20`。你可以直接使用链式比较。\n\n</details>\n\n<details>\n<summary>第3级：伪代码框架</summary>\n\n```pseudo\nx = 15\nresult = 10 < x < 20\nprint(result)\n```\n\n</details>\n\n<details>\n<summary>第4级：关键代码片段（含空白）</summary>\n\n```python\nx = 15\nin_range = 10 __ x __ 20\nprint(in_range)\n```\n\n</details>\n\n<details>\n<summary>第5级：完整参考代码</summary>\n\n```python\nx = 15\nis_between = 10 < x < 20\nprint(is_between)  # 输出 True\n```\n\n</details>\n\n**检查点**：程序输出`True`。尝试将`x`改为`5`或`25`，观察输出是否变为`False`。\n\n**反思问题**：\n- 链式比较`a < b < c`和加括号的`(a < b) < c`有什么区别？为什么后者通常**不是**你想要的结果？试试`(10 < 15) < 20`会输出什么？\n- 链式比较可以用于相等吗？比如`a == b == c`是什么意思？可以用三个不同列表、数值来测试一下。\n\n---\n\n## 步骤4：布尔值的算术属性\n**目标**：体验布尔值在算术运算中的特殊性质——`True`等价于`1`，`False`等价于`0`。\n\n### 挑战描述（第1级提示）\n- 分别计算`True + 1`、`False * 5`、`[1, 2][True]`的结果，并解释数字输出。\n- 预期输出：`2`、`0`、`2`。\n\n<details>\n<summary>需要更多提示？点此展开（第2级）</summary>\n\n**算法思路**：Python中`bool`类型是`int`的子类，`True`就是`1`，`False`就是`0`。所以它们可以像数字一样参与运算，也可以作为列表索引。\n\n</details>\n\n<details>\n<summary>第3级：伪代码框架</summary>\n\n```pseudo\nprint(True + 1)\nprint(False * 5)\nprint([1,2] 用 True 做索引)\n```\n\n</details>\n\n<details>\n<summary>第4级：关键代码片段（含空白）</summary>\n\n```python\nprint(True __ 1)          # 算术运算符\nprint(False __ 5)         # 算术运算符\nprint([1, 2]____)        # 索引取值\n```\n\n</details>\n\n<details>\n<summary>第5级：完整参考代码</summary>\n\n```python\nprint(True + 1)        # 2，因为 True 等于 1\nprint(False * 5)       # 0，因为 False 等于 0\nprint([1, 2][True])    # 2，True 被当作索引 1\n```\n\n</details>\n\n**检查点**：输出三行依次为`2`、`0`、`2`。特别注意索引那一行取出的不是列表的第一个元素`1`，而是第二个元素`2`。\n\n**反思问题**：\n- 你能想到布尔值算术在编程中的一个巧妙应用吗？例如统计满足条件的个数：`sum([score > 90 for score in scores])`。\n- 直接利用布尔值进行算术运算可能会降低代码的可读性，在哪些情况下应当避免？\n\n---\n\n## 扩展挑战（选做）\n- **无`if-else`的条件赋值**：已知分数`score`（0‑100），若分数≥90，等级为`'A'`，否则为`'B'`。不使用`if-else`，尝试仅用`and`和`or`来实现。（提示：`(条件) and 'A' or 'B'`，但要小心当正确分支为假值时产生意外结果。）\n- **闰年判断**：写一个函数，利用**链式比较**和逻辑运算符判断某年份`year`是否为闰年（能被4整除但不能被100整除，或者能被400整除）。函数应返回布尔值。\n- **真值测试**：尝试将空列表`[]`、数字`0`、空字符串`\"\"`、`None`放在`if`后面（如`if my_list:`），观察它们是否被视为`False`；将非空列表、非零数字放在`if`后，观察结果。\n\n> 扩展挑战无标准答案，请尽情实验，在犯错中加深理解！",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:44:49.655871Z"
+    },
+    {
+      "content_type": "test",
+      "target_node_id": "PY-005",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-005.summary",
+        "PY-005.key_points[0]",
+        "PY-005.key_points[1]",
+        "PY-005.key_points[2]",
+        "PY-005.key_points[3]",
+        "PY-005.key_points[4]",
+        "PY-005.key_points[5]",
+        "PY-005.common_mistakes[0]",
+        "PY-005.common_mistakes[2]",
+        "PY-005.common_mistakes[3]"
+      ],
+      "content": "# 比较运算符与布尔逻辑 测试题（初学者）\n\n## 一、基础题（约50%）\n\n### 1. 选择题\n下列表达式的结果是什么？\n```python\n5 > 3\n```\nA. `True`  \nB. `False`  \nC. `5`  \nD. `3`\n\n---\n\n### 2. 选择题\n关于链式比较 `a < b < c`，以下哪种说法是**正确**的？\nA. 先计算 `a < b`，结果为布尔值，再与 `c` 比较大小  \nB. 等价于 `a < b and b < c`  \nC. 等价于 `(a < b) < c`  \nD. 等价于 `a < b or b < c`\n\n---\n\n### 3. 填空题\n写出表达式 `True + 1` 的值为 ______，并简单解释原因：______。\n\n---\n\n### 4. 选择题\n执行以下代码，输出是什么？\n```python\nx = [1, 2, 3]\ny = [1, 2, 3]\nprint(x == y, x is y)\n```\nA. `True True`  \nB. `True False`  \nC. `False True`  \nD. `False False`\n\n---\n\n## 二、进阶题（约30%）\n\n### 5. 代码输出题\n阅读以下程序，写出**打印出的结果**：\n```python\na = 15\nresult = (10 < a < 20) * 2 + (a > 30)\nprint(result)\n```\n输出：______\n\n---\n\n### 6. 填空题\n表达式 `None and (1 / 0)` 运行时**不会**报错（不会发生除零错误），请解释为什么。\n解释：______\n\n---\n\n## 三、挑战题（约20%）\n\n### 7. 代码纠错题\n下面代码想要实现一个函数 `is_valid_age(age)`：\n- 如果 `age` 是 `None`，返回 `False`；\n- 如果年龄在 0 到 120 之间（包含边界），返回 `True`；\n- 否则返回 `False`。\n\n```python\ndef is_valid_age(age):\n    if age == None:          # 判断是否为空\n        return False\n    if 0 <= age and age <= 120:\n        return True\n    return False\n```\n\n代码中存在**一个错误**，请找出并改正。要求：\n- 指出错误所在，并写出修正后的完整函数；\n- 提供**至少三个测试用例**（包含输入和预期输出），并说明为什么这些测试可以验证函数正确性；\n- （可选）是否可以使用链式比较简化代码？若可以，给出简化版本。\n\n---\n\n## 答案\n\n### 1. 基础选择题\n**答案：A**  \n比较运算符（如 `>`）会返回布尔值 `True` 或 `False`。因为 5 确实大于 3，所以结果是 `True`。[已心算验证]\n\n---\n\n### 2. 基础选择题\n**答案：B**  \nPython 的链式比较 `a < b < c` 本质上被解释为 `a < b and b < c`，并且 `b` 只计算一次。选项 A 和 C 是常见的误解（以为先把左侧算成布尔值再比较），而 D 使用了 `or`，不正确。[已心算验证]\n\n---\n\n### 3. 基础填空题\n**答案：2**  \n在算术运算中，布尔值 `True` 等价于 `1`，`False` 等价于 `0`。因此 `True + 1` 相当于 `1 + 1`，结果为 `2`。[已心算验证]\n\n---\n\n### 4. 基础选择题\n**答案：B**  \n`==` 比较两个对象的值是否相同，两个列表都包含 `[1,2,3]`，所以 `x == y` 为 `True`；`is` 比较两个对象是否为同一个对象（身份是否相同），`x` 和 `y` 是两个不同的列表对象，所以 `x is y` 为 `False`。[已心算验证]\n\n---\n\n### 5. 进阶代码输出题\n**答案：2**  \n- `10 < a < 20` 是链式比较，等价于 `10 < a and a < 20`。因为 `a = 15`，满足条件，所以该表达式为 `True`。\n- `True` 在算术运算中被当作 `1`，因此 `(10 < a < 20) * 2` 等于 `1 * 2 = 2`。\n- `a > 30` 为 `15 > 30`，结果为 `False`，即 `0`。\n- 最终 `2 + 0 = 2`，打印输出 `2`。[已心算验证]\n\n---\n\n### 6. 进阶填空题\n**答案：因为 `and` 具有短路求值特性。**  \n当 `and` 左侧的表达式为假（在布尔上下文中为 `False`）时，整个 `and` 表达式的值就已经确定为假，因此右侧的表达式**不会被执行**。`None` 在布尔上下文中视为假值，所以 `None and ...` 直接返回 `None`，`(1 / 0)` 根本没有机会运行，从而避免了除零错误。[已心算验证]\n\n---\n\n### 7. 挑战题答案\n**错误**：`if age == None:` 使用了 `==` 来判断 `age` 是否为 `None`，应该用 `is`，因为 `None` 是一个单例对象，判断身份应该用 `is`。  \n\n**修正后函数（显式写法）**：\n```python\ndef is_valid_age(age):\n    if age is None:          # 使用 is 判断 None\n        return False\n    if 0 <= age and age <= 120:\n        return True\n    return False\n```\n\n**使用链式比较简化版本**（推荐）：\n```python\ndef is_valid_age(age):\n    if age is None:\n        return False\n    return 0 <= age <= 120   # 等价于 0 <= age and age <= 120\n```\n\n**测试用例与预期输出**：\n```python\n# 测试1：输入 None\nprint(is_valid_age(None))   # 预期输出: False\n# 测试2：合法年龄\nprint(is_valid_age(25))     # 预期输出: True\n# 测试3：负数\nprint(is_valid_age(-5))     # 预期输出: False\n# 测试4：超出上限\nprint(is_valid_age(130))    # 预期输出: False\n# 测试5：边界值\nprint(is_valid_age(0))      # 预期输出: True\nprint(is_valid_age(120))    # 预期输出: True\n```\n\n**解释测试用例**：\n- `None` 测试判断 `is None` 分支能否正确执行；\n- 合法年龄 25 应返回 `True`，验证正常范围；\n- 负数 `-5` 和超出上限 `130` 确保不在 0~120 时返回 `False`；\n- 边界值 0 和 120 检查“包含边界”的条件是否正确。\n\n以上所有测试均可心算验证，修正后的代码将产生预期结果。[已心算验证]",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:45:18.069097Z"
+    },
+    {
+      "content_type": "lecture",
+      "target_node_id": "PY-003",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-003.summary",
+        "PY-003.key_points[]",
+        "PY-003.common_mistakes[]"
+      ],
+      "content": "# 字符串操作（难度：☆）\n\n## 学习目标\n学完本课你将能够：\n1. 通过索引和切片取出字符串中的某个字符或某一段文字。\n2. 用 `+` 和 `*` 拼接与重复字符串。\n3. 使用 `.upper()`、`.lower()`、`.strip()`、`.replace()` 等方法修改文本的样式或内容。\n4. 用 `.split()` 和 `.join()` 在分隔符与列表之间互相转换。\n5. 理解“字符串不可变”并正确使用 `.replace()` 和 `.find()` 等方法的返回值。\n\n## 核心概念讲解\n\n### 1. 像排队一样理解索引\n字符串就像一排小朋友，排在最前面的是索引 `0`，向后依次增加。Python 还允许倒着数：最后一个小朋友索引是 `-1`，倒数第二个是 `-2`，以此类推。\n- `s[0]` 取第一个字符\n- `s[-1]` 取最后一个字符\n\n### 2. 切片：把队伍中的一段截出来\n切片就像你从队伍中挑一段小朋友，语法是 `s[开始:结束:步长]`。注意：结束位置不包含在内，就像你喊“从第1个到第3个小朋友出列”，实际上只包含第1、第2个。\n- `s[1:3]` 取出索引 1 和 2 的两个字符，不包含索引 3。\n- `s[:3]` 从开头取到索引 2。\n- `s[2:]` 从索引 2 取到最后。\n- `s[::-1]` 步长为 -1，得到倒序的字符串。\n\n### 3. 拼接与重复\n- 拼接用 `+` 号连接两个字符串：`\"Hello \" + \"World\"` 得到 `\"Hello World\"`\n- 重复用 `*` 号让字符串重复若干次：`\"Ha\" * 3` 得到 `\"HaHaHa\"`\n\n### 4. 字符串不可变——就像换衣服，不改本人\nPython 的字符串一旦创建，内容就不能再修改。任何看起来修改的方法（如 `.replace()`、`.upper()`）都会生成一个全新的字符串，原来的字符串纹丝不动。你需要用变量接住这个新字符串才能继续使用它。\n\n### 5. 常用加工方法\n- **大小写转换**：`.upper()` 全部变大写，`.lower()` 全部变小写。\n- **去空白**：`.strip()` 去掉首尾的空格、换行等不可见字符。\n- **替换内容**：`.replace(旧子串，新子串)` 将字符串中所有旧子串换成新子串，返回新字符串。\n- **拆分与合并**：\n  - `.split(分隔符)` 按分隔符把字符串切分成一个列表。例如 `\"苹果,香蕉,橘子\".split(\",\")` → `[\"苹果\", \"香蕉\", \"橘子\"]`。\n  - `.join(可迭代对象)` 用连接符把多个字符串拼成一个。正确用法是连接符放在前面，例如 `\",\".join([\"苹果\", \"香蕉\"])` 得到 `\"苹果,香蕉\"`。\n- **查找位置**：`.find(子串)` 返回子串第一次出现的位置（索引），如果找不到则返回 **-1**（重要：不是 `None`）。\n\n### 6. 推荐的格式化方式：f-string\n在字符串前加 `f`，花括号内可以直接写变量或表达式，结果会被替换进去。例如 `f\"你好，{name}\"`。这是目前最直观、最推荐的方式。\n\n## 带注释代码示例\n```python\n# 索引与切片\ntext = \"Python 编程\"\nfirst = text[0]          # 'P'，第一个字符\nlast = text[-1]          # '程'，最后一个字符\nsub = text[0:6]          # 'Python'，索引 0~5，不包含索引6\nreverse = text[::-1]     # '程编 nohtyP'\n\n# 拼接与重复\ngreeting = \"你好\" + \"，\" + \"世界\"   # '你好，世界'\nlaugh = \"哈\" * 3                  # '哈哈哈'\n\n# 大小写与去空白\nmsg = \"   Hello Python   \"\nclean = msg.strip()      # 'Hello Python'（首尾空白消失）\nshout = clean.upper()    # 'HELLO PYTHON'\nwhisper = clean.lower()  # 'hello python'\n\n# 替换（注意：原字符串不变）\ns = \"我爱吃苹果\"\nnew_s = s.replace(\"苹果\", \"香蕉\")  # 返回 '我爱吃香蕉'\nprint(s)                  # 仍输出 '我爱吃苹果'\n\n# 拆分与合并\nfruits_str = \"苹果,香蕉,橘子\"\nfruit_list = fruits_str.split(\",\")   # ['苹果', '香蕉', '橘子']\nrejoined = \" | \".join(fruit_list)    # '苹果 | 香蕉 | 橘子'\n# 易错：不能写成 fruit_list.join(\" | \")，那是错误用法\n\n# 查找\npoem = \"春眠不觉晓\"\npos = poem.find(\"晓\")    # 返回 4（索引从0开始）\nmiss = poem.find(\"冬\")   # 返回 -1，表示没找到\n\n# f-string 格式化\nname = \"小明\"\nscore = 95\ninfo = f\"{name} 的成绩是 {score} 分\"  # '小明 的成绩是 95 分'\n```\n\n## 常见误区提醒\n1. **以为 `.replace()` 会修改原字符串**  \n   写 `s.replace('a','b')` 后，`s` 本身没变，必须用 `s = s.replace('a','b')` 来更新变量。\n2. **切片索引终点理解错误**  \n   `s[1:3]` 只包含索引 1 和 2，**不包含索引 3**。很多同学误以为会多截一个字符。\n3. **`.join()` 的方向搞反**  \n   想要用某个符号连接列表，语法是 `\"符号\".join(列表)`，而不是 `列表.join(\"符号\")`。比如 `\"-\".join(words)`。\n4. **找不到子串时 `.find()` 的返回值**  \n   `.find()` 找不到子串时返回的是 **-1**，而不是 `None`。如果用 `if result.find(...) is None` 做判断，逻辑会出错。\n\n## 本节总结\n- 通过索引（正负）可以拿到单个字符，通过切片（`start:stop:step`）可以截取一段。\n- 字符串**不可变**，所有修改类操作都返回新字符串，记得用变量承接结果。\n- `.upper()`/`.lower()` 改大小写，`.strip()` 去空白，`.replace()` 替换内容，`.split()` 切分，`.join()` 合并，`.find()` 查找。\n- f-string 是最推荐的字符串格式化写法。\n- 避开四个常见错误：忘记保存新字符串、切片终点算多、`.join` 方法用反、`.find` 返回值当成 `None`。\n\n用生活中的排队、换衣服等比喻来理解，多加练习就能熟练掌握。",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:43:47.816851Z"
+    },
+    {
+      "content_type": "practice_guide",
+      "target_node_id": "PY-003",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-003.summary",
+        "PY-003.key_points[0]",
+        "PY-003.key_points[1]",
+        "PY-003.key_points[2]",
+        "PY-003.key_points[3]",
+        "PY-003.key_points[4]",
+        "PY-003.key_points[5]",
+        "PY-003.common_mistakes"
+      ],
+      "content": "# 实操任务：清洗混乱的字符串并生成问候语\n\n## 任务目标\n编写一个 Python 程序，处理用户输入的包含姓名、年龄和城市的“混乱”字符串，最终输出格式化的问候语。你需要运用字符串的索引、切片、`.strip()`、`.split()`、`.join()`、`.replace()` 以及 f‑string 等方法完成数据清洗。\n\n**最终效果示例**  \n输入字符串：  `\"  Alice , 30 ,New York  \"`  \n输出内容：  `Hello, Alice! You are 30 years old and live in New York.`\n\n> 这个任务就像收到一张沾满污渍的便签纸，你需要小心地把它擦干净，然后整理成漂亮的电子贺卡。\n\n---\n\n## 环境准备\n- 一台安装了 Python 的电脑（任意版本均可）\n- 一个能编辑代码的编辑器（IDLE、VS Code、记事本等）或者直接使用交互式命令行\n- 新建一个 `.py` 文件，例如 `clean_string.py`\n\n---\n\n## 步骤 1：去除首尾的空白字符\n\n### 第 1 级提示\n完成一个功能：对任意字符串，去除它首尾所有的空格、换行等“不可见”空白，返回干净的新字符串。  \n**输入示例**：`\"  Alice , 30 ,New York  \"`  \n**输出示例**：`\"Alice , 30 ,New York\"`（首尾不再有多余空白）\n\n<details>\n<summary>需要更多思路？点击展开（第 2 级提示）</summary>\n\n**算法思路提示**  \n字符串对象有一个名为 `.strip()` 的方法，它可以自动去掉两边所有的空白字符。你只需创建一个新变量来存放它的返回结果。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码框架</summary>\n\n```\ncleaned_str = 原始字符串.strip()\n```\n</details>\n\n<details>\n<summary>第 4 级提示：关键代码填空</summary>\n\n```python\ncleaned_str = raw_str._____\n```\n请在横线处填入正确的方法名。\n</details>\n\n<details>\n<summary>第 5 级提示：完整参考代码</summary>\n\n```python\n# 原始字符串（模拟用户输入）\nraw_str = \"  Alice , 30 ,New York  \"\n\n# 使用 .strip() 去除首尾空白，生成新字符串\ncleaned_str = raw_str.strip()\n\n# 打印观察变化\nprint(\"原始:\", repr(raw_str))      # 可以看到前后的空白\nprint(\"清洗后:\", repr(cleaned_str))  # 首尾空白已消失\n```\n> `.strip()` 返回的是一个**新字符串**，原来的 `raw_str` 并没有被改变，就像你把便签的内容抄写到一张新纸上，原便签仍是脏的。\n</details>\n\n### 检查点\n- 运行代码后，打印的 `cleaned_str` 是不是以字母开头、以字母结尾？中间的空格还保留吗？\n\n---\n\n## 步骤 2：按逗号分割字符串\n\n### 第 1 级提示\n将上一步得到的干净字符串，按**逗号**切成三部分，得到一个包含三个元素的列表。  \n**输入示例**：`\"Alice , 30 ,New York\"`  \n**输出示例**：`[\"Alice \", \" 30 \", \" New York\"]`（注意每个元素可能仍带有空格）\n\n<details>\n<summary>第 2 级提示</summary>\n\n**算法思路提示**  \n字符串的 `.split(',')` 方法可以指定逗号为分隔符，返回分割后的子串列表。若不加参数，`.split()` 会默认按任意空白分割，这里我们需要精确按逗号分割。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\nparts_list = cleaned_str.split(',')\n```\n</details>\n\n<details>\n<summary>第 4 级提示：填空</summary>\n\n```python\nparts = cleaned_str._____(',')\n```\n</details>\n\n<details>\n<summary>第 5 级提示：完整代码</summary>\n\n```python\n# 接上一步 cleaned_str = \"Alice , 30 ,New York\"\nparts = cleaned_str.split(',')\nprint(parts)   # 输出类似 ['Alice ', ' 30 ', ' New York']\n```\n逗号作为分隔符，分割后每个部分的内容完整保留，包括它前后的空格。\n</details>\n\n### 检查点\n- 打印 `parts`，查看列表长度是否为 3（对应姓名、年龄、城市）。\n\n---\n\n## 步骤 3：清理列表中每个元素的空白\n\n### 第 1 级提示\n对列表中的每一个元素，分别去掉它前后的空格，得到一个没有多余空白的干净列表。  \n**输入示例**：`[\"Alice \", \" 30 \", \" New York\"]`  \n**输出示例**：`[\"Alice\", \"30\", \"New York\"]`\n\n<details>\n<summary>第 2 级提示</summary>\n\n**算法思路提示**  \n需要遍历列表，对每个元素调用 `.strip()`。可以使用列表推导式 `[x.strip() for x in parts]`，或者写一个 `for` 循环把清理后的元素放入新列表。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\nclean_parts = []\nfor 每个部分 in parts:\n    clean_parts.append(部分.strip())\n```\n或者列表推导：\n```\nclean_parts = [p.strip() for p in parts]\n```\n</details>\n\n<details>\n<summary>第 4 级提示：填空</summary>\n\n```python\nclean_parts = [p._____ for p in parts]\n```\n</details>\n\n<details>\n<summary>第 5 级提示：完整参考代码</summary>\n\n```python\n# 使用列表推导一次性清理所有元素\nclean_parts = [p.strip() for p in parts]\nprint(clean_parts)   # 输出 ['Alice', '30', 'New York']\n```\n再次强调，每次 `.strip()` 都返回新字符串，原 `parts` 里的脏字符串并未被修改。\n</details>\n\n### 检查点\n- 打印 `clean_parts`，检查每个元素是否都没有首尾空格，只有有效文字。\n\n---\n\n## 步骤 4：通过索引提取各个信息\n\n### 第 1 级提示\n从干净列表中取出姓名（第一个元素）、年龄（第二个元素）、城市（第三个元素），分别存入变量。  \n**输入示例**：`[\"Alice\", \"30\", \"New York\"]`  \n**预期变量**：`name = \"Alice\"`，`age = \"30\"`，`city = \"New York\"`\n\n<details>\n<summary>第 2 级提示</summary>\n\n**算法思路提示**  \n列表支持**索引访问**，`list[0]` 获取第一个元素，`list[1]` 获取第二个，负数索引则从末尾开始计数，例如 `list[-1]` 获取最后一个元素。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\nname = clean_parts[0]\nage = clean_parts[1]\ncity = clean_parts[2]\n```\n</details>\n\n<details>\n<summary>第 4 级提示：填空</summary>\n\n```python\nname = clean_parts[_]\nage = clean_parts[_]\ncity = clean_parts[_]\n```\n请填入正确的索引数字。\n</details>\n\n<details>\n<summary>第 5 级提示：完整代码</summary>\n\n```python\nname = clean_parts[0]    # 索引 0 对应第一个元素\nage = clean_parts[1]     # 索引 1 对应第二个\ncity = clean_parts[2]    # 索引 2 对应第三个\nprint(name, age, city)\n```\n> 就像火车车厢编号从 0 开始，第一节车厢是索引 0，第二节是 1，以此类推。\n</details>\n\n### 检查点\n- 打印 `name`、`age`、`city`，确认它们的内容正确，没有多余空格。\n\n---\n\n## 步骤 5：用 f‑string 构造最终问候语\n\n### 第 1 级提示\n将提取出的变量组合成一句问候语，格式为：`Hello, 姓名! You are 年龄 years old and live in 城市.`  \n**输入变量**：`name = \"Alice\"`, `age = \"30\"`, `city = \"New York\"`  \n**期望输出**：`Hello, Alice! You are 30 years old and live in New York.`\n\n<details>\n<summary>第 2 级提示</summary>\n\n**算法思路提示**  \nPython 中推荐使用 **f‑string** 进行字符串格式化，方法是在字符串前加 `f`，然后用花括号 `{ }` 包裹变量名，Python 会自动替换。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\ngreeting = f\"Hello, {name}! You are {age} years old and live in {city}.\"\nprint(greeting)\n```\n</details>\n\n<details>\n<summary>第 4 级提示：填空</summary>\n\n```python\ngreeting = f\"Hello, {_____}! You are {_____} years old and live in {_____}.\"\n```\n</details>\n\n<details>\n<summary>第 5 级提示：完整参考代码（整合所有步骤）</summary>\n\n```python\n# 完整的清洗与问候程序\nraw_input = \"  Alice , 30 ,New York  \"\n\n# 1. 去除首尾空白\ncleaned = raw_input.strip()\n\n# 2. 按逗号分割\nparts = cleaned.split(',')\n\n# 3. 清理每项空白\nclean_parts = [p.strip() for p in parts]\n\n# 4. 索引提取\nname = clean_parts[0]\nage = clean_parts[1]\ncity = clean_parts[2]\n\n# 5. f-string 输出\ngreeting = f\"Hello, {name}! You are {age} years old and live in {city}.\"\nprint(greeting)\n```\n运行这段代码，你将在屏幕上看到正确的问候语。\n</details>\n\n### 检查点\n- 输出内容是否与目标完全一致？如果还有其他空格，请回退检查之前的 `.strip()` 步骤。\n\n---\n\n## 反思问题\n*请不要立刻查阅答案，先自己动手试一试，或者在心里推理一下。*\n\n1. 在上面的步骤中，我们多次使用 `.strip()`，但原始字符串 `raw_input` 始终没有变过，这是为什么？\n2. 如果你尝试用 `s.replace('a','b')` 修改字符串，并希望 `s` 本身发生变化，你会怎么做才能实现？这和字符串不可变有什么关系？\n3. 方法 `.find()` 在找不到给定子串时会返回什么？试着查查资料或自己写代码测试，想一想常见误解中“返回 `None`”的说法是否正确，为什么？\n4. 切片操作 `s[1:3]` 返回的字符串，包含索引 3 位置的字符吗？以字符串 `\"Python\"` 为例，`\"Python\"[1:3]` 会得到什么？动手试一下。\n5. 如果要连接一个字符串列表，比如 `[\"a\",\"b\",\"c\"]`，应该写 `\"-\".join(列表)` 还是 `列表.join(\"-\")`？错误的是哪一种？\n\n---\n\n## 扩展挑战（选做）\n\n### 挑战 1：替换城市名中的空格\n在基础任务输出的城市中，“New York”包含空格。请使用 `.replace()` 方法，将城市里的空格替换为下划线 `_`，使输出变为 `Hello, Alice! You are 30 years old and live in New_York.`\n\n<details>\n<summary>点击获得第 1 级提示</summary>\n\n功能描述：将变量 `city` 中的空格 `\" \"` 替换为 `\"_\"`，得到新字符串，并在 f‑string 中使用它。\n</details>\n\n<details>\n<summary>第 2 级提示</summary>\n\n`.replace(旧子串, 新子串)` 返回一个新字符串，原字符串不变。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\nmodified_city = city.replace(' ', '_')\n```\n</details>\n\n（后续提示可自行脑补，或由你完成实验）\n\n---\n\n### 挑战 2：用 `.join()` 重新连接列表\n将清洗后的列表 `clean_parts` 中的元素用 `\" - \"` 连接成一个新字符串，并打印它。例如：`\"Alice - 30 - New York\"`。\n\n<details>\n<summary>第 1 级提示</summary>\n\n功能描述：使用 `\" - \".join(列表)` 实现连接。\n</details>\n\n<details>\n<summary>第 2 级提示</summary>\n\n连接符 `.join()` 的调用方式是：**连接符字符串**.join(可迭代对象)，而不是列表调用。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\njoined_str = \" - \".join(clean_parts)\nprint(joined_str)\n```\n</details>\n\n---\n\n### 挑战 3：处理不统一的分隔符\n有时输入的分隔符可能是分号而不是逗号，例如：`\"  Bob ;40; London  \"`。请改进程序，让它能自动将分号转化为逗号，然后再用逗号分割。提示：先用 `.replace(';',',')` 生成一个逗号分隔的字符串。\n\n<details>\n<summary>第 1 级提示</summary>\n\n功能描述：将输入字符串中所有的 `;` 替换为 `,`，之后再按逗号分割，其余步骤不变。\n</details>\n\n<details>\n<summary>第 2 级提示</summary>\n\n结合前面的 `.replace()` 和 `.split()`，可以一次性完成统一分隔符的工作。\n</details>\n\n<details>\n<summary>第 3 级提示：伪代码</summary>\n\n```\nunified = raw_str.replace(';', ',')\n# 后续再 strip, split, ...\n```\n</details>\n\n---\n\n> 记住：字符串一旦创建就**不可变**，所有方法都是返回一个新的字符串。就像你无法擦掉便签上的字，只能郑重地再抄一张，干干净净，迎接新的开始。\n",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:45:38.618738Z"
+    },
+    {
+      "content_type": "test",
+      "target_node_id": "PY-003",
+      "adaptation_profile": "beginner",
+      "source_nodes": [
+        "PY-003.key_points[0]",
+        "PY-003.key_points[1]",
+        "PY-003.key_points[2]",
+        "PY-003.key_points[3]",
+        "PY-003.key_points[4]",
+        "PY-003.key_points[5]",
+        "PY-003.summary",
+        "PY-003.common_mistakes"
+      ],
+      "content": "# 阶段测试：字符串操作\n\n本测试帮你巩固 Python 字符串的常用操作。请先阅读知识点总结，再完成题目。\n\n---\n\n## 基础题（50%）\n\n### 1. 选择题（字符串切片）\n\n想象一把尺子，上面刻着字符串的每个字符，索引从 `0` 开始。切片就像在尺子上标出从 **起点** 到 **终点** 的一段，但不包含终点所在的刻度。\n\n```python\ns = \"Python\"\n```\n执行 `s[1:4]` 得到的结果是下列哪一个？\n\nA. `\"yth\"`  \nB. `\"ytho\"`  \nC. `\"yt\"`  \nD. `\"y\"`\n\n**答案：A**  \n解析：`s[1:4]` 截取索引 `1`（含）、`2`（含）、`3`（含），即 `'y'`、`'t'`、`'h'`，组成 `\"yth\"`。**右边界 `4` 对应的字符 `'o'` 不包含在内**，易错点正是选项 B。\n\n---\n\n### 2. 填空题（字符串不可变）\n\nPython 的字符串像是一个上了锁的记事本——上面写好的内容不能直接涂改，任何“修改”都会生成一个新的记事本。\n\n阅读以下代码，写出最后的 `print` 输出结果。\n\n```python\ns = \"hello\"\ns.replace(\"h\", \"H\")\nprint(s)\n```\n\n输出：`______`\n\n**答案：`hello`**  \n解析：`s.replace(\"h\", \"H\")` 生成了新字符串 `\"Hello\"`，但因没有将返回值赋给 `s`，原字符串 `s` 保持不变。这是最常见的误解之一。\n\n---\n\n### 3. 代码题（分割与合并）\n\n生活中，我们可以把一句话按空格拆成一个个单词（分割），再按相反的顺序用连字符或空格重新拼起来（合并）。这就是 `.split()` 和 `.join()` 的协作。\n\n**任务**：编写函数 `reverse_words(sentence)`，接收一句英文，将单词顺序反转后返回，单词之间用一个空格连接。\n\n**要求**：必须使用 `.split()` 和 `.join()` 方法。\n\n**测试用例**：\n\n```python\nprint(reverse_words(\"Hello world Python\"))\n```\n预期输出：\n```\nPython world Hello\n```\n\n**参考实现与心算验证**：\n\n```python\ndef reverse_words(sentence):\n    words = sentence.split()      # 按空白分割成列表 ['Hello', 'world', 'Python']\n    words.reverse()               # 原地反转，或使用 reversed(words)\n    return ' '.join(words)        # 用空格连接列表，得到 'Python world Hello'\n```\n\n- `\"Hello world Python\".split()` → `['Hello', 'world', 'Python']`\n- 反转后 → `['Python', 'world', 'Hello']`\n- 用空格连接 → `\"Python world Hello\"` ✅\n\n---\n\n## 进阶题（30%）\n\n### 4. 选择题（方法组合调用）\n\n请观察下面的代码，选择正确的输出。\n\n```python\ns = \"Hello World\"\ns.upper()\na = s.find('o')\nb = s[6:].lower()\nc = s.replace('World', 'Python')\nprint(a, b, c)\n```\n\nA. `4 world Hello Python`  \nB. `7 WORLD Hello Python`  \nC. `-1 world Hello Python`  \nD. `4 World Hello Python`\n\n**答案：A**  \n解析（心算已验）：\n- `s.upper()` 未赋值给 `s`，所以 `s` 仍是 `\"Hello World\"`。\n- `s.find('o')` 从左寻找首个 `'o'`，在索引 `4` 找到（`H(0) e(1) l(2) l(3) o(4)`），返回 `4`。\n- `s[6:]` 从索引 `6` 开始截取，得到 `\"World\"`，`.lower()` 后变为 `\"world\"`。\n- `s.replace('World', 'Python')` 返回新字符串 `\"Hello Python\"`，原串不变。\n- 最终打印 `4 world Hello Python`。\n\n---\n\n### 5. 代码题（f‑string 格式化）\n\nf-string 是 Python 整理信息的快捷工具。你可以在字符串前写一个 `f`，然后用花括号 `{}` 直接把变量值嵌入到句子中。\n\n**任务**：已知姓名 `name` 和年龄 `age`，使用 **f‑string** 输出 `\"Hello, Alice! You are 25 years old.\"`（以 `name = \"Alice\"`, `age = 25` 为例）。\n\n**要求**：必须使用 f‑string，不能使用 `+` 拼接或 `.format()`。\n\n**测试用例**：\n\n```python\nname = \"Alice\"\nage = 25\nprint(你的 f‑string 语句)\n# 预期输出：Hello, Alice! You are 25 years old.\n\nname = \"Bob\"\nage = 30\nprint(你的 f‑string 语句)\n# 预期输出：Hello, Bob! You are 30 years old.\n```\n\n**参考实现（心算验证）**：\n\n```python\nprint(f\"Hello, {name}! You are {age} years old.\")\n```\n- `name` = `\"Alice\"` → `Hello, Alice! You are 25 years old.`\n- `name` = `\"Bob\"` → `Hello, Bob! You are 30 years old.` ✅\n\n---\n\n## 挑战题（20%）\n\n### 6. 代码题（邮箱脱敏处理）\n\n在真实应用中，我们有时需要把邮箱地址的局部信息隐藏，保护隐私。本题需要你综合利用**索引、切片、长度计算、字符串重复和拼接**，对邮箱的用户名部分进行脱敏。\n\n**规则**：\n- 邮箱格式为 `用户名@域名`，如 `example@gmail.com`。\n- 如果用户名长度 **不超过 2**，直接返回原邮箱。\n- 否则，保留用户名的第一个和最后一个字符，中间所有字符用 `*` 替代，`*` 的数量等于中间字符个数。\n- 域名部分原样保留，最后返回完整的邮箱字符串。\n\n**任务**：编写函数 `mask_email(email)` 实现上述逻辑。\n\n**提示**：\n- 找到 `@` 的位置 → 使用 `.find('@')`\n- 提取用户名 → 切片获取 `@` 前的部分\n- 构建脱敏后的用户名 → 使用 `+` 和 `*` 拼接\n- 域名部分 → 切片获取 `@` 之后的部分\n- 注意：字符串不可变，每一步的返回值都需要保存。\n\n**测试用例（要求输出完全一致）**：\n\n```python\nprint(mask_email(\"example@gmail.com\"))   # 预期输出：e*****e@gmail.com\nprint(mask_email(\"ab@test.com\"))         # 预期输出：ab@test.com\nprint(mask_email(\"a@demo.org\"))          # 预期输出：a@demo.org\nprint(mask_email(\"john.doe@work.com\"))   # 预期输出：j******e@work.com\n```\n\n**参考实现（心算验证）**：\n\n```python\ndef mask_email(email):\n    at_index = email.find('@')\n    name = email[:at_index]\n    domain = email[at_index:]\n    if len(name) <= 2:\n        return email\n    # 保留首尾字符，中间用 * 填充\n    masked_name = name[0] + '*' * (len(name) - 2) + name[-1]\n    return masked_name + domain\n```\n\n验证：\n- `\"example@gmail.com\"`：`@` 在 7，`name = \"example\"`（长度 7），`masked_name = \"e\" + \"*\"*5 + \"e\" = \"e*****e\"`，域名 `\"@gmail.com\"`，结果 `\"e*****e@gmail.com\"` ✅\n- `\"ab@test.com\"`：长度 2，直接返回 `\"ab@test.com\"` ✅\n- `\"a@demo.org\"`：长度 1，返回 `\"a@demo.org\"` ✅\n- `\"john.doe@work.com\"`：`@` 在 8，`name = \"john.doe\"`（长度 8），`masked_name = \"j\" + \"*\"*6 + \"e\" = \"j******e\"`，域名 `\"@work.com\"`，结果 `\"j******e@work.com\"` ✅\n\n恭喜你完成本阶段测试！每道题都围绕 **索引切片、不可变性、split/join、strip/replace、f‑string** 这些核心知识点，一旦能灵活组合它们，你就掌握了 Python 字符串的基础操作。",
+      "difficulty_level": 1,
+      "generated_at": "2026-08-12T11:45:04.456957Z"
+    }
+  ],
+  "profile": {
+    "profile_id": "UP-DIA-399ebc",
+    "name": "测评用户",
+    "created_at": "2026-08-12T11:42:04.750557Z",
+    "type": "学情检测产出",
+    "theory_level": 2,
+    "practical_level": 1,
+    "learning_style": "read_write",
+    "target_direction": "Python 基础语法入门",
+    "preferred_pace": "normal",
+    "time_per_week": 6,
+    "known_topics": [
+      {
+        "node_id": "PY-001",
+        "mastery": 1.0,
+        "last_test_score": 10.0
+      },
+      {
+        "node_id": "PY-004",
+        "mastery": 1.0,
+        "last_test_score": 10.0
+      }
+    ],
+    "weak_topics": [
+      {
+        "node_id": "PY-002",
+        "mastery": 0.5,
+        "error_patterns": [
+          "错题: 关于 Python 的基本输入与格式化输出，以下哪一项是正确的？"
+        ]
+      },
+      {
+        "node_id": "PY-003",
+        "mastery": 0.5,
+        "error_patterns": [
+          "错题: 在Python中，使用字符串的 _____ 方法可以去除首尾空白字符。"
+        ]
+      },
+      {
+        "node_id": "PY-005",
+        "mastery": 0.0,
+        "error_patterns": [
+          "错题: 在 Python 中，链式比较 a < b < c 等价于逻辑表达式 __________。",
+          "错题: 下列关于 Python 逻辑运算符的说法，正确的是？"
+        ]
+      }
+    ],
+    "weakness_areas": [
+      "对《基本输入输出》尚需巩固（mastery=0.5，学习中）",
+      "对《字符串操作》尚需巩固（mastery=0.5，学习中）",
+      "对《比较运算符与布尔逻辑》掌握不足（mastery=0.0）"
+    ],
+    "recommended_path": {
+      "current_node": "PY-002",
+      "next_nodes": [
+        "PY-003",
+        "PY-005"
+      ],
+      "estimated_completion_weeks": 5
+    },
+    "raw_assessment_data": {
+      "theory_test": {
+        "total_questions": 10,
+        "correct": 6
+      }
+    }
+  }
+}

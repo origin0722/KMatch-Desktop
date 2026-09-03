@@ -1,0 +1,55 @@
+{
+ "$schema": "profile_schema.json",
+ "profile_id": "UP-WEB-001",
+ "name": "全栈目标小陈",
+ "created_at": "2026-08-03T10:00:00Z",
+ "type": "方向专攻学习者",
+ "description": "前端开发一年经验, JS 熟练, 想补后端变全栈。理解编程概念, 目标用 Flask 做项目, 希望尽快掌握 Python 语法差异与 Web 开发常用库。",
+ "demographics": {
+  "age_range": "18-25",
+  "education": "本科（毕业2年）",
+  "major": "软件工程",
+  "programming_experience_months": 24,
+  "python_experience_months": 2,
+  "previously_learned_languages": [
+   "JavaScript",
+   "HTML/CSS"
+  ]
+ },
+ "theory_level": 3,
+ "practical_level": 3,
+ "learning_style": "visual",
+ "target_direction": "Python Web 开发（Flask 项目）",
+ "preferred_pace": "fast",
+ "time_per_week": 12,
+ "known_topics": [],
+ "weak_topics": [],
+ "weakness_areas": [
+  "Python 语法细节不熟 (缩进/动态类型/列表推导)",
+  "不熟悉 Python 生态与包管理"
+ ],
+ "raw_assessment_data": {
+  "theory_test": {
+   "total_questions": 10,
+   "correct": 8,
+   "answers": []
+  },
+  "practical_test": {
+   "total_exercises": 5,
+   "completed": 0,
+   "average_score": 0
+  },
+  "learning_style_quiz": {
+   "visual": 3,
+   "auditory": 1,
+   "read_write": 2,
+   "kinesthetic": 3
+  }
+ },
+ "learning_history": [],
+ "recommended_path": {
+  "current_node": "PY-001",
+  "next_nodes": [],
+  "estimated_completion_weeks": 4
+ }
+}

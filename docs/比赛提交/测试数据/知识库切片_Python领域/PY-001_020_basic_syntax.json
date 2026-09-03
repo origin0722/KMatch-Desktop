@@ -1,0 +1,1031 @@
+[
+  {
+    "id": "PY-001",
+    "name": "变量与基本数据类型",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "Python 是动态类型语言，变量无需声明类型即可直接赋值。基本数据类型包括整数(int)、浮点数(float)、字符串(str)和布尔值(bool)。使用 type() 可以查看变量类型，int()/float()/str()/bool() 进行类型转换。",
+    "prerequisites": [],
+    "key_points": [
+      "变量无需声明类型，直接赋值即可，变量是对象的引用（标签）",
+      "int 支持任意精度整数，float 为双精度浮点数",
+      "字符串用单引号或双引号括起，是不可变序列",
+      "布尔类型只有 True/False，是 int 的子类",
+      "type() 查看类型，isinstance() 检查类型归属",
+      "类型转换：int()、float()、str()、bool()"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下哪个是合法的 Python 变量名？",
+        "options": [
+          "A. 2name",
+          "B. my-name",
+          "C. _count",
+          "D. class"
+        ],
+        "answer": "C",
+        "difficulty": 1,
+        "hint": "不能以数字开头，不能含连字符，不能是关键字"
+      },
+      {
+        "type": "choice",
+        "question": "type(3.14) 的返回结果是什么？",
+        "options": [
+          "A. <class 'int'>",
+          "B. <class 'float'>",
+          "C. <class 'str'>",
+          "D. <class 'bool'>"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "fill",
+        "question": "在 Python 中，查看变量 x 数据类型的函数是_____",
+        "answer": "type",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "基础",
+      "入门",
+      "变量",
+      "数据类型"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "认为 Python 变量必须先声明类型再赋值使用",
+      "认为 Python 的 int 有固定的位数上限（如 32 位、64 位）",
+      "认为字符串可以用索引直接修改某个字符，如 s[0]='a'",
+      "认为 bool 类型是独立类型，与 int 无关"
+    ]
+  },
+  {
+    "id": "PY-002",
+    "name": "基本输入输出",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "print() 函数用于输出内容到控制台，支持多参数、分隔符和结束符定制。input() 函数用于接收用户键盘输入，始终返回字符串类型。格式化输出用 f-string。",
+    "prerequisites": [
+      "PY-001"
+    ],
+    "key_points": [
+      "print() 输出到控制台，接受多个参数，默认空格分隔",
+      "sep 参数指定分隔符，end 参数指定结束符（默认换行）",
+      "input() 接收用户输入，始终返回字符串",
+      "f-string 格式化: f'变量是 {name}'",
+      "输入数字需要 int(input()) 或 float(input()) 转换"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "input() 函数的返回值类型是什么？",
+        "options": [
+          "A. int",
+          "B. float",
+          "C. str",
+          "D. 取决于用户输入"
+        ],
+        "answer": "C",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一段代码，让用户输入姓名和年龄，然后打印'你好, {姓名}, 你{年龄}岁了'",
+        "answer": "name=input('姓名:')\nage=input('年龄:')\nprint(f'你好, {name}, 你{age}岁了')",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "基础",
+      "输入输出",
+      "print",
+      "input"
+    ],
+    "estimated_minutes": 15,
+    "common_mistakes": [
+      "print() 默认以逗号分隔多个参数",
+      "print() 的 end 参数用于设置多个参数之间的分隔符",
+      "input() 能根据用户输入自动识别并返回数字类型",
+      "使用 f-string 时只需在字符串内写 {变量名}，不需要前缀 f"
+    ]
+  },
+  {
+    "id": "PY-003",
+    "name": "字符串操作",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "Python 字符串支持索引访问、切片截取、拼接(+)和重复(*)。常用方法包括 len()、.upper()/.lower()、.strip()、.replace()、.split()、.join()、.find()。字符串不可变，所有操作返回新字符串。",
+    "prerequisites": [
+      "PY-001"
+    ],
+    "key_points": [
+      "索引: s[0] 获取第一个字符，s[-1] 获取最后一个",
+      "切片: s[start:stop:step] 截取子串",
+      "字符串不可变，所有修改操作返回新字符串",
+      ".split(sep) 按分隔符分割，.join(iterable) 用连接符合并",
+      ".strip() 去除首尾空白，.replace(old,new) 替换子串",
+      "f-string 是格式化字符串的首选方式"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "'hello'[1:3] 的结果是什么？",
+        "options": [
+          "A. 'he'",
+          "B. 'el'",
+          "C. 'ell'",
+          "D. 'llo'"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "hint": "切片左闭右开"
+      },
+      {
+        "type": "code",
+        "question": "写一个函数统计句子中每个单词的出现次数，返回字典",
+        "answer": "def word_count(s):\n    words=s.split()\n    return {w:words.count(w) for w in set(words)}",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "基础",
+      "字符串",
+      "切片",
+      "格式化"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "s.replace('a','b') 会直接修改原字符串 s",
+      "切片 s[1:3] 返回索引 1 到 3 的字符，包含索引 3",
+      "连接字符串列表应使用列表对象 .join(连接符)",
+      "如果找不到子串，.find() 方法返回 None"
+    ]
+  },
+  {
+    "id": "PY-004",
+    "name": "算术运算符与表达式",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "Python 支持 +、-、*、/、//（整除）、%（取模）、**（幂）运算符。运算优先级遵循数学惯例，可用括号改变优先级。注意 / 始终返回浮点数。",
+    "prerequisites": [
+      "PY-001"
+    ],
+    "key_points": [
+      "+ - * 与数学运算一致，/ 始终返回浮点数",
+      "// 整除（向下取整），% 取模（求余数），** 幂运算",
+      "优先级: ** > * / // % > + -，同级左结合",
+      "用括号 () 明确优先级，提高可读性",
+      "复合赋值: +=, -=, *=, /= 等"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "5 // 2 的结果是什么？",
+        "options": [
+          "A. 2.5",
+          "B. 3",
+          "C. 2",
+          "D. 2.0"
+        ],
+        "answer": "C",
+        "difficulty": 1
+      },
+      {
+        "type": "fill",
+        "question": "3 ** 2 + 10 // 4 的结果是_____",
+        "answer": "11",
+        "difficulty": 1,
+        "hint": "先算 ** 和 //，再算 +"
+      }
+    ],
+    "tags": [
+      "基础",
+      "运算符",
+      "算术"
+    ],
+    "estimated_minutes": 15,
+    "common_mistakes": [
+      "两个整数使用 / 相除，结果也是整数",
+      "// 运算符向零取整，负数结果向上靠拢",
+      "** 优先级低于 * 和 /，所以 2*3**2 等于 (2*3)**2",
+      "所有算术运算符都是左结合，因此 2**3**2 等价于 (2**3)**2"
+    ]
+  },
+  {
+    "id": "PY-005",
+    "name": "比较运算符与布尔逻辑",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "比较运算符（==, !=, <, >, <=, >=）返回布尔值。逻辑运算符（and, or, not）用于组合布尔表达式。Python 支持链式比较（a < b < c）。注意短路求值特性。",
+    "prerequisites": [
+      "PY-001"
+    ],
+    "key_points": [
+      "比较运算符返回 True/False",
+      "== 比较值，is 比较对象身份",
+      "and/or/not 逻辑运算符，and 和 or 是短路求值",
+      "链式比较: 10 < x < 20 等价于 10 < x and x < 20",
+      "布尔值可参与算术: True==1, False==0",
+      "任何非零/非空值在布尔上下文为 True"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "'3' == 3 的结果是什么？",
+        "options": [
+          "A. True",
+          "B. False",
+          "C. 报错",
+          "D. None"
+        ],
+        "answer": "B",
+        "difficulty": 1,
+        "hint": "字符串和整数是不同的类型"
+      },
+      {
+        "type": "choice",
+        "question": "0 and 5 的结果是什么？",
+        "options": [
+          "A. True",
+          "B. False",
+          "C. 0",
+          "D. 5"
+        ],
+        "answer": "C",
+        "difficulty": 2,
+        "hint": "and 短路: 第一个为假直接返回"
+      }
+    ],
+    "tags": [
+      "基础",
+      "比较",
+      "布尔",
+      "逻辑"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "使用 == 判断两个对象是否为同一个对象，而忽略应使用 is 进行身份比较",
+      "认为逻辑运算符 and 和 or 会无条件计算两侧表达式，忽视短路求值的特性",
+      "误以为链式比较 a < b < c 是先将 a < b 计算为布尔值再与 c 比较，而不理解它等价于 a < b and b < c",
+      "认为布尔值不能参与算术运算，例如不知道 True + 1 是合法的且结果为 2"
+    ]
+  },
+  {
+    "id": "PY-006",
+    "name": "if/elif/else 条件判断",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "条件判断语句根据布尔表达式的值决定程序执行路径。if 后面跟条件和冒号，代码块缩进 4 空格（或 1 Tab）。elif 和 else 是可选的。支持嵌套和条件表达式（三元运算符）。",
+    "prerequisites": [
+      "PY-005"
+    ],
+    "key_points": [
+      "if 条件: 冒号后缩进代码块",
+      "elif 用于多条件分支，else 用于所有条件都不满足时",
+      "缩进必须一致（推荐 4 空格）",
+      "三元表达式: x if condition else y",
+      "条件可以是任意表达式，非零/非空即为 True"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下代码输出什么？\nif 0:\n    print('A')\nelse:\n    print('B')",
+        "options": [
+          "A. A",
+          "B. B",
+          "C. 无输出",
+          "D. 报错"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一个函数 grade(score)，90+返回'A'，80-89返回'B'，70-79返回'C'，60-69返回'D'，其余'F'",
+        "answer": "def grade(score):\n    if score>=90:return 'A'\n    elif score>=80:return 'B'\n    elif score>=70:return 'C'\n    elif score>=60:return 'D'\n    else:return 'F'",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "基础",
+      "条件判断",
+      "if",
+      "分支"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "误以为 if 条件语句中冒号可以省略，直接写条件后跟代码块",
+      "误认为空列表、空字符串、0 等作为条件时会被判定为 True",
+      "误以为三元表达式的顺序是 condition ? x : y 或 x if y else z，混淆 value-if-true 与 condition 的位置",
+      "误认为 if 结构里 else 可以写在 elif 前面，或一个 if 语句中可以有多个 else"
+    ]
+  },
+  {
+    "id": "PY-007",
+    "name": "while 循环",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "while 循环在条件为真时重复执行代码块。必须在循环体内修改条件变量，否则陷入无限循环。break 立即退出循环，continue 跳过本次循环剩余代码进入下次迭代。",
+    "prerequisites": [
+      "PY-006"
+    ],
+    "key_points": [
+      "while 条件: 循环体，条件为假时退出",
+      "循环开始前初始化变量，循环体内改变条件变量",
+      "break 立即退出循环，continue 跳过当前迭代",
+      "while True: 配合 break 实现无限循环+条件退出",
+      "while/else: 循环正常结束(非break)执行 else 块"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 while 循环计算 1+2+...+100 的和",
+        "answer": "total=0\ni=1\nwhile i<=100:\n    total+=i\n    i+=1\nprint(total)",
+        "difficulty": 1
+      },
+      {
+        "type": "choice",
+        "question": "以下代码会执行几次 print？\ni=0\nwhile i<3:\n    print(i)\n    i+=1",
+        "options": [
+          "A. 2",
+          "B. 3",
+          "C. 4",
+          "D. 无限循环"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "基础",
+      "循环",
+      "while"
+    ],
+    "estimated_minutes": 15,
+    "common_mistakes": [
+      "while 循环的条件判断仅在第一次进入循环时执行一次，之后便不再检查条件。",
+      "continue 语句可以直接退出 while 循环。",
+      "无论 while 循环是否通过 break 退出，while/else 中的 else 块总会执行。",
+      "只要 while 条件初始为假，循环体仍会执行一次。"
+    ]
+  },
+  {
+    "id": "PY-008",
+    "name": "for 循环与 range",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "for 循环用于遍历可迭代对象（列表、字符串、range、字典等）。range(start,stop,step) 生成整数序列。for/else 语法：循环正常结束（非 break）执行 else 块。",
+    "prerequisites": [
+      "PY-006"
+    ],
+    "key_points": [
+      "for item in iterable: 遍历可迭代对象中每个元素",
+      "range(n) 生成 0~n-1，range(s,e) 生成 s~e-1，range(s,e,step) 带步长",
+      "range() 是惰性序列，不占大量内存",
+      "for/else: 循环被 break 终止时不执行 else",
+      "enumerate() 同时获取索引和值"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "list(range(1,10,2)) 的结果是什么？",
+        "options": [
+          "A. [1,2,3,4,5,6,7,8,9]",
+          "B. [1,3,5,7,9]",
+          "C. [2,4,6,8]",
+          "D. [1,2,3,4,5,6,7,8,9,10]"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "用 for 循环打印九九乘法表",
+        "answer": "for i in range(1,10):\n    for j in range(1,i+1):\n        print(f'{j}*{i}={i*j}',end='\\t')\n    print()",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "基础",
+      "循环",
+      "for",
+      "range"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "range(n) 生成的整数序列包含 n",
+      "for/else 中的 else 块在循环被 break 终止时也会执行",
+      "range() 返回一个列表，因此数据量大时会占用大量内存",
+      "enumerate() 只能获取索引，不能同时获取对应的值"
+    ]
+  },
+  {
+    "id": "PY-009",
+    "name": "列表基础操作",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "列表 list 是 Python 最常用的可变序列，用 [] 定义。支持索引、切片、增删改查。常用方法：append()、extend()、insert()、remove()、pop()、sort()、reverse()、index()、count()。",
+    "prerequisites": [
+      "PY-001"
+    ],
+    "key_points": [
+      "列表用 [] 定义，元素可修改，支持索引和切片",
+      "append(x) 尾部追加，extend(iter) 批量追加",
+      "insert(i,x) 指定位置插入，remove(x) 删除首个匹配",
+      "pop(i) 删除并返回指定位置元素，默认最后一个",
+      "sort() 原地排序，sorted() 返回新排序列表",
+      "列表推导式: [expr for item in iterable if cond]"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "[1,2,3]+[4,5] 的结果是什么？",
+        "options": [
+          "A. [1,2,3,[4,5]]",
+          "B. [5,7,8]",
+          "C. [1,2,3,4,5]",
+          "D. 报错"
+        ],
+        "answer": "C",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一个列表推导式，生成 1~100 中所有能被 3 整除的数的平方",
+        "answer": "[x**2 for x in range(1,101) if x%3==0]",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "基础",
+      "列表",
+      "list"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "sort() 会返回排序后的新列表，原列表不变",
+      "remove(x) 会删除列表中所有等于 x 的元素",
+      "append(x) 和 extend(x) 效果相同，都是将多个元素追加到列表",
+      "pop() 必须指定要删除元素的索引"
+    ]
+  },
+  {
+    "id": "PY-010",
+    "name": "元组与集合",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "元组 tuple 是不可变序列，用 () 定义，支持索引和切片但不可修改。集合 set 是无序不重复的可变集合，用 {} 定义，支持交/并/差/对称差运算。单元素元组必须加逗号 (x,)。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "元组不可变，元素不能增删改",
+      "单元素元组: (x,) 或 x, 而非 (x)",
+      "元组可作为字典键，列表不可以",
+      "集合自动去重，支持 & | - ^ 集合运算",
+      "add()/remove()/discard()/update() 操作集合"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "type((1)) 的结果是什么？",
+        "options": [
+          "A. <class 'tuple'>",
+          "B. <class 'int'>",
+          "C. <class 'set'>",
+          "D. 报错"
+        ],
+        "answer": "B",
+        "difficulty": 2,
+        "hint": "(1) 是加了括号的整数，不是元组"
+      },
+      {
+        "type": "fill",
+        "question": "去重操作最快的方式是将列表转换为_____",
+        "answer": "set",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "基础",
+      "元组",
+      "集合",
+      "tuple",
+      "set"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "认为 (x) 是单元素元组，实际只是带括号的表达式，而非元组",
+      "试图给元组元素赋值或增删元素，忽略了元组的不可变性",
+      "认为集合中的元素有固定顺序，可以通过索引访问",
+      "用列表作为字典的键，而不知只有不可变类型如元组才能当键"
+    ]
+  },
+  {
+    "id": "PY-011",
+    "name": "字典基础操作",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "字典 dict 是键值对集合，用 {} 定义，键必须是不可变类型。通过键访问值，使用 .get() 安全获取，.keys()/.values()/.items() 获取视图。字典 3.7+ 保证插入顺序。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "字典格式: {key1: value1, key2: value2}",
+      "键必须是不可变类型(字符串/数字/元组)",
+      "d[key] 访问，key 不存在报 KeyError；d.get(key,default) 安全",
+      ".keys()/.values()/.items() 返回视图，可遍历",
+      "update(d2) 合并，pop(key) 删除并返回值",
+      "字典推导式: {k:v for k,v in iterable if cond}"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "{'a':1}.get('b',0) 返回什么？",
+        "options": [
+          "A. KeyError",
+          "B. None",
+          "C. 0",
+          "D. 'b'"
+        ],
+        "answer": "C",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一个函数，统计列表中每个元素出现的次数，返回字典",
+        "answer": "def frequency(lst):\n    d={}\n    for x in lst:\n        d[x]=d.get(x,0)+1\n    return d",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "基础",
+      "字典",
+      "dict"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "可以将列表作为字典的键，因为列表也是序列类型",
+      "字典的 .keys() 方法返回列表，可以直接通过索引访问键",
+      "使用 d.get(key) 时如果 key 不存在会返回 None，但总是需要显式指定默认值",
+      "Python 3.7 之前版本字典不保证插入顺序，在所有环境下都一样无序"
+    ]
+  },
+  {
+    "id": "PY-012",
+    "name": "函数定义与调用",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "def 关键字定义函数。函数可接受参数并返回值。函数必须先定义后调用。参数传递是引用传递——可变对象在函数内的修改会影响外部。return 返回值，无 return 返回 None。",
+    "prerequisites": [
+      "PY-006",
+      "PY-008"
+    ],
+    "key_points": [
+      "def func(params): 定义函数，冒号后缩进函数体",
+      "return 返回值，可返回多个值(打包为元组)",
+      "参数传递: 可变对象传引用（列表/字典），不可变对象传值",
+      "函数必须先定义后调用",
+      "None 表示无返回值",
+      "docstring ('''...''') 为函数编写文档"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下正确的函数定义是？",
+        "options": [
+          "A. def func():",
+          "B. function func():",
+          "C. define func():",
+          "D. def func[]"
+        ],
+        "answer": "A",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "编写函数 add(a,b)，返回两数之和",
+        "answer": "def add(a,b):\n    return a+b",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "基础",
+      "函数",
+      "def"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "误认为函数可以在定义之前调用",
+      "误以为函数内对不可变类型参数（如整数）的修改会影响函数外部的原变量",
+      "误以为无 return 语句的函数会返回最后一个表达式的值，而不是 None",
+      "误以为 return 多个值会返回多个独立的对象，而不是打包成元组"
+    ]
+  },
+  {
+    "id": "PY-013",
+    "name": "函数参数进阶",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "函数参数包括位置参数、默认参数、可变参数(*args)和关键字参数(**kwargs)。默认参数值在函数定义时计算一次。*args 收集多余位置参数为元组，**kwargs 收集关键字参数为字典。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "默认参数: def f(a,b=10)，b 有默认值可选传",
+      "默认参数值在定义时求值，可变对象作默认值有陷阱",
+      "*args 收集多余位置参数为元组",
+      "**kwargs 收集多余关键字参数为字典",
+      "参数顺序: 位置→*args→默认→**kwargs",
+      "调用时用 * 解包列表，** 解包字典"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "def f(a=[]): a.append(1);return a\nprint(f());print(f())，输出什么？",
+        "options": [
+          "A. [1] [1]",
+          "B. [1] [1,1]",
+          "C. 报错",
+          "D. [] []"
+        ],
+        "answer": "B",
+        "difficulty": 3,
+        "hint": "默认参数只计算一次，列表被共享"
+      },
+      {
+        "type": "code",
+        "question": "写一个函数，接受任意数量的数字参数，返回它们的平均值",
+        "answer": "def avg(*args):\n    return sum(args)/len(args) if args else 0",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "函数",
+      "参数",
+      "*args",
+      "**kwargs"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "每次调用函数时，默认参数值都会重新计算",
+      "将空列表或字典作为默认参数值是安全的，因为每次调用都会得到新的空容器",
+      "*args 可以收集关键字参数",
+      "在函数定义中，**kwargs 参数可以放在 *args 参数之前"
+    ]
+  },
+  {
+    "id": "PY-014",
+    "name": "变量作用域与闭包",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "Python 遵循 LEGB 作用域规则（Local→Enclosing→Global→Built-in）。global 声明使用全局变量，nonlocal 声明使用外层函数变量。函数内修改可变全局对象不需要 global。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "局部变量只在函数内可见，函数结束销毁",
+      "全局变量在模块级定义，所有函数可见",
+      "global x: 声明在函数内使用全局变量 x",
+      "nonlocal x: 声明使用外层（非全局）变量 x",
+      "函数内读取全局变量不需要 global，修改才需要",
+      "可变全局对象（列表/字典）的 in-place 修改不需要 global"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下代码输出什么？\nx=1\ndef f():\n    x=2\nf()\nprint(x)",
+        "options": [
+          "A. 1",
+          "B. 2",
+          "C. 报错",
+          "D. None"
+        ],
+        "answer": "A",
+        "difficulty": 2
+      },
+      {
+        "type": "fill",
+        "question": "在嵌套函数中修改外层非全局变量，使用_____关键字声明",
+        "answer": "nonlocal",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "函数",
+      "作用域",
+      "global",
+      "nonlocal"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "在函数内读取全局变量时必须使用 global 声明",
+      "对全局列表执行 append 操作必须事先用 global 声明该列表",
+      "nonlocal 关键字可以用于修改全局变量"
+    ]
+  },
+  {
+    "id": "PY-015",
+    "name": "异常处理 try/except",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "try/except 捕获运行时异常防止程序崩溃。except 可捕获特定异常类型。finally 块无论是否异常都执行。raise 抛出异常。自定义异常继承 Exception 类。",
+    "prerequisites": [
+      "PY-006"
+    ],
+    "key_points": [
+      "try: 可能出错的代码 / except 异常类型: 处理代码",
+      "可捕获多个异常: except (TypeError,ValueError)",
+      "except Exception as e: 获取异常对象",
+      "finally: 无论是否异常都执行（常用于清理资源）",
+      "else: try 块无异常时执行",
+      "raise ExceptionType('msg') 抛出自定义异常"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "finally 块在什么情况下不会执行？",
+        "options": [
+          "A. try 块有异常",
+          "B. try 块无异常",
+          "C. 在 try 块中 sys.exit()",
+          "D. 所有情况都执行"
+        ],
+        "answer": "C",
+        "difficulty": 2,
+        "hint": "exit() 和 os._exit() 会跳过 finally"
+      },
+      {
+        "type": "code",
+        "question": "写一个安全的整数输入函数，遇到非数字输入提示重试",
+        "answer": "def get_int(prompt):\n    while True:\n        try:\n            return int(input(prompt))\n        except ValueError:\n            print('请输入整数')",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "异常处理",
+      "try",
+      "except"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "在 try 块中使用 return 语句时，finally 块中的清理代码不会被执行。",
+      "要捕获多个异常类型就必须分别编写多个独立的 except 子句，不能使用括号元组形式。",
+      "else 块的作用是无论异常是否发生都会执行，与 finally 功能相同。",
+      "raise 关键字只能用于抛出 Python 内置的异常类型，无法抛出自定义异常。"
+    ]
+  },
+  {
+    "id": "PY-016",
+    "name": "文件读写操作",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "open() 函数打开文件，with 语句自动管理文件关闭。模式：'r' 读、'w' 写（覆盖）、'a' 追加、'rb'/'wb' 二进制。.read()/.readline()/.readlines() 读取，.write()/.writelines() 写入。",
+    "prerequisites": [
+      "PY-012",
+      "PY-015"
+    ],
+    "key_points": [
+      "with open('file','r',encoding='utf-8') as f: 最推荐",
+      "'r' 只读(默认), 'w' 覆盖写, 'a' 追加, 'x' 排他创建",
+      "f.read() 读全部, f.readline() 读一行, f.readlines() 读所有行",
+      "f.write(s) 写入字符串, f.writelines(seq) 写入序列",
+      "JSON 文件: json.load(f) / json.dump(obj,f)",
+      "CSV 文件: csv.reader(f) / csv.writer(f)"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "with open('f.txt','w') as f: f.write('hello')\n文件之前的内容会怎样？",
+        "options": [
+          "A. 追加到末尾",
+          "B. 被覆盖",
+          "C. 合并",
+          "D. 报错"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一个函数，读取一个文本文件，返回行数、单词数、字符数",
+        "answer": "def wc(filename):\n    with open(filename) as f:\n        text=f.read()\n    return len(text.split('\\n')),len(text.split()),len(text)",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "文件",
+      "open",
+      "读写",
+      "with"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "使用 'w' 模式打开已有文件时，新内容会追加到原文件末尾而不是清空覆盖",
+      "f.read() 返回的结果是一个包含所有行的列表，而不是整个文件内容的字符串",
+      "以 'r' 模式打开不存在的文件时，open() 会自动创建该空文件",
+      "json.load(f) 可以将 Python 对象序列化并写入到 JSON 文件中"
+    ]
+  },
+  {
+    "id": "PY-017",
+    "name": "模块与包",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "模块是一个 .py 文件，包是一个包含 __init__.py 的目录。import 导入模块，from...import 导入特定对象。sys.path 控制搜索路径。__name__=='__main__' 标识直接运行。",
+    "prerequisites": [
+      "PY-012"
+    ],
+    "key_points": [
+      "import module 导入整个模块，module.func() 调用",
+      "from module import func 导入特定函数",
+      "from module import * 导入全部（不推荐，污染命名空间）",
+      "import module as alias 别名导入",
+      "包是一个含 __init__.py 的目录",
+      "__name__=='__main__' 用于区分直接运行和导入"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下哪种导入方式是正确的？",
+        "options": [
+          "A. import math.py",
+          "B. from math import *",
+          "C. import +math",
+          "D. include math"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一个工具模块 utils.py，包含 is_prime(n) 和 gcd(a,b)，然后在主程序中使用",
+        "answer": "# utils.py\ndef is_prime(n):\n    if n<2:return False\n    for i in range(2,int(n**0.5)+1):\n        if n%i==0:return False\n    return True\ndef gcd(a,b):\n    while b:a,b=b,a%b\n    return a",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "模块",
+      "包",
+      "import"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "一个不包含 __init__.py 文件的目录也可以作为 Python 包被导入",
+      "使用 from module import * 是推荐做法，不会导致命名空间污染",
+      "执行 import math 后，可以直接使用 sqrt() 而不需要 math.sqrt()",
+      "当一个模块被其他文件导入时，其内部的 if __name__ == '__main__': 代码块会被执行"
+    ]
+  },
+  {
+    "id": "PY-018",
+    "name": "列表推导式与生成器表达式",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "列表推导式用一条表达式创建列表，格式 [expr for item in iterable if cond]。生成器表达式用 () 替代 []，惰性求值节省内存。可嵌套推导式但不宜超过两层。",
+    "prerequisites": [
+      "PY-009"
+    ],
+    "key_points": [
+      "列表推导式: [x**2 for x in range(10) if x%2==0]",
+      "生成器表达式: (x**2 for x in range(10)) 惰性求值",
+      "可含 if-else: [x if x>0 else 0 for x in data]",
+      "嵌套推导式最多两层，超过用传统循环",
+      "生成器表达式适合大数据量，节省内存"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "[i*j for i in range(3) for j in range(2)] 的结果？",
+        "options": [
+          "A. [0,1,0,2,0,3]",
+          "B. [0,0,0,1,0,2]",
+          "C. [0,1,2]",
+          "D. 报错"
+        ],
+        "answer": "B",
+        "difficulty": 2,
+        "hint": "i 优先: i=0=>j=0,1 i=1=>j=0,1 i=2=>j=0,1"
+      },
+      {
+        "type": "code",
+        "question": "写一个生成器表达式生成所有 1~100 中为完全平方数的值",
+        "answer": "(x**2 for x in range(1,11))",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "列表推导式",
+      "生成器",
+      "comprehension"
+    ],
+    "estimated_minutes": 20,
+    "common_mistakes": [
+      "认为生成器表达式也使用方括号包裹，如 [x for x in range(10)] 是生成器表达式，实际上这是列表推导式，生成器表达式使用圆括号",
+      "以为生成器表达式的结果可以直接索引或多次迭代，如 g = (x for x in range(10)); print(g[0])，实际上生成器是惰性迭代器，不支持索引且遍历一次后耗尽",
+      "在推导式中混淆 if 筛选与 if-else 表达式的位置，写出如 [x if x > 0 for x in data] 的错误语法，实际 if 筛选应放在 for 之后且不含 else",
+      "认为嵌套推导式可以无限层叠以简化所有循环，实际上嵌套超过两层会严重降低可读性，应该改用传统 for 循环"
+    ]
+  },
+  {
+    "id": "PY-019",
+    "name": "字符串格式化方法",
+    "difficulty": 1,
+    "category": "基础语法",
+    "summary": "Python 支持三种字符串格式化：% 运算符（旧式）、str.format()（新式）和 f-string（3.6+，推荐）。f-string 内嵌表达式 {var}，支持格式说明符 {num:.2f}、对齐 {s:>10} 等。",
+    "prerequisites": [
+      "PY-003"
+    ],
+    "key_points": [
+      "f-string: f'Hello {name}' 性能最好，最 Pythonic",
+      "f'{x:.2f}' 保留两位小数，f'{s:>10}' 右对齐占10位",
+      "f'{d:%Y-%m-%d}' 格式化日期",
+      "str.format(): 'Hello {}'.format(name)",
+      "% 格式化: 'Hello %s' % name 旧风格，不推荐"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "f'{3.14159:.2f}' 的结果是什么？",
+        "options": [
+          "A. '3'",
+          "B. '3.14'",
+          "C. '3.14159'",
+          "D. 报错"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      },
+      {
+        "type": "code",
+        "question": "写一个函数生成一个 HTML table 行，参数为列表，每个元素在 <td> 中",
+        "answer": "def table_row(items):\n    return '<tr>'+''.join(f'<td>{i}</td>' for i in items)+'</tr>'",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "字符串",
+      "f-string",
+      "格式化"
+    ],
+    "estimated_minutes": 15,
+    "common_mistakes": [
+      "f-string 只能插入简单变量名，不支持如 {num:.2f} 或 {s:>10} 的格式说明符",
+      "str.format() 和 % 格式化只是语法差异，可以随意替换，没有推荐与不推荐的差别",
+      "格式化日期必须先调用 strftime()，不能在 f'{d:%Y-%m-%d}' 中直接书写格式"
+    ]
+  },
+  {
+    "id": "PY-020",
+    "name": "内置函数与常用工具",
+    "difficulty": 2,
+    "category": "基础语法",
+    "summary": "Python 提供了大量内置函数：len()、max()/min()、sum()、sorted()、enumerate()、zip()、map()、filter()、any()/all()、isinstance()、dir()、help()。这些函数无需导入，是 Python 编程的基石。",
+    "prerequisites": [
+      "PY-018"
+    ],
+    "key_points": [
+      "len() 获取可迭代对象长度，max()/min() 获取最大/最小值",
+      "sorted(seq,key=f,reverse=True) 排序",
+      "enumerate(seq) 生成 (index,item) 对",
+      "zip(a,b) 并行迭代，返回最短序列长度",
+      "map(func,seq) 对每个元素应用函数",
+      "filter(func,seq) 过滤满足条件的元素",
+      "any()/all() 判断是否有/全为真"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "zip('ab','12') 的结果（转列表）是什么？",
+        "options": [
+          "A. ['a','b','1','2']",
+          "B. [('a','1'),('b','2')]",
+          "C. {'a':'1','b':'2'}",
+          "D. 'ab12'"
+        ],
+        "answer": "B",
+        "difficulty": 2
+      },
+      {
+        "type": "code",
+        "question": "用 map 和 filter 实现：给定列表 [1,'a',2,'b',3]，过滤出数字并平方",
+        "answer": "list(map(lambda x:x**2,filter(lambda x:isinstance(x,int),[1,'a',2,'b',3])))",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "内置函数",
+      "工具",
+      "高效编程"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "zip(a,b) 会以较长序列为准，自动为较短序列填充值",
+      "sorted(seq) 会直接修改原序列并返回 None",
+      "all([]) 的结果是 False，因为没有任何元素为真",
+      "map(func, seq) 会原地修改 seq 中的元素"
+    ]
+  }
+]

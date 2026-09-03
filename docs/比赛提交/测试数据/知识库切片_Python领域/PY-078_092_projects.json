@@ -1,0 +1,604 @@
+[
+  {
+    "id": "PY-078",
+    "name": "命令行工具开发",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "用 argparse 构建命令行工具。定义参数(位置/可选)、子命令(subparser)、帮助文档(auto)。结合 sys.argv 和 Click 库可以更简洁。打包后用 pip install -e . 可全局调用。",
+    "prerequisites": [
+      "PY-012",
+      "PY-017"
+    ],
+    "key_points": [
+      "argparse.ArgumentParser() 创建参数解析器",
+      "parser.add_argument('--name',type=str,default='world') 可选参数",
+      "parser.add_argument('file') 位置参数",
+      "args=parser.parse_args() 解析命令行输入",
+      "子命令用 add_subparsers()",
+      "Click 库装饰器风格更简洁: @click.command()"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个命令行工具，接受 --count n 参数，打印 n 次 'Hello'",
+        "answer": "import argparse\nparser=argparse.ArgumentParser()\nparser.add_argument('--count',type=int,default=1)\nargs=parser.parse_args()\nfor _ in range(args.count):print('Hello')",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "CLI",
+      "命令行",
+      "argparse"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "argparse 中定义位置参数需要使用 -- 前缀（如 --file）",
+      "子命令是通过 add_subcommand() 方法添加的",
+      "argparse 不会自动生成帮助文档，需手动编写 -h 输出",
+      "Click 库需要显式调用 parse_args() 来解析命令行"
+    ]
+  },
+  {
+    "id": "PY-079",
+    "name": "配置文件驱动的应用",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "构建可配置化应用，从 YAML/JSON/ENV 加载配置，运行时根据配置动态调整行为。关注点分离：业务逻辑与配置解耦。使用 pydantic-settings 实现类型安全的配置管理。",
+    "prerequisites": [
+      "PY-061",
+      "PY-078"
+    ],
+    "key_points": [
+      "配置外部化：不要硬编码，从文件/环境变量加载",
+      "YAML 可读性最好: yaml.safe_load(f)",
+      "分层配置: 默认值→配置文件→环境变量→命令行参数",
+      "Pydantic: BaseSettings 自动加载环境变量",
+      "配置验证: 启动时检查必要配置项存在"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个从 YAML 配置文件加载数据库配置的应用框架",
+        "answer": "import yaml\nclass AppConfig:\n    def __init__(self,config_path):\n        with open(config_path) as f:\n            data=yaml.safe_load(f)\n        self.db_host=data['database']['host']\n        self.db_port=data['database'].get('port',5432)\n        self.debug=data.get('debug',False)",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "配置",
+      "YAML",
+      "应用"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "配置外部化意味着所有配置项都必须通过环境变量提供，不需要默认值",
+      "使用yaml.load可以直接加载任意YAML文件，与safe_load一样安全",
+      "Pydantic的BaseSettings只能从环境变量加载配置，无法从YAML或JSON文件读取"
+    ]
+  },
+  {
+    "id": "PY-080",
+    "name": "RESTful API 设计",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "RESTful API 设计原则：资源用名词复数(/users)、HTTP 方法表示操作(GET/POST/PUT/DELETE)、状态码表达结果、分页用 limit/offset、版本化(/v1/)。OpenAPI/Swagger 文档自动生成。",
+    "prerequisites": [
+      "PY-071",
+      "PY-072"
+    ],
+    "key_points": [
+      "资源命名: /users /users/{id} /users/{id}/orders",
+      "GET 查询, POST 创建, PUT 全量更新, PATCH 部分更新, DELETE 删除",
+      "状态码: 200成功, 201创建, 400请求错误, 404未找到, 500服务器错误",
+      "分页: ?page=1&size=20 或 ?offset=0&limit=20",
+      "版本: /api/v1/users",
+      "FastAPI 用 Pydantic 自动生成 OpenAPI 文档"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "设计一个待办事项 API，含创建和列表查询两个端点",
+        "answer": "from fastapi import FastAPI\nfrom pydantic import BaseModel\napp=FastAPI()\nclass Todo(BaseModel):\n    title:str\n    done:bool=False\ntodos=[]\n@app.post('/todos')\ndef create(todo:Todo):\n    todos.append(todo)\n    return todo\n@app.get('/todos')\ndef list_all(done:bool=None):\n    if done is None:return todos\n    return [t for t in todos if t.done==done]",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "API",
+      "RESTful",
+      "设计"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "误用 POST 获取资源列表，例如用 POST /users 代替 GET /users 进行查询",
+      "使用 PUT 执行部分字段更新，而正确的语义是 PATCH 用于部分更新、PUT 用于全量替换",
+      "创建资源成功时返回 200 状态码，正确的做法是返回 201 Created",
+      "分页时误认为 offset 从 1 开始计数，正确的设计通常从 0 开始"
+    ]
+  },
+  {
+    "id": "PY-081",
+    "name": "数据库 CRUD 应用",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "构建包含完整增删改查的数据驱动应用。以 Todo/Bookmark 为例，实践 Model 定义、数据验证、错误处理、分页查询。技术栈：FastAPI + SQLAlchemy + SQLite。",
+    "prerequisites": [
+      "PY-073",
+      "PY-080"
+    ],
+    "key_points": [
+      "Model 定义: SQLAlchemy 模型 + Pydantic Schema",
+      "CRUD 函数: create/get_by_id/list/update/delete",
+      "错误处理: 404 返回友好消息",
+      "分页: query.offset(skip).limit(limit)",
+      "关系查询: 加载关联对象(eager/lazy)"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "实现一个 Book 资源的 CRUD，包含分页列表查询",
+        "answer": "class Book(Base):\n    __tablename__='books'\n    id=Column(Integer,primary_key=True)\n    title=Column(String,nullable=False)\n    author=Column(String)\n@app.get('/books')\ndef list_books(page:int=1,size:int=10):\n    offset=(page-1)*size\n    books=db.query(Book).offset(offset).limit(size).all()\n    return books",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "CRUD",
+      "数据库",
+      "应用"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "认为 SQLAlchemy 模型可以直接用作 API 响应模式，而不需要定义 Pydantic Schema 进行序列化与验证",
+      "实现分页查询时只使用 `limit()` 而忘记配合 `offset()` 来确定起始位置",
+      "认为查询不存在的资源时数据库异常会自动转换为 HTTP 404 响应，忽视在路由中显式捕获并返回友好错误消息的必要性",
+      "假设访问模型的关系属性总会自动加载数据，忽略懒加载可能导致的 N+1 查询或需要显式使用 eager loading 的场景"
+    ]
+  },
+  {
+    "id": "PY-082",
+    "name": "用户认证与 JWT",
+    "difficulty": 4,
+    "category": "项目实战",
+    "summary": "JWT(JSON Web Token)实现无状态认证。登录成功后签发 Token(含过期时间)，客户端后续请求在 Authorization Header 中携带。Python 用 PyJWT 签发和验证。密码用 bcrypt 哈希存储。",
+    "prerequisites": [
+      "PY-080",
+      "PY-081"
+    ],
+    "key_points": [
+      "JWT 结构: Header.Payload.Signature",
+      "签发: jwt.encode(payload,secret,algorithm='HS256')",
+      "验证: jwt.decode(token,secret,algorithms=['HS256'])",
+      "过期: payload['exp']=datetime.utcnow()+timedelta(hours=1)",
+      "bcrypt: hashpw/checkpw 处理密码",
+      "FastAPI 依赖注入: Depends(get_current_user)"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 FastAPI 实现一个依赖注入函数，验证 JWT token 并返回当前用户",
+        "answer": "from fastapi import Depends,HTTPException\nfrom fastapi.security import HTTPBearer\nimport jwt\nsecurity=HTTPBearer()\nasync def get_current_user(cred=Depends(security)):\n    try:\n        payload=jwt.decode(cred.credentials,'secret',algorithms=['HS256'])\n        return payload['user_id']\n    except jwt.PyJWTError:\n        raise HTTPException(401,'Invalid token')",
+        "difficulty": 4
+      }
+    ],
+    "tags": [
+      "JWT",
+      "认证",
+      "安全"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "将 JWT 的 Payload 视为加密数据，直接在其中存放密码等敏感信息",
+      "设置过期时间 exp 时使用 datetime.now() 而非 datetime.utcnow()",
+      "验证 JWT 时调用 jwt.decode 省略 algorithms 参数或使用通配算法",
+      "使用 == 直接比对 bcrypt 哈希值来校验密码"
+    ]
+  },
+  {
+    "id": "PY-083",
+    "name": "数据爬虫项目实战",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "构建完整的爬虫项目：目标网站分析→数据提取方案→反爬应对→数据清洗→存储。以爬取技术博客/招聘信息为例。遵守 robots.txt，控制频率，异常重试。",
+    "prerequisites": [
+      "PY-069"
+    ],
+    "key_points": [
+      "分析目标网站结构，确定提取方案",
+      "User-Agent 池，随机切换防封",
+      "异常处理+重试机制(通过指数退避)",
+      "数据清洗: 去HTML标签、去空格、格式化",
+      "数据导出: CSV/JSON/数据库",
+      "记录爬取日志，便于排查问题"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个带重试和延迟的爬虫函数",
+        "answer": "import requests,time\nfrom bs4 import BeautifulSoup\ndef crawl(url,max_retries=3,delay=1):\n    for attempt in range(max_retries):\n        try:\n            r=requests.get(url,timeout=10,headers={'User-Agent':'Mozilla/5.0'})\n            r.raise_for_status()\n            return BeautifulSoup(r.text,'html.parser')\n        except Exception as e:\n            if attempt==max_retries-1:raise\n            time.sleep(delay*(2**attempt))",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "爬虫",
+      "项目",
+      "实战"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "使用爬虫时无需遵守 robots.txt 协议，直接抓取即可",
+      "请求异常时只需固定间隔简单重试几次，无需指数退避策略",
+      "数据清洗只需去除 HTML 标签，无需处理多余空格或格式化字段",
+      "爬虫日志对于排查问题没有帮助，可以省略"
+    ]
+  },
+  {
+    "id": "PY-084",
+    "name": "数据清洗 ETL",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "ETL(Extract-Transform-Load)数据处理管道。从多个数据源提取原始数据→清洗(去重/补缺/标准化)→加载到目标存储。Pandas 做 Transform，SQLAlchemy 做 Load。用流水线模式串联处理步骤。",
+    "prerequisites": [
+      "PY-065",
+      "PY-066"
+    ],
+    "key_points": [
+      "Extract: 读 CSV/JSON/API/数据库多种来源",
+      "Transform: 缺失值、去重、类型转换、标准化",
+      "Load: 写入数据库/文件/数据仓库",
+      "流水线模式: pipe(extract,transform,load)",
+      "数据质量检查: 每步验证行数和 Schema"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个数据清洗管道：读取 CSV → 去空值 → 去重 → 标准化日期 → 保存",
+        "answer": "import pandas as pd\ndef etl_pipeline(input_file,output_file):\n    df=pd.read_csv(input_file)\n    df=df.dropna()\n    df=df.drop_duplicates()\n    df['date']=pd.to_datetime(df['date'])\n    df.to_csv(output_file,index=False)",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "ETL",
+      "数据清洗",
+      "管道"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "ETL 只能从数据库提取数据，无法处理 CSV、JSON 等文件来源",
+      "数据清洗就是去重，不需要处理缺失值或做类型转换",
+      "Load 阶段只能写入数据库，不支持写入文件或数据仓库",
+      "ETL 流水线中各步骤顺序可以随意调整，无需固定为提取→转换→加载"
+    ]
+  },
+  {
+    "id": "PY-085",
+    "name": "数据可视化仪表盘",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "用 ECharts/G6 构建交互式数据仪表盘。前端展示多图表联动，后端提供数据 API。关键技术：图表组件化、响应式布局、数据轮询/WebSocket 实时更新。组合多个图表形成完整看板。",
+    "prerequisites": [
+      "PY-067",
+      "PY-068"
+    ],
+    "key_points": [
+      "仪表盘布局: grid 网格 + 卡片组件",
+      "多图表联动: 点击一个图表筛选其他图表数据",
+      "响应式: 窗口大小变化时图表自适应",
+      "数据更新: 轮询(setInterval)或 WebSocket 推送",
+      "后端 API: 聚合数据、时间范围筛选"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "数据看板的核心图表通常包括哪些？",
+        "options": [
+          "A. 仅折线图",
+          "B. 折线图+柱状图+饼图+表格",
+          "C. 仅饼图",
+          "D. 仅散点图"
+        ],
+        "answer": "B",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "可视化",
+      "仪表盘",
+      "ECharts"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "仪表盘只需将多个图表堆叠在同一页面即可，无需采用网格布局和卡片组件进行模块化管理。",
+      "图表联动是指前端对已加载的全部数据进行筛选，不需要向后端重新请求数据。",
+      "给图表容器设置固定宽度和高度就能让图表在窗口大小变化时自动适应，无需监听resize事件或调用图表的重绘方法。",
+      "实现仪表盘数据的实时更新只能通过setInterval轮询，WebSocket无法用于这种场景。"
+    ]
+  },
+  {
+    "id": "PY-086",
+    "name": "机器学习 Pipeline",
+    "difficulty": 4,
+    "category": "项目实战",
+    "summary": "用 scikit-learn Pipeline 构建端到端机器学习流程。步骤：数据预处理→特征工程→模型训练→评估→部署。Pipeline 确保训练和预测时处理一致，避免数据泄露。GridSearchCV 调参。",
+    "prerequisites": [
+      "PY-064",
+      "PY-066"
+    ],
+    "key_points": [
+      "Pipeline: Pipeline([('scaler',StandardScaler()),('clf',RF())])",
+      "ColumnTransformer 对不同列应用不同预处理",
+      "train_test_split 划分训练/测试集",
+      "cross_val_score 交叉验证评估",
+      "joblib.dump/load 保存/加载模型"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 sklearn Pipeline 构建一个标准化+随机森林的管道",
+        "answer": "from sklearn.pipeline import Pipeline\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.ensemble import RandomForestClassifier\npipe=Pipeline([\n    ('scaler',StandardScaler()),\n    ('clf',RandomForestClassifier())\n])\npipe.fit(X_train,y_train)\nscore=pipe.score(X_test,y_test)",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "机器学习",
+      "Pipeline",
+      "sklearn"
+    ],
+    "estimated_minutes": 35,
+    "common_mistakes": [
+      "在Pipeline中，无需使用ColumnTransformer就能对不同列应用不同的预处理",
+      "在train_test_split之前对整个数据集进行标准化是安全的，不会造成数据泄露",
+      "cross_val_score可直接用于超参数搜索，不需要GridSearchCV",
+      "使用joblib.dump保存模型时只需保存最终分类器，不需要保存整个Pipeline"
+    ]
+  },
+  {
+    "id": "PY-087",
+    "name": "Web 应用部署",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "Python Web 应用部署方案：Gunicorn(WSGI)+Nginx(反向代理)+Docker。使用 systemd 或 Supervisor 管理进程。配置 SSL 证书(Let's Encrypt)、日志轮转、健康检查。",
+    "prerequisites": [
+      "PY-076",
+      "PY-080"
+    ],
+    "key_points": [
+      "Gunicorn: gunicorn -w 4 -b 0.0.0.0:8000 app:app",
+      "Nginx: proxy_pass http://backend;",
+      "Docker: 多阶段构建减小镜像体积",
+      "环境变量管理: .env 文件或 K8s Secrets",
+      "健康检查: /health 端点 + Docker HEALTHCHECK"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个 docker-compose.yml 编排 Web 应用 + 数据库 + Nginx",
+        "answer": "services:\n  web:\n    build:.\n    ports:['8000:8000']\n  db:\n    image:postgres:16\n    environment:\n      POSTGRES_PASSWORD:secret\n  nginx:\n    image:nginx:alpine\n    ports:['80:80']\n    volumes:['./nginx.conf:/etc/nginx/nginx.conf']",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "部署",
+      "Nginx",
+      "Gunicorn",
+      "Docker"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "Gunicorn 可以直接作为 Web 服务器暴露在公网上，无需 Nginx 等反向代理",
+      "Docker 镜像构建无需多阶段构建，单阶段构建不影响镜像体积和生产部署",
+      "在生产环境中直接使用 .env 文件存储敏感配置与使用 Kubernetes Secrets 安全性相同",
+      "健康检查只需在 Dockerfile 中配置 HEALTHCHECK，无需在应用中实现 /health 端点"
+    ]
+  },
+  {
+    "id": "PY-088",
+    "name": "API 性能优化",
+    "difficulty": 4,
+    "category": "项目实战",
+    "summary": "API 性能优化策略：数据库查询优化(索引/N+1)、缓存(Redis LRU)、异步处理(Celery 后台任务)、连接池复用、响应压缩(gzip)、分页限制。用 locust/wrk 压测验证效果。",
+    "prerequisites": [
+      "PY-055",
+      "PY-081"
+    ],
+    "key_points": [
+      "数据库: 添加索引、避免 N+1 查询、select_related/prefetch_related",
+      "缓存: Redis 缓存热点数据，设置合理 TTL",
+      "异步: 耗时操作(Celery/RQ)移到后台队列",
+      "连接池: SQLAlchemy pool_size/max_overflow",
+      "压缩: gzip 中间件压缩响应",
+      "压测: locust/wrk 验证优化效果"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "以下哪项对 API 性能提升最大？",
+        "options": [
+          "A. 增加日志",
+          "B. 加入 Redis 缓存热点数据",
+          "C. 增加 HTTP Headers",
+          "D. 使用 JSON 而非 XML"
+        ],
+        "answer": "B",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "性能",
+      "优化",
+      "缓存",
+      "Redis"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "为所有查询都添加 `select_related` 或 `prefetch_related` 就能彻底解决 N+1 查询问题并提升性能。",
+      "Redis 缓存了热点数据后，将 TTL 设置得越长越好，以最大化缓存命中率。",
+      "连接池的 `pool_size` 配置得越大，数据库的并发处理能力就越强。",
+      "对所有 API 响应都启用 gzip 压缩，总能减小传输体积并加快响应速度。"
+    ]
+  },
+  {
+    "id": "PY-089",
+    "name": "微服务架构入门",
+    "difficulty": 4,
+    "category": "项目实战",
+    "summary": "微服务将单体应用拆分为独立小服务。每个服务独立部署、独立数据库、独立技术栈。服务间通信用 HTTP/gRPC/消息队列。服务发现(Consul)、API 网关(Kong/Nginx)、分布式追踪。",
+    "prerequisites": [
+      "PY-072",
+      "PY-088"
+    ],
+    "key_points": [
+      "服务拆分: 按业务领域边界划分",
+      "通信: 同步(HTTP REST/gRPC) + 异步(MQ)",
+      "每个服务独立数据库",
+      "API 网关: 统一入口、鉴权、限流",
+      "容器化: 每个服务独立 Docker 镜像"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "微服务相比单体架构的主要优势是什么？",
+        "options": [
+          "A. 代码更少",
+          "B. 独立部署和扩展",
+          "C. 不用学习新技术",
+          "D. 性能一定更好"
+        ],
+        "answer": "B",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "微服务",
+      "架构",
+      "分布式"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "误认为微服务拆分是按技术层级（如前端层、后端层、数据层）划分，而不是按照业务领域边界拆分",
+      "认为微服务之间只能使用 HTTP REST 进行同步调用，忽略了 gRPC 和消息队列等异步通信方式",
+      "以为在微服务架构中多个服务可以共享同一个数据库，实际每个服务应独立数据库",
+      "误将 API 网关用于服务之间的内部通信，API 网关是系统的统一对外入口而非内部服务调用通道"
+    ]
+  },
+  {
+    "id": "PY-090",
+    "name": "消息队列实践",
+    "difficulty": 4,
+    "category": "项目实战",
+    "summary": "消息队列解耦生产者和消费者，实现异步处理和削峰填谷。Redis Queue(RQ)轻量易上手，Celery 功能完善。典型场景：发送邮件、数据导出、定时任务。",
+    "prerequisites": [
+      "PY-055",
+      "PY-089"
+    ],
+    "key_points": [
+      "消息队列: 解耦+异步+削峰",
+      "RQ: 简单，基于 Redis 的轻量级队列",
+      "Celery: 分布式任务队列，支持定时任务(celery beat)",
+      "Producer 入队 → Queue 存储 → Worker 消费",
+      "监控: Flower 实时查看 Celery 任务状态"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "用 Celery 定义一个异步发送邮件的任务",
+        "answer": "from celery import Celery\napp=Celery('tasks',broker='redis://localhost:6379/0')\n@app.task\ndef send_email(to,subject,body):\n    print(f'Sending to {to}:{subject}')\n    return 'sent'",
+        "difficulty": 3
+      }
+    ],
+    "tags": [
+      "消息队列",
+      "Celery",
+      "Redis",
+      "异步"
+    ],
+    "estimated_minutes": 30,
+    "common_mistakes": [
+      "使用 RQ 也能像 Celery Beat 一样方便地实现分布式定时任务调度",
+      "生产者将消息放入队列后会同步等待 Worker 处理完并返回结果",
+      "Celery 自带完整的 Web 监控界面，不需要安装 Flower 等第三方工具",
+      "使用消息队列的主要目的是提高单次请求的实时处理速度"
+    ]
+  },
+  {
+    "id": "PY-091",
+    "name": "日志监控与告警",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "生产环境日志监控体系：结构化日志(JSON格式)、集中收集(ELK/Loki)、可视化(Grafana)、告警规则(Prometheus AlertManager)。logging 配置多 Handler 输出到文件和远程服务。",
+    "prerequisites": [
+      "PY-060",
+      "PY-087"
+    ],
+    "key_points": [
+      "结构化日志: logging 输出 JSON 格式",
+      "集中收集: ELK(Elastic+Logstash+Kibana)或 Loki+Grafana",
+      "指标监控: Prometheus + Grafana",
+      "告警: 错误率/延迟/资源超阈值邮件通知",
+      "健康检查端点: /health 返回 200 或异常"
+    ],
+    "practice_questions": [
+      {
+        "type": "choice",
+        "question": "Python 日志级别 WARNING 表示什么？",
+        "options": [
+          "A. 调试信息",
+          "B. 一般事件",
+          "C. 警告，程序可以继续运行",
+          "D. 严重错误"
+        ],
+        "answer": "C",
+        "difficulty": 1
+      }
+    ],
+    "tags": [
+      "日志",
+      "监控",
+      "告警",
+      "运维"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "认为结构化日志（JSON格式）会自动同步到ELK/Loki，不需要额外配置采集管道",
+      "认为配置日志多Handler输出到文件就实现了集中收集，忽略了需部署Logstash/采集器主动推送",
+      "混淆健康检查端点与业务监控，认为 /health 返回200即代表服务无延迟问题或错误率正常",
+      "认为告警只要配置邮件通知就足够，忽略 AlertManager 的告警分组、抑制和路由以避免通知风暴"
+    ]
+  },
+  {
+    "id": "PY-092",
+    "name": "测试覆盖率与质量门禁",
+    "difficulty": 3,
+    "category": "项目实战",
+    "summary": "测试覆盖率衡量代码被测试的程度。pytest-cov 生成覆盖率报告，coverage.py 设定阈值。CI 中设置质量门禁：覆盖率 ≥80%、所有测试通过、Lint 零警告。pre-commit hooks 在提交前检查代码质量。",
+    "prerequisites": [
+      "PY-059",
+      "PY-077"
+    ],
+    "key_points": [
+      "pytest --cov=myapp --cov-report=html",
+      "coverage.py: fail_under=80 低于阈值CI失败",
+      "CI 质量门禁: 测试+覆盖率+lint+类型检查",
+      "pre-commit: black/ruff/mypy 自动检查",
+      "SonarQube: 更全面的代码质量分析"
+    ],
+    "practice_questions": [
+      {
+        "type": "code",
+        "question": "写一个 pytest 配置，要求覆盖率不低于 80%",
+        "answer": "# pytest.ini\n[pytest]\naddopts = --cov=myapp --cov-report=term --cov-fail-under=80",
+        "difficulty": 2
+      }
+    ],
+    "tags": [
+      "测试",
+      "覆盖率",
+      "质量",
+      "CI"
+    ],
+    "estimated_minutes": 25,
+    "common_mistakes": [
+      "测试全部通过就说明覆盖率一定达到了80%以上",
+      "pre-commit hooks 通过后可以不再依赖 CI 中的质量门禁",
+      "pytest-cov 除了生成覆盖率报告还能同时检查代码风格和类型",
+      "SonarQube 只是一个替代 coverage.py 的覆盖率工具"
+    ]
+  }
+]
