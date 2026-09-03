@@ -1,11 +1,11 @@
 # KMatch·知链 —— 知识图谱驱动的多智能体协同个性化学习平台
 
-> 赛题 XH-202630 ｜ 单人全栈 ｜ **正式版 v1.3.4** ｜ Windows 桌面 IDE
+> 赛题 XH-202630 ｜ 单人全栈 ｜ **终版 v1.4.0** ｜ Windows 桌面 IDE
 
 以四层知识图谱为共享事实底座、LangGraph 多智能体协同为核心引擎，面向 **Python 学习** 的个性化教学桌面应用。覆盖 **场景一（无项目技能训练）** 与 **场景二（有项目二次开发）** 两类场景：内置 Monaco 代码编辑器、AI 助手、知识图谱、项目图谱、Git 版本管理、运行历史与数据看板，**端用户免 Docker、免命令行配置**。
 
-> 📦 正式版发行物：`KMatch·知链-1.3.4-x64.exe` — [GitHub Release v1.3.4](https://github.com/origin0722/KMatch-Desktop/releases/tag/v1.3.4)
-> 📖 详尽功能说明：[docs/交付材料/软件说明_v1.3.4.md](docs/交付材料/软件说明_v1.3.4.md)（基础模块总览见 [v1.3.0 版](docs/交付材料/软件说明_v1.3.0.md)）
+> 📦 终版发行物：`KMatch·知链-1.4.0-x64.exe` — [GitHub Release v1.4.0](https://github.com/origin0722/KMatch-Desktop/releases/tag/v1.4.0)
+> 📖 功能说明：[软件说明_v1.4.0.md](docs/交付材料/软件说明_v1.4.0.md)（终版；全量功能见 [v1.3.0 版](docs/交付材料/软件说明_v1.3.0.md)、增量见 [v1.3.4 版](docs/交付材料/软件说明_v1.3.4.md)）
 > 🧪 真机核验清单：[docs/交付材料/真机核验清单_v1.3.4.md](docs/交付材料/真机核验清单_v1.3.4.md)
 > 🏆 比赛提交资料包：[docs/比赛提交/](docs/比赛提交/README.md)（作品介绍/设计方案/单元测试/测试数据/PPT 与打包指引）
 
@@ -67,7 +67,7 @@ $env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'
 npm run build:win
 ```
 
-产物 `release/KMatch·知链-1.3.4-x64.exe`，装后 sidecar 自启；**端用户免 Docker**。首次打包需开 Windows 开发者模式（winCodeSign 符号链接）。详见 [CLAUDE.md](CLAUDE.md)。
+产物 `release/KMatch·知链-1.4.0-x64.exe`，装后 sidecar 自启；**端用户免 Docker**。首次打包需开 Windows 开发者模式（winCodeSign 符号链接）。详见 [CLAUDE.md](CLAUDE.md)。
 
 ## 项目结构
 
@@ -102,4 +102,4 @@ KMatch-Desktop/
 - Bug/任务：开 GitHub Issue（见 [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)）。
 - 文档：每完成模块更新 `docs/devlogs/`；架构决策记 `docs/adr/`。
 
-> 完整文档导航见 [docs/README.md](docs/README.md)；详尽功能说明见 [docs/交付材料/软件说明_v1.3.4.md](docs/交付材料/软件说明_v1.3.4.md)。
+> 完整文档导航见 [docs/README.md](docs/README.md)；功能说明见 [docs/交付材料/软件说明_v1.4.0.md](docs/交付材料/软件说明_v1.4.0.md)。
