@@ -94,7 +94,7 @@ chat 的 `buildSystemPrompt` 注入这些字段做因材施教；导学模式下
 ## IDE 布局
 
 - **NavSidebar** - 左侧带文字导航栏（由 VSCode 式活动栏 ActivityBar 演化而来）。仍是 `activeView` 单一指示模型，6+1 视图导航。
-- **AI 助手双形态** - 同一 AssistantPanel 组件的两种装载形态：主区 `chat` 视图（Codex 式居中大留白对话，760px max-width）与右侧可折叠分栏（学习会话等视图内并排答疑）。`sidebar.aiPanelVisible` 只控制侧栏形态；chat store 单会话，双形态共享同一对话。
+- **AI 助手双形态** - 同一 AssistantPanel 组件的两种装载形态：主区 `chat` 视图（居中大留白对话，760px max-width）与右侧可折叠分栏（学习会话等视图内并排答疑）。`sidebar.aiPanelVisible` 只控制侧栏形态；chat store 单会话，双形态共享同一对话。
 
 - **图谱详情分栏** - 知识图谱视图的详情/路径侧栏，flex 布局推挤画布（非浮层遮盖）。展开时 G6 重算画布尺寸，dagre 布局不做侧栏避让（无 panelGap）。
 

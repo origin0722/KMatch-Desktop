@@ -3,7 +3,7 @@
 > 记录开发过程中遇到的所有技术问题、根因分析和解决决策。
 > 每个问题标注影响范围、决策人和解决状态。
 >
-> **⚠️ 历史存档**（2026-06-23 起）：新 BUG 一律开 GitHub Issue（见 [docs/agents/issue-tracker.md](../agents/issue-tracker.md)），本文件不再新增。下方为既有 76 条记录。新发现的 F1–F15 脆弱点与解耦 candidates 已全部转 Issue，见 [重构方案_解耦.md](../架构与设计/重构方案_解耦.md)。
+> **⚠️ 历史存档**（2026-06-23 起）：新 BUG 一律开 GitHub Issue，本文件不再新增。下方为既有 76 条记录。新发现的 F1–F15 脆弱点与解耦 candidates 已全部转 Issue，见 [重构方案_解耦.md](../架构与设计/重构方案_解耦.md)。
 
 ---
 
@@ -547,7 +547,7 @@ python -c "from app.config import settings; print(settings.EMBEDDING_MODEL)"
 | BUG-021 | 审核阈值前后端不同步 | 后端透传 threshold，前端动态读取 | 后端+前端 |
 | BUG-022 | per_node 判分结构依赖隐式顺序 | 改 question_index 显式关联 | 后端+前端 |
 | BUG-023 | AssessmentReport nodeCorrect 新结构下永远满分 | filter(Boolean) → filter(g => g.correct === true) | 前端 |
-| BUG-024 | CLAUDE.md Embedding 模型名错误 | text-embedding-3-small → text-embedding-v2 | 文档 |
+| BUG-024 | 项目速查卡 Embedding 模型名错误 | text-embedding-3-small → text-embedding-v2 | 文档 |
 | BUG-025 | recommended_path 字段三方错配 | 统一为 object 结构，废弃 string 字段 | diagnostics+prompt+schema |
 | BUG-026 | _grade question_index 仍依赖 LLM grades 隐式顺序 | LLM 显式回写 question_index，后端边界校验 | diagnostics |
 | BUG-027 | Assessment.vue el-alert 错误原因被插槽覆盖不显示 | 错误文案放插槽，按钮置其下 | 前端 |
@@ -1031,19 +1031,19 @@ function nodeCorrect(results) {
 
 ---
 
-## BUG-024: CLAUDE.md 中 Embedding 模型名错误
+## BUG-024: 项目速查卡 中 Embedding 模型名错误
 
 | 字段 | 值 |
 |:---|:---|
 | **发现日期** | 2026-06-18 |
 | **发现阶段** | W1-2 ABC 三端审查 |
 | **严重程度** | 🟡 中 — 文档与代码事实不一致，误导新协作者 |
-| **影响范围** | `CLAUDE.md` |
+| **影响范围** | `项目速查卡` |
 | **决策人** | B（前端，顺手修） |
 
 ### 问题描述
 
-`CLAUDE.md:97` 写：
+`项目速查卡:97` 写：
 
 ```
 | LLM Embedding | 千问 text-embedding-3-small | 1536维 |
@@ -1051,19 +1051,19 @@ function nodeCorrect(results) {
 
 但 `text-embedding-3-small` 是 OpenAI 的模型名。千问的实际模型名是 `text-embedding-v2`（[backend/app/config.py](../../backend/app/config.py) 默认值已正确）。
 
-BUG-012 修复时改了 `.env.example` 与 `config.py`，但漏改 `CLAUDE.md`。新协作者读项目第一文档就被误导。
+BUG-012 修复时改了 `.env.example` 与 `config.py`，但漏改 `项目速查卡`。新协作者读项目第一文档就被误导。
 
 ### 根因
 
-- 跨文件同步遗漏（BUG-012 的执行清单未列入 CLAUDE.md）
+- 跨文件同步遗漏（BUG-012 的执行清单未列入 项目速查卡）
 
 ### 决策
 
-**改 CLAUDE.md L97 为 `text-embedding-v2`。**
+**改 项目速查卡 L97 为 `text-embedding-v2`。**
 
 ### 执行
 
-- `CLAUDE.md:97` 已改 ✅（commit `91a965e`）
+- `项目速查卡:97` 已改 ✅（commit `91a965e`）
 
 ### 验证
 
@@ -1185,7 +1185,7 @@ for idx, g in enumerate(grades):     # idx 是 grades 数组下标
 
 ## 2026-06-18 A 端代码审查修复批次（F1~F7）
 
-> 审查人：A + Claude（全量后端代码审查）。A 端 6 条已修复，B 端 4 条移交 B 认领。
+> 审查人：A（全量后端代码审查）。A 端 6 条已修复，B 端 4 条移交 B 认领。
 
 ### 已修复（A 端）
 
@@ -1343,7 +1343,7 @@ W3 KnowledgeGraph 主图组件开发时，store 补 `knowledge_graph` 字段映�
 
 ## 2026-06-18 W5 全量代码审查修复批次（BUG-031~033，A 端）
 
-> 审查人：A + Claude（W5 interactive + 动态反馈全量审查）。3 条均 A 端已修复。
+> 审查人：A（W5 interactive + 动态反馈全量审查）。3 条均 A 端已修复。
 
 ## BUG-031: 工作流无限循环（画像通过 + 内容空资源时 retry 预算被绕过）
 
@@ -1685,7 +1685,7 @@ W3 KnowledgeGraph 主图组件开发时，store 补 `knowledge_graph` 字段映�
 
 ## 2026-06-19 B 端第3-4周代码审查批次（BUG-048~056，B 端）
 
-> 审查人：Claude（B 端全量代码审查 + A/B 兼容性交叉审查）。9 条 B 端 Bug。
+> 审查人：B（B 端全量代码审查 + A/B 兼容性交叉审查）。9 条 B 端 Bug。
 
 ### BUG-048: KnowledgeGraph G6 图谱无边——`prerequisites` 字段在 Neo4j 节点中不存在
 
@@ -1985,7 +1985,7 @@ W3 KnowledgeGraph 主图组件开发时，store 补 `knowledge_graph` 字段映�
 
 ---
 
-**批次验证**：341 passed (314→+27 回归测试)。真实数据 validate_data 全过 (92 节点 + 276 题 + 4 画像, 0 错误)。文档同步: CLAUDE.md 计数 (6→7 Agent/prompt, 56 已含 B/C 端 045-056, 本批 057-073 → 共 73)、计划书版本头 (V1.6→V1.7, M5 进行中→已交付)、7 个初稿对齐运行时 (沙箱/mastery/字段/纯编排标注)。
+**批次验证**：341 passed (314→+27 回归测试)。真实数据 validate_data 全过 (92 节点 + 276 题 + 4 画像, 0 错误)。文档同步: 项目速查卡 计数 (6→7 Agent/prompt, 56 已含 B/C 端 045-056, 本批 057-073 → 共 73)、计划书版本头 (V1.6→V1.7, M5 进行中→已交付)、7 个初稿对齐运行时 (沙箱/mastery/字段/纯编排标注)。
 
 **教训**：并行审查 (4 路独立维度) 比单线审查发现更全; 每项修复配回归测试是防止回退的唯一可靠手段; 防御性方案 (B11 去重告警而非改格式) 在破坏性改动回归风险高时是务实选择。
 
@@ -2158,7 +2158,7 @@ frontend/src/stores/chat.js (+3 工具定义/系统提示 +_executeTool 三分�
 frontend/src/stores/projectGraph.js (新建);
 frontend/src/ide/MonacoEditor.vue (revealSymbol + 装饰高亮 + 光标回传 + 全局 .symbol-highlight 样式);
 frontend/src/ide/AssistantPanel.vue (委派结果卡: 图谱实体列表/四维度评分/通过率+覆盖率 + 实体点击/反查高亮 + 辅助函数);
-CLAUDE.md (阶段4 进度 + 文件索引)。
+项目速查卡 (阶段4 进度 + 文件索引)。
 
 ### 验证
 
@@ -2194,7 +2194,7 @@ CLAUDE.md (阶段4 进度 + 文件索引)。
 
 ### 执行
 
-backend/KMatchBackend.spec (重写), backend/app/config.py (KMATCH_DATA_DIR), .gitignore (backend-dist/ + spec 例外), electron-builder.yml (启用 backend-dist→backend 映射), CLAUDE.md (阶段5 进度 + 打包命令小节)。
+backend/KMatchBackend.spec (重写), backend/app/config.py (KMATCH_DATA_DIR), .gitignore (backend-dist/ + spec 例外), electron-builder.yml (启用 backend-dist→backend 映射), 项目速查卡 (阶段5 进度 + 打包命令小节)。
 
 ### 验证
 

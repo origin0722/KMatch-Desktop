@@ -1,10 +1,10 @@
 # Desktop 开发阶段总览（阶段0–16 + Spec B）
 
-> 从 CLAUDE.md 迁出的历史阶段日志。详细 devlog 见同目录按端分类的日期文件。架构决策见 [../adr/](../adr/)。
+> 从 项目速查卡 迁出的历史阶段日志。详细 devlog 见同目录按端分类的日期文件。架构决策见 [../adr/](../adr/)。
 
 ## v1.3.2 (2026/09/02): P0 项目图谱可信度 + 预览版用户反馈收口 ✅
 
-P0 批次（分支 `codex/project-semantic-graph-p0`，设计 spec 见 [../superpowers/specs/2026-09-02-project-semantic-graph-design.md](../superpowers/specs/2026-09-02-project-semantic-graph-design.md)，总方案见 [../项目规划/2026-09-02_画像协同历史与体验升级总方案.md](../项目规划/2026-09-02_画像协同历史与体验升级总方案.md)）：
+P0 批次（设计 spec 见 [../架构与设计/项目语义图谱设计.md](../架构与设计/项目语义图谱设计.md)，总方案见 [../项目规划/2026-09-02_画像协同历史与体验升级总方案.md](../项目规划/2026-09-02_画像协同历史与体验升级总方案.md)）：
 
 - **当前文件质量检查**：修复 `useAssessmentStore` 未定义引用（入口此前必然 ReferenceError 死键）+ 更名"当前文件质量检查"并明示仅支持 Python、只读不改源码
 - **运行历史展示契约**：`/runs` 列表改展示投影（不泄漏完整 request）；RunsPanel/AssistantSidePanel 消费 `display_title`
@@ -151,9 +151,9 @@ P0 批次（分支 `codex/project-semantic-graph-p0`，设计 spec 见 [../super
 
 **测试**：248 前端 + 471 后端（459+12）全过。已知限制：联网资源 store 纯内存不持久化（重启清空，UI 无清空入口）；Tavily 搜索词硬编码 `Python {name} 教程`（平台定位 Python，可接受）。
 
-## 阶段15 (2026/08/10-08/14): M5 质检升级 + Codex 化 UI 收官 + 反馈快模型 + 后端去重 ✅
+## 阶段15 (2026/08/10-08/14): M5 质检升级 + IDE 化 UI 收官 + 反馈快模型 + 后端去重 ✅
 
-赛题冲刺批：M5 三指标从"作者自评"升级为独立裁判双口径（经得起评委追问），同时完成 UI Codex 化收尾与性能/代码质量打磨。
+赛题冲刺批：M5 三指标从"作者自评"升级为独立裁判双口径（经得起评委追问），同时完成 UI IDE 化收尾与性能/代码质量打磨。
 
 **M1 M5 质检升级（独立裁判 LLM-as-Judge）**：
 - 新增 [quality_judge.py](../../backend/app/agents/quality_judge.py)（逐资源判定 grounded/hallucinated/unverifiable，只拿资源内容+图谱事实，不拿生成过程/reviewer 结论）+ [quality_metrics.py](../../backend/app/agents/quality_metrics.py) 双口径指标（自评 + 独立裁判双列）
@@ -162,7 +162,7 @@ P0 批次（分支 `codex/project-semantic-graph-p0`，设计 spec 见 [../super
 
 **M2 图谱扩域**：4 新域 100 节点（DA/DB/EN/WD 各 25 + ML 30）→ 222 节点 6 域（`data/knowledge_base/nodes/` 11 文件）；内容生成丰富度升级（针对性反馈产物落学习资源视图：知识点入 generatedContent + 网址入联网资源 tab + 自动开分屏）。
 
-**M3 Codex 化 UI V2 收官**（5 提交，详见 [B_前端/2026-08-14_Codex化UI收官.md](B_前端/2026-08-14_Codex化UI收官.md)）：
+**M3 IDE 化 UI V2 收官**（5 提交，详见 [B_前端/2026-08-14_IDE化UI收官.md](B_前端/2026-08-14_IDE化UI收官.md)）：
 - T1 删 ActivityBar.vue 死代码（NavSidebar 完全替代）；T2 设置页「通用」段重新引导入口（onboardingActive 收口 sidebar store）
 - T3 图谱详情侧栏浮层 → split 分栏（flex 推挤画布，删 panelGap 避让，折叠延迟 220ms 重建）
 - T4 AI 助手双形态：主区 `chat` 视图（760px 居中 + 建议 chip，`variant="wide"` 纯样式层）+ 右侧分栏共存，chat 视图下侧栏不重复挂载
@@ -187,7 +187,7 @@ P0 批次（分支 `codex/project-semantic-graph-p0`，设计 spec 见 [../super
 文档/流程规范化，不改业务代码：
 - 领域文档：`CONTEXT.md` + `docs/adr/0001..0005`
 - 架构梳理：`docs/架构与设计/ARCHITECTURE.md`（进程拓扑/6 数据流/状态更新流）+ `docs/架构与设计/重构方案_解耦.md`（C1–C4 + F1–F15 决策表）
-- 文档重构：README 重写为 Desktop 版、旧 Web 文档归档 `docs/legacy/`、CLAUDE.md 瘦身、devlog 索引补全
+- 文档重构：README 重写为 Desktop 版、旧 Web 文档归档 `docs/legacy/`、项目速查卡 瘦身、devlog 索引补全
 - 用例注释：6 裸 + 4 部分前端测试补场景注释（94 测试全过）
-- Skills：装 Matt Pocock 中文版 skills 到 `.claude/skills/`；建 GitHub triage + 分类 label
+- 工程约定：建 GitHub triage 流程 + 分类 label
 - **bug/任务转 GitHub Issues**（24 条）：#1 赛题锚点 / #2 总览 / #3–#6 C1–C4 解耦 / #7–#22 F1–F15 bug+refactor / #23–#24 docs。后续按 issue 优先级 TDD 推进。

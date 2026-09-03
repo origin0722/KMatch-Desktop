@@ -9,7 +9,7 @@
 
 ## 一、这个模板是做什么用的
 
-一句话：**给 AI 编程代理（Claude Code / Codex / Cursor 等）用的"网页逆向工程→重建"流水线模板**，不是某个聊天站点的源码。
+一句话：**给 AI 编程代理用的"网页逆向工程→重建"流水线模板**，不是某个聊天站点的源码。
 
 - 技术栈起步骨架：Next.js 16 (App Router, React 19, TS strict) + shadcn/ui（base-nova 风格）+ Tailwind CSS v4（oklch 设计 token）+ Lucide 图标。
 - 用法：`npm run dev` → 对代理说 `/clone-website <目标URL>` → 代理按 SKILL.md 的多阶段流水线（侦察→建基→组件规格→并行构建→组装→QA）把目标站点 1:1 重建出来。
@@ -220,5 +220,5 @@ onUnmounted(onUp)
 
 ## 附：研究来源与局限性
 
-- 来源：模板仓库 tarball 全量阅读（`src/`、`.claude/skills/clone-website/SKILL.md`、`AGENTS.md`、`docs/research/INSPECTION_GUIDE.md`、`globals.css`、`ui/button.tsx`）；参考站点 `ai.explore.poker/chat` 仅抓到 SPA 静态壳（布局由 JS 渲染，无法离线展开），故布局细节以模板设计规范为准。
+- 来源：模板仓库 tarball 全量阅读（`src/`、模板技能文档、`docs/research/INSPECTION_GUIDE.md`、`globals.css`、`ui/button.tsx`）；参考站点 `ai.explore.poker/chat` 仅抓到 SPA 静态壳（布局由 JS 渲染，无法离线展开），故布局细节以模板设计规范为准。
 - 局限：参考站点的真实侧栏/聊天布局未能亲眼解析（无浏览器自动化工具），如需 1:1 参考建议你在浏览器打开该站对照；模板不直接含聊天应用源码，代码示例为按模板规范的适配实现。

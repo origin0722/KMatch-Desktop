@@ -1,6 +1,6 @@
 # 2026-06-18 — W5 interactive 答题接口 + 动态反馈（feature 分支）
 
-**参与成员**: A（后端）+ Claude
+**参与成员**: A（后端）
 **分支**: `feature/W5-backend-interactive`（按计划书 W5 起 feature 分支策略）
 **会话目标**: 实现 interactive 模式答题提交接口 + 动态反馈机制（W4 计划⑤ + 对接文档 W5 缺口）
 **耗时**: 0.5 日

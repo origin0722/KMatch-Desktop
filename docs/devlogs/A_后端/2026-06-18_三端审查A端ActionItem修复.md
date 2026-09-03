@@ -1,6 +1,6 @@
 # 2026-06-18 — 三端审查报告 A 端 Action Item 修复
 
-**参与成员**: A（后端）+ Claude
+**参与成员**: A（后端）
 **会话目标**: 按 `docs/W1-2_ABC三端审查报告_2026-06-18.md` 认领并修复 A 端 P0/P1/P2 Action Item
 **耗时**: 0.5 日
 
@@ -53,7 +53,7 @@ B 端在 6/18 完成 W1-2 三端审查，产出审查报告与 BUG-023~026 记�
 
 ### 3. prompt 由 A 同步（非 C）
 
-CLAUDE.md 规定 `data/prompts/` 由 C 统筹。但 `01_orchestrator_agent.txt` / `02_diagnostics_agent.txt` 的头部均标注"更新: 2026/06/17 A — 对齐代码实际实现"，即 A 历史维护此二 prompt，且审查报告 A6 确认"C 未动、目前不冲突"。为避免数据契约再次错配（正是 BUG-025 的根因），由 A 一并同步 prompt schema 段。C 后续若接管需注意此二文件已被 A 改动。
+项目速查卡 规定 `data/prompts/` 由 C 统筹。但 `01_orchestrator_agent.txt` / `02_diagnostics_agent.txt` 的头部均标注"更新: 2026/06/17 A — 对齐代码实际实现"，即 A 历史维护此二 prompt，且审查报告 A6 确认"C 未动、目前不冲突"。为避免数据契约再次错配（正是 BUG-025 的根因），由 A 一并同步 prompt schema 段。C 后续若接管需注意此二文件已被 A 改动。
 
 ---
 
@@ -98,5 +98,5 @@ CLAUDE.md 规定 `data/prompts/` 由 C 统筹。但 `01_orchestrator_agent.txt` 
 ## 六、遗留 / 待 C 端
 
 - C1 真正命名收口需 import 脚本侧统一 `id`→`node_id`（C 域或后续联调），本次仅加注释防回归。
-- CLAUDE.md `BUG 清单: 16 条` 计数已过时（实际 26 条），未在本会话改动（共享文件，留给 owner 统一更新）。
+- 项目速查卡 `BUG 清单: 16 条` 计数已过时（实际 26 条），未在本会话改动（共享文件，留给 owner 统一更新）。
 - 隐性风险 C2（reviewer 校验 node_id 真实性）、C3（`_demo_answer` 硬编码初学者水平）、C5（OpenAI 客户端 lifespan 关闭）未在本批处理，按报告属 P2+，后续排期。
